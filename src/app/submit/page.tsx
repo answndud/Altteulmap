@@ -1,17 +1,25 @@
-import { PlaceholderScreen } from "@/components/placeholder-screen";
+import { PlaceSubmitForm } from "@/features/submission/place-submit-form";
 
 export default function SubmitPage() {
   return (
-    <PlaceholderScreen
-      eyebrow="Submit"
-      title="장소 등록 플로우 준비 중"
-      description="로그인과 주소 검색이 아직 연결되지 않아 폼 실구현 전 단계입니다. 대신 필요한 필드 구조와 등록 흐름은 TRD 기준으로 정리해두었습니다."
-      checklist={[
-        "상호명, 카테고리, 주소 입력",
-        "가격 항목 1개 이상 등록",
-        "메모 선택 입력",
-        "기존 장소에 가격 추가 제보",
-      ]}
-    />
+    <main className="bg-stone-50 px-4 py-8 sm:px-6">
+      <section className="mx-auto max-w-7xl rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm sm:p-8">
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-orange-600">
+          Write MVP
+        </p>
+        <h1 className="mt-3 text-3xl font-semibold tracking-tight text-stone-900 sm:text-5xl">
+          장소 등록 폼 초안
+        </h1>
+        <p className="mt-4 max-w-3xl text-base leading-7 text-stone-600">
+          아직 로그인과 주소 검색은 연결하지 않았지만, 실제 저장 API에 가깝게
+          사용할 수 있는 입력 구조와 검증 흐름은 먼저 만들었습니다. 다음 단계에서
+          Auth.js와 DB 저장을 붙이면 곧바로 실등록 플로우로 확장할 수 있습니다.
+        </p>
+
+        <div className="mt-8">
+          <PlaceSubmitForm />
+        </div>
+      </section>
+    </main>
   );
 }
