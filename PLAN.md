@@ -28,6 +28,7 @@
 3. 운영 품질: 가격 검증 흐름, 관리자 가격 수정, 중복/숨김 정책, rate limit
 4. 인증 정리: 로컬 credentials 중심 구조를 실제 로그인 가능한 형태로 확장
 5. 출시 준비: 테스트, SEO, Cloudflare 배포 체크리스트
+6. repo-local 개발 워크플로우 유지: `.agents` skills/reviewers, `.githooks`, `verify` 스크립트
 
 ## 현재 제품 상태
 
@@ -69,6 +70,11 @@
 - 핫딜 `deal`
 
 ## Active Plan
+
+### Cycle 7: repo-local AI workflow setup (완료)
+| 작업명 | 담당 에이전트 | 우선순위 | 상태 | 완료기준(DoD) | 의존성 |
+|---|---|---|---|---|---|
+| ECC에서 필요한 부분만 가져와 altteulmap 저장소 하위에 repo-local skills, reviewer guides, verify script, git hooks를 구성하고 전역 설정 없이 활성화한다 | Codex | P2 | `done` | `.agents/skills`, `.agents/reviewers`, `.githooks`, `scripts/git-hooks`가 추가되고, `npm run hooks:install`, `npm run verify`가 동작하며, `AGENTS.md`/`README.md`/`PLAN.md`/`PROGRESS.md`에 사용 규칙과 검증 결과가 반영된다 | `AGENTS.md`, `README.md`, `package.json`, `.githooks/**`, `scripts/git-hooks/**` |
 
 ### Cycle 2: 문서 체계 정비와 지도 검색/URL 상태 반영 (완료)
 | 작업명 | 담당 에이전트 | 우선순위 | 상태 | 완료기준(DoD) | 의존성 |

@@ -21,6 +21,8 @@ npm run dev
 npm run dev
 npm run lint
 npm run build
+npm run verify
+npm run hooks:install
 npm run db:up
 npm run db:generate
 npm run db:push
@@ -32,6 +34,8 @@ npm run preview
 - `dev`: Next.js 로컬 개발 서버
 - `lint`: ESLint 검사
 - `build`: Next.js 프로덕션 빌드
+- `verify`: 현재 프로젝트 기준 전체 기본 검증(`lint + build`)
+- `hooks:install`: 이 저장소 전용 git hook 활성화
 - `db:up`: 로컬 Postgres 컨테이너 시작
 - `db:generate`: Drizzle 마이그레이션 SQL 생성
 - `db:push`: 로컬/개발 DB에 스키마 반영
@@ -66,6 +70,25 @@ npm run db:seed
 기본 예시는 `.env.example`에 들어 있고, 로컬 `.env`도 같은 값으로 맞춰두었습니다.
 
 `/map`에서 실제 네이버 지도를 보려면 `NEXT_PUBLIC_NAVER_MAP_KEY_ID`를 설정하면 됩니다. 아직 키가 없으면 같은 화면에서 자동으로 임시 프리뷰 지도로 fallback됩니다. 기존 `NEXT_PUBLIC_NAVER_MAP_CLIENT_ID` 값도 함께 지원합니다.
+
+## 로컬 AI 워크플로우
+
+이 저장소에는 전역 설정 대신 repo-local AI 워크플로우 파일이 들어 있습니다.
+
+```bash
+npm run hooks:install
+npm run verify
+```
+
+- `.agents/skills/`: API, migration, 검증, E2E 기준
+- `.agents/reviewers/`: TypeScript/DB 자체 리뷰 체크리스트
+- `.githooks/`: 이 저장소 전용 pre-commit, commit-msg hook
+
+hook를 설치하면 아래가 자동으로 검사됩니다.
+- staged 코드의 `debugger`/secret 패턴
+- `npm run verify:quick`
+- conventional commit 메시지 형식
+- lint/formatter 설정 파일 수정 차단
 
 작업을 마치고 로컬 DB를 내리려면:
 

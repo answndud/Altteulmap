@@ -1,0 +1,3 @@
+#!/bin/sh
+node scripts/git-hooks/config-protection.mjs || exit $?
+node scripts/git-hooks/pre-commit-quality.mjs || exit $?

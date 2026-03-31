@@ -6,9 +6,36 @@
 - Cycle 0: 프로젝트 로컬 기반, DB 경로, 지도 탐색, 장소 상세, 등록, 신고, 북마크, 관리자 검토, 로컬 인증, 네이버 지도 연동 완료
 - Cycle 1: 현재 위치 버튼, viewport 재조회, 모바일 목록 바텀시트, 모바일 상세 시트 기초 정리 완료
 - Cycle 2: `PLAN.md`/`PROGRESS.md` 운영 문서 형식 정비, 지역/전역 검색, 검색 URL 상태 반영 완료
+- Cycle 7: repo-local AI workflow 설정 완료 (`.agents`, `.githooks`, `verify`, local commit rules)
 - 다음 우선순위: 댓글 작성/삭제, 기존 장소 가격 추가 제보, 관리자 가격 검토 흐름
 
 ## 실행 로그
+
+### 2026-03-31: Cycle 7 완료 (repo-local AI workflow setup)
+- 완료 내용
+  - `AGENTS.md`를 현재 저장소 기준으로 정리하고 repo-local AI workflow 규칙을 추가했다.
+  - `.agents/skills/` 아래에 `database-migrations`, `api-design`, `verification-loop`, `e2e-testing` 프로젝트 전용 skill 문서를 추가했다.
+  - `.agents/reviewers/` 아래에 `typescript-reviewer.md`, `database-reviewer.md`를 추가해 큰 변경 후 자체 리뷰 기준을 고정했다.
+  - `.githooks/`, `scripts/git-hooks/`를 추가하고 `pre-commit`, `commit-msg` hook를 repo-local 방식으로 구성했다.
+  - `package.json`에 `verify`, `verify:quick`, `hooks:install` 스크립트를 추가했고, `README.md`에 사용법을 문서화했다.
+- 변경 파일
+  - `/Users/alex/project/altteulmap/AGENTS.md`
+  - `/Users/alex/project/altteulmap/.agents/README.md`
+  - `/Users/alex/project/altteulmap/.agents/skills/**`
+  - `/Users/alex/project/altteulmap/.agents/reviewers/**`
+  - `/Users/alex/project/altteulmap/.githooks/**`
+  - `/Users/alex/project/altteulmap/scripts/git-hooks/**`
+  - `/Users/alex/project/altteulmap/package.json`
+  - `/Users/alex/project/altteulmap/README.md`
+  - `/Users/alex/project/altteulmap/PLAN.md`
+  - `/Users/alex/project/altteulmap/PROGRESS.md`
+- 검증 결과
+  - `npm run hooks:install` 통과
+  - `npm run verify` 통과
+  - `git config --local --get core.hooksPath` 결과 `.githooks`
+- 메모
+  - hook는 이 저장소 안에서만 동작한다.
+  - ECC 전체 번들은 가져오지 않았고, 현재 프로젝트에 필요한 축만 축소 도입했다.
 
 ### 2026-03-31: Cycle 2 완료 (문서 체계 정비와 지도 검색/URL 상태 반영)
 - 완료 내용
