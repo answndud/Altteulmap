@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { BookmarkToggleButton } from "@/features/bookmarks/bookmark-toggle-button";
+import { listBookmarks } from "@/features/bookmarks/repository";
 import { getCategoryBySlug } from "@/features/categories/catalog";
-import {
-  formatKrw,
-  getPlaceById,
-  getRelatedPlaces,
-} from "@/features/places/queries";
+import { formatKrw } from "@/features/places/queries";
+import { getPlaceDetail } from "@/features/places/repository";
+import { PlaceStatusBadge } from "@/features/places/place-status-badge";
+import { createLoginHref, getSessionUser } from "@/lib/session";
 
 type PlacePageProps = {
   params: Promise<{
@@ -14,30 +15,27 @@ type PlacePageProps = {
   }>;
 };
 
-function StatusBadge({ verified }: { verified: boolean }) {
-  return (
-    <span
-      className={`rounded-full px-3 py-1 text-xs font-semibold ${
-        verified
-          ? "bg-emerald-100 text-emerald-700"
-          : "bg-amber-100 text-amber-700"
-      }`}
-    >
-      {verified ? "검증됨" : "미검증"}
-    </span>
-  );
-}
-
 export default async function PlacePage({ params }: PlacePageProps) {
   const { id } = await params;
-  const place = getPlaceById(id);
+  const user = await getSessionUser();
+  const [result, bookmarkResult] = await Promise.all([
+    getPlaceDetail(id),
+    listBookmarks(user),
+  ]);
+  const place = result.item;
 
   if (!place) {
     notFound();
   }
 
   const category = getCategoryBySlug(place.categorySlug);
-  const relatedPlaces = getRelatedPlaces(place.id);
+  const relatedPlaces = result.related;
+  const isBookmarked = bookmarkResult.items.some(
+    (bookmark) => bookmark.placeId === place.id,
+  );
+  const bookmarkLoginHref = createLoginHref(`/place/${place.id}`);
+  const reportPath = `/report?placeId=${place.id}&placeName=${encodeURIComponent(place.name)}`;
+  const reportHref = user ? reportPath : createLoginHref(reportPath);
 
   return (
     <main className="bg-stone-50 px-4 py-8 sm:px-6">
@@ -62,7 +60,20 @@ export default async function PlacePage({ params }: PlacePageProps) {
                 {place.address}
               </p>
             </div>
-            <StatusBadge verified={place.verificationStatus === "verified"} />
+            <div className="flex items-center gap-2">
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                  result.source === "database"
+                    ? "bg-emerald-100 text-emerald-700"
+                    : "bg-orange-100 text-orange-700"
+                }`}
+              >
+                {result.source === "database" ? "DB" : "목업"}
+              </span>
+              <PlaceStatusBadge
+                verified={place.verificationStatus === "verified"}
+              />
+            </div>
           </div>
 
           <div className="mt-8 grid gap-4 sm:grid-cols-3">
@@ -87,6 +98,19 @@ export default async function PlacePage({ params }: PlacePageProps) {
               <p className="mt-3 text-sm leading-6 text-stone-700">
                 {place.note}
               </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <BookmarkToggleButton
+                  placeId={place.id}
+                  initialBookmarked={isBookmarked}
+                  loginHref={bookmarkLoginHref}
+                />
+                <Link
+                  href={reportHref}
+                  className="inline-flex rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
+                >
+                  정보가 잘못됐나요? 신고하기
+                </Link>
+              </div>
             </div>
           </div>
 

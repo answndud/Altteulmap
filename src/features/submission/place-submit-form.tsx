@@ -1,10 +1,11 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useFieldArray, useForm } from "react-hook-form";
+import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { useState, useTransition } from "react";
 
 import { categoryGroups } from "@/features/categories/catalog";
+import { PlaceCoordinatePicker } from "@/features/submission/place-coordinate-picker";
 import {
   type PlaceSubmissionFormInput,
   type PlaceSubmissionInput,
@@ -14,12 +15,15 @@ import {
 type SubmitResult = {
   ok: boolean;
   message: string;
+  source?: "mock" | "database";
   preview?: {
     id: string;
     name: string;
     categorySlug: string;
     roadAddress: string;
     district: string;
+    latitude?: number;
+    longitude?: number;
     priceItems: Array<{
       label: string;
       amount: number;
@@ -35,6 +39,8 @@ const defaultValues: PlaceSubmissionFormInput = {
   categorySlug: "",
   roadAddress: "",
   district: "",
+  latitude: "",
+  longitude: "",
   note: "",
   priceItems: [
     {
@@ -60,6 +66,7 @@ export function PlaceSubmitForm() {
     register,
     control,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = form;
 
@@ -67,6 +74,43 @@ export function PlaceSubmitForm() {
     control,
     name: "priceItems",
   });
+  const watchedName = useWatch({
+    control,
+    name: "name",
+    defaultValue: "",
+  });
+  const watchedAddress = useWatch({
+    control,
+    name: "roadAddress",
+    defaultValue: "",
+  });
+  const watchedDistrict = useWatch({
+    control,
+    name: "district",
+    defaultValue: "",
+  });
+  const watchedLatitude = useWatch({
+    control,
+    name: "latitude",
+    defaultValue: "",
+  });
+  const watchedLongitude = useWatch({
+    control,
+    name: "longitude",
+    defaultValue: "",
+  });
+  const latitudeValue =
+    typeof watchedLatitude === "string"
+      ? watchedLatitude
+      : watchedLatitude == null
+        ? ""
+        : String(watchedLatitude);
+  const longitudeValue =
+    typeof watchedLongitude === "string"
+      ? watchedLongitude
+      : watchedLongitude == null
+        ? ""
+        : String(watchedLongitude);
 
   const onSubmit = handleSubmit((values) => {
     startTransition(async () => {
@@ -266,12 +310,67 @@ export function PlaceSubmitForm() {
             </label>
           </section>
 
+          <section className="grid gap-4">
+            <PlaceCoordinatePicker
+              placeName={watchedName}
+              address={watchedAddress}
+              district={watchedDistrict}
+              latitude={latitudeValue}
+              longitude={longitudeValue}
+              onChange={({ latitude, longitude }) => {
+                setValue("latitude", latitude, {
+                  shouldDirty: true,
+                  shouldValidate: true,
+                });
+                setValue("longitude", longitude, {
+                  shouldDirty: true,
+                  shouldValidate: true,
+                });
+              }}
+              disabled={isPending}
+            />
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="grid gap-2 text-sm text-stone-700">
+                위도
+                <input
+                  type="number"
+                  step="0.000001"
+                  {...register("latitude")}
+                  className="rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900"
+                  placeholder="37.566500"
+                />
+                {errors.latitude ? (
+                  <span className="text-xs text-rose-600">
+                    {errors.latitude.message}
+                  </span>
+                ) : null}
+              </label>
+
+              <label className="grid gap-2 text-sm text-stone-700">
+                경도
+                <input
+                  type="number"
+                  step="0.000001"
+                  {...register("longitude")}
+                  className="rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900"
+                  placeholder="126.978000"
+                />
+                {errors.longitude ? (
+                  <span className="text-xs text-rose-600">
+                    {errors.longitude.message}
+                  </span>
+                ) : null}
+              </label>
+            </div>
+          </section>
+
           <button
             type="submit"
             disabled={isPending}
             className="rounded-full bg-stone-900 px-5 py-3 text-sm font-medium text-white transition hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isPending ? "제출 확인 중..." : "목업 제출하기"}
+            {isPending ? "제출 확인 중..." : "제보 제출하기"}
           </button>
         </div>
       </form>
@@ -286,9 +385,10 @@ export function PlaceSubmitForm() {
           </h2>
           <ul className="mt-4 space-y-3 text-sm leading-6 text-stone-600">
             <li>카테고리 선택과 가격 항목 다중 입력</li>
+            <li>대략적인 좌표 선택 또는 수동 입력</li>
             <li>Zod 기반 입력 검증</li>
             <li>서버 API로 제출 payload 검증</li>
-            <li>실제 DB 저장 전 결과 미리보기</li>
+            <li>목업 fallback 또는 DB 저장 결과 확인</li>
           </ul>
         </section>
 
@@ -307,10 +407,18 @@ export function PlaceSubmitForm() {
               </div>
               {submitResult.preview ? (
                 <div className="rounded-3xl border border-stone-200 bg-white p-5">
-                  <p className="text-sm text-stone-500">임시 생성 ID</p>
+                  <p className="text-sm text-stone-500">생성 ID</p>
                   <p className="mt-1 font-medium text-stone-900">
                     {submitResult.preview.id}
                   </p>
+                  {submitResult.source ? (
+                    <>
+                      <p className="mt-4 text-sm text-stone-500">처리 경로</p>
+                      <p className="mt-1 font-medium text-stone-900">
+                        {submitResult.source === "database" ? "DB" : "목업"}
+                      </p>
+                    </>
+                  ) : null}
                   <p className="mt-4 text-sm text-stone-500">상호명</p>
                   <p className="mt-1 font-medium text-stone-900">
                     {submitResult.preview.name}
@@ -320,6 +428,16 @@ export function PlaceSubmitForm() {
                     {submitResult.preview.roadAddress} ·{" "}
                     {submitResult.preview.district}
                   </p>
+                  {typeof submitResult.preview.latitude === "number" &&
+                  typeof submitResult.preview.longitude === "number" ? (
+                    <>
+                      <p className="mt-4 text-sm text-stone-500">제출 좌표</p>
+                      <p className="mt-1 text-sm leading-6 text-stone-700">
+                        {submitResult.preview.latitude.toFixed(6)},{" "}
+                        {submitResult.preview.longitude.toFixed(6)}
+                      </p>
+                    </>
+                  ) : null}
                   <div className="mt-4 grid gap-2">
                     {submitResult.preview.priceItems.map((item) => (
                       <div

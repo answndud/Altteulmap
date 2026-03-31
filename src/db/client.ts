@@ -1,9 +1,7 @@
-import "server-only";
-
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
-import { getRequiredServerEnv } from "@/lib/env";
+import { getRequiredServerEnv, shouldUseMockData } from "@/lib/env";
 import * as schema from "@/db/schema";
 
 function createDb() {
@@ -23,8 +21,22 @@ const globalForDb = globalThis as {
   __altteulmapDb?: Database;
 };
 
-export const db = globalForDb.__altteulmapDb ?? createDb();
+export function isDatabaseEnabled() {
+  return !shouldUseMockData();
+}
 
-if (process.env.NODE_ENV !== "production") {
-  globalForDb.__altteulmapDb = db;
+export function getDb() {
+  if (!isDatabaseEnabled()) {
+    throw new Error(
+      "Database access is disabled. Set USE_MOCK_DATA=false and DATABASE_URL to enable it.",
+    );
+  }
+
+  const db = globalForDb.__altteulmapDb ?? createDb();
+
+  if (process.env.NODE_ENV !== "production") {
+    globalForDb.__altteulmapDb = db;
+  }
+
+  return db;
 }

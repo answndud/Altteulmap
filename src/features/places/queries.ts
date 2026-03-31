@@ -1,28 +1,67 @@
 import { getCategoryBySlug } from "@/features/categories/catalog";
 import { mockPlaces } from "@/features/places/mock-data";
+import type { PlaceQueryBounds, PlaceRecord } from "@/features/places/types";
 
 type PlaceQuery = {
   category?: string | null;
   maxPrice?: number | null;
   sort?: "price" | "recent";
+  bounds?: PlaceQueryBounds | null;
+  query?: string | null;
 };
 
 export function formatKrw(amount: number) {
   return new Intl.NumberFormat("ko-KR").format(amount);
 }
 
+function normalizeSearchText(value: string | null | undefined) {
+  return (value ?? "").trim().toLocaleLowerCase("ko-KR");
+}
+
+function matchesPlaceQuery(place: PlaceRecord, query: string) {
+  const category = getCategoryBySlug(place.categorySlug);
+  const haystack = [
+    place.name,
+    place.businessName,
+    place.address,
+    place.district,
+    place.representativePriceLabel,
+    place.description,
+    place.note,
+    category?.name,
+    category?.parentName,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLocaleLowerCase("ko-KR");
+
+  return haystack.includes(query);
+}
+
 export function getFilteredPlaces({
   category,
   maxPrice,
   sort = "price",
+  bounds,
+  query,
 }: PlaceQuery = {}) {
+  const normalizedQuery = normalizeSearchText(query);
   const filtered = mockPlaces.filter((place) => {
     const categoryMatches = category ? place.categorySlug === category : true;
     const priceMatches = maxPrice
       ? place.representativePriceAmount <= maxPrice
       : true;
+    const boundsMatch = bounds
+      ? place.latitude >= bounds.minLat &&
+        place.latitude <= bounds.maxLat &&
+        place.longitude >= bounds.minLng &&
+        place.longitude <= bounds.maxLng
+      : true;
+    const queryMatches = normalizedQuery
+      ? matchesPlaceQuery(place, normalizedQuery)
+      : true;
 
-    return categoryMatches && priceMatches;
+    return categoryMatches && priceMatches && boundsMatch && queryMatches;
   });
 
   return filtered.sort((left, right) => {

@@ -22,6 +22,17 @@ export type PlaceHistoryEntry = {
   recordedAt: string;
 };
 
+export type PlaceBounds = {
+  minLat: number;
+  maxLat: number;
+  minLng: number;
+  maxLng: number;
+};
+
+export type PlaceQueryBounds = PlaceBounds;
+
+export type PlaceSearchScope = "viewport" | "global";
+
 export type PlaceRecord = {
   id: string;
   name: string;

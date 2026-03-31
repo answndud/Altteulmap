@@ -150,13 +150,16 @@ export const places = pgTable(
   "places",
   {
     id: uuid("id").defaultRandom().primaryKey(),
+    slug: varchar("slug", { length: 160 }).notNull(),
     name: varchar("name", { length: 120 }).notNull(),
     businessName: varchar("business_name", { length: 120 }),
     description: text("description"),
+    note: text("note"),
     roadAddress: text("road_address").notNull(),
     lotAddress: text("lot_address"),
-    latitude: doublePrecision("latitude").notNull(),
-    longitude: doublePrecision("longitude").notNull(),
+    district: varchar("district", { length: 80 }).notNull(),
+    latitude: doublePrecision("latitude"),
+    longitude: doublePrecision("longitude"),
     status: placeStatusEnum("status").default("active").notNull(),
     representativePriceAmount: integer("representative_price_amount"),
     representativePriceLabel: varchar("representative_price_label", {
@@ -174,6 +177,7 @@ export const places = pgTable(
     ...withTimestamps(),
   },
   (table) => [
+    uniqueIndex("places_slug_unique").on(table.slug),
     index("places_status_updated_at_idx").on(table.status, table.updatedAt),
     index("places_representative_price_idx").on(
       table.representativePriceAmount,

@@ -1,14 +1,14 @@
 import Link from "next/link";
 
+import { listBookmarks } from "@/features/bookmarks/repository";
 import {
   categoryGroups,
   getCategoryBySlug,
 } from "@/features/categories/catalog";
-import {
-  formatKrw,
-  getFilteredPlaces,
-  getMapBounds,
-} from "@/features/places/queries";
+import { MapExplorer } from "@/features/places/map-explorer";
+import { listPlaces } from "@/features/places/repository";
+import type { PlaceSearchScope } from "@/features/places/types";
+import { createLoginHref, getSessionUser } from "@/lib/session";
 
 type MapPageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -33,9 +33,17 @@ function getFirstValue(value: string | string[] | undefined) {
 function createHref(params: {
   category?: string | null;
   maxPrice?: number | null;
+  query?: string | null;
+  searchScope?: PlaceSearchScope;
   sort?: string | null;
 }) {
   const search = new URLSearchParams();
+  const trimmedQuery = params.query?.trim();
+
+  if (trimmedQuery) {
+    search.set("q", trimmedQuery);
+    search.set("scope", params.searchScope === "global" ? "global" : "viewport");
+  }
 
   if (params.category) {
     search.set("category", params.category);
@@ -58,18 +66,38 @@ export default async function MapPage({ searchParams }: MapPageProps) {
   const params = await searchParams;
   const activeCategory = getFirstValue(params.category) ?? null;
   const activeMaxPrice = Number(getFirstValue(params.maxPrice) ?? "") || null;
+  const activeQuery = getFirstValue(params.q)?.trim() || null;
+  const activeSearchScope: PlaceSearchScope =
+    activeQuery && getFirstValue(params.scope) === "global"
+      ? "global"
+      : "viewport";
   const activeSort =
     getFirstValue(params.sort) === "recent" ? "recent" : "price";
+  const user = await getSessionUser();
 
-  const places = getFilteredPlaces({
+  const [result, bookmarkResult] = await Promise.all([
+    listPlaces({
+      category: activeCategory,
+      maxPrice: activeMaxPrice,
+      query: activeQuery,
+      sort: activeSort,
+    }),
+    listBookmarks(user),
+  ]);
+  const currentMapHref = createHref({
     category: activeCategory,
     maxPrice: activeMaxPrice,
+    query: activeQuery,
+    searchScope: activeSearchScope,
     sort: activeSort,
   });
+  const bookmarkLoginHref = createLoginHref(currentMapHref);
+  const submitHref = user ? "/submit" : createLoginHref("/submit");
+  const places = result.items;
+  const bookmarkedIds = new Set(
+    bookmarkResult.items.map((bookmark) => bookmark.placeId),
+  );
   const selectedCategory = getCategoryBySlug(activeCategory);
-  const bounds = getMapBounds();
-  const latRange = Math.max(bounds.maxLat - bounds.minLat, 0.01);
-  const lngRange = Math.max(bounds.maxLng - bounds.minLng, 0.01);
 
   return (
     <main className="bg-stone-50 px-4 py-8 sm:px-6">
@@ -78,19 +106,35 @@ export default async function MapPage({ searchParams }: MapPageProps) {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-orange-600">
-                Read MVP
+                Altteulmap
               </p>
               <h1 className="mt-3 text-3xl font-semibold tracking-tight text-stone-900 sm:text-5xl">
-                지도 탐색 읽기 흐름 초안
+                동네 절약 장소를 지도로 바로 찾기
               </h1>
               <p className="mt-4 max-w-3xl text-base leading-7 text-stone-600">
-                외부 계정 없이도 다음 구현 단계로 넘어갈 수 있도록 목업 데이터로
-                지도 탐색과 장소 상세 구조를 먼저 만들었습니다. 이후에는 이
-                구조를 DB 조회와 네이버 지도 SDK로 교체하면 됩니다.
+                주변 식당, 문구점, 프린트, 생활 서비스 가격을 한 화면에서 비교하고
+                필요한 장소는 바로 저장해두세요. 알고 있는 알뜰 장소가 있으면 직접
+                등록도 할 수 있습니다.
               </p>
+              {!bookmarkResult.authenticated ? (
+                <p className="mt-3 text-sm text-stone-500">
+                  북마크와 장소 등록은 로그인 후 사용할 수 있습니다.
+                </p>
+              ) : null}
             </div>
-            <div className="rounded-3xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-800">
-              현재 데이터는 목업입니다.
+            <div className="flex flex-wrap gap-3">
+              <Link
+                href={submitHref}
+                className="rounded-full bg-stone-900 px-5 py-3 text-sm font-medium text-white transition hover:bg-stone-700"
+              >
+                장소 등록
+              </Link>
+              <Link
+                href={bookmarkResult.authenticated ? "/bookmarks" : bookmarkLoginHref}
+                className="rounded-full border border-stone-300 bg-white px-5 py-3 text-sm font-medium text-stone-900 transition hover:bg-stone-100"
+              >
+                북마크 보기
+              </Link>
             </div>
           </div>
 
@@ -102,6 +146,8 @@ export default async function MapPage({ searchParams }: MapPageProps) {
                   href={createHref({
                     category: null,
                     maxPrice: activeMaxPrice,
+                    query: activeQuery,
+                    searchScope: activeSearchScope,
                     sort: activeSort,
                   })}
                   className={`rounded-full px-4 py-2 text-sm transition ${
@@ -122,6 +168,8 @@ export default async function MapPage({ searchParams }: MapPageProps) {
                         href={createHref({
                           category: category.slug,
                           maxPrice: activeMaxPrice,
+                          query: activeQuery,
+                          searchScope: activeSearchScope,
                           sort: activeSort,
                         })}
                         className={`rounded-full px-4 py-2 text-sm transition ${
@@ -151,6 +199,8 @@ export default async function MapPage({ searchParams }: MapPageProps) {
                         href={createHref({
                           category: activeCategory,
                           maxPrice: option.value,
+                          query: activeQuery,
+                          searchScope: activeSearchScope,
                           sort: activeSort,
                         })}
                         className={`rounded-full px-4 py-2 text-sm transition ${
@@ -178,6 +228,8 @@ export default async function MapPage({ searchParams }: MapPageProps) {
                         href={createHref({
                           category: activeCategory,
                           maxPrice: activeMaxPrice,
+                          query: activeQuery,
+                          searchScope: activeSearchScope,
                           sort: option.value,
                         })}
                         className={`rounded-full px-4 py-2 text-sm transition ${
@@ -193,130 +245,101 @@ export default async function MapPage({ searchParams }: MapPageProps) {
                 </div>
               </div>
             </section>
-          </div>
 
-          <div className="mt-8 grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
-            <section className="overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-sm">
-              <div className="flex items-center justify-between border-b border-stone-200 px-6 py-4">
+            <section>
+              <div className="flex items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-lg font-semibold text-stone-900">
-                    지도 프리뷰
-                  </h2>
-                  <p className="text-sm text-stone-500">
-                    네이버 지도 SDK 연동 전 임시 시각화
+                  <p className="text-sm font-medium text-stone-700">검색</p>
+                  <p className="mt-1 text-xs text-stone-500">
+                    장소명, 주소, 메뉴명, 구 단위 지역명으로 찾을 수 있습니다.
                   </p>
                 </div>
-                <div className="rounded-full bg-stone-100 px-3 py-1 text-sm text-stone-600">
-                  {places.length}곳
-                </div>
+                {activeQuery ? (
+                  <Link
+                    href={createHref({
+                      category: activeCategory,
+                      maxPrice: activeMaxPrice,
+                      sort: activeSort,
+                    })}
+                    className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
+                  >
+                    검색 지우기
+                  </Link>
+                ) : null}
               </div>
-              <div className="relative h-[28rem] bg-[linear-gradient(to_right,#e7e5e4_1px,transparent_1px),linear-gradient(to_bottom,#e7e5e4_1px,transparent_1px)] bg-[size:32px_32px] bg-stone-50">
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(251,146,60,0.18),transparent_30%),radial-gradient(circle_at_bottom_left,rgba(245,158,11,0.12),transparent_28%)]" />
-                {places.map((place, index) => {
-                  const top =
-                    ((bounds.maxLat - place.latitude) / latRange) * 70 + 10;
-                  const left =
-                    ((place.longitude - bounds.minLng) / lngRange) * 72 + 8;
 
-                  return (
-                    <Link
-                      key={place.id}
-                      href={`/place/${place.id}`}
-                      className="absolute"
-                      style={{
-                        top: `${top}%`,
-                        left: `${left}%`,
-                      }}
-                    >
-                      <span className="flex h-10 min-w-10 items-center justify-center rounded-full bg-stone-900 px-3 text-xs font-semibold text-white shadow-lg">
-                        {index + 1}
-                      </span>
-                    </Link>
-                  );
-                })}
-                <div className="absolute bottom-4 left-4 rounded-2xl bg-white/90 px-4 py-3 text-sm text-stone-700 shadow-sm backdrop-blur">
-                  {selectedCategory
-                    ? `${selectedCategory.name} 카테고리만 표시 중`
-                    : "전체 카테고리 표시 중"}
+              <form action="/map" className="mt-4 grid gap-3">
+                <div className="flex flex-col gap-3 lg:flex-row">
+                  <input
+                    type="search"
+                    name="q"
+                    defaultValue={activeQuery ?? ""}
+                    placeholder="예: 김밥, 세탁소, 성북구, 프린트"
+                    className="h-12 flex-1 rounded-2xl border border-stone-300 bg-white px-4 text-sm text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
+                  />
+                  <button
+                    type="submit"
+                    className="inline-flex h-12 items-center justify-center rounded-2xl bg-stone-900 px-5 text-sm font-medium text-white transition hover:bg-stone-700"
+                  >
+                    검색
+                  </button>
                 </div>
-              </div>
-            </section>
 
-            <section className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold text-stone-900">
-                    결과 목록
-                  </h2>
-                  <p className="text-sm text-stone-500">
-                    대표 가격 기준으로 필터링됩니다
-                  </p>
+                <div className="flex flex-wrap gap-2">
+                  <label className="cursor-pointer">
+                    <input
+                      type="radio"
+                      name="scope"
+                      value="viewport"
+                      defaultChecked={activeSearchScope === "viewport"}
+                      className="peer sr-only"
+                    />
+                    <span className="inline-flex rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition peer-checked:border-stone-900 peer-checked:bg-stone-900 peer-checked:text-white">
+                      현재 지도에서 찾기
+                    </span>
+                  </label>
+                  <label className="cursor-pointer">
+                    <input
+                      type="radio"
+                      name="scope"
+                      value="global"
+                      defaultChecked={activeSearchScope === "global"}
+                      className="peer sr-only"
+                    />
+                    <span className="inline-flex rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition peer-checked:border-orange-600 peer-checked:bg-orange-600 peer-checked:text-white">
+                      전체에서 찾기
+                    </span>
+                  </label>
                 </div>
-                <Link
-                  href="/api/places/map"
-                  className="text-sm text-orange-700 underline underline-offset-4"
-                >
-                  API 보기
-                </Link>
-              </div>
-              {places.length > 0 ? (
-                places.map((place) => {
-                  const category = getCategoryBySlug(place.categorySlug);
 
-                  return (
-                    <Link
-                      key={place.id}
-                      href={`/place/${place.id}`}
-                      className="block rounded-[1.75rem] border border-stone-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-stone-300 hover:shadow-md"
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-600">
-                            {category?.parentName ?? "기타"}
-                          </p>
-                          <h3 className="mt-2 text-xl font-semibold text-stone-900">
-                            {place.name}
-                          </h3>
-                          <p className="mt-2 text-sm text-stone-500">
-                            {category?.name ?? "기타"} · {place.district}
-                          </p>
-                        </div>
-                        <span
-                          className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                            place.verificationStatus === "verified"
-                              ? "bg-emerald-100 text-emerald-700"
-                              : "bg-amber-100 text-amber-700"
-                          }`}
-                        >
-                          {place.verificationStatus === "verified"
-                            ? "검증됨"
-                            : "미검증"}
-                        </span>
-                      </div>
-                      <div className="mt-5 flex items-end justify-between gap-4">
-                        <div>
-                          <p className="text-sm text-stone-500">
-                            {place.representativePriceLabel}
-                          </p>
-                          <p className="mt-1 text-2xl font-semibold text-stone-900">
-                            {formatKrw(place.representativePriceAmount)}원
-                          </p>
-                        </div>
-                        <p className="text-sm text-stone-500">
-                          갱신 {place.lastPriceUpdatedAt}
-                        </p>
-                      </div>
-                    </Link>
-                  );
-                })
-              ) : (
-                <div className="rounded-[1.75rem] border border-dashed border-stone-300 bg-white p-8 text-center text-sm leading-7 text-stone-500">
-                  현재 조건에 맞는 목업 데이터가 없습니다. 다른 카테고리나 가격
-                  필터로 다시 확인해보세요.
-                </div>
-              )}
+                {activeCategory ? (
+                  <input type="hidden" name="category" value={activeCategory} />
+                ) : null}
+                {activeMaxPrice ? (
+                  <input type="hidden" name="maxPrice" value={activeMaxPrice} />
+                ) : null}
+                {activeSort !== "price" ? (
+                  <input type="hidden" name="sort" value={activeSort} />
+                ) : null}
+              </form>
             </section>
           </div>
+
+          <MapExplorer
+            key={`${activeCategory ?? "all"}:${activeMaxPrice ?? "all"}:${activeSort}:${activeQuery ?? "all"}:${activeSearchScope}`}
+            authenticated={bookmarkResult.authenticated}
+            bookmarkedPlaceIds={Array.from(bookmarkedIds)}
+            bookmarkLoginHref={bookmarkLoginHref}
+            category={activeCategory}
+            currentMapHref={currentMapHref}
+            maxPrice={activeMaxPrice}
+            places={places}
+            query={activeQuery}
+            searchScope={activeSearchScope}
+            selectedCategoryLabel={selectedCategory?.name ?? null}
+            sort={activeSort}
+            source={result.source}
+          />
         </section>
       </div>
     </main>

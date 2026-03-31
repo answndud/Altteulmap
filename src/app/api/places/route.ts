@@ -1,8 +1,22 @@
 import { NextResponse } from "next/server";
 
+import { createPlaceSubmission } from "@/features/places/repository";
 import { placeSubmissionSchema } from "@/features/submission/schema";
+import { getSessionUser } from "@/lib/session";
 
 export async function POST(request: Request) {
+  const user = await getSessionUser();
+
+  if (!user) {
+    return NextResponse.json(
+      {
+        ok: false,
+        message: "로그인이 필요합니다.",
+      },
+      { status: 401 },
+    );
+  }
+
   const body = await request.json();
   const parsed = placeSubmissionSchema.safeParse(body);
 
@@ -17,14 +31,5 @@ export async function POST(request: Request) {
     );
   }
 
-  return NextResponse.json({
-    ok: true,
-    message:
-      "목업 제출이 완료되었습니다. 현재 단계에서는 DB 저장 없이 payload만 검증합니다.",
-    mock: true,
-    preview: {
-      id: `draft-${Date.now()}`,
-      ...parsed.data,
-    },
-  });
+  return NextResponse.json(await createPlaceSubmission(parsed.data, user.id));
 }

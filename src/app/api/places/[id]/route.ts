@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getPlaceById, getRelatedPlaces } from "@/features/places/queries";
+import { getPlaceDetail } from "@/features/places/repository";
 
 type RouteContext = {
   params: Promise<{
@@ -10,7 +10,8 @@ type RouteContext = {
 
 export async function GET(_: Request, context: RouteContext) {
   const { id } = await context.params;
-  const place = getPlaceById(id);
+  const result = await getPlaceDetail(id);
+  const place = result.item;
 
   if (!place) {
     return NextResponse.json(
@@ -26,7 +27,8 @@ export async function GET(_: Request, context: RouteContext) {
 
   return NextResponse.json({
     item: place,
-    related: getRelatedPlaces(id),
-    mock: true,
+    related: result.related,
+    source: result.source,
+    mock: result.source === "mock",
   });
 }
