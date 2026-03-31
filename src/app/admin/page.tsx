@@ -2,7 +2,10 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AccessDeniedPanel } from "@/components/access-denied-panel";
-import { listPendingPlaces } from "@/features/places/repository";
+import {
+  listPendingPlaces,
+  listPendingPriceReports,
+} from "@/features/places/repository";
 import { listReports } from "@/features/reports/repository";
 import {
   createLoginHref,
@@ -33,8 +36,9 @@ export default async function AdminPage() {
     );
   }
 
-  const [pendingPlaces, reports] = await Promise.all([
+  const [pendingPlaces, pendingPriceReports, reports] = await Promise.all([
     listPendingPlaces(),
+    listPendingPriceReports(),
     listReports(),
   ]);
 
@@ -56,7 +60,7 @@ export default async function AdminPage() {
           최소 운영 도구를 붙였습니다.
         </p>
 
-        <div className="mt-8 grid gap-4 md:grid-cols-2">
+        <div className="mt-8 grid gap-4 lg:grid-cols-3">
           <article className="rounded-[1.75rem] border border-stone-200 bg-stone-50 p-5">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-600">
               Place queue
@@ -73,6 +77,24 @@ export default async function AdminPage() {
               className="mt-5 inline-flex rounded-full bg-stone-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-stone-700"
             >
               장소 검토 열기
+            </Link>
+          </article>
+
+          <article className="rounded-[1.75rem] border border-stone-200 bg-stone-50 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-600">
+              Price queue
+            </p>
+            <h2 className="mt-3 text-2xl font-semibold text-stone-900">
+              대기 중인 가격 제보 {pendingPriceReports.items.length}건
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-stone-600">
+              기존 장소에 들어온 가격 변경 제보를 검토하고 대표 가격에 반영합니다.
+            </p>
+            <Link
+              href="/admin/prices"
+              className="mt-5 inline-flex rounded-full bg-stone-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-stone-700"
+            >
+              가격 제보 검토 열기
             </Link>
           </article>
 

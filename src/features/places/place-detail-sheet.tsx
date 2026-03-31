@@ -5,6 +5,8 @@ import { useEffect, useRef, useState } from "react";
 
 import { BookmarkToggleButton } from "@/features/bookmarks/bookmark-toggle-button";
 import { getCategoryBySlug } from "@/features/categories/catalog";
+import { PlaceCommentsSection } from "@/features/places/place-comments-section";
+import { PlacePriceReportForm } from "@/features/places/place-price-report-form";
 import { formatKrw } from "@/features/places/queries";
 import { PlaceStatusBadge } from "@/features/places/place-status-badge";
 import type { PlaceRecord } from "@/features/places/types";
@@ -397,40 +399,21 @@ export function PlaceDetailSheet({
                 )}
               </section>
 
-              <section className="rounded-[1.5rem] border border-stone-200 bg-white p-5">
-                <h4 className="text-sm font-semibold text-stone-900">사용자 코멘트</h4>
-                {place.comments.length > 0 ? (
-                  <div className="mt-4 space-y-3">
-                    {place.comments.map((comment) => (
-                      <div
-                        key={comment.id}
-                        className="rounded-[1.15rem] bg-stone-50 px-4 py-4"
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-stone-200 text-xs font-semibold text-stone-700">
-                            {comment.authorLabel.slice(0, 2)}
-                          </span>
-                          <div className="min-w-0">
-                            <p className="font-medium text-stone-900">
-                              {comment.authorLabel}
-                            </p>
-                            <p className="text-xs text-stone-500">
-                              {comment.createdAt}
-                            </p>
-                          </div>
-                        </div>
-                        <p className="mt-3 text-sm leading-6 text-stone-700">
-                          {comment.body}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="mt-4 text-sm text-stone-500">
-                    아직 등록된 코멘트가 없습니다.
-                  </p>
-                )}
-              </section>
+              <PlacePriceReportForm
+                key={`${place.id}-price-form`}
+                placeId={place.id}
+                authenticated={authenticated}
+                loginHref={bookmarkLoginHref}
+                suggestedItems={place.priceItems}
+              />
+
+              <PlaceCommentsSection
+                key={`${place.id}-comments`}
+                placeId={place.id}
+                initialComments={place.comments}
+                authenticated={authenticated}
+                loginHref={bookmarkLoginHref}
+              />
 
               <section className="rounded-[1.5rem] border border-stone-200 bg-white p-5">
                 <h4 className="text-sm font-semibold text-stone-900">비슷한 장소</h4>

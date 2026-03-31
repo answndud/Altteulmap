@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getPlaceDetail } from "@/features/places/repository";
+import { getSessionUser } from "@/lib/session";
 
 type RouteContext = {
   params: Promise<{
@@ -8,9 +9,20 @@ type RouteContext = {
   }>;
 };
 
+export const dynamic = "force-dynamic";
+
 export async function GET(_: Request, context: RouteContext) {
   const { id } = await context.params;
-  const result = await getPlaceDetail(id);
+  const user = await getSessionUser();
+  const result = await getPlaceDetail(
+    id,
+    user
+      ? {
+          userId: user.id,
+          role: user.role,
+        }
+      : null,
+  );
   const place = result.item;
 
   if (!place) {

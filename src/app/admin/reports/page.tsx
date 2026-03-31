@@ -77,6 +77,12 @@ export default async function AdminReportsPage() {
               장소 승인 큐
             </Link>
             <Link
+              href="/admin/prices"
+              className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
+            >
+              가격 제보 큐
+            </Link>
+            <Link
               href="/api/admin/reports"
               className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
             >

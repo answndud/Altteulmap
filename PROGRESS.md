@@ -6,10 +6,52 @@
 - Cycle 0: 프로젝트 로컬 기반, DB 경로, 지도 탐색, 장소 상세, 등록, 신고, 북마크, 관리자 검토, 로컬 인증, 네이버 지도 연동 완료
 - Cycle 1: 현재 위치 버튼, viewport 재조회, 모바일 목록 바텀시트, 모바일 상세 시트 기초 정리 완료
 - Cycle 2: `PLAN.md`/`PROGRESS.md` 운영 문서 형식 정비, 지역/전역 검색, 검색 URL 상태 반영 완료
+- Cycle 3: 댓글 작성/삭제, 기존 장소 가격 제보, 관리자 가격 검토 큐 완료
 - Cycle 7: repo-local AI workflow 설정 완료 (`.agents`, `.githooks`, `verify`, local commit rules)
-- 다음 우선순위: 댓글 작성/삭제, 기존 장소 가격 추가 제보, 관리자 가격 검토 흐름
+- 다음 우선순위: 관리자 가격 수정 세부 정책, 대표 가격 산정/검증 정리, 쓰기 API rate limit
 
 ## 실행 로그
+
+### 2026-03-31: Cycle 3 완료 (댓글과 기존 장소 가격 추가 제보)
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/places/repository.ts`에 댓글 작성/숨김 삭제, 기존 장소 가격 제보, 관리자 가격 검토 큐, 승인/반려 로직을 추가했다.
+  - `/Users/alex/project/altteulmap/src/app/api/places/[id]/comments/route.ts`, `/Users/alex/project/altteulmap/src/app/api/places/[id]/comments/[commentId]/route.ts`, `/Users/alex/project/altteulmap/src/app/api/places/[id]/prices/route.ts`로 장소 상세 쓰기 API를 열었다.
+  - `/Users/alex/project/altteulmap/src/features/places/place-comments-section.tsx`, `/Users/alex/project/altteulmap/src/features/places/place-price-report-form.tsx`를 추가해 상세 페이지와 상세 시트 양쪽에서 댓글/가격 제보를 처리하도록 연결했다.
+  - `/Users/alex/project/altteulmap/src/app/admin/prices/page.tsx`, `/Users/alex/project/altteulmap/src/app/api/admin/prices/route.ts`, `/Users/alex/project/altteulmap/src/app/api/admin/prices/[id]/route.ts`, `/Users/alex/project/altteulmap/src/features/places/admin-price-report-review-form.tsx`를 추가해 관리자 가격 검토 큐를 구성했다.
+  - 공개 상세 이력에서 미검토 가격 제보가 보이지 않도록 `/Users/alex/project/altteulmap/src/features/places/repository.ts`의 가격 이력 조회를 `accepted` 기준으로 제한했다.
+- 변경 파일
+  - `/Users/alex/project/altteulmap/src/features/places/repository.ts`
+  - `/Users/alex/project/altteulmap/src/features/places/types.ts`
+  - `/Users/alex/project/altteulmap/src/features/places/write-schema.ts`
+  - `/Users/alex/project/altteulmap/src/features/places/place-comments-section.tsx`
+  - `/Users/alex/project/altteulmap/src/features/places/place-price-report-form.tsx`
+  - `/Users/alex/project/altteulmap/src/features/places/admin-price-report-review-form.tsx`
+  - `/Users/alex/project/altteulmap/src/app/api/places/[id]/route.ts`
+  - `/Users/alex/project/altteulmap/src/app/api/places/[id]/comments/route.ts`
+  - `/Users/alex/project/altteulmap/src/app/api/places/[id]/comments/[commentId]/route.ts`
+  - `/Users/alex/project/altteulmap/src/app/api/places/[id]/prices/route.ts`
+  - `/Users/alex/project/altteulmap/src/app/place/[id]/page.tsx`
+  - `/Users/alex/project/altteulmap/src/features/places/place-detail-sheet.tsx`
+  - `/Users/alex/project/altteulmap/src/app/admin/page.tsx`
+  - `/Users/alex/project/altteulmap/src/app/admin/prices/page.tsx`
+  - `/Users/alex/project/altteulmap/src/app/api/admin/prices/route.ts`
+  - `/Users/alex/project/altteulmap/src/app/api/admin/prices/[id]/route.ts`
+  - `/Users/alex/project/altteulmap/src/app/admin/places/page.tsx`
+  - `/Users/alex/project/altteulmap/src/app/admin/reports/page.tsx`
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+  - `AUTH_SECRET=... NEXTAUTH_URL=http://127.0.0.1:3100 USE_MOCK_DATA=true PORT=3100 npm run start` 기준으로 mock 런타임 검증
+  - 일반 사용자 로그인 후 `GET /api/places/school-gimbap` 응답 확인
+  - 일반 사용자 로그인 후 `POST /api/places/school-gimbap/comments` 성공 응답 확인
+  - 일반 사용자 로그인 후 `DELETE /api/places/school-gimbap/comments/{mock-comment-id}` 성공 응답 확인
+  - 일반 사용자 로그인 후 `POST /api/places/school-gimbap/prices` 성공 응답 확인
+  - 일반 사용자 `GET /api/admin/prices`는 `운영자 권한이 필요합니다.` 응답 확인
+  - 운영자 로그인 후 `GET /api/admin/prices`는 `items: []`, `source: "mock"` 응답 확인
+  - 운영자 로그인 후 `/admin/prices` HTML에 `가격 제보 검토 큐`, `현재 검토 대기 중인 가격 제보가 없습니다.` 문구 렌더링 확인
+- 메모
+  - Docker daemon이 꺼져 있어 DB-backed 가격 검토 승인/반려까지의 실데이터 런타임 검증은 이번 cycle에서 못 했다.
+  - mock 모드에서도 댓글/가격 제보 route contract와 권한 분기는 확인했다.
 
 ### 2026-03-31: Cycle 7 완료 (repo-local AI workflow setup)
 - 완료 내용
@@ -89,7 +131,7 @@
   - 현재 로컬 `.env`, Docker Postgres, 네이버 지도 키가 이미 준비돼 있어 다음 cycle은 기능 확장에 바로 들어갈 수 있다.
 
 ## 다음 작업
-1. 장소 상세 시트에 댓글 작성/삭제 추가
-2. 기존 장소 가격 추가 제보 UI와 API 추가
-3. 관리자 가격 검토/반영 흐름 설계
-4. 쓰기 API rate limit 초안 추가
+1. 대표 가격 산정 규칙과 `2회 이상 동일 가격 -> verified` 정책을 운영 화면/코드 기준으로 정리
+2. 운영자가 현재 가격 항목을 직접 수정하거나 비활성화하는 관리자 가격 관리 추가
+3. 댓글/가격 제보/등록/신고 API에 최소 rate limit 추가
+4. Docker/DB가 켜진 상태에서 가격 제보 승인/반영 런타임 재검증

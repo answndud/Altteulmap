@@ -12,6 +12,7 @@ export type PlaceComment = {
   authorLabel: string;
   body: string;
   createdAt: string;
+  canDelete?: boolean;
 };
 
 export type PlaceHistoryEntry = {

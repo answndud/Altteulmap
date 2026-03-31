@@ -11,6 +11,7 @@ import {
   isNotNull,
   lte,
   or,
+  sql,
 } from "drizzle-orm";
 
 import { getDb, isDatabaseEnabled } from "@/db/client";
@@ -40,6 +41,11 @@ import type {
   PlaceModerationInput,
   PlaceSubmissionInput,
 } from "@/features/submission/schema";
+import type {
+  PlaceCommentInput,
+  PlacePriceReportInput,
+  PriceReportModerationInput,
+} from "@/features/places/write-schema";
 import type {
   PlaceComment,
   PlaceBounds,
@@ -135,6 +141,71 @@ export type PlaceModerationResult = {
   message: string;
   source: DataSource;
   item: PendingPlaceRecord | null;
+};
+
+type PlaceViewer = {
+  userId: string;
+  role: "user" | "admin";
+} | null;
+
+export type PlaceCommentActionResult = {
+  ok: boolean;
+  message: string;
+  source: DataSource;
+  mock: boolean;
+  item: PlaceComment | null;
+};
+
+export type PlaceCommentDeleteResult = {
+  ok: boolean;
+  message: string;
+  source: DataSource;
+  mock: boolean;
+  deletedCommentId: string | null;
+};
+
+export type PlacePriceReportSubmissionResult = {
+  ok: boolean;
+  message: string;
+  source: DataSource;
+  mock: boolean;
+  item: {
+    id: string;
+    placeId: string;
+    placeName: string;
+    label: string;
+    amount: number;
+    unitLabel?: string;
+    comment?: string;
+  } | null;
+};
+
+export type PendingPriceReportRecord = {
+  id: string;
+  placeId: string;
+  placeName: string;
+  district: string;
+  label: string;
+  amount: number;
+  unitLabel?: string;
+  comment?: string;
+  createdAt: string;
+  existingPriceLabel?: string;
+  existingPriceAmount?: number;
+  existingPriceUnitLabel?: string;
+  existingPriceVerificationStatus?: "verified" | "unverified";
+};
+
+export type PendingPriceReportListResult = {
+  items: PendingPriceReportRecord[];
+  source: DataSource;
+};
+
+export type PriceReportModerationResult = {
+  ok: boolean;
+  message: string;
+  source: DataSource;
+  item: PendingPriceReportRecord | null;
 };
 
 const dateFormatter = new Intl.DateTimeFormat("sv-SE", {
@@ -366,7 +437,10 @@ async function listDatabasePlaces({
   };
 }
 
-async function getDatabasePlaceDetail(slug: string): Promise<PlaceDetailResult> {
+async function getDatabasePlaceDetail(
+  slug: string,
+  viewer: PlaceViewer = null,
+): Promise<PlaceDetailResult> {
   const db = getDb();
   const [row] = await db
     .select({
@@ -425,11 +499,17 @@ async function getDatabasePlaceDetail(slug: string): Promise<PlaceDetailResult> 
           recordedAt: priceReports.createdAt,
         })
         .from(priceReports)
-        .where(eq(priceReports.placeId, row.internalId))
+        .where(
+          and(
+            eq(priceReports.placeId, row.internalId),
+            eq(priceReports.reportStatus, "accepted"),
+          ),
+        )
         .orderBy(desc(priceReports.createdAt)),
       db
         .select({
           id: comments.id,
+          userId: comments.userId,
           body: comments.body,
           createdAt: comments.createdAt,
           nickname: users.nickname,
@@ -464,6 +544,8 @@ async function getDatabasePlaceDetail(slug: string): Promise<PlaceDetailResult> 
       authorLabel: toAuthorLabel(comment.nickname, comment.email, "사용자"),
       body: comment.body,
       createdAt: formatDate(comment.createdAt),
+      canDelete:
+        viewer?.role === "admin" || viewer?.userId === comment.userId,
     })),
   });
 
@@ -507,6 +589,83 @@ async function createUniquePlaceSlug(baseSlug: string) {
     candidate = `${rootSlug}-${suffix}`;
     suffix += 1;
   }
+}
+
+async function getActivePlaceIdentityBySlug(slug: string) {
+  const db = getDb();
+  const [placeRow] = await db
+    .select({
+      id: places.id,
+      slug: places.slug,
+      name: places.name,
+      district: places.district,
+    })
+    .from(places)
+    .where(and(eq(places.slug, slug), eq(places.status, "active")))
+    .limit(1);
+
+  return placeRow ?? null;
+}
+
+async function refreshPlacePricingSummary(placeId: string, changedAt: Date) {
+  const db = getDb();
+  const currentPriceItems = await db
+    .select({
+      id: priceItems.id,
+      label: priceItems.label,
+      amount: priceItems.amount,
+      verificationStatus: priceItems.verificationStatus,
+    })
+    .from(priceItems)
+    .where(eq(priceItems.placeId, placeId))
+    .orderBy(asc(priceItems.amount), asc(priceItems.label));
+
+  if (currentPriceItems.length === 0) {
+    await db
+      .update(places)
+      .set({
+        representativePriceAmount: null,
+        representativePriceLabel: null,
+        verifiedPriceItemCount: 0,
+        lastPriceUpdatedAt: changedAt,
+        updatedAt: changedAt,
+      })
+      .where(eq(places.id, placeId));
+
+    return;
+  }
+
+  const representativeItem = currentPriceItems[0];
+  const verifiedPriceItemCount = currentPriceItems.filter(
+    (item) => item.verificationStatus === "verified",
+  ).length;
+
+  await db
+    .update(priceItems)
+    .set({
+      isRepresentative: false,
+      updatedAt: changedAt,
+    })
+    .where(eq(priceItems.placeId, placeId));
+
+  await db
+    .update(priceItems)
+    .set({
+      isRepresentative: true,
+      updatedAt: changedAt,
+    })
+    .where(eq(priceItems.id, representativeItem.id));
+
+  await db
+    .update(places)
+    .set({
+      representativePriceAmount: representativeItem.amount,
+      representativePriceLabel: representativeItem.label,
+      verifiedPriceItemCount,
+      lastPriceUpdatedAt: changedAt,
+      updatedAt: changedAt,
+    })
+    .where(eq(places.id, placeId));
 }
 
 async function createDatabasePlaceSubmission(
@@ -626,6 +785,480 @@ async function createDatabasePlaceSubmission(
         amount: item.amount,
         unitLabel: item.unitLabel || undefined,
       })),
+    },
+  };
+}
+
+async function createDatabasePlaceComment(
+  slug: string,
+  input: PlaceCommentInput,
+  userId: string,
+): Promise<PlaceCommentActionResult> {
+  const db = getDb();
+  const placeRow = await getActivePlaceIdentityBySlug(slug);
+
+  if (!placeRow) {
+    return {
+      ok: false,
+      message: "장소를 찾지 못했습니다.",
+      source: "database",
+      mock: false,
+      item: null,
+    };
+  }
+
+  const [createdComment] = await db
+    .insert(comments)
+    .values({
+      placeId: placeRow.id,
+      userId,
+      body: input.body,
+      status: "visible",
+    })
+    .returning({
+      id: comments.id,
+      createdAt: comments.createdAt,
+    });
+
+  const [author] = await db
+    .select({
+      nickname: users.nickname,
+      email: users.email,
+    })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  return {
+    ok: true,
+    message: "코멘트를 등록했습니다.",
+    source: "database",
+    mock: false,
+    item: {
+      id: createdComment.id,
+      authorLabel: toAuthorLabel(author?.nickname ?? null, author?.email ?? null, "나"),
+      body: input.body,
+      createdAt: formatDate(createdComment.createdAt),
+      canDelete: true,
+    },
+  };
+}
+
+async function hideDatabasePlaceComment(
+  slug: string,
+  commentId: string,
+  viewer: NonNullable<PlaceViewer>,
+): Promise<PlaceCommentDeleteResult> {
+  const db = getDb();
+  const placeRow = await getActivePlaceIdentityBySlug(slug);
+
+  if (!placeRow) {
+    return {
+      ok: false,
+      message: "장소를 찾지 못했습니다.",
+      source: "database",
+      mock: false,
+      deletedCommentId: null,
+    };
+  }
+
+  const [existingComment] = await db
+    .select({
+      id: comments.id,
+      userId: comments.userId,
+      status: comments.status,
+    })
+    .from(comments)
+    .where(and(eq(comments.id, commentId), eq(comments.placeId, placeRow.id)))
+    .limit(1);
+
+  if (!existingComment || existingComment.status !== "visible") {
+    return {
+      ok: false,
+      message: "코멘트를 찾지 못했습니다.",
+      source: "database",
+      mock: false,
+      deletedCommentId: null,
+    };
+  }
+
+  if (viewer.role !== "admin" && existingComment.userId !== viewer.userId) {
+    return {
+      ok: false,
+      message: "삭제 권한이 없습니다.",
+      source: "database",
+      mock: false,
+      deletedCommentId: null,
+    };
+  }
+
+  await db
+    .update(comments)
+    .set({
+      status: "hidden",
+      updatedAt: new Date(),
+    })
+    .where(eq(comments.id, existingComment.id));
+
+  return {
+    ok: true,
+    message: "코멘트를 삭제했습니다.",
+    source: "database",
+    mock: false,
+    deletedCommentId: existingComment.id,
+  };
+}
+
+async function createDatabasePlacePriceReport(
+  slug: string,
+  input: PlacePriceReportInput,
+  reporterUserId: string,
+): Promise<PlacePriceReportSubmissionResult> {
+  const db = getDb();
+  const placeRow = await getActivePlaceIdentityBySlug(slug);
+
+  if (!placeRow) {
+    return {
+      ok: false,
+      message: "장소를 찾지 못했습니다.",
+      source: "database",
+      mock: false,
+      item: null,
+    };
+  }
+
+  const normalizedLabel = normalizePriceLabel(input.label);
+  const [matchedPriceItem] = await db
+    .select({
+      id: priceItems.id,
+    })
+    .from(priceItems)
+    .where(
+      and(
+        eq(priceItems.placeId, placeRow.id),
+        eq(priceItems.normalizedLabel, normalizedLabel),
+      ),
+    )
+    .limit(1);
+
+  const [createdReport] = await db
+    .insert(priceReports)
+    .values({
+      placeId: placeRow.id,
+      priceItemId: matchedPriceItem?.id ?? null,
+      reporterUserId,
+      label: input.label,
+      normalizedLabel,
+      amount: input.amount,
+      currency: "KRW",
+      unitLabel: input.unitLabel || null,
+      comment: input.comment || null,
+      reportStatus: "pending_review",
+      snapshotVerificationStatus: "unverified",
+    })
+    .returning({
+      id: priceReports.id,
+    });
+
+  return {
+    ok: true,
+    message: "가격 제보가 접수되었습니다. 운영 검토 후 상세 화면에 반영됩니다.",
+    source: "database",
+    mock: false,
+    item: {
+      id: createdReport.id,
+      placeId: placeRow.slug,
+      placeName: placeRow.name,
+      label: input.label,
+      amount: input.amount,
+      unitLabel: input.unitLabel || undefined,
+      comment: input.comment || undefined,
+    },
+  };
+}
+
+async function listDatabasePendingPriceReports(): Promise<PendingPriceReportListResult> {
+  const db = getDb();
+  const rows = await db
+    .select({
+      id: priceReports.id,
+      placeId: places.slug,
+      placeName: places.name,
+      district: places.district,
+      label: priceReports.label,
+      amount: priceReports.amount,
+      unitLabel: priceReports.unitLabel,
+      comment: priceReports.comment,
+      createdAt: priceReports.createdAt,
+      existingPriceLabel: priceItems.label,
+      existingPriceAmount: priceItems.amount,
+      existingPriceUnitLabel: priceItems.unitLabel,
+      existingPriceVerificationStatus: priceItems.verificationStatus,
+    })
+    .from(priceReports)
+    .innerJoin(places, eq(priceReports.placeId, places.id))
+    .leftJoin(priceItems, eq(priceReports.priceItemId, priceItems.id))
+    .where(
+      and(
+        eq(priceReports.reportStatus, "pending_review"),
+        eq(places.status, "active"),
+      ),
+    )
+    .orderBy(desc(priceReports.createdAt));
+
+  return {
+    items: rows.map((row) => ({
+      id: row.id,
+      placeId: row.placeId,
+      placeName: row.placeName,
+      district: row.district,
+      label: row.label,
+      amount: row.amount,
+      unitLabel: row.unitLabel ?? undefined,
+      comment: row.comment ?? undefined,
+      createdAt: formatDate(row.createdAt),
+      existingPriceLabel: row.existingPriceLabel ?? undefined,
+      existingPriceAmount: row.existingPriceAmount ?? undefined,
+      existingPriceUnitLabel: row.existingPriceUnitLabel ?? undefined,
+      existingPriceVerificationStatus:
+        row.existingPriceVerificationStatus ?? undefined,
+    })),
+    source: "database",
+  };
+}
+
+async function moderateDatabasePriceReport(
+  reportId: string,
+  input: PriceReportModerationInput,
+  adminUserId?: string | null,
+): Promise<PriceReportModerationResult> {
+  const db = getDb();
+  const [existingReport] = await db
+    .select({
+      id: priceReports.id,
+      placeId: places.id,
+      placeSlug: places.slug,
+      placeName: places.name,
+      district: places.district,
+      reporterUserId: priceReports.reporterUserId,
+      priceItemId: priceReports.priceItemId,
+      label: priceReports.label,
+      normalizedLabel: priceReports.normalizedLabel,
+      amount: priceReports.amount,
+      unitLabel: priceReports.unitLabel,
+      comment: priceReports.comment,
+      reportStatus: priceReports.reportStatus,
+      createdAt: priceReports.createdAt,
+    })
+    .from(priceReports)
+    .innerJoin(places, eq(priceReports.placeId, places.id))
+    .where(and(eq(priceReports.id, reportId), eq(places.status, "active")))
+    .limit(1);
+
+  if (!existingReport) {
+    return {
+      ok: false,
+      message: "가격 제보를 찾지 못했습니다.",
+      source: "database",
+      item: null,
+    };
+  }
+
+  if (existingReport.reportStatus !== "pending_review") {
+    return {
+      ok: false,
+      message: "이미 처리된 가격 제보입니다.",
+      source: "database",
+      item: null,
+    };
+  }
+
+  const changedAt = new Date();
+
+  if (input.decision === "reject") {
+    await db
+      .update(priceReports)
+      .set({
+        reportStatus: "rejected",
+      })
+      .where(eq(priceReports.id, existingReport.id));
+
+    await db.insert(adminActions).values({
+      adminUserId: adminUserId ?? null,
+      actionType: "reject_price_report",
+      targetType: "price_report",
+      targetId: existingReport.id,
+      metadataJson: {
+        placeId: existingReport.placeSlug,
+        label: existingReport.label,
+        amount: existingReport.amount,
+      },
+    });
+
+    return {
+      ok: true,
+      message: "가격 제보를 반려했습니다.",
+      source: "database",
+      item: {
+        id: existingReport.id,
+        placeId: existingReport.placeSlug,
+        placeName: existingReport.placeName,
+        district: existingReport.district,
+        label: existingReport.label,
+        amount: existingReport.amount,
+        unitLabel: existingReport.unitLabel ?? undefined,
+        comment: existingReport.comment ?? undefined,
+        createdAt: formatDate(existingReport.createdAt),
+      },
+    };
+  }
+
+  let matchedPriceItemId = existingReport.priceItemId;
+
+  if (!matchedPriceItemId) {
+    const [matchedPriceItem] = await db
+      .select({
+        id: priceItems.id,
+      })
+      .from(priceItems)
+      .where(
+        and(
+          eq(priceItems.placeId, existingReport.placeId),
+          eq(priceItems.normalizedLabel, existingReport.normalizedLabel),
+        ),
+      )
+      .limit(1);
+
+    matchedPriceItemId = matchedPriceItem?.id ?? null;
+  }
+
+  const acceptedCountRow = await db
+    .select({
+      count: sql<number>`count(*)::int`,
+    })
+    .from(priceReports)
+    .where(
+      and(
+        eq(priceReports.placeId, existingReport.placeId),
+        eq(priceReports.normalizedLabel, existingReport.normalizedLabel),
+        eq(priceReports.amount, existingReport.amount),
+        eq(priceReports.reportStatus, "accepted"),
+      ),
+    )
+    .limit(1);
+
+  const nextVerifiedReportCount = (acceptedCountRow[0]?.count ?? 0) + 1;
+  const nextVerificationStatus =
+    nextVerifiedReportCount >= 2 ? "verified" : "unverified";
+
+  if (matchedPriceItemId) {
+    await db
+      .update(priceItems)
+      .set({
+        label: existingReport.label,
+        normalizedLabel: existingReport.normalizedLabel,
+        amount: existingReport.amount,
+        unitLabel: existingReport.unitLabel,
+        verificationStatus: nextVerificationStatus,
+        verifiedReportCount: nextVerifiedReportCount,
+        latestReportedAt: changedAt,
+        updatedAt: changedAt,
+      })
+      .where(eq(priceItems.id, matchedPriceItemId));
+  } else {
+    const [createdPriceItem] = await db
+      .insert(priceItems)
+      .values({
+        placeId: existingReport.placeId,
+        label: existingReport.label,
+        normalizedLabel: existingReport.normalizedLabel,
+        amount: existingReport.amount,
+        currency: "KRW",
+        unitLabel: existingReport.unitLabel,
+        isRepresentative: false,
+        verificationStatus: nextVerificationStatus,
+        verifiedReportCount: nextVerifiedReportCount,
+        latestReportedAt: changedAt,
+        createdByUserId: existingReport.reporterUserId ?? null,
+      })
+      .returning({
+        id: priceItems.id,
+      });
+
+    matchedPriceItemId = createdPriceItem.id;
+  }
+
+  await db
+    .update(priceReports)
+    .set({
+      priceItemId: matchedPriceItemId,
+      reportStatus: "accepted",
+      snapshotVerificationStatus: nextVerificationStatus,
+    })
+    .where(eq(priceReports.id, existingReport.id));
+
+  if (nextVerificationStatus === "verified") {
+    await db
+      .update(priceReports)
+      .set({
+        snapshotVerificationStatus: "verified",
+      })
+      .where(
+        and(
+          eq(priceReports.placeId, existingReport.placeId),
+          eq(priceReports.normalizedLabel, existingReport.normalizedLabel),
+          eq(priceReports.amount, existingReport.amount),
+          eq(priceReports.reportStatus, "accepted"),
+        ),
+      );
+  }
+
+  await refreshPlacePricingSummary(existingReport.placeId, changedAt);
+
+  const [refreshedPriceItem] = await db
+    .select({
+      label: priceItems.label,
+      amount: priceItems.amount,
+      unitLabel: priceItems.unitLabel,
+      verificationStatus: priceItems.verificationStatus,
+    })
+    .from(priceItems)
+    .where(eq(priceItems.id, matchedPriceItemId!))
+    .limit(1);
+
+  await db.insert(adminActions).values({
+    adminUserId: adminUserId ?? null,
+    actionType: "approve_price_report",
+    targetType: "price_report",
+    targetId: existingReport.id,
+    metadataJson: {
+      placeId: existingReport.placeSlug,
+      label: existingReport.label,
+      amount: existingReport.amount,
+      verifiedReportCount: nextVerifiedReportCount,
+      verificationStatus: nextVerificationStatus,
+    },
+  });
+
+  return {
+    ok: true,
+    message: "가격 제보를 반영했습니다.",
+    source: "database",
+    item: {
+      id: existingReport.id,
+      placeId: existingReport.placeSlug,
+      placeName: existingReport.placeName,
+      district: existingReport.district,
+      label: existingReport.label,
+      amount: existingReport.amount,
+      unitLabel: existingReport.unitLabel ?? undefined,
+      comment: existingReport.comment ?? undefined,
+      createdAt: formatDate(existingReport.createdAt),
+      existingPriceLabel: refreshedPriceItem?.label ?? undefined,
+      existingPriceAmount: refreshedPriceItem?.amount ?? undefined,
+      existingPriceUnitLabel: refreshedPriceItem?.unitLabel ?? undefined,
+      existingPriceVerificationStatus:
+        refreshedPriceItem?.verificationStatus ?? undefined,
     },
   };
 }
@@ -855,13 +1488,13 @@ export async function listPlaces(query: PlaceQuery = {}) {
   }
 }
 
-export async function getPlaceDetail(id: string) {
+export async function getPlaceDetail(id: string, viewer: PlaceViewer = null) {
   if (!isDatabaseEnabled()) {
     return getMockPlaceDetail(id);
   }
 
   try {
-    return await getDatabasePlaceDetail(id);
+    return await getDatabasePlaceDetail(id, viewer);
   } catch (error) {
     console.error("Failed to load place detail from database. Falling back to mock data.", error);
     return getMockPlaceDetail(id);
@@ -941,6 +1574,159 @@ export async function moderatePlaceSubmission(
     return {
       ok: false,
       message: "장소 검토 처리에 실패했습니다.",
+      source: "database" as const,
+      item: null,
+    };
+  }
+}
+
+export async function createPlaceComment(
+  slug: string,
+  input: PlaceCommentInput,
+  userId: string,
+) {
+  if (!isDatabaseEnabled()) {
+    return {
+      ok: true,
+      message: "목업 코멘트를 등록했습니다. 현재는 새로고침 전까지만 유지됩니다.",
+      source: "mock" as const,
+      mock: true,
+      item: {
+        id: `mock-comment-${Date.now()}`,
+        authorLabel: "나",
+        body: input.body,
+        createdAt: formatDate(new Date()),
+        canDelete: true,
+      },
+    };
+  }
+
+  try {
+    return await createDatabasePlaceComment(slug, input, userId);
+  } catch (error) {
+    console.error("Failed to create place comment.", error);
+
+    return {
+      ok: false,
+      message: "코멘트 등록에 실패했습니다.",
+      source: "database" as const,
+      mock: false,
+      item: null,
+    };
+  }
+}
+
+export async function deletePlaceComment(
+  slug: string,
+  commentId: string,
+  viewer: NonNullable<PlaceViewer>,
+) {
+  if (!isDatabaseEnabled()) {
+    return {
+      ok: true,
+      message: "목업 코멘트를 삭제했습니다.",
+      source: "mock" as const,
+      mock: true,
+      deletedCommentId: commentId,
+    };
+  }
+
+  try {
+    return await hideDatabasePlaceComment(slug, commentId, viewer);
+  } catch (error) {
+    console.error("Failed to delete place comment.", error);
+
+    return {
+      ok: false,
+      message: "코멘트 삭제에 실패했습니다.",
+      source: "database" as const,
+      mock: false,
+      deletedCommentId: null,
+    };
+  }
+}
+
+export async function createPlacePriceReport(
+  slug: string,
+  input: PlacePriceReportInput,
+  reporterUserId: string,
+) {
+  if (!isDatabaseEnabled()) {
+    return {
+      ok: true,
+      message:
+        "목업 가격 제보가 접수되었습니다. 현재는 관리자 큐에 실제 저장되지 않습니다.",
+      source: "mock" as const,
+      mock: true,
+      item: {
+        id: `mock-price-report-${Date.now()}`,
+        placeId: slug,
+        placeName: slug,
+        label: input.label,
+        amount: input.amount,
+        unitLabel: input.unitLabel || undefined,
+        comment: input.comment || undefined,
+      },
+    };
+  }
+
+  try {
+    return await createDatabasePlacePriceReport(slug, input, reporterUserId);
+  } catch (error) {
+    console.error("Failed to create place price report.", error);
+
+    return {
+      ok: false,
+      message: "가격 제보 저장에 실패했습니다.",
+      source: "database" as const,
+      mock: false,
+      item: null,
+    };
+  }
+}
+
+export async function listPendingPriceReports() {
+  if (!isDatabaseEnabled()) {
+    return {
+      items: [] satisfies PendingPriceReportRecord[],
+      source: "mock" as const,
+    };
+  }
+
+  try {
+    return await listDatabasePendingPriceReports();
+  } catch (error) {
+    console.error("Failed to load pending price reports.", error);
+
+    return {
+      items: [] satisfies PendingPriceReportRecord[],
+      source: "database" as const,
+    };
+  }
+}
+
+export async function moderatePriceReport(
+  reportId: string,
+  input: PriceReportModerationInput,
+  adminUserId?: string | null,
+) {
+  if (!isDatabaseEnabled()) {
+    return {
+      ok: true,
+      message: "목업 모드에서는 가격 제보 검토 결과가 실제 저장되지 않습니다.",
+      source: "mock" as const,
+      item: null,
+    };
+  }
+
+  try {
+    return await moderateDatabasePriceReport(reportId, input, adminUserId);
+  } catch (error) {
+    console.error("Failed to moderate price report.", error);
+
+    return {
+      ok: false,
+      message: "가격 제보 검토 처리에 실패했습니다.",
       source: "database" as const,
       item: null,
     };

@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { BookmarkToggleButton } from "@/features/bookmarks/bookmark-toggle-button";
 import { listBookmarks } from "@/features/bookmarks/repository";
 import { getCategoryBySlug } from "@/features/categories/catalog";
+import { PlaceCommentsSection } from "@/features/places/place-comments-section";
+import { PlacePriceReportForm } from "@/features/places/place-price-report-form";
 import { formatKrw } from "@/features/places/queries";
 import { getPlaceDetail } from "@/features/places/repository";
 import { PlaceStatusBadge } from "@/features/places/place-status-badge";
@@ -19,7 +21,15 @@ export default async function PlacePage({ params }: PlacePageProps) {
   const { id } = await params;
   const user = await getSessionUser();
   const [result, bookmarkResult] = await Promise.all([
-    getPlaceDetail(id),
+    getPlaceDetail(
+      id,
+      user
+        ? {
+            userId: user.id,
+            role: user.role,
+          }
+        : null,
+    ),
     listBookmarks(user),
   ]);
   const place = result.item;
@@ -184,25 +194,21 @@ export default async function PlacePage({ params }: PlacePageProps) {
             </section>
 
             <aside className="space-y-8">
-              <section className="rounded-3xl border border-stone-200 bg-stone-50 p-6">
-                <h2 className="text-lg font-semibold text-stone-900">사용자 코멘트</h2>
-                <div className="mt-4 space-y-3">
-                  {place.comments.map((comment) => (
-                    <div
-                      key={comment.id}
-                      className="rounded-2xl bg-white px-4 py-4 text-sm leading-6 text-stone-700"
-                    >
-                      <p className="font-medium text-stone-900">
-                        {comment.authorLabel}
-                      </p>
-                      <p className="mt-2">{comment.body}</p>
-                      <p className="mt-2 text-xs text-stone-500">
-                        {comment.createdAt}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </section>
+              <PlacePriceReportForm
+                key={`${place.id}-price-form`}
+                placeId={place.id}
+                authenticated={Boolean(user)}
+                loginHref={bookmarkLoginHref}
+                suggestedItems={place.priceItems}
+              />
+
+              <PlaceCommentsSection
+                key={`${place.id}-comments`}
+                placeId={place.id}
+                initialComments={place.comments}
+                authenticated={Boolean(user)}
+                loginHref={bookmarkLoginHref}
+              />
 
               <section className="rounded-3xl border border-stone-200 bg-stone-50 p-6">
                 <h2 className="text-lg font-semibold text-stone-900">비슷한 장소</h2>
