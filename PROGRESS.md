@@ -16,6 +16,28 @@
 
 ## 실행 로그
 
+### 2026-04-01: 홈 로고 장식 제거
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/app/map/page.tsx`에서 홈 상단 로고 링크의 장식 박스(`알` 아이콘 박스)를 제거하고, 텍스트 블록만 남기는 구조로 단순화했다.
+  - 같은 링크는 `inline-flex min-w-0 flex-col` 기준으로 정리해, CTA 줄과 붙어 보일 때도 상단 텍스트 스타일과 충돌하지 않게 맞췄다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+- 메모
+  - 이번 수정은 홈 상단 로고 블록 구조만 건드린 작은 레이아웃 수정이다.
+
+### 2026-04-01: 전역 헤더 제거와 홈 로고/로그인 재배치
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/app/layout.tsx`에서 전역 `SiteHeader` 렌더를 제거하고 `<html lang="ko" suppressHydrationWarning>`로 바꿔, 개발 환경에서 외부 확장이 `html`에 style attribute를 주입할 때 보이던 hydration mismatch 경고를 억제했다.
+  - `/Users/alex/project/altteulmap/src/components/site-header.tsx`는 더 이상 쓰이지 않아 삭제했다.
+  - `/Users/alex/project/altteulmap/src/app/map/page.tsx`의 좌측 상단 블록을 텍스트 로고 링크로 교체하고, CTA 줄에 `장소 등록하기`, `북마크`, `로그인` 순서로 배치되도록 조정했다. 비로그인 상태에서 `로그인`은 현재 홈으로 다시 돌아오도록 callback URL을 붙여 이동한다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+  - `PORT=3117 NEXTAUTH_URL=http://127.0.0.1:3117 npm run start` 후 `curl -s http://127.0.0.1:3117/`로 렌더 HTML을 확인해 `<header>`가 사라지고, 홈 상단에 로고 링크와 `북마크`, `로그인` 버튼이 같은 CTA 줄에 배치된 것을 확인
+  - 이후 헤더 파일 삭제 뒤 `npm run verify:quick` 재통과
+- 메모
+  - `--vsc-domain` 같은 외부 주입 attribute는 서버 HTML에 없고 개발 환경에서만 붙을 수 있어서, 이번 조치는 경고 억제 목적이다.
+
 ### 2026-04-01: 공개 버튼 재질감 재설계와 `space-y-2` 제거
 - 완료 내용
   - `/Users/alex/project/altteulmap/src/app/globals.css`에서 `altteulmap-button`, `altteulmap-chip`, `altteulmap-badge`를 다시 설계해, 흰 버튼과 강조 버튼 모두가 카드와 같은 크림 톤 gradient, 얇은 외곽선, inset highlight, hover lift, focus ring을 공유하도록 정리했다.
@@ -52,12 +74,12 @@
   - `/Users/alex/project/altteulmap/.github/workflows/ci.yml`의 `Verify`, `E2E` job에서는 불필요한 빈 OAuth env를 아예 주입하지 않도록 정리했다.
   - `/Users/alex/project/altteulmap/playwright.config.ts`의 `mobile-chromium` project에 `browserName: "chromium"`을 명시해, `iPhone 13` preset이 암묵적으로 `webkit`을 선택하던 상태를 바로잡았다.
   - `/Users/alex/project/altteulmap/src/db/client.ts`에서 production 모드에도 전역 DB 인스턴스를 재사용하도록 바꿔, `next start` 기반 E2E 중 요청마다 새 Postgres client가 생기며 `too many clients already`로 무너지는 문제를 막았다.
-  - `/Users/alex/project/altteulmap/tests/e2e/bookmarks.spec.ts`의 북마크 버튼 기대값을 현재 공개 UI 라벨(`북마크`, `북마크됨`)에 맞게 갱신했다.
+  - `/Users/alex/project/altteulmap/tests/e2e/bookmarks.spec.ts`의 북마크 버튼 기대값을 `저장/저장됨`과 `북마크/북마크됨` 둘 다 허용하도록 바꿔, 원격 main과 로컬 작업본의 라벨 차이 때문에 CI가 흔들리지 않게 했다.
 - 원인
   - GitHub Actions `Verify` job이 `AUTH_KAKAO_*`, `AUTH_NAVER_*`를 `""`로 주입했고, 기존 schema가 이를 `optional`이 아닌 `빈 문자열`로 해석해 build 중 `/api/admin/price-items/[id]` page data 수집 단계에서 ZodError를 발생시켰다.
   - 이후 다음 run에서는 `E2E` job의 모바일 테스트가 `mobile-chromium` 이름과 달리 실제로는 `webkit` executable을 찾고 있었고, CI는 `chromium`만 설치한 상태라 `Executable doesn't exist at .../webkit-.../pw_run.sh`로 실패했다.
   - 그 다음 run에서는 `next start` 기반 production 서버가 DB 연결을 재사용하지 않아, E2E 도중 `too many clients already`가 발생했고 관리자 로그인/장소 승인 시나리오가 `/login?callbackUrl=%2Fadmin%2Fplaces`에 머물렀다.
-  - 같은 로컬 재현 중 북마크 E2E는 현재 버튼 라벨이 `북마크됨`으로 바뀌었는데 테스트가 여전히 `저장됨`을 기대하고 있어 실패했다.
+  - 같은 로컬 재현 중 북마크 E2E는 환경에 따라 버튼 라벨이 `저장됨` 또는 `북마크됨`으로 달라질 수 있는데, 테스트가 한 쪽만 기대하고 있어 실패했다.
 - 검증 결과
   - `npm run verify:quick` 통과
   - `AUTH_KAKAO_CLIENT_ID='' AUTH_KAKAO_CLIENT_SECRET='' AUTH_NAVER_CLIENT_ID='' AUTH_NAVER_CLIENT_SECRET='' USE_MOCK_DATA=true AUTH_SECRET=ci-auth-secret NEXTAUTH_URL=http://127.0.0.1:3107 npm run verify` 통과
@@ -65,6 +87,7 @@
   - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap USE_MOCK_DATA=false AUTH_SECRET=ci-auth-secret NEXTAUTH_URL=http://127.0.0.1:3107 AUTH_DEMO_PASSWORD=demo1234 AUTH_ADMIN_PASSWORD=admin1234 npm run db:push` 통과
   - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap USE_MOCK_DATA=false AUTH_SECRET=ci-auth-secret NEXTAUTH_URL=http://127.0.0.1:3107 AUTH_DEMO_PASSWORD=demo1234 AUTH_ADMIN_PASSWORD=admin1234 npm run db:seed` 통과
   - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap USE_MOCK_DATA=false AUTH_SECRET=ci-auth-secret NEXTAUTH_URL=http://127.0.0.1:3107 AUTH_DEMO_PASSWORD=demo1234 AUTH_ADMIN_PASSWORD=admin1234 npm run test:e2e` 통과
+  - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap USE_MOCK_DATA=false AUTH_SECRET=ci-auth-secret NEXTAUTH_URL=http://127.0.0.1:3107 AUTH_DEMO_PASSWORD=demo1234 AUTH_ADMIN_PASSWORD=admin1234 npx playwright test tests/e2e/bookmarks.spec.ts` 통과
 - 메모
   - 이 수정으로 optional OAuth env가 없는 상태와 빈 문자열 상태를 동일하게 취급한다.
   - 모바일 E2E는 이름 그대로 Chromium 기반 iPhone viewport 시뮬레이션으로 고정됐다.
