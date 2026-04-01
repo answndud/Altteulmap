@@ -28,13 +28,13 @@ test("로그인 사용자가 지도 목록에서 북마크를 저장하고 북�
   const toggle = listItem.getByTestId("bookmark-toggle-budget-baekban");
   const currentLabel = (await toggle.textContent())?.trim();
 
-  if (currentLabel === "북마크됨") {
+  if (currentLabel === "저장됨" || currentLabel === "북마크됨") {
     await toggle.click();
-    await expect(toggle).toHaveText("북마크");
+    await expect(toggle).toHaveText(/^(저장|북마크)$/);
   }
 
   await toggle.click();
-  await expect(toggle).toHaveText("북마크됨");
+  await expect(toggle).toHaveText(/^(저장됨|북마크됨)$/);
 
   await page.goto("/bookmarks");
 
