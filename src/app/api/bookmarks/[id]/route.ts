@@ -1,6 +1,4 @@
 import { revalidatePath } from "next/cache";
-import { NextResponse } from "next/server";
-
 import { setBookmark } from "@/features/bookmarks/repository";
 import { bookmarkToggleSchema } from "@/features/bookmarks/schema";
 import { getSessionUser } from "@/lib/session";
@@ -15,7 +13,7 @@ export async function PUT(request: Request, context: RouteContext) {
   const user = await getSessionUser();
 
   if (!user) {
-    return NextResponse.json(
+    return Response.json(
       {
         ok: false,
         message: "로그인이 필요합니다.",
@@ -29,7 +27,7 @@ export async function PUT(request: Request, context: RouteContext) {
   const parsed = bookmarkToggleSchema.safeParse(body);
 
   if (!parsed.success) {
-    return NextResponse.json(
+    return Response.json(
       {
         ok: false,
         message: "북마크 입력값 검증에 실패했습니다.",
@@ -51,5 +49,5 @@ export async function PUT(request: Request, context: RouteContext) {
     revalidatePath(`/api/places/${id}`);
   }
 
-  return NextResponse.json(result, { status: result.ok ? 200 : 404 });
+  return Response.json(result, { status: result.ok ? 200 : 404 });
 }

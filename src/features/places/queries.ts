@@ -27,18 +27,6 @@ export function sortPlaceRecords(items: PlaceRecord[], sort: PlaceSort) {
       );
     }
 
-    if (sort === "likes") {
-      if (right.likeCount !== left.likeCount) {
-        return right.likeCount - left.likeCount;
-      }
-
-      if (left.dislikeCount !== right.dislikeCount) {
-        return left.dislikeCount - right.dislikeCount;
-      }
-
-      return left.representativePriceAmount - right.representativePriceAmount;
-    }
-
     return left.representativePriceAmount - right.representativePriceAmount;
   });
 }

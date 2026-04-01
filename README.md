@@ -22,6 +22,7 @@ npm run dev
 npm run lint
 npm run build
 npm run verify
+npm run test:e2e:smoke
 npm run test:e2e
 npm run smoke:local
 npm run deploy:check
@@ -38,6 +39,7 @@ npm run preview
 - `lint`: ESLint 검사
 - `build`: Next.js 프로덕션 빌드
 - `verify`: 현재 프로젝트 기준 전체 기본 검증(`lint + build`)
+- `test:e2e:smoke`: `main` 푸시 기준의 빠른 Playwright smoke 세트
 - `test:e2e`: Playwright E2E 실행
 - `smoke:local`: 실행 중인 로컬 서버에 대해 SEO/API/credentials 로그인 기본 스모크 체크
 - `deploy:check`: Cloudflare 배포 전 필수 환경 변수와 URL 설정 점검
@@ -47,9 +49,13 @@ npm run preview
 - `db:push`: 로컬/개발 DB에 스키마 반영
 - `db:seed`: 로컬 DB에 목업 시드 데이터 입력
 - `db:down`: 로컬 Postgres 컨테이너 중지
+- `cf:clean`: Cloudflare 빌드 전 `.next`, `.open-next` 정리
+- `cf:build`: Cloudflare 배포용 clean build
 - `preview`: OpenNext로 Cloudflare Workers 런타임 미리보기
 
 `deploy`, `upload`는 Cloudflare 계정과 Wrangler 인증이 준비된 뒤 사용하면 됩니다.
+
+Cloudflare 무료 플랜 기준 경량화는 `next build --webpack` + `cf:clean` 경로를 전제로 맞춰져 있습니다. 배포는 `npm run deploy`를 그대로 쓰면 됩니다.
 
 ## DB 시작
 
@@ -77,7 +83,7 @@ DB가 연결된 상태에서는 `/signup`에서 새 이메일 계정을 직접 �
 
 기본 예시는 `.env.example`에 들어 있고, 로컬 `.env`도 같은 값으로 맞춰두었습니다.
 
-`/map`에서 실제 네이버 지도를 보려면 `NEXT_PUBLIC_NAVER_MAP_KEY_ID`를 설정하면 됩니다. 아직 키가 없으면 같은 화면에서 자동으로 임시 프리뷰 지도로 fallback됩니다. 기존 `NEXT_PUBLIC_NAVER_MAP_CLIENT_ID` 값도 함께 지원합니다.
+`/`에서 실제 네이버 지도를 보려면 `NEXT_PUBLIC_NAVER_MAP_KEY_ID`를 설정하면 됩니다. 아직 키가 없으면 같은 화면에서 자동으로 임시 프리뷰 지도로 fallback됩니다. 기존 `NEXT_PUBLIC_NAVER_MAP_CLIENT_ID` 값도 함께 지원합니다.
 
 `NEXTAUTH_URL`은 로그인 callback뿐 아니라 `robots.txt`, `sitemap.xml`, canonical metadata의 기준 URL로도 사용합니다. 배포 시에는 반드시 실제 도메인으로 바꿔야 합니다.
 
@@ -124,13 +130,15 @@ Playwright E2E는 아래 명령으로 실행합니다.
 
 ```bash
 npm run playwright:install
+npm run test:e2e:smoke
 npm run test:e2e
 ```
 
-현재 `npm run test:e2e`는 로컬 안정성을 위해 빌드 후 세 그룹으로 나눠 실행합니다.
-- `signup`, `bookmarks`, `map`
-- `map.mobile` (`mobile-chromium`, `USE_MOCK_DATA=true`)
-- `comments`, `price-review`, `report-admin`, `submission-admin`
+현재 E2E는 로컬 안정성을 위해 빌드 후 그룹별로 나뉩니다.
+- `test:e2e:smoke`: `map`, `admin-dashboard`, `signup`, `submission-admin`
+- `test:e2e`: smoke + `map.mobile` + `bookmarks`, `comments`, `price-review`, `report-admin`
+
+로컬 E2E 명령은 `.env.production.local`이 있어도 `.env`와 `.env.local` 값을 우선 주입해 local DB와 local auth 기준으로 실행합니다. 이때 `NEXTAUTH_URL`은 Playwright 서버 포트에 맞춰 `http://127.0.0.1:3107`로 고정되고, DB 기반 세트는 `db:push -> db:seed`를 먼저 실행합니다. CI는 반대로 workflow env를 명시적으로 주입합니다.
 
 현재 기본 E2E는 아래 흐름을 검증합니다.
 - 지도 첫 진입
@@ -138,8 +146,8 @@ npm run test:e2e
 - 모바일 목록 시트 열기/닫기
 - 모바일 목록 -> 상세 시트 -> 지도 복귀
 - 비회원 좋아요/취소
-- 좋아요순 정렬
 - 공유 버튼 fallback
+- 운영자 로그인 후 관리 진입과 로그아웃
 - credentials 로그인
 - credentials 회원가입
 - 로그인 없는 장소 등록
@@ -157,14 +165,21 @@ Cloudflare 배포 전 점검은 아래 문서를 기준으로 합니다.
 
 ## CI/CD
 
-- GitHub Actions: `Verify`, `E2E`, `Deploy Config Check`
+- GitHub Actions: `Verify`, `E2E Smoke`, `E2E Full`, `Deploy Config Check`
 - Cloudflare Builds: `main` push 후 자동 배포
 
 현재 권장 운영 방식은 `GitHub Actions가 검사`, `Cloudflare Builds가 배포`를 맡는 구조입니다.
 
-- `Verify`: `npm run verify`
-- `E2E`: 로컬 Postgres service container + `npm run test:e2e`
+- `push to main`
+  - `Verify`: `npm run verify:quick`
+  - `E2E Smoke`: 로컬 Postgres service container + `npm run test:e2e:smoke`
+  - `Deploy Config Check`: 운영 env 기준 `npm run deploy:check`
+- `pull_request`, `workflow_dispatch`
+  - `Verify`: `npm run verify`
+  - `E2E Full`: 로컬 Postgres service container + `npm run test:e2e`
 - `Deploy Config Check`: GitHub repo `Secrets/Variables`에 저장한 운영 env로 `npm run deploy:check`
+
+Playwright 브라우저는 GitHub Actions에서 `~/.cache/ms-playwright`를 캐시해 재실행 시간을 줄입니다.
 
 GitHub Actions의 운영 env 이름은 `.env.production.local`과 동일하게 맞추는 것을 기준으로 합니다.
 

@@ -108,8 +108,6 @@ export type PlaceSubmissionResult = {
     categorySlug: string;
     roadAddress: string;
     district: string;
-    latitude?: number;
-    longitude?: number;
     priceItems: Array<{
       label: string;
       amount: number;
@@ -511,8 +509,6 @@ function toFallbackPlacePreview(
     categorySlug: input.categorySlug,
     roadAddress: input.roadAddress,
     district: input.district,
-    latitude: input.latitude,
-    longitude: input.longitude,
     priceItems: input.priceItems.map((item) => ({
       label: item.label,
       amount: item.amount,
@@ -716,9 +712,7 @@ async function listDatabasePlaces({
     .orderBy(
       ...(sort === "recent"
         ? [desc(places.lastPriceUpdatedAt), desc(places.updatedAt)]
-        : sort === "likes"
-          ? [desc(places.updatedAt)]
-          : [asc(places.representativePriceAmount), desc(places.updatedAt)]),
+        : [asc(places.representativePriceAmount), desc(places.updatedAt)]),
     );
 
   const categoryMap = await loadCategoryMap(rows.map((row) => row.internalId));
@@ -1163,8 +1157,8 @@ async function createDatabasePlaceSubmission(
       note: input.note || null,
       roadAddress: input.roadAddress,
       district: input.district,
-      latitude: input.latitude ?? null,
-      longitude: input.longitude ?? null,
+      latitude: null,
+      longitude: null,
       status: "pending_review",
       representativePriceAmount: input.priceItems[representativeIndex].amount,
       representativePriceLabel: input.priceItems[representativeIndex].label,
@@ -1238,8 +1232,6 @@ async function createDatabasePlaceSubmission(
       categorySlug: input.categorySlug,
       roadAddress: input.roadAddress,
       district: input.district,
-      latitude: input.latitude,
-      longitude: input.longitude,
       priceItems: input.priceItems.map((item) => ({
         label: item.label,
         amount: item.amount,

@@ -1,7 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
-
 import { listPlaces } from "@/features/places/repository";
-import type { PlaceSort } from "@/features/places/types";
 
 export const dynamic = "force-dynamic";
 
@@ -29,20 +26,8 @@ function parseFiniteNumber(value: string | null) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function parseSort(value: string | null): PlaceSort {
-  if (value === "recent") {
-    return "recent";
-  }
-
-  if (value === "likes") {
-    return "likes";
-  }
-
-  return "price";
-}
-
-export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams;
+export async function GET(request: Request) {
+  const searchParams = new URL(request.url).searchParams;
   const category = searchParams.get("category");
   const query = searchParams.get("query")?.trim() || null;
   const searchScope =
@@ -52,7 +37,6 @@ export async function GET(request: NextRequest) {
   const maxLat = parseFiniteNumber(searchParams.get("maxLat"));
   const minLng = parseFiniteNumber(searchParams.get("minLng"));
   const maxLng = parseFiniteNumber(searchParams.get("maxLng"));
-  const sort = parseSort(searchParams.get("sort"));
   const bounds =
     minLat !== null && maxLat !== null && minLng !== null && maxLng !== null
       ? {
@@ -67,11 +51,10 @@ export async function GET(request: NextRequest) {
     category,
     maxPrice,
     query,
-    sort,
     bounds: searchScope === "viewport" ? bounds : null,
   });
 
-  return NextResponse.json(
+  return Response.json(
     {
       items: result.items,
       count: result.items.length,
@@ -81,7 +64,6 @@ export async function GET(request: NextRequest) {
         maxPrice,
         query,
         searchScope,
-        sort,
         bounds: searchScope === "viewport" ? bounds : null,
       },
       source: result.source,

@@ -1,6 +1,4 @@
 import { revalidatePath } from "next/cache";
-import { NextResponse } from "next/server";
-
 import { deletePlaceComment } from "@/features/places/repository";
 import { getPublicWriteActor } from "@/lib/public-write-actor";
 
@@ -17,7 +15,7 @@ export async function DELETE(request: Request, context: RouteContext) {
   });
 
   if (!actor.user && !actor.visitorId) {
-    return NextResponse.json(
+    return Response.json(
       {
         ok: false,
         message: "삭제 권한이 없습니다.",
@@ -41,5 +39,5 @@ export async function DELETE(request: Request, context: RouteContext) {
   const status =
     result.ok ? 200 : result.message === "삭제 권한이 없습니다." ? 403 : 404;
 
-  return NextResponse.json(result, { status });
+  return Response.json(result, { status });
 }
