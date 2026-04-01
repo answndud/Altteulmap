@@ -2,19 +2,64 @@ import { z } from "zod";
 
 import { normalizePriceLabel } from "@/features/places/normalization";
 
+export const placeSubmissionCoordinateRequirementMessage =
+  "주소 위치를 확인해 좌표를 지정해주세요.";
+
+function normalizeCoordinateInput(value: unknown) {
+  if (value === "" || value === null || value === undefined) {
+    return undefined;
+  }
+
+  if (typeof value === "string") {
+    return Number(value);
+  }
+
+  return value;
+}
+
+const requiredLatitudeSchema = z.preprocess(
+  normalizeCoordinateInput,
+  z
+    .number({
+      error: (issue) =>
+        issue.input === undefined
+          ? placeSubmissionCoordinateRequirementMessage
+          : "위도 범위가 올바르지 않습니다.",
+    })
+    .min(-90, "위도 범위가 올바르지 않습니다.")
+    .max(90, "위도 범위가 올바르지 않습니다."),
+);
+
+const requiredLongitudeSchema = z.preprocess(
+  normalizeCoordinateInput,
+  z
+    .number({
+      error: (issue) =>
+        issue.input === undefined
+          ? placeSubmissionCoordinateRequirementMessage
+          : "경도 범위가 올바르지 않습니다.",
+    })
+    .min(-180, "경도 범위가 올바르지 않습니다.")
+    .max(180, "경도 범위가 올바르지 않습니다."),
+);
+
 const optionalLatitudeSchema = z.preprocess(
-  (value) => (value === "" || value === null ? undefined : value),
-  z.coerce
-    .number()
+  normalizeCoordinateInput,
+  z
+    .number({
+      error: "위도 범위가 올바르지 않습니다.",
+    })
     .min(-90, "위도 범위가 올바르지 않습니다.")
     .max(90, "위도 범위가 올바르지 않습니다.")
     .optional(),
 );
 
 const optionalLongitudeSchema = z.preprocess(
-  (value) => (value === "" || value === null ? undefined : value),
-  z.coerce
-    .number()
+  normalizeCoordinateInput,
+  z
+    .number({
+      error: "경도 범위가 올바르지 않습니다.",
+    })
     .min(-180, "경도 범위가 올바르지 않습니다.")
     .max(180, "경도 범위가 올바르지 않습니다.")
     .optional(),
@@ -39,12 +84,12 @@ export const placePriceItemInputSchema = z.object({
     .or(z.literal("")),
 });
 
-export const placeSubmissionSchema = z.object({
+const placeSubmissionBaseSchema = z.object({
   name: z
     .string()
     .trim()
-    .min(1, "상호명을 입력해주세요.")
-    .max(120, "상호명은 120자 이하로 입력해주세요."),
+    .min(1, "장소 이름을 입력해주세요.")
+    .max(120, "장소 이름은 120자 이하로 입력해주세요."),
   businessName: z
     .string()
     .trim()
@@ -73,7 +118,12 @@ export const placeSubmissionSchema = z.object({
   priceItems: z
     .array(placePriceItemInputSchema)
     .min(1, "가격 항목을 최소 1개 이상 입력해주세요."),
-}).superRefine((value, context) => {
+});
+
+function refinePlaceSubmissionLabels(
+  value: z.infer<typeof placeSubmissionBaseSchema>,
+  context: z.RefinementCtx,
+) {
   const seenLabels = new Set<string>();
 
   value.priceItems.forEach((item, index) => {
@@ -90,7 +140,12 @@ export const placeSubmissionSchema = z.object({
 
     seenLabels.add(normalizedLabel);
   });
+}
 
+function refineOptionalCoordinatePair(
+  value: z.infer<typeof placeSubmissionBaseSchema>,
+  context: z.RefinementCtx,
+) {
   const hasLatitude = typeof value.latitude === "number";
   const hasLongitude = typeof value.longitude === "number";
 
@@ -101,7 +156,36 @@ export const placeSubmissionSchema = z.object({
       path: [hasLatitude ? "longitude" : "latitude"],
     });
   }
-});
+}
+
+export const placeSubmissionFormSchema = placeSubmissionBaseSchema.superRefine(
+  (value, context) => {
+    refinePlaceSubmissionLabels(value, context);
+    refineOptionalCoordinatePair(value, context);
+  },
+);
+
+export const placeSubmissionSchema = placeSubmissionBaseSchema
+  .extend({
+    latitude: requiredLatitudeSchema,
+    longitude: requiredLongitudeSchema,
+  })
+  .superRefine((value, context) => {
+    refinePlaceSubmissionLabels(value, context);
+
+    if (
+      typeof value.latitude !== "number" ||
+      typeof value.longitude !== "number"
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "주소 위치를 확인해 좌표를 지정해주세요.",
+        path: [
+          typeof value.latitude !== "number" ? "latitude" : "longitude",
+        ],
+      });
+    }
+  });
 
 export const placeModerationSchema = z
   .object({
@@ -129,6 +213,7 @@ export const placeModerationSchema = z
     }
   });
 
-export type PlaceSubmissionFormInput = z.input<typeof placeSubmissionSchema>;
+export type PlaceSubmissionFormInput = z.input<typeof placeSubmissionFormSchema>;
+export type PlaceSubmissionFormValues = z.output<typeof placeSubmissionFormSchema>;
 export type PlaceSubmissionInput = z.output<typeof placeSubmissionSchema>;
 export type PlaceModerationInput = z.output<typeof placeModerationSchema>;

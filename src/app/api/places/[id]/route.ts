@@ -54,7 +54,6 @@ export async function GET(_: Request, context: RouteContext) {
   return NextResponse.json(
     {
       item: place,
-      related: result.related,
       source: result.source,
       mock: result.source === "mock",
     },

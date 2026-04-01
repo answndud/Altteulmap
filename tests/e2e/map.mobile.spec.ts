@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test("모바일에서 장소 목록 바텀시트를 열고 닫을 수 있다", async ({
   page,
 }) => {
-  await page.goto("/?q=%ED%95%99%EA%B5%90%EC%95%9E%EA%B9%80%EB%B0%A5&scope=global");
+  await page.goto("/");
 
   await expect(page.getByTestId("map-panel-shell")).toBeVisible();
 
@@ -14,8 +14,31 @@ test("모바일에서 장소 목록 바텀시트를 열고 닫을 수 있다", a
   await expect(openButton).toBeVisible();
   await openButton.click();
   await expect(sheet).toBeVisible();
+  await expect(sheet.getByText("6곳")).toBeVisible();
   await expect(list).toBeVisible();
-  await expect(list.getByTestId("mobile-place-list-item-school-gimbap")).toBeVisible();
+  const visibleCount = await sheet
+    .locator('[data-testid^="mobile-place-list-item-"]')
+    .evaluateAll((items) => {
+      const sheetElement = items[0]?.closest(
+        '[data-testid="mobile-place-list-sheet"]',
+      ) as HTMLElement | null;
+
+      if (!sheetElement) {
+        return 0;
+      }
+
+      const sheetRect = sheetElement.getBoundingClientRect();
+
+      return items.filter((item) => {
+        const rect = (item as HTMLElement).getBoundingClientRect();
+        return rect.top >= sheetRect.top && rect.bottom <= sheetRect.bottom;
+      }).length;
+    });
+
+  expect(visibleCount).toBeGreaterThanOrEqual(4);
+
+  await page.waitForTimeout(700);
+  await expect(sheet.getByText("6곳")).toBeVisible();
 
   await sheet.getByTestId("mobile-place-list-close").click();
   await expect(sheet).toBeHidden();

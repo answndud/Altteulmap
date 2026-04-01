@@ -136,7 +136,7 @@ export function ReportSubmitForm({
             type="submit"
             disabled={isPending}
             data-testid="report-submit-button"
-            className="altteulmap-accent-solid whitespace-nowrap rounded-full px-5 py-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60"
+            className="altteulmap-accent-solid altteulmap-button whitespace-nowrap px-5 py-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isPending ? "신고 접수 중..." : "신고 제출"}
           </button>

@@ -17,9 +17,30 @@ export async function loginWithCredentials(
     password: string;
   },
 ) {
-  await page.goto(`/login?callbackUrl=${encodeURIComponent(callbackUrl)}`);
-  await expect(page.getByTestId("login-form")).toBeVisible();
-  await page.getByTestId("login-email").fill(email);
-  await page.getByTestId("login-password").fill(password);
-  await page.getByTestId("login-submit").click();
+  const baseUrl = process.env.NEXTAUTH_URL ?? "http://127.0.0.1:3107";
+  const csrfResponse = await page.request.get("/api/auth/csrf");
+  expect(csrfResponse.ok()).toBeTruthy();
+
+  const csrfPayload = (await csrfResponse.json()) as {
+    csrfToken?: string;
+  };
+  expect(csrfPayload.csrfToken).toBeTruthy();
+
+  const loginResponse = await page.request.post("/api/auth/callback/credentials", {
+    form: {
+      csrfToken: csrfPayload.csrfToken!,
+      email,
+      password,
+      callbackUrl: new URL(callbackUrl, baseUrl).toString(),
+    },
+    failOnStatusCode: false,
+    maxRedirects: 0,
+  });
+
+  expect(loginResponse.status()).toBe(302);
+
+  const location = loginResponse.headers()["location"] ?? "";
+  expect(location.startsWith(baseUrl)).toBeTruthy();
+
+  await page.goto(callbackUrl);
 }

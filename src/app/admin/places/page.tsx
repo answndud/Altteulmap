@@ -49,8 +49,9 @@ export default async function AdminPlacesPage() {
               신규 장소 승인 큐
             </h1>
             <p className="mt-4 max-w-3xl text-base leading-7 text-stone-600">
-              등록 폼으로 들어온 장소 제보를 검토합니다. 승인 시 좌표를 입력하면
-              바로 지도와 상세 페이지에서 확인할 수 있습니다.
+              등록 폼으로 들어온 장소 제보를 검토합니다. 제출된 좌표를 확인하고
+              필요하면 조정한 뒤 승인하면 바로 지도와 상세 페이지에서 확인할 수
+              있습니다.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">

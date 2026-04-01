@@ -2,7 +2,7 @@ import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 
 import { deletePlaceComment } from "@/features/places/repository";
-import { getSessionUser } from "@/lib/session";
+import { getPublicWriteActor } from "@/lib/public-write-actor";
 
 type RouteContext = {
   params: Promise<{
@@ -11,23 +11,26 @@ type RouteContext = {
   }>;
 };
 
-export async function DELETE(_: Request, context: RouteContext) {
-  const user = await getSessionUser();
+export async function DELETE(request: Request, context: RouteContext) {
+  const actor = await getPublicWriteActor(request, {
+    createVisitorIfMissing: false,
+  });
 
-  if (!user) {
+  if (!actor.user && !actor.visitorId) {
     return NextResponse.json(
       {
         ok: false,
-        message: "로그인이 필요합니다.",
+        message: "삭제 권한이 없습니다.",
       },
-      { status: 401 },
+      { status: 403 },
     );
   }
 
   const { id, commentId } = await context.params;
   const result = await deletePlaceComment(id, commentId, {
-    userId: user.id,
-    role: user.role,
+    role: actor.user?.role ?? "guest",
+    userId: actor.user?.id ?? null,
+    visitorId: actor.visitorId,
   });
 
   if (result.ok) {

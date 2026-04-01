@@ -135,7 +135,7 @@ export function PlaceReactionButtons({
   const isDisliked = reactionState.viewerReaction === "dislike";
 
   return (
-    <div className="space-y-2">
+    <div className="flex flex-col gap-2">
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
@@ -143,23 +143,17 @@ export function PlaceReactionButtons({
           disabled={isPending}
           aria-label="좋아요"
           data-testid="reaction-like-button"
-          className={`inline-flex items-center gap-2 whitespace-nowrap rounded-full border px-3 py-2 text-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${
+          className={`altteulmap-button inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl border px-3 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ${
             isLiked
-              ? "border-[#d58a60] bg-[#f6e4d5] text-[#9b5a35]"
+              ? "border-[#ddb596] bg-[#fff4ea] text-[#9b5a35]"
               : "border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
           }`}
         >
-          <span
-            className={`flex h-8 w-8 items-center justify-center rounded-full transition ${
-              isLiked
-                ? "bg-[#cf7b4a] text-white"
-                : "bg-stone-100 text-stone-600"
-            }`}
-          >
+          <span className={isLiked ? "text-[#b15f34]" : "text-stone-500"}>
             <ThumbUpIcon active={isLiked} />
           </span>
           <span
-            className="min-w-5 text-center text-sm font-medium"
+            className="min-w-5 text-center text-sm"
             data-testid="reaction-like-count"
           >
             {reactionState.likeCount}
@@ -171,22 +165,16 @@ export function PlaceReactionButtons({
           disabled={isPending}
           aria-label="싫어요"
           data-testid="reaction-dislike-button"
-          className={`inline-flex items-center gap-2 whitespace-nowrap rounded-full border px-3 py-2 text-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${
+          className={`altteulmap-button inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl border px-3 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ${
             isDisliked
-              ? "border-rose-300 bg-rose-50 text-rose-700"
+              ? "border-rose-200 bg-rose-50 text-rose-700"
               : "border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
           }`}
         >
-          <span
-            className={`flex h-8 w-8 items-center justify-center rounded-full transition ${
-              isDisliked
-                ? "bg-rose-500 text-white"
-                : "bg-stone-100 text-stone-600"
-            }`}
-          >
+          <span className={isDisliked ? "text-rose-600" : "text-stone-500"}>
             <ThumbDownIcon active={isDisliked} />
           </span>
-          <span className="min-w-5 text-center text-sm font-medium">
+          <span className="min-w-5 text-center text-sm">
             {reactionState.dislikeCount}
           </span>
         </button>

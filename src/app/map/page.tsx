@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { BrandMark } from "@/components/brand-mark";
 import { listBookmarks } from "@/features/bookmarks/repository";
 import {
   categoryGroups,
@@ -117,44 +118,274 @@ export default async function MapPage({ searchParams }: MapPageProps) {
     searchScope: activeSearchScope,
     sort: activeSort,
   });
+  const loginHref = createLoginHref(currentMapHref);
   const bookmarkLoginHref = createLoginHref(currentMapHref);
-  const submitHref = user ? "/submit" : createLoginHref("/submit");
+  const submitHref = "/submit";
   const places = result.items;
   const bookmarkedIds = new Set(
     bookmarkResult.items.map((bookmark) => bookmark.placeId),
   );
   const selectedCategory = getCategoryBySlug(activeCategory);
+  const activePriceLabel =
+    priceOptions.find((option) => option.value === activeMaxPrice)?.label ?? null;
+  const activeSortLabel =
+    sortOptions.find((option) => option.value === activeSort)?.label ?? "가격순";
+  const mobileSummaryItems = [
+    activeQuery ? `검색 ${activeQuery}` : null,
+    selectedCategory?.name ?? null,
+    activePriceLabel,
+    activeSort !== "price" ? activeSortLabel : null,
+    activeSearchScope === "global" ? "전체 검색" : "현재 지도",
+  ].filter((item): item is string => Boolean(item));
 
   return (
     <main className="bg-stone-50 px-4 py-8 sm:px-6">
       <div className="mx-auto max-w-7xl">
         <section className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm sm:p-8">
           <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-orange-600">
-                알뜰맵
-              </p>
-              <h1 className="mt-3 text-3xl font-semibold tracking-tight text-stone-900 sm:text-5xl">
-                동네에서 가격 부담 적은 곳 찾기
-              </h1>
-            </div>
+            <BrandMark href="/" variant="compact" className="max-w-[18rem]" />
             <div className="flex flex-wrap gap-3">
               <Link
                 href={submitHref}
-                className="altteulmap-accent-solid whitespace-nowrap rounded-full px-5 py-3 text-sm font-medium transition"
+                className="altteulmap-accent-solid altteulmap-button whitespace-nowrap px-5 py-3 text-sm font-medium transition"
               >
-                제보하기
+                장소 등록하기
               </Link>
               <Link
                 href={bookmarkResult.authenticated ? "/bookmarks" : bookmarkLoginHref}
-                className="whitespace-nowrap rounded-full border border-stone-300 bg-white px-5 py-3 text-sm font-medium text-stone-900 transition hover:bg-stone-100"
+                className="altteulmap-button whitespace-nowrap border border-stone-300 bg-white px-5 py-3 text-sm font-medium text-stone-900 transition hover:bg-stone-100"
               >
-                저장한 곳
+                북마크
               </Link>
+              {!user ? (
+                <Link
+                  href={loginHref}
+                  className="altteulmap-button whitespace-nowrap border border-stone-300 bg-white px-5 py-3 text-sm font-medium text-stone-900 transition hover:bg-stone-100"
+                >
+                  로그인
+                </Link>
+              ) : null}
             </div>
           </div>
 
-          <div className="mt-8 grid gap-4 rounded-3xl border border-stone-200 bg-stone-50 p-5">
+          <section className="mt-8 lg:hidden">
+            <form
+              action="/"
+              className="grid gap-3 rounded-[1.75rem] border border-stone-200 bg-stone-50 p-4"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-medium text-stone-700">검색</p>
+                {activeQuery ? (
+                  <Link
+                    href={createHref({
+                      category: activeCategory,
+                      maxPrice: activeMaxPrice,
+                      sort: activeSort,
+                    })}
+                    className="text-xs font-medium text-stone-500 transition hover:text-stone-900"
+                  >
+                    검색 지우기
+                  </Link>
+                ) : null}
+              </div>
+
+              <div className="flex gap-2">
+                <input
+                  type="search"
+                  name="q"
+                  defaultValue={activeQuery ?? ""}
+                  placeholder="김밥, 세탁소, 프린트"
+                  className="h-11 min-w-0 flex-1 rounded-[1.1rem] border border-stone-300 bg-white px-4 text-sm text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
+                />
+                <button
+                  type="submit"
+                  className="altteulmap-accent-solid altteulmap-button inline-flex h-11 shrink-0 items-center justify-center px-4 text-sm font-medium transition"
+                >
+                  검색
+                </button>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {mobileSummaryItems.map((item) => (
+                  <span
+                    key={item}
+                    className="altteulmap-badge whitespace-nowrap px-3 py-1.5 text-[11px] text-stone-600"
+                  >
+                    {item}
+                  </span>
+                ))}
+              </div>
+
+              <details className="group rounded-[1.25rem] border border-stone-200 bg-white">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-medium text-stone-700 [&::-webkit-details-marker]:hidden">
+                  <span>탐색 조건</span>
+                  <span className="text-xs text-stone-500 group-open:hidden">
+                    열기
+                  </span>
+                  <span className="hidden text-xs text-stone-500 group-open:inline">
+                    접기
+                  </span>
+                </summary>
+
+                <div className="grid gap-5 border-t border-stone-200 p-4">
+                  <section>
+                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-stone-500">
+                      검색 범위
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <label className="cursor-pointer">
+                        <input
+                          type="radio"
+                          name="scope"
+                          value="viewport"
+                          defaultChecked={activeSearchScope === "viewport"}
+                          className="peer sr-only"
+                        />
+                        <span className="altteulmap-chip inline-flex whitespace-nowrap border border-stone-300 bg-white px-3 py-2 text-xs text-stone-700 transition peer-checked:border-[#e4c2a8] peer-checked:bg-[#f4e1d2] peer-checked:text-[#8f522f]">
+                          현재 지도에서 찾기
+                        </span>
+                      </label>
+                      <label className="cursor-pointer">
+                        <input
+                          type="radio"
+                          name="scope"
+                          value="global"
+                          defaultChecked={activeSearchScope === "global"}
+                          className="peer sr-only"
+                        />
+                        <span className="altteulmap-chip inline-flex whitespace-nowrap border border-stone-300 bg-white px-3 py-2 text-xs text-stone-700 transition peer-checked:border-[#e4c2a8] peer-checked:bg-[#f4e1d2] peer-checked:text-[#8f522f]">
+                          전체에서 찾기
+                        </span>
+                      </label>
+                    </div>
+                  </section>
+
+                  <section>
+                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-stone-500">
+                      정렬
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {sortOptions.map((option) => {
+                        const isActive = activeSort === option.value;
+
+                        return (
+                          <Link
+                            key={option.value}
+                            href={createHref({
+                              category: activeCategory,
+                              maxPrice: activeMaxPrice,
+                              query: activeQuery,
+                              searchScope: activeSearchScope,
+                              sort: option.value,
+                            })}
+                            className={`altteulmap-chip whitespace-nowrap border px-3 py-2 text-xs transition ${
+                              isActive
+                                ? "altteulmap-accent-chip"
+                                : "border border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
+                            }`}
+                          >
+                            {option.label}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </section>
+
+                  <section>
+                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-stone-500">
+                      가격 필터
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {priceOptions.map((option) => {
+                        const isActive = activeMaxPrice === option.value;
+
+                        return (
+                          <Link
+                            key={option.label}
+                            href={createHref({
+                              category: activeCategory,
+                              maxPrice: option.value,
+                              query: activeQuery,
+                              searchScope: activeSearchScope,
+                              sort: activeSort,
+                            })}
+                            className={`altteulmap-chip whitespace-nowrap border px-3 py-2 text-xs transition ${
+                              isActive
+                                ? "altteulmap-accent-chip"
+                                : "border border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
+                            }`}
+                          >
+                            {option.label}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </section>
+
+                  <section>
+                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-stone-500">
+                      카테고리
+                    </p>
+                    <div className="mt-3 flex max-h-[12.5rem] flex-wrap gap-2 overflow-y-auto pr-1">
+                      <Link
+                        href={createHref({
+                          category: null,
+                          maxPrice: activeMaxPrice,
+                          query: activeQuery,
+                          searchScope: activeSearchScope,
+                          sort: activeSort,
+                        })}
+                        className={`altteulmap-chip whitespace-nowrap border px-3 py-2 text-xs transition ${
+                          !activeCategory
+                            ? "altteulmap-accent-chip"
+                            : "border border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
+                        }`}
+                      >
+                        전체
+                      </Link>
+                      {categoryGroups.flatMap((group) =>
+                        group.children.map((category) => {
+                          const isActive = activeCategory === category.slug;
+
+                          return (
+                            <Link
+                              key={category.slug}
+                              href={createHref({
+                                category: category.slug,
+                                maxPrice: activeMaxPrice,
+                                query: activeQuery,
+                                searchScope: activeSearchScope,
+                                sort: activeSort,
+                              })}
+                              className={`altteulmap-chip whitespace-nowrap border px-3 py-2 text-xs transition ${
+                                isActive
+                                  ? "altteulmap-accent-chip"
+                                  : "border border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
+                              }`}
+                            >
+                              {category.name}
+                            </Link>
+                          );
+                        }),
+                      )}
+                    </div>
+                  </section>
+                </div>
+              </details>
+
+              {activeCategory ? (
+                <input type="hidden" name="category" value={activeCategory} />
+              ) : null}
+              {activeMaxPrice ? (
+                <input type="hidden" name="maxPrice" value={activeMaxPrice} />
+              ) : null}
+              {activeSort !== "price" ? (
+                <input type="hidden" name="sort" value={activeSort} />
+              ) : null}
+            </form>
+          </section>
+
+          <div className="mt-8 hidden gap-4 rounded-3xl border border-stone-200 bg-stone-50 p-5 lg:grid">
             <section>
               <p className="text-sm font-medium text-stone-700">카테고리</p>
               <div className="mt-3 flex flex-wrap gap-2">
@@ -166,7 +397,7 @@ export default async function MapPage({ searchParams }: MapPageProps) {
                     searchScope: activeSearchScope,
                     sort: activeSort,
                   })}
-                  className={`whitespace-nowrap rounded-full border px-4 py-2 text-sm transition ${
+                  className={`altteulmap-chip whitespace-nowrap border px-4 py-2 text-sm transition ${
                     !activeCategory
                       ? "altteulmap-accent-chip"
                       : "border border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
@@ -188,7 +419,7 @@ export default async function MapPage({ searchParams }: MapPageProps) {
                           searchScope: activeSearchScope,
                           sort: activeSort,
                         })}
-                        className={`whitespace-nowrap rounded-full border px-4 py-2 text-sm transition ${
+                        className={`altteulmap-chip whitespace-nowrap border px-4 py-2 text-sm transition ${
                           isActive
                             ? "altteulmap-accent-chip"
                             : "border border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
@@ -219,7 +450,7 @@ export default async function MapPage({ searchParams }: MapPageProps) {
                           searchScope: activeSearchScope,
                           sort: activeSort,
                         })}
-                        className={`whitespace-nowrap rounded-full border px-4 py-2 text-sm transition ${
+                        className={`altteulmap-chip whitespace-nowrap border px-4 py-2 text-sm transition ${
                           isActive
                             ? "altteulmap-accent-chip"
                             : "border border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
@@ -249,7 +480,7 @@ export default async function MapPage({ searchParams }: MapPageProps) {
                           sort: option.value,
                         })}
                         data-testid={`sort-option-${option.value}`}
-                        className={`whitespace-nowrap rounded-full border px-4 py-2 text-sm transition ${
+                        className={`altteulmap-chip whitespace-nowrap border px-4 py-2 text-sm transition ${
                           isActive
                             ? "altteulmap-accent-chip"
                             : "border border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
@@ -273,7 +504,7 @@ export default async function MapPage({ searchParams }: MapPageProps) {
                       maxPrice: activeMaxPrice,
                       sort: activeSort,
                     })}
-                    className="whitespace-nowrap rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
+                    className="altteulmap-button whitespace-nowrap border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
                   >
                     검색 지우기
                   </Link>
@@ -293,7 +524,7 @@ export default async function MapPage({ searchParams }: MapPageProps) {
                   <button
                     type="submit"
                     data-testid="place-search-submit"
-                    className="altteulmap-accent-solid inline-flex h-12 items-center justify-center rounded-2xl px-5 text-sm font-medium transition"
+                    className="altteulmap-accent-solid altteulmap-button inline-flex h-12 items-center justify-center px-5 text-sm font-medium transition"
                   >
                     검색
                   </button>
@@ -309,7 +540,7 @@ export default async function MapPage({ searchParams }: MapPageProps) {
                       defaultChecked={activeSearchScope === "viewport"}
                       className="peer sr-only"
                     />
-                    <span className="inline-flex whitespace-nowrap rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition peer-checked:border-[#e4c2a8] peer-checked:bg-[#f4e1d2] peer-checked:text-[#8f522f]">
+                    <span className="altteulmap-chip inline-flex whitespace-nowrap border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition peer-checked:border-[#e4c2a8] peer-checked:bg-[#f4e1d2] peer-checked:text-[#8f522f]">
                       현재 지도에서 찾기
                     </span>
                   </label>
@@ -322,7 +553,7 @@ export default async function MapPage({ searchParams }: MapPageProps) {
                       defaultChecked={activeSearchScope === "global"}
                       className="peer sr-only"
                     />
-                    <span className="inline-flex whitespace-nowrap rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition peer-checked:border-[#e4c2a8] peer-checked:bg-[#f4e1d2] peer-checked:text-[#8f522f]">
+                    <span className="altteulmap-chip inline-flex whitespace-nowrap border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition peer-checked:border-[#e4c2a8] peer-checked:bg-[#f4e1d2] peer-checked:text-[#8f522f]">
                       전체에서 찾기
                     </span>
                   </label>
@@ -343,7 +574,6 @@ export default async function MapPage({ searchParams }: MapPageProps) {
 
           <MapExplorer
             key={`${activeCategory ?? "all"}:${activeMaxPrice ?? "all"}:${activeSort}:${activeQuery ?? "all"}:${activeSearchScope}`}
-            authenticated={bookmarkResult.authenticated}
             bookmarkedPlaceIds={Array.from(bookmarkedIds)}
             bookmarkLoginHref={bookmarkLoginHref}
             category={activeCategory}

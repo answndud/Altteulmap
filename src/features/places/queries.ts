@@ -100,28 +100,6 @@ export function getPlaceById(id: string) {
   return mockPlaces.find((place) => place.id === id) ?? null;
 }
 
-export function getRelatedPlaces(id: string) {
-  const current = getPlaceById(id);
-
-  if (!current) {
-    return [];
-  }
-
-  const currentCategory = getCategoryBySlug(current.categorySlug);
-
-  return mockPlaces
-    .filter((place) => {
-      if (place.id === id) {
-        return false;
-      }
-
-      const placeCategory = getCategoryBySlug(place.categorySlug);
-
-      return placeCategory?.parentSlug === currentCategory?.parentSlug;
-    })
-    .slice(0, 3);
-}
-
 export function getMapBounds() {
   const latitudes = mockPlaces.map((place) => place.latitude);
   const longitudes = mockPlaces.map((place) => place.longitude);

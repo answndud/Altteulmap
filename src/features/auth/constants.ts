@@ -1,5 +1,11 @@
 export type AppUserRole = "user" | "admin";
 export type SocialAuthProviderId = "kakao" | "naver";
+export type SocialAuthProviderAvailability = {
+  id: SocialAuthProviderId;
+  label: string;
+  enabled: boolean;
+  unavailableReason?: string;
+};
 
 export const authAccountHints = [
   {
@@ -27,4 +33,12 @@ export const socialAuthProviderLabelMap: Record<
 > = {
   kakao: "카카오",
   naver: "네이버",
+};
+
+export const socialAuthProviderMonogramMap: Record<
+  SocialAuthProviderId,
+  string
+> = {
+  kakao: "K",
+  naver: "N",
 };

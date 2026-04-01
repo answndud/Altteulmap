@@ -69,8 +69,8 @@ export default async function AdminPage() {
               승인 대기 장소 {pendingPlaces.items.length}건
             </h2>
             <p className="mt-3 text-sm leading-6 text-stone-600">
-              등록 폼으로 들어온 신규 장소 제보를 승인하거나 반려합니다. 승인 시
-              좌표를 입력하면 지도 목록에 노출됩니다.
+              등록 폼으로 들어온 신규 장소 제보를 승인하거나 반려합니다. 제출된
+              좌표를 검수하고 필요하면 조정한 뒤 공개 목록에 반영합니다.
             </p>
             <Link
               href="/admin/places"

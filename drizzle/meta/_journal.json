@@ -36,6 +36,20 @@
       "when": 1774958548639,
       "tag": "0004_yellow_morlocks",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1775051365297,
+      "tag": "0005_far_maginty",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1775052090538,
+      "tag": "0006_boring_titania",
+      "breakpoints": true
     }
   ]
 }

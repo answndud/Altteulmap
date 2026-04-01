@@ -34,14 +34,14 @@ export function AccessDeniedPanel({
         <div className="mt-8 flex flex-wrap gap-3">
           <Link
             href={primaryHref}
-            className="rounded-full bg-stone-900 px-5 py-3 text-sm font-medium text-white transition hover:bg-stone-700"
+            className="altteulmap-button bg-stone-900 px-5 py-3 text-sm font-medium text-white transition hover:bg-stone-700"
           >
             {primaryLabel}
           </Link>
           {secondaryHref && secondaryLabel ? (
             <Link
               href={secondaryHref}
-              className="rounded-full border border-stone-300 bg-white px-5 py-3 text-sm text-stone-700 transition hover:bg-stone-100"
+              className="altteulmap-button border border-stone-300 bg-white px-5 py-3 text-sm text-stone-700 transition hover:bg-stone-100"
             >
               {secondaryLabel}
             </Link>
