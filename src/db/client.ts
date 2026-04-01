@@ -34,10 +34,7 @@ export function getDb() {
   }
 
   const db = globalForDb.__altteulmapDb ?? createDb();
-
-  if (process.env.NODE_ENV !== "production") {
-    globalForDb.__altteulmapDb = db;
-  }
+  globalForDb.__altteulmapDb = db;
 
   return db;
 }
