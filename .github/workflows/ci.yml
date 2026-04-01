@@ -16,6 +16,7 @@ permissions:
 
 jobs:
   verify:
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     name: Verify
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -39,71 +40,7 @@ jobs:
         run: npm ci
 
       - name: Verify
-        run: |
-          if [ "${{ github.event_name }}" = "push" ]; then
-            npm run verify:quick
-          else
-            npm run verify
-          fi
-
-  e2e-smoke:
-    name: E2E Smoke
-    if: github.event_name == 'push'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    services:
-      postgres:
-        image: postgres:17-alpine
-        env:
-          POSTGRES_DB: altteulmap
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres -d altteulmap"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    env:
-      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/altteulmap
-      USE_MOCK_DATA: "false"
-      AUTH_SECRET: ci-auth-secret
-      NEXTAUTH_URL: http://127.0.0.1:3107
-      AUTH_DEMO_PASSWORD: demo1234
-      AUTH_ADMIN_PASSWORD: admin1234
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 20
-          cache: npm
-
-      - name: Restore Playwright browser cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-playwright-
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Install Playwright browser
-        run: npx playwright install --with-deps chromium
-
-      - name: Push schema
-        run: npm run db:push
-
-      - name: Seed database
-        run: npm run db:seed
-
-      - name: Run smoke E2E
-        run: npm run e2e:prepare && npm run build && npm run test:e2e:smoke:ci
+        run: npm run verify
 
   e2e-full:
     name: E2E Full
