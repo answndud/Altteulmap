@@ -13,9 +13,27 @@
 - Cycle 5 후속: GitHub Actions CI를 `push용 smoke`와 `PR용 full`로 분리하고 Cloudflare Builds와 분리 운영하는 경로 정리 완료
 - Cycle 6: 좋아요/싫어요 반응 도입 완료, 비로그인 visitor cookie 반응과 공개 메타 줄 분리까지 반영. 랭킹/목록 노출 확장은 남아 있음
 - Cycle 7: repo-local AI workflow 설정 완료 (`.agents`, `.githooks`, `verify`, local commit rules)
+- Cycle 8: 로컬 dev/runtime 안정화 완료 (`.next-dev` 분리, `webpack` dev 고정, build/e2e와 출력 경로 분리)
 - 다음 우선순위: 관리자 visit/activity telemetry 2차, 이후 실제 외부 로그인 E2E와 운영 도메인 점검
 
 ## 실행 로그
+
+### 2026-04-02 08:31 KST: 로컬 dev/build/e2e 산출물 분리로 페이지 전환 멈춤과 cache 손상 방지
+- 완료 내용
+  - `/Users/alex/project/altteulmap/package.json`의 `dev`를 `rm -rf .next-dev && next dev --webpack`으로 바꿨다. 이제 로컬 dev는 Turbopack cache가 아니라 별도 `.next-dev` 산출물과 webpack dev 서버를 사용한다.
+  - `/Users/alex/project/altteulmap/next.config.ts`에 dev/build 런타임별 `distDir` 분기를 추가해, dev는 `.next-dev`, build/start/e2e는 계속 `.next`를 쓰도록 고정했다. 이로써 `next dev`와 `next build`/`next start`/Playwright가 같은 `.next`를 공유하며 `00000084.sst` 같은 SST 파일을 잃어버리던 경로를 끊었다.
+  - `/Users/alex/project/altteulmap/.gitignore`, `/Users/alex/project/altteulmap/package.json`의 `cf:clean`, `/Users/alex/project/altteulmap/README.md`를 새 산출물 경로 기준으로 갱신했다. Cloudflare clean도 이제 `.next-dev`까지 함께 정리한다.
+  - `next dev` 첫 기동 시 `/Users/alex/project/altteulmap/tsconfig.json`의 `include`에 `.next-dev/types/**/*.ts`, `.next-dev/dev/types/**/*.ts`가 자동 추가됐다. dev 타입 생성 위치가 바뀐 데 따른 정상 반영이라 유지한다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `rm -rf .next && npm run verify` 통과
+  - `npm run dev` 기동 후 `.next-dev` 생성 확인, `curl -s -o /tmp/altteulmap-admin.html -w '%{http_code}' http://127.0.0.1:3000/admin` 결과 `307`
+  - 같은 dev 서버를 유지한 채 `rm -rf .next && npm run build` 통과
+  - 같은 dev 서버를 유지한 채 `curl -s -o /tmp/altteulmap-root-during-build.html -w '%{http_code}' http://127.0.0.1:3000/` 결과 `200`
+  - 같은 dev 서버를 유지한 채 `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap USE_MOCK_DATA=false AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3107 AUTH_DEMO_PASSWORD=demo1234 AUTH_ADMIN_PASSWORD=admin1234 npm run test:e2e:smoke:ci` 통과
+- 메모
+  - 이번 이슈의 직접 원인은 `next dev`가 `.next/dev/cache/turbopack` 아래 SST/metadata를 쓰는 동안, build/start/e2e 경로가 같은 `.next`를 다시 만지면서 cache 참조가 깨진 것이다. 사용자에게 보인 `Unable to open static sorted file`, `Failed to lookup task ids`, `Another write batch or compaction is already active`는 이 충돌의 결과다.
+  - 이후 로컬 dev가 다시 이상하면 production 산출물인 `.next`는 건드리지 말고 `rm -rf .next-dev && npm run dev`로 복구하는 것을 기본 경로로 삼는다.
 
 ### 2026-04-02 08:18 KST: `/map` 호환 경로를 redirect로 줄이고 홈 단일 진입점으로 정리
 - 완료 내용
