@@ -15,6 +15,16 @@
 
 ## 실행 로그
 
+### 2026-04-01: hook 경고 후속 정리
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/db/seed.ts`, `/Users/alex/project/altteulmap/scripts/check-cloudflare-deploy.mjs`, `/Users/alex/project/altteulmap/scripts/smoke-local.mjs`의 `console.log`를 `stdout` 출력으로 바꿔 repo-local hook 경고를 줄였다.
+  - 스크립트 동작은 그대로 유지하고, CLI 출력 포맷도 바뀌지 않게 맞췄다.
+- 검증 결과
+  - `rg -n "console\\.log" src/db/seed.ts scripts/check-cloudflare-deploy.mjs scripts/smoke-local.mjs` 결과 없음
+  - `npm run verify:quick` 통과
+- 메모
+  - `console.error`는 실패 로그용으로 유지했다.
+
 ### 2026-04-01: 모바일 viewport Playwright 1차와 자체 리뷰
 - 완료 내용
   - `/Users/alex/project/altteulmap/playwright.config.ts`에 `mobile-chromium` 프로젝트를 추가하고, 데스크톱 프로젝트는 `*.mobile.spec.ts`를 제외하도록 정리했다.

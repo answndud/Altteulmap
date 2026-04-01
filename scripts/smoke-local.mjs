@@ -39,8 +39,12 @@ class CookieJar {
   }
 }
 
+function printLine(message) {
+  process.stdout.write(`${message}\n`);
+}
+
 function logStep(label, detail) {
-  console.log(`- ${label}: ${detail}`);
+  printLine(`- ${label}: ${detail}`);
 }
 
 async function request(pathname, options = {}, jar) {
@@ -123,7 +127,7 @@ async function loginWithCredentials(email, password) {
 }
 
 async function main() {
-  console.log(`Running smoke checks against ${baseUrl}`);
+  printLine(`Running smoke checks against ${baseUrl}`);
 
   await expectOk("/robots.txt", (body) => body.includes("Sitemap:"));
   logStep("robots", "ok");
@@ -198,7 +202,7 @@ async function main() {
   }
 
   logStep("admin login", `${adminPricesPayload.items.length} pending price reports`);
-  console.log("Smoke checks passed.");
+  printLine("Smoke checks passed.");
 }
 
 main().catch((error) => {
