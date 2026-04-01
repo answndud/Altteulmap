@@ -8,6 +8,12 @@
 		"nodejs_compat",
 		"global_fetch_strictly_public"
 	],
+	"build": {
+		// Workers Builds on Cloudflare need to generate the OpenNext worker bundle first.
+		// Local deploy scripts already run `cf:build`, so this only fills the gap when
+		// Wrangler is invoked directly from a fresh checkout.
+		"command": "test -f .open-next/worker.js || npm run cf:build"
+	},
 	"assets": {
 		"directory": ".open-next/assets",
 		"binding": "ASSETS"
