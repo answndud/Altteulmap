@@ -9,11 +9,68 @@
 - Cycle 3: 댓글 작성/삭제, 기존 장소 가격 제보, 관리자 가격 검토 큐 완료
 - Cycle 4: 관리자 가격 수정/숨김 UI, 대표 가격 재계산 규칙, 최소 rate limit, DB migration 적용, 실DB 런타임 검증 완료
 - Cycle 5: sitemap/robots/canonical/기본 metadata, OAuth scaffolding, deploy check, Playwright E2E 3차, 공개 UI polish 진행 중. 실제 외부 로그인 E2E와 운영 도메인 기준 점검은 남아 있음
+- Cycle 5 후속: GitHub Actions CI(`Verify`, `E2E`, `Deploy Config Check`)와 Cloudflare Builds 분리 운영 경로 정리 완료
 - Cycle 6: 좋아요/싫어요 반응 도입 완료, 비로그인 visitor cookie 반응과 공개 메타 줄 분리까지 반영. 랭킹/정렬/목록 노출 확장은 남아 있음
 - Cycle 7: repo-local AI workflow 설정 완료 (`.agents`, `.githooks`, `verify`, local commit rules)
 - 다음 우선순위: 실제 외부 로그인 E2E, 운영 도메인 기준 점검, 모바일 제스처/스냅 수준 E2E 보강
 
 ## 실행 로그
+
+### 2026-04-01: GitHub Actions CI 추가와 Cloudflare Builds 분리 운영 정리
+- 완료 내용
+  - `/Users/alex/project/altteulmap/.github/workflows/ci.yml`을 추가해 GitHub Actions에서 `Verify`, `E2E`, `Deploy Config Check` 세 job을 실행하도록 구성했다.
+  - `Verify`는 더미 auth env와 mock data 기준으로 `npm run verify`를 수행하고, `E2E`는 Postgres service container를 띄운 뒤 `npm run db:push`, `npm run db:seed`, `npm run test:e2e`를 수행하도록 분리했다.
+  - `Deploy Config Check`는 GitHub repo `Secrets/Variables`에 저장된 운영 env를 읽어 `npm run deploy:check`를 수행하게 구성해, production 설정 검증과 테스트용 로컬 DB/E2E를 분리했다.
+  - `/Users/alex/project/altteulmap/README.md`와 `/Users/alex/project/altteulmap/PLAN.md`에 `GitHub Actions가 검사`, `Cloudflare Builds가 배포`를 맡는 현재 운영 방식을 반영했다.
+  - 로컬 `.env.production.local`에 들어 있는 운영 값 중 `Deploy Config Check`에 필요한 항목을 GitHub repo `Secrets/Variables`로 실제 등록했다.
+- 변경 파일
+  - `/Users/alex/project/altteulmap/.github/workflows/ci.yml`
+  - `/Users/alex/project/altteulmap/README.md`
+  - `/Users/alex/project/altteulmap/PLAN.md`
+  - `/Users/alex/project/altteulmap/PROGRESS.md`
+- 검증 결과
+  - `gh secret list --repo answndud/Altteulmap`로 `DATABASE_URL`, `AUTH_SECRET`, `AUTH_KAKAO_CLIENT_SECRET`, `AUTH_NAVER_CLIENT_SECRET` 등록 확인
+  - `gh variable list --repo answndud/Altteulmap`로 `USE_MOCK_DATA`, `NEXTAUTH_URL`, `NEXT_PUBLIC_NAVER_MAP_KEY_ID`, `AUTH_KAKAO_CLIENT_ID`, `AUTH_NAVER_CLIENT_ID` 등록 확인
+  - `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/ci.yml")'` 통과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+- 메모
+  - GitHub Actions workflow에는 production 비밀값을 직접 커밋하지 않고, GitHub repo `Secrets/Variables` 참조만 남겼다.
+  - Cloudflare Builds는 이미 연결된 GitHub 저장소 기준으로 계속 자동 배포를 담당한다.
+
+### 2026-04-01: Cloudflare 배포 후 네이버 지도 인증 실패 시 지도 패널 fallback 보강
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/map/naver-map-panel.tsx`에 네이버 지도 SDK 초기화/마커 렌더링/viewport 이동 구간의 방어 코드를 추가해 `maps.Map`, `maps.LatLng`, `maps.Marker`, `maps.Event`가 비정상 상태일 때 즉시 에러 상태로 전환하도록 보강했다.
+  - 같은 파일에 지도 패널 전용 error boundary와 preview fallback UI를 추가해, 네이버 지도 SDK가 런타임에서 예외를 던져도 페이지 전체가 `This page couldn’t load`로 죽지 않고 장소 목록/상세 시트는 계속 사용할 수 있게 만들었다.
+  - `/Users/alex/project/altteulmap/docs/deploy-cloudflare.md`에 네이버 지도 키는 환경 변수만이 아니라 NAVER Cloud Platform 콘솔의 웹 서비스 URL/허용 도메인에도 실제 배포 주소(`workers.dev` 또는 custom domain)를 등록해야 한다는 점을 추가했다.
+- 변경 파일
+  - `/Users/alex/project/altteulmap/src/features/map/naver-map-panel.tsx`
+  - `/Users/alex/project/altteulmap/docs/deploy-cloudflare.md`
+  - `/Users/alex/project/altteulmap/PROGRESS.md`
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+  - `NEXT_PUBLIC_NAVER_MAP_KEY_ID=invalid-map-key-123 NEXTAUTH_URL=http://127.0.0.1:3110 npm run build` 통과
+  - `PORT=3110 NEXTAUTH_URL=http://127.0.0.1:3110 npm run start` 후 Playwright로 `http://127.0.0.1:3110/` 접속, 장소 목록 클릭 시
+    - `This page couldn’t load` 미발생
+    - `지도를 불러오지 못해 임시 미리보기로 표시합니다.` 표시
+    - 상세 시트 정상 오픈 확인
+  - 배포 URL `https://altteulmap.altteul-lab.workers.dev/` 재검증 시 네이버 SDK auth는 `200`으로 성공했고, 실제 지도 타일도 `nrbe.pstatic.net/styles/...png`로 내려오는 것을 확인했다.
+  - 이후 `src/features/map/naver-map-panel.tsx`의 지도 표시 감지 조건에 `.pstatic.net/styles/`, `.pstatic.net/static/maps/`를 추가하고 `npm run verify`, `PORT=3112 NEXTAUTH_URL=http://127.0.0.1:3112 npm run start` + Playwright로 `지도를 불러오는 중입니다.` 문구와 preview overlay가 사라지는 것 확인
+- 메모
+  - 실제 Cloudflare 배포 주소에서 지도가 계속 로딩 상태로 남는 근본 원인은 네이버 지도 키의 허용 도메인/웹 서비스 URL에 `https://altteulmap.altteul-lab.workers.dev`가 등록되지 않았을 가능성이 높다.
+  - 현재는 네이버 지도 키 허용 도메인 반영 이후 auth 자체는 풀렸고, 남은 증상은 우리 코드가 `nrbe.pstatic.net` 타일 URL을 지도 자산으로 인식하지 못해 preview overlay를 계속 유지하던 문제였다.
+  - 다음 배포는 이 코드 수정이 포함돼야 실제 `workers.dev` 화면에서도 로딩 문구가 사라진다.
+
+### 2026-04-01: Cloudflare 계정 생성부터 첫 배포까지 총괄 가이드 문서화
+- 완료 내용
+  - `/Users/alex/project/altteulmap/docs/cloudflare-account-to-deploy.md`를 추가해 Cloudflare 계정 생성, Wrangler 로그인, `workers.dev` 첫 배포, runtime 변수/secret 등록, OAuth callback 연결, 커스텀 도메인 전환까지 전체 흐름을 정리했다.
+  - 현재 저장소의 실제 배포 방식이 `로컬 OpenNext build -> Wrangler deploy`라는 점을 기준으로, 로컬 build 환경 변수와 Cloudflare runtime 변수 둘 다 필요하다는 운영 메모를 문서에 명시했다.
+  - `/Users/alex/project/altteulmap/docs/deploy-cloudflare.md`, `/Users/alex/project/altteulmap/README.md`에도 새 총괄 가이드 링크를 연결했다.
+- 검증 결과
+  - 문서 작업만 수행했고 별도 테스트는 실행하지 않았다.
+- 메모
+  - 내용은 Cloudflare와 OpenNext의 공식 문서, 그리고 현재 저장소 설정(`wrangler.jsonc`, `open-next.config.ts`, `package.json`)을 함께 기준으로 작성했다.
 
 ### 2026-04-01: hook 경고 후속 정리
 - 완료 내용

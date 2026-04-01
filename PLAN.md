@@ -63,7 +63,7 @@
 - 검색 URL 상태
   - 검색어/검색 범위는 반영되지만 지도 중심/줌 상태까지는 아직 URL에 싣지 않음
 - 출시 준비
-  - robots, sitemap, canonical, `smoke:local`, `deploy:check`, Playwright E2E 기본 흐름, credentials 로그인/등록/북마크/신고/관리자 승인/관리자 가격 검토 E2E, Cloudflare 배포 체크 문서는 정리했고, 현재 E2E는 두 그룹 실행 기준으로 반복 가능하다. 실제 OAuth와 실제 도메인 기준 production 점검은 남아 있다
+  - robots, sitemap, canonical, `smoke:local`, `deploy:check`, Playwright E2E 기본 흐름, credentials 로그인/등록/북마크/신고/관리자 승인/관리자 가격 검토 E2E, GitHub Actions CI, Cloudflare Builds 기준 배포 체크 문서는 정리했고, 현재 E2E는 세 그룹 실행 기준으로 반복 가능하다. 실제 OAuth와 실제 운영 도메인 기준 end-to-end 점검은 남아 있다
 - 인증
   - 로컬 credentials와 카카오/네이버 OAuth scaffolding은 준비됐다. 현재 `.env.local` 기준으로 네이버는 활성화 가능 상태이고, 카카오는 client secret 누락 시 비활성화된다. 실제 provider credential과 callback URL로 끝까지 검증한 외부 로그인 경로는 아직 없다
 - 반응 기능

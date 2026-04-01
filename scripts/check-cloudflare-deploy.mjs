@@ -6,8 +6,12 @@ import dotenv from "dotenv";
 
 const cwd = process.cwd();
 const target = process.argv.includes("--preview") ? "preview" : "production";
+const envFiles =
+  target === "production"
+    ? [".env", ".env.production", ".env.local", ".env.production.local"]
+    : [".env", ".env.local"];
 
-for (const filename of [".env", ".env.local"]) {
+for (const filename of envFiles) {
   const fullPath = path.join(cwd, filename);
 
   if (fs.existsSync(fullPath)) {
