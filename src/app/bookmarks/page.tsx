@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { SessionActionGroup } from "@/features/auth/session-action-group";
 import { BookmarkToggleButton } from "@/features/bookmarks/bookmark-toggle-button";
 import { listBookmarks } from "@/features/bookmarks/repository";
 import { getCategoryBySlug } from "@/features/categories/catalog";
@@ -49,9 +50,7 @@ export default async function BookmarksPage() {
               북마크한 장소
             </h1>
           </div>
-          <div className="altteulmap-badge whitespace-nowrap border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-700">
-            {bookmarkResult.userLabel}
-          </div>
+          <SessionActionGroup user={user} signOutCallbackUrl="/" />
         </div>
 
         {bookmarkedPlaces.length > 0 ? (
