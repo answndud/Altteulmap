@@ -25,11 +25,6 @@ jobs:
       NEXTAUTH_URL: http://127.0.0.1:3107
       AUTH_DEMO_PASSWORD: demo1234
       AUTH_ADMIN_PASSWORD: admin1234
-      NEXT_PUBLIC_NAVER_MAP_KEY_ID: ""
-      AUTH_KAKAO_CLIENT_ID: ""
-      AUTH_KAKAO_CLIENT_SECRET: ""
-      AUTH_NAVER_CLIENT_ID: ""
-      AUTH_NAVER_CLIENT_SECRET: ""
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -72,11 +67,6 @@ jobs:
       NEXTAUTH_URL: http://127.0.0.1:3107
       AUTH_DEMO_PASSWORD: demo1234
       AUTH_ADMIN_PASSWORD: admin1234
-      NEXT_PUBLIC_NAVER_MAP_KEY_ID: ""
-      AUTH_KAKAO_CLIENT_ID: ""
-      AUTH_KAKAO_CLIENT_SECRET: ""
-      AUTH_NAVER_CLIENT_ID: ""
-      AUTH_NAVER_CLIENT_SECRET: ""
     steps:
       - name: Checkout
         uses: actions/checkout@v5
