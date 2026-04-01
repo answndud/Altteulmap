@@ -7,6 +7,15 @@ const isDevServer =
 
 const nextConfig: NextConfig = {
   distDir: isDevServer ? ".next-dev" : ".next",
+  async redirects() {
+    return [
+      {
+        source: "/map",
+        destination: "/",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 initOpenNextCloudflareForDev();

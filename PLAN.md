@@ -22,14 +22,13 @@
   - 좋아요 랭킹
 
 ## 현재 우선순위
-1. 로컬 dev/runtime 안정화: `.next` 충돌 방지, dev/build/test 산출물 분리, 재현 가능한 복구 경로 정리
-2. 로그인 상태 액션과 관리자 대시보드 정리: 로그아웃 노출, 운영자 진입 동선, 관리자 overview와 유저/운영 지표 설계
-3. 인증 정리와 출시 준비: 실제 로그인 경로, 로그인/회원가입 진입면과 소셜 온보딩, 반복 가능한 검증 절차, Cloudflare 배포 체크리스트
-4. 공개 UI polish: 헤더 간소화, 개발 문구 제거, 버튼/칩 줄바꿈 방지, 지도/상세 밀도 정리
-5. 운영 품질 후속 정리: rate limit 수치 조정, 관리자 UX polish, 캐시/재검증 보강
-6. 확장 기능 1차: 플레이스 좋아요/싫어요 반응 모델과 UI 우선 도입
-7. 확장 기능 2차: 공유/사진 업로드 범위와 우선순위 재결정
-8. repo-local 개발 워크플로우 유지: `.agents` skills/reviewers, `.githooks`, `verify` 스크립트
+1. 관리자 visit/activity telemetry 2차: 방문 수, 고유 방문자, DAU/WAU, 재방문율을 적재하고 관리자 대시보드에 연결
+2. 인증 정리와 출시 준비: 실제 로그인 경로, 로그인/회원가입 진입면과 소셜 온보딩, 반복 가능한 검증 절차, Cloudflare 배포 체크리스트
+3. 공개 UI polish: 헤더 간소화, 개발 문구 제거, 버튼/칩 줄바꿈 방지, 지도/상세 밀도 정리
+4. 운영 품질 후속 정리: rate limit 수치 조정, 관리자 UX polish, 캐시/재검증 보강
+5. 확장 기능 1차: 플레이스 좋아요/싫어요 반응 모델과 UI 우선 도입
+6. 확장 기능 2차: 공유/사진 업로드 범위와 우선순위 재결정
+7. repo-local 개발 워크플로우 유지: `.agents` skills/reviewers, `.githooks`, `verify` 스크립트
 
 ## 현재 제품 상태
 
@@ -87,10 +86,10 @@
 |---|---|---|---|---|---|
 | ECC에서 필요한 부분만 가져와 altteulmap 저장소 하위에 repo-local skills, reviewer guides, verify script, git hooks를 구성하고 전역 설정 없이 활성화한다 | Codex | P2 | `done` | `.agents/skills`, `.agents/reviewers`, `.githooks`, `scripts/git-hooks`가 추가되고, `npm run hooks:install`, `npm run verify`가 동작하며, `AGENTS.md`/`README.md`/`PLAN.md`/`PROGRESS.md`에 사용 규칙과 검증 결과가 반영된다 | `AGENTS.md`, `README.md`, `package.json`, `.githooks/**`, `scripts/git-hooks/**` |
 
-### Cycle 8: 로컬 개발/검증 안정화
+### Cycle 8: 로컬 개발/검증 안정화 (완료)
 | 작업명 | 담당 에이전트 | 우선순위 | 상태 | 완료기준(DoD) | 의존성 |
 |---|---|---|---|---|---|
-| 로컬 `next dev`가 build/start/e2e와 `.next`를 공유하며 깨지는 문제를 막고, 재기동 없이 페이지 전환이 계속 가능한 상태로 정리한다 | Codex | P1 | `in_progress` | dev 서버는 production build/start/e2e 산출물과 캐시를 분리해 사용하고, Turbopack `.sst/.meta` 손상이나 `Another write batch or compaction is already active` 오류가 재발하지 않도록 기본 스크립트/설정이 조정되며, 복구 명령과 검증 결과가 `README.md`와 `PROGRESS.md`에 남는다 | `package.json`, `next.config.ts`, `.gitignore`, `README.md`, `PROGRESS.md` |
+| 로컬 `next dev`가 build/start/e2e와 `.next`를 공유하며 깨지는 문제를 막고, 재기동 없이 페이지 전환이 계속 가능한 상태로 정리한다 | Codex | P1 | `done` | dev 서버는 production build/start/e2e 산출물과 캐시를 분리해 사용하고, Turbopack `.sst/.meta` 손상이나 `Another write batch or compaction is already active` 오류가 재발하지 않도록 기본 스크립트/설정이 조정되며, 복구 명령과 검증 결과가 `README.md`와 `PROGRESS.md`에 남는다 | `package.json`, `next.config.ts`, `.gitignore`, `README.md`, `PROGRESS.md` |
 
 ### Cycle 2: 문서 체계 정비와 지도 검색/URL 상태 반영 (완료)
 | 작업명 | 담당 에이전트 | 우선순위 | 상태 | 완료기준(DoD) | 의존성 |

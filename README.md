@@ -15,6 +15,15 @@ npm run dev
 
 브라우저에서 `http://localhost:3000`을 열면 됩니다.
 
+로컬 개발 서버는 `webpack` 기반으로 실행되고 산출물을 `.next-dev`에 저장합니다. 반대로 `build`, `start`, Playwright E2E, Cloudflare 빌드는 계속 `.next` 또는 `.open-next`를 사용하므로, dev 서버를 띄운 채 빌드/검증을 돌려도 예전처럼 같은 `.next`를 공유하며 깨지지 않습니다.
+
+페이지 전환이 멈추거나 dev cache가 이상하면 아래처럼 dev 산출물만 비우고 다시 올리면 됩니다.
+
+```bash
+rm -rf .next-dev
+npm run dev
+```
+
 ## 주요 스크립트
 
 ```bash
@@ -35,9 +44,9 @@ npm run db:down
 npm run preview
 ```
 
-- `dev`: Next.js 로컬 개발 서버
+- `dev`: Next.js 로컬 개발 서버 (`webpack`, `.next-dev`)
 - `lint`: ESLint 검사
-- `build`: Next.js 프로덕션 빌드
+- `build`: Next.js 프로덕션 빌드 (`.next`)
 - `verify`: 현재 프로젝트 기준 전체 기본 검증(`lint + build`)
 - `test:e2e:smoke`: `main` 푸시 기준의 빠른 Playwright smoke 세트
 - `test:e2e`: Playwright E2E 실행
@@ -49,13 +58,13 @@ npm run preview
 - `db:push`: 로컬/개발 DB에 스키마 반영
 - `db:seed`: 로컬 DB에 목업 시드 데이터 입력
 - `db:down`: 로컬 Postgres 컨테이너 중지
-- `cf:clean`: Cloudflare 빌드 전 `.next`, `.open-next` 정리
+- `cf:clean`: Cloudflare 빌드 전 `.next`, `.next-dev`, `.open-next` 정리
 - `cf:build`: Cloudflare 배포용 clean build
 - `preview`: OpenNext로 Cloudflare Workers 런타임 미리보기
 
 `deploy`, `upload`는 Cloudflare 계정과 Wrangler 인증이 준비된 뒤 사용하면 됩니다.
 
-Cloudflare 무료 플랜 기준 경량화는 `next build --webpack` + `cf:clean` 경로를 전제로 맞춰져 있습니다. 배포는 `npm run deploy`를 그대로 쓰면 됩니다.
+현재 산출물 경로는 `dev -> .next-dev`, `build/start/e2e -> .next`, `Cloudflare preview/deploy -> .open-next`로 분리돼 있습니다. Cloudflare 무료 플랜 기준 경량화는 `next build --webpack` + `cf:clean` 경로를 전제로 맞춰져 있습니다. 배포는 `npm run deploy`를 그대로 쓰면 됩니다.
 
 ## DB 시작
 
