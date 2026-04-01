@@ -5,6 +5,8 @@ import { expect, test } from "@playwright/test";
 import {
   ADMIN_EMAIL,
   ADMIN_PASSWORD,
+  DEMO_EMAIL,
+  DEMO_PASSWORD,
   loginWithCredentials,
 } from "./helpers/auth";
 
@@ -24,6 +26,23 @@ test("가격 제보를 보내면 운영자가 가격 검토 큐에서 반려할 
     const userPage = await userContext.newPage();
 
     await userPage.goto("/place/school-gimbap");
+
+    if (/\/login\?/.test(userPage.url())) {
+      await loginWithCredentials(userPage, {
+        callbackUrl: "/place/school-gimbap",
+        email: DEMO_EMAIL,
+        password: DEMO_PASSWORD,
+      });
+    }
+
+    if ((await userPage.getByTestId("price-report-submit").count()) === 0) {
+      await loginWithCredentials(userPage, {
+        callbackUrl: "/place/school-gimbap",
+        email: DEMO_EMAIL,
+        password: DEMO_PASSWORD,
+      });
+    }
+
     await expect(userPage).toHaveURL(/\/place\/school-gimbap$/);
     await expect(userPage.getByTestId("place-price-report-form")).toBeVisible();
     await userPage.getByTestId("price-report-label").fill(uniqueLabel);
