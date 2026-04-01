@@ -10,6 +10,7 @@ function createDb() {
   const client = postgres(connectionString, {
     max: 1,
     prepare: false,
+    idle_timeout: 5,
   });
 
   return drizzle(client, { schema });
