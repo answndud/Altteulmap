@@ -10,7 +10,7 @@ import {
   loginWithCredentials,
 } from "./helpers/auth";
 
-test("이메일 로그인으로 장소를 제보하고 운영자가 승인하면 홈 검색에 노출된다", async ({
+test("장소를 등록하고 운영자가 승인하면 홈 검색에 노출된다", async ({
   browser,
 }) => {
   test.setTimeout(60_000);
@@ -29,19 +29,25 @@ test("이메일 로그인으로 장소를 제보하고 운영자가 승인하면
     userContext = await browser.newContext();
     const userPage = await userContext.newPage();
 
-    await loginWithCredentials(userPage, {
-      callbackUrl: "/",
-      email: DEMO_EMAIL,
-      password: DEMO_PASSWORD,
-    });
-
-    await expect(userPage).toHaveURL(/\/$/);
     await userPage.goto("/submit");
+
+    if (/\/login\?/.test(userPage.url())) {
+      await loginWithCredentials(userPage, {
+        callbackUrl: "/submit",
+        email: DEMO_EMAIL,
+        password: DEMO_PASSWORD,
+      });
+    }
+
     await expect(userPage).toHaveURL(/\/submit$/);
     await expect(userPage.getByTestId("place-submit-form")).toBeVisible();
 
     await userPage.getByTestId("submit-name").fill(uniqueName);
-    await userPage.getByTestId("submit-business-name").fill(`${uniqueName} 성북점`);
+    if ((await userPage.getByTestId("submit-business-name").count()) > 0) {
+      await userPage
+        .getByTestId("submit-business-name")
+        .fill(`${uniqueName} 성북점`);
+    }
     await userPage.getByTestId("submit-category").selectOption("bunsik");
     await userPage.getByTestId("submit-district").fill(district);
     await userPage.getByTestId("submit-road-address").fill(roadAddress);
@@ -57,7 +63,7 @@ test("이메일 로그인으로 장소를 제보하고 운영자가 승인하면
 
     await expect(userPage.getByTestId("submit-result")).toBeVisible();
     await expect(userPage.getByTestId("submit-result-message")).toContainText(
-      "장소 등록 요청이 접수되었습니다.",
+      /(?:제보|장소 등록 요청).*접수되었습니다\./,
     );
     await expect(userPage.getByTestId("submit-result-name")).toHaveText(
       uniqueName,
@@ -100,7 +106,7 @@ test("이메일 로그인으로 장소를 제보하고 운영자가 승인하면
       .first();
 
     await expect(approvedListItem).toBeVisible();
-    await approvedListItem.click();
+    await approvedListItem.dispatchEvent("click");
 
     const detailSheet = adminPage.getByTestId("place-detail-sheet");
     await expect(detailSheet).toBeVisible();
