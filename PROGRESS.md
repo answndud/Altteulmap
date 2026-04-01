@@ -20,13 +20,17 @@
 - 완료 내용
   - `/Users/alex/project/altteulmap/src/lib/env.ts`에서 optional env를 빈 문자열이면 `undefined`로 정규화하도록 바꿔, CI나 로컬 환경에서 OAuth 관련 값이 빈 문자열로 들어와도 Zod 파싱이 실패하지 않게 했다.
   - `/Users/alex/project/altteulmap/.github/workflows/ci.yml`의 `Verify`, `E2E` job에서는 불필요한 빈 OAuth env를 아예 주입하지 않도록 정리했다.
+  - `/Users/alex/project/altteulmap/playwright.config.ts`의 `mobile-chromium` project에 `browserName: "chromium"`을 명시해, `iPhone 13` preset이 암묵적으로 `webkit`을 선택하던 상태를 바로잡았다.
 - 원인
   - GitHub Actions `Verify` job이 `AUTH_KAKAO_*`, `AUTH_NAVER_*`를 `""`로 주입했고, 기존 schema가 이를 `optional`이 아닌 `빈 문자열`로 해석해 build 중 `/api/admin/price-items/[id]` page data 수집 단계에서 ZodError를 발생시켰다.
+  - 이후 다음 run에서는 `E2E` job의 모바일 테스트가 `mobile-chromium` 이름과 달리 실제로는 `webkit` executable을 찾고 있었고, CI는 `chromium`만 설치한 상태라 `Executable doesn't exist at .../webkit-.../pw_run.sh`로 실패했다.
 - 검증 결과
   - `npm run verify:quick` 통과
   - `AUTH_KAKAO_CLIENT_ID='' AUTH_KAKAO_CLIENT_SECRET='' AUTH_NAVER_CLIENT_ID='' AUTH_NAVER_CLIENT_SECRET='' USE_MOCK_DATA=true AUTH_SECRET=ci-auth-secret NEXTAUTH_URL=http://127.0.0.1:3107 npm run verify` 통과
+  - `USE_MOCK_DATA=true npx playwright test tests/e2e/map.mobile.spec.ts --project mobile-chromium` 통과
 - 메모
   - 이 수정으로 optional OAuth env가 없는 상태와 빈 문자열 상태를 동일하게 취급한다.
+  - 모바일 E2E는 이름 그대로 Chromium 기반 iPhone viewport 시뮬레이션으로 고정됐다.
 
 ### 2026-04-01: GitHub Actions CI 추가와 Cloudflare Builds 분리 운영 정리
 - 완료 내용
