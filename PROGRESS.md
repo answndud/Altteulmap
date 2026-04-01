@@ -16,21 +16,59 @@
 
 ## 실행 로그
 
+### 2026-04-01: 공개 버튼 재질감 재설계와 `space-y-2` 제거
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/app/globals.css`에서 `altteulmap-button`, `altteulmap-chip`, `altteulmap-badge`를 다시 설계해, 흰 버튼과 강조 버튼 모두가 카드와 같은 크림 톤 gradient, 얇은 외곽선, inset highlight, hover lift, focus ring을 공유하도록 정리했다.
+  - 같은 공용 버튼 유틸에 기본 `1px` border를 넣어 accent CTA와 소셜 로그인 버튼도 더 또렷한 입체감이 생기도록 조정했다.
+  - `/Users/alex/project/altteulmap/src/app/map/page.tsx`, `/Users/alex/project/altteulmap/src/features/bookmarks/bookmark-toggle-button.tsx`, `/Users/alex/project/altteulmap/src/features/places/place-share-button.tsx`, `/Users/alex/project/altteulmap/src/features/places/place-reaction-buttons.tsx`에서 `space-y-2`를 모두 제거하고 `flex/grid + gap` 기반 레이아웃으로 바꿨다.
+- 검증 결과
+  - `rg -n "space-y-2" src/app src/components src/features` 결과 없음 확인
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+  - `PORT=3116 NEXTAUTH_URL=http://127.0.0.1:3116 npm run start` 후 `curl -s http://127.0.0.1:3116/`, `curl -s http://127.0.0.1:3116/login`으로 렌더 HTML을 확인해 `altteulmap-button`, `altteulmap-chip`, `altteulmap-badge` 클래스가 공개 화면에 반영되고 `space-y-2`가 다시 들어오지 않은 것을 확인
+- 메모
+  - 로컬 `start` 검증은 현재 DB 테이블이 없는 상태라 mock fallback 로그를 남기지만, 이번 변경은 CSS/공개 컴포넌트 중심이라 렌더 확인에는 영향 없었다.
+
+### 2026-04-01: 공개 UI 라벨 정리와 버튼 형태 재정비
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/components/site-header.tsx`에서 공개 헤더의 `신고`, `북마크` 메뉴를 제거하고, 로그인/관리/사용자 pill만 남기도록 간소화했다.
+  - `/Users/alex/project/altteulmap/src/app/map/page.tsx`, `/Users/alex/project/altteulmap/src/features/map/naver-map-panel.tsx`, `/Users/alex/project/altteulmap/src/features/places/map-explorer.tsx`에서 홈 상단 소개 문구를 걷어내고, `제보하기`를 `장소 등록하기`로, `저장한 곳`을 `북마크`로 바꿨다. 지도 우측 현재 위치 버튼은 `내 위치`로 줄이고 크기도 작게 조정했다.
+  - `/Users/alex/project/altteulmap/src/features/auth/login-form.tsx`, `/Users/alex/project/altteulmap/src/app/login/page.tsx`에서 로그인 페이지의 테스트 계정 패널과 demo placeholder를 제거하고 단일 로그인 폼 레이아웃으로 정리했다.
+  - `/Users/alex/project/altteulmap/src/features/bookmarks/bookmark-toggle-button.tsx`, `/Users/alex/project/altteulmap/src/app/bookmarks/page.tsx`에서 공개 북마크 버튼과 북마크 화면 라벨을 `저장*` 대신 `북마크*` 기준으로 통일했다.
+  - `/Users/alex/project/altteulmap/src/app/globals.css`에 `altteulmap-button`, `altteulmap-chip`, `altteulmap-badge` 공용 스타일을 추가하고, 공개 화면 버튼/칩/배지에서 과한 pill 형태를 줄여 더 각진 모서리로 정리했다.
+  - `/Users/alex/project/altteulmap/src/app/place/[id]/page.tsx`, `/Users/alex/project/altteulmap/src/features/places/place-detail-sheet.tsx`, `/Users/alex/project/altteulmap/src/features/places/place-share-button.tsx`, `/Users/alex/project/altteulmap/src/features/places/place-reaction-buttons.tsx`, `/Users/alex/project/altteulmap/src/features/places/place-price-report-form.tsx`, `/Users/alex/project/altteulmap/src/features/places/place-comments-section.tsx`, `/Users/alex/project/altteulmap/src/app/submit/page.tsx`, `/Users/alex/project/altteulmap/src/features/submission/place-submit-form.tsx`, `/Users/alex/project/altteulmap/src/features/submission/place-coordinate-picker.tsx`, `/Users/alex/project/altteulmap/src/app/report/page.tsx`, `/Users/alex/project/altteulmap/src/features/reports/report-submit-form.tsx`, `/Users/alex/project/altteulmap/src/components/access-denied-panel.tsx`에서도 같은 버튼 모서리 규칙을 적용해 공개 흐름 전반의 액션 스타일을 맞췄다.
+  - `/Users/alex/project/altteulmap/src/features/places/repository.ts`의 장소 등록 성공 메시지와 기본 설명 fallback도 `장소 등록` 용어에 맞춰 정리했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+  - `PORT=3115 NEXTAUTH_URL=http://127.0.0.1:3115 npm run start` 후 `curl -s http://127.0.0.1:3115/`로 홈 HTML을 확인해 `장소 등록하기`, `북마크`, `지도` 헤더가 반영되고 기존 소개/저장/제보 문구와 공개 헤더 `신고`가 빠진 것을 확인
+  - `curl -s http://127.0.0.1:3115/login`으로 로그인 HTML을 확인해 `테스트 계정`, `바로 확인해볼 계정`, `demo@altteulmap.local` 노출이 사라지고 `name@example.com` placeholder만 남은 것을 확인
+- 메모
+  - 로컬 `start` 확인은 DB 테이블이 없는 상태라 mock data fallback 로그를 남기지만, 공개 UI 텍스트와 레이아웃 반영 확인에는 문제 없었다.
+
 ### 2026-04-01: GitHub Actions Verify job의 빈 OAuth env 실패 수정
 - 완료 내용
   - `/Users/alex/project/altteulmap/src/lib/env.ts`에서 optional env를 빈 문자열이면 `undefined`로 정규화하도록 바꿔, CI나 로컬 환경에서 OAuth 관련 값이 빈 문자열로 들어와도 Zod 파싱이 실패하지 않게 했다.
   - `/Users/alex/project/altteulmap/.github/workflows/ci.yml`의 `Verify`, `E2E` job에서는 불필요한 빈 OAuth env를 아예 주입하지 않도록 정리했다.
   - `/Users/alex/project/altteulmap/playwright.config.ts`의 `mobile-chromium` project에 `browserName: "chromium"`을 명시해, `iPhone 13` preset이 암묵적으로 `webkit`을 선택하던 상태를 바로잡았다.
+  - `/Users/alex/project/altteulmap/src/db/client.ts`에서 production 모드에도 전역 DB 인스턴스를 재사용하도록 바꿔, `next start` 기반 E2E 중 요청마다 새 Postgres client가 생기며 `too many clients already`로 무너지는 문제를 막았다.
+  - `/Users/alex/project/altteulmap/tests/e2e/bookmarks.spec.ts`의 북마크 버튼 기대값을 현재 공개 UI 라벨(`북마크`, `북마크됨`)에 맞게 갱신했다.
 - 원인
   - GitHub Actions `Verify` job이 `AUTH_KAKAO_*`, `AUTH_NAVER_*`를 `""`로 주입했고, 기존 schema가 이를 `optional`이 아닌 `빈 문자열`로 해석해 build 중 `/api/admin/price-items/[id]` page data 수집 단계에서 ZodError를 발생시켰다.
   - 이후 다음 run에서는 `E2E` job의 모바일 테스트가 `mobile-chromium` 이름과 달리 실제로는 `webkit` executable을 찾고 있었고, CI는 `chromium`만 설치한 상태라 `Executable doesn't exist at .../webkit-.../pw_run.sh`로 실패했다.
+  - 그 다음 run에서는 `next start` 기반 production 서버가 DB 연결을 재사용하지 않아, E2E 도중 `too many clients already`가 발생했고 관리자 로그인/장소 승인 시나리오가 `/login?callbackUrl=%2Fadmin%2Fplaces`에 머물렀다.
+  - 같은 로컬 재현 중 북마크 E2E는 현재 버튼 라벨이 `북마크됨`으로 바뀌었는데 테스트가 여전히 `저장됨`을 기대하고 있어 실패했다.
 - 검증 결과
   - `npm run verify:quick` 통과
   - `AUTH_KAKAO_CLIENT_ID='' AUTH_KAKAO_CLIENT_SECRET='' AUTH_NAVER_CLIENT_ID='' AUTH_NAVER_CLIENT_SECRET='' USE_MOCK_DATA=true AUTH_SECRET=ci-auth-secret NEXTAUTH_URL=http://127.0.0.1:3107 npm run verify` 통과
   - `USE_MOCK_DATA=true npx playwright test tests/e2e/map.mobile.spec.ts --project mobile-chromium` 통과
+  - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap USE_MOCK_DATA=false AUTH_SECRET=ci-auth-secret NEXTAUTH_URL=http://127.0.0.1:3107 AUTH_DEMO_PASSWORD=demo1234 AUTH_ADMIN_PASSWORD=admin1234 npm run db:push` 통과
+  - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap USE_MOCK_DATA=false AUTH_SECRET=ci-auth-secret NEXTAUTH_URL=http://127.0.0.1:3107 AUTH_DEMO_PASSWORD=demo1234 AUTH_ADMIN_PASSWORD=admin1234 npm run db:seed` 통과
+  - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap USE_MOCK_DATA=false AUTH_SECRET=ci-auth-secret NEXTAUTH_URL=http://127.0.0.1:3107 AUTH_DEMO_PASSWORD=demo1234 AUTH_ADMIN_PASSWORD=admin1234 npm run test:e2e` 통과
 - 메모
   - 이 수정으로 optional OAuth env가 없는 상태와 빈 문자열 상태를 동일하게 취급한다.
   - 모바일 E2E는 이름 그대로 Chromium 기반 iPhone viewport 시뮬레이션으로 고정됐다.
+  - production 서버에서도 DB client를 재사용하도록 바뀌어, CI와 같은 `next start` 경로에서 연결 수 폭증이 다시 나지 않아야 한다.
 
 ### 2026-04-01: GitHub Actions CI 추가와 Cloudflare Builds 분리 운영 정리
 - 완료 내용

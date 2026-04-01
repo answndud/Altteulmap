@@ -57,7 +57,7 @@ test("이메일 로그인으로 장소를 제보하고 운영자가 승인하면
 
     await expect(userPage.getByTestId("submit-result")).toBeVisible();
     await expect(userPage.getByTestId("submit-result-message")).toContainText(
-      "제보가 접수되었습니다.",
+      "장소 등록 요청이 접수되었습니다.",
     );
     await expect(userPage.getByTestId("submit-result-name")).toHaveText(
       uniqueName,
