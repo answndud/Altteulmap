@@ -49,12 +49,17 @@ function isLocalhostUrl(value) {
   }
 }
 
+function printLine(message = "") {
+  process.stdout.write(`${message}\n`);
+}
+
 function printSection(title) {
-  console.log(`\n[${title}]`);
+  printLine();
+  printLine(`[${title}]`);
 }
 
 function main() {
-  console.log(`Checking Cloudflare deploy readiness for ${target}`);
+  printLine(`Checking Cloudflare deploy readiness for ${target}`);
 
   printSection("Required env");
 
@@ -63,13 +68,13 @@ function main() {
   );
 
   for (const name of requiredVars) {
-    console.log(`${missingRequired.includes(name) ? "FAIL" : "OK  "} ${name}`);
+    printLine(`${missingRequired.includes(name) ? "FAIL" : "OK  "} ${name}`);
   }
 
   printSection("Optional env");
 
   for (const name of optionalVars) {
-    console.log(`${isTruthy(process.env[name]) ? "OK  " : "WARN"} ${name}`);
+    printLine(`${isTruthy(process.env[name]) ? "OK  " : "WARN"} ${name}`);
   }
 
   printSection("Runtime checks");
@@ -77,37 +82,37 @@ function main() {
   const useMockData = process.env.USE_MOCK_DATA ?? "";
 
   if (useMockData === "false") {
-    console.log("OK   USE_MOCK_DATA=false");
+    printLine("OK   USE_MOCK_DATA=false");
   } else {
-    console.log("WARN USE_MOCK_DATA should be false before deploy");
+    printLine("WARN USE_MOCK_DATA should be false before deploy");
   }
 
   const nextAuthUrl = process.env.NEXTAUTH_URL ?? "";
 
   if (!isTruthy(nextAuthUrl)) {
-    console.log("FAIL NEXTAUTH_URL is missing");
+    printLine("FAIL NEXTAUTH_URL is missing");
   } else if (target === "production" && isLocalhostUrl(nextAuthUrl)) {
-    console.log("FAIL NEXTAUTH_URL still points to localhost");
+    printLine("FAIL NEXTAUTH_URL still points to localhost");
   } else if (target === "production" && !nextAuthUrl.startsWith("https://")) {
-    console.log("WARN NEXTAUTH_URL should use https in production");
+    printLine("WARN NEXTAUTH_URL should use https in production");
   } else {
-    console.log("OK   NEXTAUTH_URL format looks valid");
+    printLine("OK   NEXTAUTH_URL format looks valid");
   }
 
   const wranglerConfigPath = path.join(cwd, "wrangler.jsonc");
-  console.log(
+  printLine(
     `${fs.existsSync(wranglerConfigPath) ? "OK  " : "FAIL"} wrangler.jsonc`,
   );
 
   const devVarsPath = path.join(cwd, ".dev.vars");
-  console.log(`${fs.existsSync(devVarsPath) ? "OK  " : "WARN"} .dev.vars`);
+  printLine(`${fs.existsSync(devVarsPath) ? "OK  " : "WARN"} .dev.vars`);
 
   printSection("OAuth callback reminders");
 
-  console.log(
+  printLine(
     `- Kakao callback: ${nextAuthUrl || "<NEXTAUTH_URL>"}/api/auth/callback/kakao`,
   );
-  console.log(
+  printLine(
     `- Naver callback: ${nextAuthUrl || "<NEXTAUTH_URL>"}/api/auth/callback/naver`,
   );
 
@@ -125,7 +130,8 @@ function main() {
     return;
   }
 
-  console.log("\nDeploy check passed.");
+  printLine();
+  printLine("Deploy check passed.");
 }
 
 main();
