@@ -1,15 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
-import {
-  appUserRoleLabelMap,
-  authAccountHints,
-  socialAuthProviderLabelMap,
-  type SocialAuthProviderId,
-} from "@/features/auth/constants";
+import { type SocialAuthProviderAvailability } from "@/features/auth/constants";
+import { SocialAuthButtons } from "@/features/auth/social-auth-buttons";
 
 const errorMessageMap: Record<string, string> = {
   CredentialsSignin: "이메일 또는 비밀번호가 맞지 않습니다.",
@@ -22,50 +19,37 @@ const errorMessageMap: Record<string, string> = {
   default: "로그인 처리에 실패했습니다. 잠시 후 다시 시도해주세요.",
 };
 
-type SocialProviderOption = {
-  id: SocialAuthProviderId;
-  label: string;
-  enabled: boolean;
-  unavailableReason?: string;
-};
-
 type LoginFormProps = {
   callbackUrl: string;
   initialError?: string | null;
-  socialProviders: SocialProviderOption[];
+  signupHref: string;
+  socialProviders: SocialAuthProviderAvailability[];
 };
 
 export function LoginForm({
   callbackUrl,
   initialError = null,
+  signupHref,
   socialProviders,
 }: LoginFormProps) {
   const router = useRouter();
-  const [email, setEmail] = useState(authAccountHints[0]?.email ?? "");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState(
     initialError ? errorMessageMap[initialError] ?? errorMessageMap.default : "",
   );
-  const [pendingAction, setPendingAction] = useState<
-    "credentials" | SocialAuthProviderId | null
-  >(null);
+  const [pendingAction, setPendingAction] = useState<"credentials" | null>(null);
   const [isPending, startTransition] = useTransition();
-  function getSocialButtonClass(providerId: SocialAuthProviderId) {
-    if (providerId === "kakao") {
-      return "bg-[#FEE500] text-stone-900 hover:bg-[#f7d900]";
-    }
-
-    return "bg-[#03C75A] text-white hover:bg-[#02b351]";
-  }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+    <div className="w-full max-w-[32rem]">
       <form
         onSubmit={(event) => {
           event.preventDefault();
 
           startTransition(async () => {
             setMessage("");
+            setPendingAction("credentials");
 
             const result = await signIn("credentials", {
               email,
@@ -75,11 +59,13 @@ export function LoginForm({
             });
 
             if (!result) {
+              setPendingAction(null);
               setMessage(errorMessageMap.default);
               return;
             }
 
             if (result.error) {
+              setPendingAction(null);
               setMessage(
                 errorMessageMap[result.error] ?? errorMessageMap.default,
               );
@@ -91,58 +77,32 @@ export function LoginForm({
           });
         }}
         data-testid="login-form"
-        className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm sm:p-8"
+        className="rounded-[2.15rem] border border-stone-200/80 bg-white/92 p-6 shadow-[0_24px_60px_-42px_rgba(32,24,18,0.38)] backdrop-blur sm:p-8"
       >
         <div className="grid gap-6">
-          <section>
-            <p className="text-xs font-medium tracking-[0.18em] text-orange-600">
-              로그인
-            </p>
-            <h1 className="mt-3 text-3xl font-semibold tracking-tight text-stone-900 sm:text-5xl">
+          <section className="flex items-center justify-between gap-3 border-b border-stone-200 pb-5">
+            <h1 className="text-3xl font-semibold tracking-[-0.06em] text-stone-950">
               로그인
             </h1>
+            <Link
+              href={signupHref}
+              className="text-sm font-medium text-stone-500 transition hover:text-stone-950"
+            >
+              회원가입
+            </Link>
           </section>
 
           <section className="grid gap-3">
             <p className="text-sm font-medium text-stone-700">소셜 로그인</p>
-            <div className="grid gap-3">
-              {socialProviders.map((provider) =>
-                provider.enabled ? (
-                  <button
-                    key={provider.id}
-                    type="button"
-                    onClick={() => {
-                      startTransition(async () => {
-                        setMessage("");
-                        setPendingAction(provider.id);
-                        await signIn(provider.id, {
-                          callbackUrl,
-                        });
-                        setPendingAction(null);
-                      });
-                    }}
-                    disabled={isPending}
-                    data-testid={`social-login-${provider.id}`}
-                    className={`whitespace-nowrap rounded-full px-5 py-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ${getSocialButtonClass(
-                      provider.id,
-                    )}`}
-                  >
-                    {pendingAction === provider.id
-                      ? `${socialAuthProviderLabelMap[provider.id]}로 이동 중...`
-                      : `${socialAuthProviderLabelMap[provider.id]}로 로그인`}
-                  </button>
-                ) : (
-                  <div
-                    key={provider.id}
-                    className="rounded-3xl border border-dashed border-stone-300 bg-stone-50 px-4 py-4"
-                  >
-                    <p className="text-sm font-medium text-stone-900">
-                      {provider.label} 로그인 준비 중
-                    </p>
-                  </div>
-                ),
-              )}
-            </div>
+            <SocialAuthButtons
+              callbackUrl={callbackUrl}
+              providers={socialProviders}
+              intent="login"
+              onStart={() => {
+                setMessage("");
+                setPendingAction(null);
+              }}
+            />
           </section>
 
           <div className="flex items-center gap-3 text-xs uppercase tracking-[0.18em] text-stone-400">
@@ -151,34 +111,38 @@ export function LoginForm({
             <span className="h-px flex-1 bg-stone-200" />
           </div>
 
-          <label className="grid gap-2 text-sm text-stone-700">
-            이메일
-            <input
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              data-testid="login-email"
-              className="rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900"
-              placeholder="demo@altteulmap.local"
-              autoComplete="email"
-            />
-          </label>
+          <section className="grid gap-4">
+            <p className="text-sm font-medium text-stone-700">이메일 로그인</p>
 
-          <label className="grid gap-2 text-sm text-stone-700">
-            비밀번호
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              data-testid="login-password"
-              className="rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900"
-              placeholder="비밀번호"
-              autoComplete="current-password"
-            />
-          </label>
+            <label className="grid gap-2 text-sm text-stone-700">
+              이메일
+              <input
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                data-testid="login-email"
+                className="altteulmap-input px-4 py-3.5 text-stone-900"
+                placeholder="name@example.com"
+                autoComplete="email"
+              />
+            </label>
+
+            <label className="grid gap-2 text-sm text-stone-700">
+              비밀번호
+              <input
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                data-testid="login-password"
+                className="altteulmap-input px-4 py-3.5 text-stone-900"
+                placeholder="비밀번호"
+                autoComplete="current-password"
+              />
+            </label>
+          </section>
 
           {message ? (
-            <div className="rounded-2xl bg-rose-100 px-4 py-3 text-sm text-rose-800">
+            <div className="rounded-[1.25rem] border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
               {message}
             </div>
           ) : null}
@@ -187,46 +151,14 @@ export function LoginForm({
             type="submit"
             disabled={isPending}
             data-testid="login-submit"
-            className="altteulmap-accent-solid whitespace-nowrap rounded-full px-5 py-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60"
+            className="altteulmap-accent-solid altteulmap-button whitespace-nowrap px-5 py-3.5 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {pendingAction === "credentials" || isPending
+            {pendingAction === "credentials"
               ? "로그인 중..."
               : "이메일로 로그인"}
           </button>
         </div>
       </form>
-
-      <aside className="space-y-6">
-        <section className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm">
-          <p className="text-xs font-medium tracking-[0.18em] text-orange-600">
-            테스트 계정
-          </p>
-          <h2 className="mt-3 text-xl font-semibold text-stone-900">
-            바로 확인해볼 계정
-          </h2>
-          <div className="mt-4 grid gap-3">
-            {authAccountHints.map((account) => (
-              <button
-                key={account.email}
-                type="button"
-                onClick={() => {
-                  setEmail(account.email);
-                  setMessage("");
-                }}
-                className="rounded-3xl border border-stone-200 bg-stone-50 px-4 py-4 text-left transition hover:border-stone-300 hover:bg-stone-100"
-              >
-                <p className="text-sm font-semibold text-stone-900">
-                  {appUserRoleLabelMap[account.role]}
-                </p>
-                <p className="mt-1 text-sm text-stone-600">{account.email}</p>
-                <p className="mt-2 text-xs text-stone-500">
-                  비밀번호는 로컬 설정값을 사용합니다.
-                </p>
-              </button>
-            ))}
-          </div>
-        </section>
-      </aside>
     </div>
   );
 }

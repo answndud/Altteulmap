@@ -95,20 +95,19 @@ export default async function PlacePage({ params }: PlacePageProps) {
   }
 
   const category = getCategoryBySlug(place.categorySlug);
-  const relatedPlaces = result.related;
   const isBookmarked = bookmarkResult.items.some(
     (bookmark) => bookmark.placeId === place.id,
   );
   const bookmarkLoginHref = createLoginHref(`/place/${place.id}`);
   const reportPath = `/report?placeId=${place.id}&placeName=${encodeURIComponent(place.name)}`;
-  const reportHref = user ? reportPath : createLoginHref(reportPath);
+  const reportHref = reportPath;
 
   return (
     <main className="bg-stone-50 px-4 py-8 sm:px-6">
       <div className="mx-auto max-w-6xl">
         <Link
           href="/"
-          className="inline-flex whitespace-nowrap rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
+          className="altteulmap-button inline-flex whitespace-nowrap border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
         >
           목록으로 돌아가기
         </Link>
@@ -174,7 +173,7 @@ export default async function PlacePage({ params }: PlacePageProps) {
                 />
                 <Link
                   href={reportHref}
-                  className="inline-flex whitespace-nowrap rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
+                  className="altteulmap-button inline-flex whitespace-nowrap border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
                 >
                   신고하기
                 </Link>
@@ -219,8 +218,6 @@ export default async function PlacePage({ params }: PlacePageProps) {
               <PlacePriceReportForm
                 key={`${place.id}-price-form`}
                 placeId={place.id}
-                authenticated={Boolean(user)}
-                loginHref={bookmarkLoginHref}
                 suggestedItems={place.priceItems}
               />
 
@@ -228,28 +225,7 @@ export default async function PlacePage({ params }: PlacePageProps) {
                 key={`${place.id}-comments`}
                 placeId={place.id}
                 initialComments={place.comments}
-                authenticated={Boolean(user)}
-                loginHref={bookmarkLoginHref}
               />
-
-              <section className="rounded-3xl border border-stone-200 bg-stone-50 p-6">
-                <h2 className="text-lg font-semibold text-stone-900">비슷한 장소</h2>
-                <div className="mt-4 space-y-3">
-                  {relatedPlaces.map((related) => (
-                    <Link
-                      key={related.id}
-                      href={`/place/${related.id}`}
-                      className="block rounded-2xl bg-white px-4 py-4 transition hover:border-stone-300 hover:bg-stone-100"
-                    >
-                      <p className="font-medium text-stone-900">{related.name}</p>
-                      <p className="mt-1 text-sm text-stone-500">
-                        {related.representativePriceLabel} ·{" "}
-                        {formatKrw(related.representativePriceAmount)}원
-                      </p>
-                    </Link>
-                  ))}
-                </div>
-              </section>
             </aside>
           </div>
         </section>

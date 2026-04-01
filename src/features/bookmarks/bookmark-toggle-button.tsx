@@ -63,7 +63,11 @@ export function BookmarkToggleButton({
   };
 
   return (
-    <div className={compact ? "flex items-center gap-2" : "space-y-2"}>
+    <div
+      className={
+        compact ? "flex items-center gap-2" : "flex flex-col items-start gap-2"
+      }
+    >
       <button
         type="button"
         onClick={(event) => {
@@ -74,7 +78,7 @@ export function BookmarkToggleButton({
         aria-label={bookmarked ? "북마크 해제" : "북마크 저장"}
         disabled={disabled || isPending}
         data-testid={`bookmark-toggle-${placeId}`}
-        className={`inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-full transition disabled:cursor-not-allowed disabled:opacity-60 ${
+        className={`altteulmap-button inline-flex shrink-0 items-center justify-center whitespace-nowrap transition disabled:cursor-not-allowed disabled:opacity-60 ${
           compact
             ? bookmarked
               ? "altteulmap-accent-solid px-3 py-1.5 text-xs font-medium"
@@ -85,10 +89,10 @@ export function BookmarkToggleButton({
         }`}
       >
         {isPending
-          ? "저장 중"
+          ? "북마크 중"
           : bookmarked
-            ? "저장됨"
-            : "저장"}
+            ? "북마크됨"
+            : "북마크"}
       </button>
       {message && !compact ? (
         <p

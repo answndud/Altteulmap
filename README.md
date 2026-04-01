@@ -73,6 +73,8 @@ npm run db:seed
 - 일반 사용자: `demo@altteulmap.local` / `AUTH_DEMO_PASSWORD`
 - 운영자: `admin@altteulmap.local` / `AUTH_ADMIN_PASSWORD`
 
+DB가 연결된 상태에서는 `/signup`에서 새 이메일 계정을 직접 만들 수 있습니다. 가입이 끝나면 같은 이메일/비밀번호로 바로 로그인됩니다.
+
 기본 예시는 `.env.example`에 들어 있고, 로컬 `.env`도 같은 값으로 맞춰두었습니다.
 
 `/map`에서 실제 네이버 지도를 보려면 `NEXT_PUBLIC_NAVER_MAP_KEY_ID`를 설정하면 됩니다. 아직 키가 없으면 같은 화면에서 자동으로 임시 프리뷰 지도로 fallback됩니다. 기존 `NEXT_PUBLIC_NAVER_MAP_CLIENT_ID` 값도 함께 지원합니다.
@@ -126,9 +128,9 @@ npm run test:e2e
 ```
 
 현재 `npm run test:e2e`는 로컬 안정성을 위해 빌드 후 세 그룹으로 나눠 실행합니다.
-- `bookmarks`, `map`
+- `signup`, `bookmarks`, `map`
 - `map.mobile` (`mobile-chromium`, `USE_MOCK_DATA=true`)
-- `price-review`, `report-admin`, `submission-admin`
+- `comments`, `price-review`, `report-admin`, `submission-admin`
 
 현재 기본 E2E는 아래 흐름을 검증합니다.
 - 지도 첫 진입
@@ -139,11 +141,13 @@ npm run test:e2e
 - 좋아요순 정렬
 - 공유 버튼 fallback
 - credentials 로그인
-- 장소 등록
+- credentials 회원가입
+- 로그인 없는 장소 등록
+- 로그인 없는 코멘트 작성/삭제
 - 관리자 장소 승인
 - 북마크 저장/해제
-- 신고 제출과 관리자 상태 변경
-- 가격 제보와 관리자 반려
+- 로그인 없는 신고 제출과 관리자 상태 변경
+- 로그인 없는 가격 제보와 관리자 반려
 - 관리자 승인 후 홈 검색 반영
 
 Cloudflare 배포 전 점검은 아래 문서를 기준으로 합니다.

@@ -87,6 +87,7 @@ export const authAccounts = pgTable(
       length: 255,
     }).notNull(),
     type: varchar("type", { length: 50 }).notNull(),
+    passwordHash: text("password_hash"),
     accessToken: text("access_token"),
     refreshToken: text("refresh_token"),
     expiresAt: integer("expires_at"),
@@ -300,9 +301,8 @@ export const comments = pgTable(
     placeId: uuid("place_id")
       .notNull()
       .references(() => places.id, { onDelete: "cascade" }),
-    userId: uuid("user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
+    visitorId: varchar("visitor_id", { length: 64 }),
     body: text("body").notNull(),
     status: commentStatusEnum("status").default("visible").notNull(),
     ...withTimestamps(),

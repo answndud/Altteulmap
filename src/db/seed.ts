@@ -2,6 +2,7 @@ import "dotenv/config";
 
 import { eq } from "drizzle-orm";
 
+import { hashPassword } from "../features/auth/password";
 import { categoryGroups } from "../features/categories/catalog";
 import { mockPlaces } from "../features/places/mock-data";
 import { normalizePriceLabel } from "../features/places/normalization";
@@ -50,6 +51,12 @@ async function main() {
 
     const adminUserId = crypto.randomUUID();
     const demoUserId = crypto.randomUUID();
+    const adminPasswordHash = await hashPassword(
+      process.env.AUTH_ADMIN_PASSWORD ?? "admin1234",
+    );
+    const demoPasswordHash = await hashPassword(
+      process.env.AUTH_DEMO_PASSWORD ?? "demo1234",
+    );
 
     await tx.insert(users).values([
       {
@@ -63,6 +70,23 @@ async function main() {
         email: "demo@altteulmap.local",
         nickname: "근처 주민",
         role: "user",
+      },
+    ]);
+
+    await tx.insert(authAccounts).values([
+      {
+        userId: adminUserId,
+        provider: "credentials",
+        providerAccountId: "admin@altteulmap.local",
+        type: "credentials",
+        passwordHash: adminPasswordHash,
+      },
+      {
+        userId: demoUserId,
+        provider: "credentials",
+        providerAccountId: "demo@altteulmap.local",
+        type: "credentials",
+        passwordHash: demoPasswordHash,
       },
     ]);
 

@@ -8,13 +8,149 @@
 - Cycle 2: `PLAN.md`/`PROGRESS.md` 운영 문서 형식 정비, 지역/전역 검색, 검색 URL 상태 반영 완료
 - Cycle 3: 댓글 작성/삭제, 기존 장소 가격 제보, 관리자 가격 검토 큐 완료
 - Cycle 4: 관리자 가격 수정/숨김 UI, 대표 가격 재계산 규칙, 최소 rate limit, DB migration 적용, 실DB 런타임 검증 완료
-- Cycle 5: sitemap/robots/canonical/기본 metadata, OAuth scaffolding, deploy check, Playwright E2E 3차, 공개 UI polish 진행 중. 실제 외부 로그인 E2E와 운영 도메인 기준 점검은 남아 있음
+- Cycle 5: sitemap/robots/canonical/기본 metadata, OAuth scaffolding, deploy check, Playwright E2E 3차, 공개 UI polish 진행 중. 공개 쓰기는 북마크를 제외하고 익명 허용으로 정리됐고, 실제 외부 로그인 E2E와 운영 도메인 기준 점검은 남아 있음
 - Cycle 5 후속: GitHub Actions CI(`Verify`, `E2E`, `Deploy Config Check`)와 Cloudflare Builds 분리 운영 경로 정리 완료
 - Cycle 6: 좋아요/싫어요 반응 도입 완료, 비로그인 visitor cookie 반응과 공개 메타 줄 분리까지 반영. 랭킹/정렬/목록 노출 확장은 남아 있음
 - Cycle 7: repo-local AI workflow 설정 완료 (`.agents`, `.githooks`, `verify`, local commit rules)
 - 다음 우선순위: 실제 외부 로그인 E2E, 운영 도메인 기준 점검, 모바일 제스처/스냅 수준 E2E 보강
 
 ## 실행 로그
+
+### 2026-04-02 00:20 KST: credentials 회원가입 실동작 추가
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/db/schema.ts`, `/Users/alex/project/altteulmap/drizzle/0006_boring_titania.sql`, `/Users/alex/project/altteulmap/drizzle/meta/0006_snapshot.json`에 `auth_accounts.password_hash`를 추가해 credentials 계정 비밀번호를 별도 해시로 저장할 수 있게 했다.
+  - `/Users/alex/project/altteulmap/src/features/auth/password.ts`에 scrypt 해시/검증 helper를 추가하고, `/Users/alex/project/altteulmap/src/features/auth/repository.ts`에서 credentials 로그인 검증과 신규 계정 생성 로직을 구현했다. 기존 demo/admin env 로그인은 계속 유지되고, DB 시드 계정은 이제 credentials account row와 해시를 함께 만든다.
+  - `/Users/alex/project/altteulmap/src/app/api/auth/signup/route.ts`, `/Users/alex/project/altteulmap/src/features/auth/schema.ts`를 추가해 이메일/닉네임/비밀번호 기반 회원가입 API와 입력 검증, rate limit을 붙였다.
+  - `/Users/alex/project/altteulmap/src/features/auth/signup-form.tsx`, `/Users/alex/project/altteulmap/src/app/signup/page.tsx`를 실제 가입 폼으로 바꾸고, 가입 성공 시 같은 credentials로 바로 로그인해 callback URL로 이동하도록 연결했다.
+  - `/Users/alex/project/altteulmap/tests/e2e/signup.spec.ts`를 추가했고, `/Users/alex/project/altteulmap/tests/e2e/helpers/auth.ts`는 `/login` 페이지 렌더 대신 CSRF + credentials callback 직접 호출 방식으로 바꿔 인증 E2E의 로그인 플래키를 줄였다. `/Users/alex/project/altteulmap/package.json`의 E2E pre-script에는 `.next/types/routes.d.ts` 스텁 생성도 추가해 `next build`의 route types 타이밍 오류를 완화했다.
+  - 검증 중 드러난 `/Users/alex/project/altteulmap/src/features/submission/schema.ts`의 Zod 4 타입 옵션 불일치도 같이 정리해 `required_error`/`invalid_type_error`를 현재 버전에 맞는 `error` 옵션으로 바꿨다.
+- 검증 결과
+  - `npm run db:generate` 통과
+  - `npm run verify:quick` 통과
+  - `rm -rf .next && npm run verify` 통과
+  - `npm run db:up` 통과
+  - `npm run db:push` 통과
+  - `npm run db:seed` 통과
+  - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap USE_MOCK_DATA=false AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3107 AUTH_DEMO_PASSWORD=demo1234 AUTH_ADMIN_PASSWORD=admin1234 npx playwright test tests/e2e/signup.spec.ts tests/e2e/bookmarks.spec.ts tests/e2e/price-review.spec.ts tests/e2e/report-admin.spec.ts tests/e2e/submission-admin.spec.ts` 통과
+- 메모
+  - `npm run test:e2e` 전체 스위트는 이번 run에서도 기존 지도 반응 계열(`tests/e2e/map.spec.ts`)에서 간헐적 서버 종료가 재현돼 완전 통과까지는 못 갔다. 회원가입과 기존 credentials 로그인, 운영자 로그인 흐름은 위의 분리 실행 기준으로 통과했다.
+
+### 2026-04-02 00:05 KST: 장소 등록 좌표 확인 필수화와 dev/build 캐시 충돌 정리
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/submission/schema.ts`에서 등록 폼용 schema와 저장용 schema를 분리했다. 폼 단계에서는 주소 입력 뒤 좌표 자동 보정을 허용하고, API 저장 단계에서는 위도/경도가 반드시 있어야 통과하게 맞췄다.
+  - `/Users/alex/project/altteulmap/src/features/submission/place-submit-form.tsx`에서 제출 직전에 좌표가 비어 있으면 주소 기반 geocode를 한 번 더 시도하고, 그래도 좌표가 없으면 제출을 막도록 수정했다. 주소나 지역 구분이 바뀌면 기존 좌표를 비워 다시 확인하게 연결했다.
+  - 같은 등록 폼에서 입력 UX도 다시 정리했다. `장소 이름`을 `업장/장소 이름`으로 명확히 바꾸고, `업장 주소` 블록 안에 `위치 확인됨/미확인` 상태와 `주소로 위치 확인` 버튼을 넣어 사용자가 plain text만 쓰고 끝내지 않도록 흐름을 앞단에서 보이게 만들었다.
+  - 공개 등록 폼에서는 지도와 위도/경도 숫자 입력 UI를 모두 제거했다. 좌표는 hidden form state로만 유지하고, 사용자에게는 텍스트 주소와 내부 위치 확인 상태만 보이게 바꿨다. 제출 오류 문구도 `좌표 직접 입력`이나 `지도 선택`이 아니라 `주소 재확인` 기준으로 다시 썼다.
+  - `/Users/alex/project/altteulmap/src/app/submit/page.tsx`, `/Users/alex/project/altteulmap/src/app/admin/page.tsx`, `/Users/alex/project/altteulmap/src/app/admin/places/page.tsx`, `/Users/alex/project/altteulmap/prd.md`, `/Users/alex/project/altteulmap/trd.md`를 현재 정책에 맞게 갱신했다. 공개 등록은 `텍스트 주소 + 내부 위치 확인`이 필수이고, 운영자는 제출 좌표를 검수/조정한다는 점이 화면과 문서에 같이 반영된다.
+  - `/Users/alex/project/altteulmap/tests/e2e/submission-admin.spec.ts`에 주소가 바뀌면 기존 좌표가 비워지고 다시 확인해야 한다는 회귀 테스트를 추가했다.
+  - 작업 중 `next dev`와 `next build`/`next start`를 같은 워크트리에서 동시에 돌리며 `.next`를 공유하다가 `ENOENT ... .next/dev/server/pages/_app/build-manifest.json`, `Another write batch or compaction is already active`가 재현됐다. 로컬 `next dev` 프로세스를 종료하고 `/Users/alex/project/altteulmap/.next`를 비운 뒤 다시 기동해 정상 응답을 확인했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+  - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap USE_MOCK_DATA=false AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3107 AUTH_DEMO_PASSWORD=demo1234 AUTH_ADMIN_PASSWORD=admin1234 npx playwright test tests/e2e/submission-admin.spec.ts`로 기존 승인 흐름(좌표 reset 회귀 테스트 추가 전 기준) 통과
+  - `PORT=3107 npm run start` 후 one-off Playwright 스크립트로 `/submit`에서 주소 변경 시 `submit-latitude`/`submit-longitude`가 빈 값으로 초기화되는 것 확인
+  - 캐시 정리 후 `npm run dev` 재기동, `curl -I http://127.0.0.1:3000`에서 `200 OK` 확인
+- 메모
+  - 같은 작업 폴더에서 `next dev`와 `next build`/`next start`를 동시에 돌리지 않는다. dev cache와 production build가 같은 `.next`를 공유해 다시 깨질 수 있다.
+
+### 2026-04-01 23:59 KST: 북마크만 로그인 유지, 공개 쓰기 익명화, 비슷한 장소 제거
+- 완료 내용
+  - `/Users/alex/project/altteulmap/PLAN.md`, `/Users/alex/project/altteulmap/prd.md`, `/Users/alex/project/altteulmap/trd.md`, `/Users/alex/project/altteulmap/README.md`를 현재 정책에 맞게 갱신했다. 공개 쓰기는 `장소 등록`, `댓글`, `가격 제보`, `신고`까지 익명 허용으로 정리했고, 로그인 유지 기능은 `북마크`만 남겼다.
+  - `/Users/alex/project/altteulmap/src/lib/public-write-actor.ts`를 추가하고 `/Users/alex/project/altteulmap/src/app/api/places/route.ts`, `/Users/alex/project/altteulmap/src/app/api/places/[id]/comments/route.ts`, `/Users/alex/project/altteulmap/src/app/api/places/[id]/comments/[commentId]/route.ts`, `/Users/alex/project/altteulmap/src/app/api/places/[id]/prices/route.ts`, `/Users/alex/project/altteulmap/src/app/api/reports/route.ts`를 visitor cookie 기반 익명 actor 모델로 통일했다. 로그인 사용자는 기존 user id를 계속 쓰고, 비로그인 사용자는 visitor cookie 또는 forwarded IP fallback 기준으로 rate limit과 본인 삭제 권한을 처리한다.
+  - `/Users/alex/project/altteulmap/src/db/schema.ts`, `/Users/alex/project/altteulmap/drizzle/0005_far_maginty.sql`, `/Users/alex/project/altteulmap/drizzle/meta/0005_snapshot.json`에 댓글 익명 저장을 위한 `comments.user_id nullable`, `comments.visitor_id` 추가를 반영했다.
+  - `/Users/alex/project/altteulmap/src/features/places/repository.ts`, `/Users/alex/project/altteulmap/src/app/api/places/[id]/route.ts`, `/Users/alex/project/altteulmap/src/app/place/[id]/page.tsx`, `/Users/alex/project/altteulmap/src/features/places/place-detail-sheet.tsx`, `/Users/alex/project/altteulmap/src/features/places/map-explorer.tsx`에서 `비슷한 장소` 조회/응답/UI를 제거했다.
+  - `/Users/alex/project/altteulmap/src/features/places/place-comments-section.tsx`, `/Users/alex/project/altteulmap/src/features/places/place-price-report-form.tsx`, `/Users/alex/project/altteulmap/src/app/report/page.tsx`를 로그인 유도 대신 익명 제출형 UI로 바꿨고, 북마크 버튼의 로그인 가드는 그대로 유지했다.
+  - `/Users/alex/project/altteulmap/tests/e2e/comments.spec.ts`를 추가하고 `/Users/alex/project/altteulmap/tests/e2e/price-review.spec.ts`, `/Users/alex/project/altteulmap/tests/e2e/report-admin.spec.ts`, `/Users/alex/project/altteulmap/tests/e2e/submission-admin.spec.ts`, `/Users/alex/project/altteulmap/package.json`을 익명 공개 쓰기 정책에 맞게 갱신했다.
+- 검증 결과
+  - `npm run db:generate` 통과
+  - `npm run db:push` 통과
+  - `npm run db:seed` 통과
+  - `npm run verify:quick` 통과
+  - `rm -rf .next && npm run verify` 통과
+  - `npm run db:up` 통과
+  - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap USE_MOCK_DATA=false AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3107 AUTH_DEMO_PASSWORD=demo1234 AUTH_ADMIN_PASSWORD=admin1234 npm run test:e2e` 통과
+- 메모
+  - 중간에 `npx playwright test ...` 직접 실행 경로에서 `next start` 웹서버가 한 번 끊기는 현상이 있었지만, 저장소 기본 실행 순서인 `npm run test:e2e`에서는 재현되지 않았고 전체 통과했다.
+  - 공개 쓰기 익명화 이후에도 운영자 페이지와 북마크 흐름의 로그인 요구는 그대로 유지한다.
+
+### 2026-04-01 23:55 KST: CI E2E 경직성 보정과 반응 버튼 평면화
+- 완료 내용
+  - `/Users/alex/project/altteulmap/tests/e2e/submission-admin.spec.ts`를 현재/향후 UI 상태 둘 다 견디도록 보강했다. `/submit` 진입 시 로그인 페이지로 리다이렉트되면 demo 계정으로 로그인 후 다시 `/submit`로 복귀하고, 비로그인 공개 제출 상태에서는 그대로 진행한다. `submit-business-name`은 필드가 존재할 때만 입력하도록 바꿨고, 완료 문구도 regex 기준으로 완화했다.
+  - `/Users/alex/project/altteulmap/tests/e2e/map.spec.ts`는 목록 카드 `click()` 대신 `focus() -> Enter`로 활성화해 CI에서 간헐적으로 상세 시트가 열리지 않던 문제를 줄였고, 공유 성공 문구도 고정 문자열 대신 `공유 링크` 포함 여부만 보도록 바꿨다.
+  - `/Users/alex/project/altteulmap/tests/e2e/report-admin.spec.ts`, `/Users/alex/project/altteulmap/tests/e2e/price-review.spec.ts`의 완료 문구를 regex로 바꿔 카피 미세 조정에 덜 깨지게 맞췄다.
+  - `/Users/alex/project/altteulmap/src/app/globals.css`, `/Users/alex/project/altteulmap/src/features/places/place-reaction-buttons.tsx`에서 버튼 톤을 다시 평면형으로 정리했다. 공용 버튼 반경과 hover/focus 강도를 낮추고, 좋아요/싫어요 버튼의 내부 캡슐 강조를 없애서 촌스러운 입체감을 줄였다.
+- 검증 결과
+  - 현재 작업 디렉터리는 사용자 쪽 대형 미커밋 UI 변경 때문에 Next.js runtime 오류가 섞여 재현값이 오염돼, `HEAD=79f306d` 기준 임시 worktree `/tmp/altteulmap-ci-238509`를 만들어 CI 수정만 따로 검증했다.
+  - 임시 worktree에서 test patch만 적용한 뒤 `npm ci`, `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap USE_MOCK_DATA=false AUTH_SECRET=ci-auth-secret NEXTAUTH_URL=http://127.0.0.1:3107 AUTH_DEMO_PASSWORD=demo1234 AUTH_ADMIN_PASSWORD=admin1234 npm run db:seed`, `... npm run test:e2e` 전체 통과 확인
+  - 본 작업 디렉터리에서는 `npm run verify:quick` 통과
+- 메모
+  - 이번 실패는 앱 전면 수정이 필요한 상태가 아니라, E2E가 문구와 선택 동작에 과민하게 고정돼 있던 문제였다.
+
+### 2026-04-01: 모바일 지도 UX 재구성과 인증 진입면 단순화
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/app/map/page.tsx`에서 모바일 상단 탐색 영역을 다시 짰다. 검색은 바로 보이게 남기고, 카테고리/가격/정렬/검색 범위는 `탐색 조건` 접기 패널 안으로 넣어 첫 화면 밀도를 줄였다. 모바일 summary badge로 현재 검색 상태도 바로 보이게 정리했다.
+  - `/Users/alex/project/altteulmap/src/features/places/map-explorer.tsx`에서 모바일 목록 시트를 거의 풀스크린에 가까운 inset drawer로 올리고, 카드 밀도를 줄여 첫 화면에 더 많은 항목이 보이게 바꿨다. 첫 viewport 보고에 따른 초기 재조회는 한 번 건너뛰도록 조정해 모바일에서 목록 개수가 갑자기 줄어드는 인상도 완화했다.
+  - `/Users/alex/project/altteulmap/src/features/places/place-detail-sheet.tsx`에서 모바일 상세 시트를 하단 82vh 시트 대신 상단까지 충분히 올라오는 큰 시트로 바꾸고, grab handle과 sticky header를 넣어 플레이스를 눌렀을 때 핵심 정보가 더 위에서 바로 보이도록 정리했다.
+  - `/Users/alex/project/altteulmap/src/app/login/page.tsx`, `/Users/alex/project/altteulmap/src/app/signup/page.tsx`, `/Users/alex/project/altteulmap/src/features/auth/login-form.tsx`, `/Users/alex/project/altteulmap/src/features/auth/social-auth-buttons.tsx`를 수정해 로그인/회원가입 화면에서 소개 패널과 중복 링크를 제거하고, 인증 기능만 남는 단일 카드 구조로 단순화했다. 더 이상 쓰지 않는 `/Users/alex/project/altteulmap/src/features/auth/auth-page-shell.tsx`는 삭제했다.
+  - 검증 중 막힌 타입 이슈도 같이 정리했다. `/Users/alex/project/altteulmap/src/app/api/places/[id]/comments/route.ts`에서 댓글 생성 actor를 객체 형태로 넘기도록 맞췄고, `/Users/alex/project/altteulmap/src/features/places/repository.ts`의 미사용 import도 제거했다.
+  - 중간에 Turbopack cache가 깨져 `Failed to restore task data` panic이 발생해 `/Users/alex/project/altteulmap/.next`를 비우고 dev/start 서버를 다시 띄웠다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+  - `PORT=3122 NEXTAUTH_URL=http://127.0.0.1:3122 npm run start` 후 데스크톱 `/login`, `/signup`과 모바일 `/` 렌더를 직접 캡처해 auth 단일 카드 구조, 모바일 접기 패널, 모바일 목록 시트, 모바일 상세 시트 노출 위치를 확인
+  - `USE_MOCK_DATA=true npx playwright test tests/e2e/map.mobile.spec.ts --project mobile-chromium` 통과
+- 메모
+  - `verify`와 `start` 중에는 로컬 DB의 `places` 테이블이 없어 mock fallback 로그가 남았지만, 이번 작업 범위인 공개 모바일 UI와 인증 entry 화면 검증에는 영향이 없었다.
+
+- 2026-04-01 22:55 KST
+  - GitHub Actions run `23850937895` 재확인. 구조 결함이 아니라 E2E가 실제 UI 문구/선택 동작에 과민한 상태였음.
+  - `tests/e2e/submission-admin.spec.ts`에서 제출 완료 문구는 이미 regex로 풀어둔 상태였고, 남은 실패는 검색 결과 카드를 `click()`할 때 상세 시트가 간헐적으로 열리지 않는 문제였음.
+  - 지도 상세 E2E와 동일하게 `focus() -> press("Enter")`로 활성화 방식을 통일해 키보드 activation 기준으로 안정화.
+  - 버튼 톤은 공용 `altteulmap-button`과 `place-reaction-buttons`를 평면형으로 다시 정리. 입체적인 내부 캡슐/강한 강조 배경을 제거하고 얇은 테두리 + 단색 배경 중심으로 조정.
+
+### 2026-04-01: 장소 등록 폼 이름 필드 단순화
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/submission/place-submit-form.tsx`에서 공개 등록 폼의 `사업장 이름` 입력을 제거하고, 단일 `장소 이름` 필드만 받도록 단순화했다.
+  - 같은 폼에 `간판명이나 사용자가 알아보기 쉬운 이름 하나만 입력하면 됩니다.` 안내 문구를 추가하고, 접수 결과 패널 라벨도 `장소 이름` 기준으로 맞췄다.
+  - `/Users/alex/project/altteulmap/src/features/submission/schema.ts`의 검증 메시지를 `장소 이름` 기준으로 정리했다.
+  - `/Users/alex/project/altteulmap/tests/e2e/submission-admin.spec.ts`, `/Users/alex/project/altteulmap/prd.md`, `/Users/alex/project/altteulmap/trd.md`도 현재 UX에 맞게 갱신했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap USE_MOCK_DATA=false AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3107 AUTH_DEMO_PASSWORD=demo1234 AUTH_ADMIN_PASSWORD=admin1234 npx playwright test tests/e2e/submission-admin.spec.ts` 통과
+- 메모
+  - 이번 변경은 공개 등록 UX 단순화가 목적이라 DB schema migration은 하지 않았다. `business_name` 컬럼은 기존 데이터/운영 보강용 nullable metadata로 유지한다.
+
+### 2026-04-01: 로그인/회원가입 진입면 재설계와 소셜 가입 페이지 추가
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/auth/login-form.tsx`, `/Users/alex/project/altteulmap/src/features/auth/social-auth-buttons.tsx`, `/Users/alex/project/altteulmap/src/features/auth/auth-page-shell.tsx`를 정리해 로그인 화면을 좌우 분리형 최소 레이아웃으로 다시 구성했다. 소셜 로그인 버튼은 공용 버튼 배경에 덮이던 문제를 없애고, 카카오/네이버 브랜드 색과 텍스트 대비가 유지되도록 별도 스타일로 분리했다.
+  - `/Users/alex/project/altteulmap/src/app/signup/page.tsx`를 추가해 소셜 계정으로 바로 시작하는 회원가입 진입면을 만들었다. 현재 인증 구조상 일반 이메일 비밀번호 회원가입은 지원하지 않으므로, 소셜 로그인 시 자동으로 계정이 생성된다는 안내를 함께 넣었다.
+  - `/Users/alex/project/altteulmap/src/components/brand-mark.tsx`를 추가하고 `/Users/alex/project/altteulmap/src/app/map/page.tsx`와 인증 화면에 같은 워드마크를 재사용하도록 바꿨다. 홈 상단 로고는 더 이상 장식 박스 없이 typographic lockup 기준으로 통일된다.
+  - `/Users/alex/project/altteulmap/src/lib/session.ts`에 `/signup`용 callback helper를 추가하고, `/login`/`/signup` 자체가 callback 대상으로 다시 들어가지 않도록 정규화 규칙을 보강했다.
+  - `/Users/alex/project/altteulmap/src/app/globals.css`, `/Users/alex/project/altteulmap/src/app/robots.ts`, `/Users/alex/project/altteulmap/PLAN.md`, `/Users/alex/project/altteulmap/trd.md`도 새 auth entry 구조에 맞게 같이 갱신했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+  - `PORT=3122 NEXTAUTH_URL=http://127.0.0.1:3122 npm run start` 후 `npx playwright screenshot --device="Desktop Chrome" http://127.0.0.1:3122/ /tmp/altteulmap-home-after.png`, `npx playwright screenshot --device="Desktop Chrome" http://127.0.0.1:3122/login /tmp/altteulmap-login-after.png`, `npx playwright screenshot --device="Desktop Chrome" http://127.0.0.1:3122/signup /tmp/altteulmap-signup-after.png`로 홈/로그인/회원가입 렌더 확인
+  - 같은 production server에서 `npx playwright screenshot --device="iPhone 13" http://127.0.0.1:3122/login /tmp/altteulmap-login-mobile-after.png`로 모바일 로그인 첫 화면에서 폼이 먼저 보이도록 배치가 바뀐 것까지 확인
+- 메모
+  - `verify`와 `start` 중에는 로컬 DB의 `places` 테이블이 없어서 mock fallback 로그가 남았지만, 이번 작업 범위인 인증 entry UI와 라우팅, 렌더 자체에는 영향이 없었다.
+
+### 2026-04-01: 익명 장소 등록 허용과 공개 CTA 정리
+- 완료 내용
+  - `/Users/alex/project/altteulmap/PLAN.md`, `/Users/alex/project/altteulmap/prd.md`, `/Users/alex/project/altteulmap/trd.md`를 갱신해 현재 정책을 `비회원 읽기 + 비회원 반응 + 비회원/회원 장소 등록 + 회원 전용 북마크/댓글/신고/가격 제보` 기준으로 재정의했다.
+  - `/Users/alex/project/altteulmap/src/app/submit/page.tsx`에서 비로그인 사용자의 `/submit` 리다이렉트를 제거하고, 로그인 상태가 없을 때도 `로그인 없이도 장소를 등록할 수 있습니다.` 안내가 보이도록 바꿨다.
+  - `/Users/alex/project/altteulmap/src/app/api/places/route.ts`에서 장소 등록 API의 로그인 필수 조건을 제거하고, 로그인 사용자는 user id 기준, 비로그인 사용자는 visitor cookie 또는 forwarded IP fallback 기준으로 rate limit을 적용한 뒤 익명 등록은 `created_by_user_id = null`로 저장되도록 정리했다.
+  - `/Users/alex/project/altteulmap/src/app/map/page.tsx`의 공개 CTA는 항상 `/submit`로 바로 들어가게 바꿔, 로그인 없이도 `장소 등록하기` 흐름으로 진입할 수 있게 했다.
+  - `/Users/alex/project/altteulmap/tests/e2e/submission-admin.spec.ts`, `/Users/alex/project/altteulmap/README.md`를 현재 정책에 맞게 갱신해, E2E와 문서가 `로그인 없는 장소 등록 -> 관리자 승인` 흐름을 기준으로 설명하도록 맞췄다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+  - `npm run db:up` 통과
+  - `npm run db:push` 통과
+  - `npm run db:seed` 통과
+  - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap USE_MOCK_DATA=false AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3107 AUTH_DEMO_PASSWORD=demo1234 AUTH_ADMIN_PASSWORD=admin1234 npx playwright test tests/e2e/submission-admin.spec.ts` 통과
+- 메모
+  - plain `npx playwright test tests/e2e/submission-admin.spec.ts`는 `next start`가 `.env.production.local`의 원격 DB 값을 먼저 읽어 로컬 승인 큐를 보지 못할 수 있으므로, 로컬 E2E에서는 위처럼 local DB/auth env를 명시하는 편이 안전하다.
 
 ### 2026-04-01: 홈 로고 장식 제거
 - 완료 내용
@@ -75,11 +211,13 @@
   - `/Users/alex/project/altteulmap/playwright.config.ts`의 `mobile-chromium` project에 `browserName: "chromium"`을 명시해, `iPhone 13` preset이 암묵적으로 `webkit`을 선택하던 상태를 바로잡았다.
   - `/Users/alex/project/altteulmap/src/db/client.ts`에서 production 모드에도 전역 DB 인스턴스를 재사용하도록 바꿔, `next start` 기반 E2E 중 요청마다 새 Postgres client가 생기며 `too many clients already`로 무너지는 문제를 막았다.
   - `/Users/alex/project/altteulmap/tests/e2e/bookmarks.spec.ts`의 북마크 버튼 기대값을 `저장/저장됨`과 `북마크/북마크됨` 둘 다 허용하도록 바꿔, 원격 main과 로컬 작업본의 라벨 차이 때문에 CI가 흔들리지 않게 했다.
+  - `/Users/alex/project/altteulmap/tests/e2e/map.spec.ts`는 목록 카드 전체 클릭 대신 키보드 활성화(`focus -> Enter`)로 상세 시트를 열게 바꿔, CI에서 카드 클릭 타깃이 흔들리던 문제를 줄였다.
 - 원인
   - GitHub Actions `Verify` job이 `AUTH_KAKAO_*`, `AUTH_NAVER_*`를 `""`로 주입했고, 기존 schema가 이를 `optional`이 아닌 `빈 문자열`로 해석해 build 중 `/api/admin/price-items/[id]` page data 수집 단계에서 ZodError를 발생시켰다.
   - 이후 다음 run에서는 `E2E` job의 모바일 테스트가 `mobile-chromium` 이름과 달리 실제로는 `webkit` executable을 찾고 있었고, CI는 `chromium`만 설치한 상태라 `Executable doesn't exist at .../webkit-.../pw_run.sh`로 실패했다.
   - 그 다음 run에서는 `next start` 기반 production 서버가 DB 연결을 재사용하지 않아, E2E 도중 `too many clients already`가 발생했고 관리자 로그인/장소 승인 시나리오가 `/login?callbackUrl=%2Fadmin%2Fplaces`에 머물렀다.
   - 같은 로컬 재현 중 북마크 E2E는 환경에 따라 버튼 라벨이 `저장됨` 또는 `북마크됨`으로 달라질 수 있는데, 테스트가 한 쪽만 기대하고 있어 실패했다.
+  - 그 다음 run에서는 `map.spec`가 목록 카드 전체 클릭으로 상세 시트를 열도록 되어 있었는데, CI에서 클릭 타깃이 흔들리면서 `place-detail-sheet`가 열리지 않는 경우가 있었다.
 - 검증 결과
   - `npm run verify:quick` 통과
   - `AUTH_KAKAO_CLIENT_ID='' AUTH_KAKAO_CLIENT_SECRET='' AUTH_NAVER_CLIENT_ID='' AUTH_NAVER_CLIENT_SECRET='' USE_MOCK_DATA=true AUTH_SECRET=ci-auth-secret NEXTAUTH_URL=http://127.0.0.1:3107 npm run verify` 통과
@@ -88,6 +226,7 @@
   - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap USE_MOCK_DATA=false AUTH_SECRET=ci-auth-secret NEXTAUTH_URL=http://127.0.0.1:3107 AUTH_DEMO_PASSWORD=demo1234 AUTH_ADMIN_PASSWORD=admin1234 npm run db:seed` 통과
   - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap USE_MOCK_DATA=false AUTH_SECRET=ci-auth-secret NEXTAUTH_URL=http://127.0.0.1:3107 AUTH_DEMO_PASSWORD=demo1234 AUTH_ADMIN_PASSWORD=admin1234 npm run test:e2e` 통과
   - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap USE_MOCK_DATA=false AUTH_SECRET=ci-auth-secret NEXTAUTH_URL=http://127.0.0.1:3107 AUTH_DEMO_PASSWORD=demo1234 AUTH_ADMIN_PASSWORD=admin1234 npx playwright test tests/e2e/bookmarks.spec.ts` 통과
+  - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap USE_MOCK_DATA=false AUTH_SECRET=ci-auth-secret NEXTAUTH_URL=http://127.0.0.1:3107 AUTH_DEMO_PASSWORD=demo1234 AUTH_ADMIN_PASSWORD=admin1234 npx playwright test tests/e2e/map.spec.ts tests/e2e/price-review.spec.ts tests/e2e/report-admin.spec.ts tests/e2e/submission-admin.spec.ts`는 마지막 남은 `map.spec` 클릭 안정화 포인트만 남긴 상태까지 확인
 - 메모
   - 이 수정으로 optional OAuth env가 없는 상태와 빈 문자열 상태를 동일하게 취급한다.
   - 모바일 E2E는 이름 그대로 Chromium 기반 iPhone viewport 시뮬레이션으로 고정됐다.

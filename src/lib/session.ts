@@ -25,7 +25,7 @@ export function normalizeCallbackUrl(
   const pathname =
     queryIndex >= 0 ? pathAndQuery.slice(0, queryIndex) : pathAndQuery;
 
-  if (pathname === "/login") {
+  if (pathname === "/login" || pathname === "/signup") {
     return fallback;
   }
 
@@ -40,13 +40,21 @@ export function normalizeCallbackUrl(
   return `${normalizedPath}#${encodeURIComponent(hashFragment)}`;
 }
 
-export function createLoginHref(callbackUrl: string) {
+function createAuthEntryHref(pathname: "/login" | "/signup", callbackUrl: string) {
   const safeCallbackUrl = normalizeCallbackUrl(callbackUrl);
   const params = new URLSearchParams({
     callbackUrl: safeCallbackUrl,
   });
 
-  return `/login?${params.toString()}`;
+  return `${pathname}?${params.toString()}`;
+}
+
+export function createLoginHref(callbackUrl: string) {
+  return createAuthEntryHref("/login", callbackUrl);
+}
+
+export function createSignupHref(callbackUrl: string) {
+  return createAuthEntryHref("/signup", callbackUrl);
 }
 
 export async function getSessionUser(): Promise<SessionUser | null> {

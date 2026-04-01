@@ -17,19 +17,16 @@ import type { PlaceRecord } from "@/features/places/types";
 
 type PlaceDetailResponse = {
   item: PlaceRecord;
-  related: PlaceRecord[];
   source: "database" | "mock";
   mock: boolean;
 };
 
 type PlaceDetailSheetProps = {
-  authenticated: boolean;
   bookmarkedPlaceIds: string[];
   currentMapHref: string;
   placeId: string | null;
   previewPlace: PlaceRecord | null;
   onClose: () => void;
-  onOpenPlace: (placeId: string) => void;
   onPlaceReactionChange?: (nextState: PlaceReactionUpdate) => void;
 };
 
@@ -60,13 +57,11 @@ function LoadingState() {
 }
 
 export function PlaceDetailSheet({
-  authenticated,
   bookmarkedPlaceIds,
   currentMapHref,
   placeId,
   previewPlace,
   onClose,
-  onOpenPlace,
   onPlaceReactionChange,
 }: PlaceDetailSheetProps) {
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -156,18 +151,13 @@ export function PlaceDetailSheet({
   const isLoading = detailState.placeId !== placeId;
   const place = data?.item ?? previewPlace;
   const category = place ? getCategoryBySlug(place.categorySlug) : null;
-  const relatedPlaces = data?.related ?? [];
   const isBookmarked = place ? bookmarkedPlaceIds.includes(place.id) : false;
   const placePath = place ? `/place/${place.id}` : null;
   const bookmarkLoginHref = createLoginHref(currentMapHref);
   const reportPath = place
     ? `/report?placeId=${place.id}&placeName=${encodeURIComponent(place.name)}`
     : null;
-  const reportHref = reportPath
-    ? authenticated
-      ? reportPath
-      : createLoginHref(reportPath)
-    : null;
+  const reportHref = reportPath;
 
   const handleReactionUpdate = (nextState: PlaceReactionUpdate) => {
     setDetailState((current) => {
@@ -209,20 +199,30 @@ export function PlaceDetailSheet({
         role="dialog"
         aria-modal="true"
         data-testid="place-detail-sheet"
-        className="pointer-events-auto absolute inset-x-0 bottom-0 flex max-h-[82vh] w-full flex-col overflow-hidden rounded-t-[2rem] border-t border-stone-200 bg-white shadow-2xl xl:inset-x-auto xl:inset-y-0 xl:right-0 xl:max-h-none xl:max-w-[28rem] xl:rounded-l-[2rem] xl:rounded-t-none xl:border-l xl:border-t-0"
+        className="pointer-events-auto absolute inset-x-2 bottom-2 top-2 flex w-auto flex-col overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-2xl xl:inset-x-auto xl:inset-y-0 xl:right-0 xl:top-0 xl:w-full xl:max-h-none xl:max-w-[28rem] xl:rounded-l-[2rem] xl:rounded-r-none xl:border-l xl:border-r-0"
       >
-        <div className="flex items-center justify-between border-b border-stone-200 px-4 py-4 sm:px-5">
-          <div>
-            <h2 className="text-lg font-semibold text-stone-900">상세 정보</h2>
+        <div className="sticky top-0 z-10 border-b border-stone-200 bg-white/95 px-4 pb-4 pt-2 backdrop-blur sm:px-5">
+          <div className="flex items-center justify-center pb-3 xl:hidden">
+            <span className="h-1.5 w-12 rounded-full bg-stone-300" />
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            data-testid="place-detail-close"
-            className="whitespace-nowrap rounded-full border border-stone-300 bg-white px-3 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
-          >
-            닫기
-          </button>
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-orange-600">
+                상세 정보
+              </p>
+              <h2 className="mt-1 text-lg font-semibold tracking-tight text-stone-900 sm:text-xl">
+                장소를 자세히 보기
+              </h2>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              data-testid="place-detail-close"
+              className="altteulmap-button shrink-0 whitespace-nowrap border border-stone-300 bg-white px-3 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
+            >
+              닫기
+            </button>
+          </div>
         </div>
 
         <div
@@ -240,7 +240,7 @@ export function PlaceDetailSheet({
               {placePath ? (
                 <Link
                   href={placePath}
-                  className="mt-4 inline-flex whitespace-nowrap rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
+                  className="altteulmap-button mt-4 inline-flex whitespace-nowrap border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
                 >
                   페이지로 보기
                 </Link>
@@ -248,7 +248,7 @@ export function PlaceDetailSheet({
             </div>
           ) : null}
 
-          {!isLoading && !error && place ? (
+          {place ? (
             <div className="space-y-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -299,12 +299,12 @@ export function PlaceDetailSheet({
                   <PlaceShareButton
                     path={`/place/${place.id}`}
                     title={place.name}
-                    className="inline-flex whitespace-nowrap rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
+                    className="altteulmap-button inline-flex whitespace-nowrap border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
                   />
                   {reportHref ? (
                     <Link
                       href={reportHref}
-                      className="altteulmap-accent-ghost inline-flex whitespace-nowrap rounded-full border px-4 py-2 text-sm transition"
+                      className="altteulmap-accent-ghost altteulmap-button inline-flex whitespace-nowrap border px-4 py-2 text-sm transition"
                     >
                       신고하기
                     </Link>
@@ -312,7 +312,7 @@ export function PlaceDetailSheet({
                   {placePath ? (
                     <Link
                       href={placePath}
-                      className="altteulmap-accent-ghost inline-flex whitespace-nowrap rounded-full border px-4 py-2 text-sm transition"
+                      className="altteulmap-accent-ghost altteulmap-button inline-flex whitespace-nowrap border px-4 py-2 text-sm transition"
                     >
                       페이지로 보기
                     </Link>
@@ -390,8 +390,6 @@ export function PlaceDetailSheet({
               <PlacePriceReportForm
                 key={`${place.id}-price-form`}
                 placeId={place.id}
-                authenticated={authenticated}
-                loginHref={bookmarkLoginHref}
                 suggestedItems={place.priceItems}
               />
 
@@ -399,35 +397,7 @@ export function PlaceDetailSheet({
                 key={`${place.id}-comments`}
                 placeId={place.id}
                 initialComments={place.comments}
-                authenticated={authenticated}
-                loginHref={bookmarkLoginHref}
               />
-
-              <section className="rounded-[1.5rem] border border-stone-200 bg-white p-5">
-                <h4 className="text-sm font-semibold text-stone-900">비슷한 장소</h4>
-                {relatedPlaces.length > 0 ? (
-                  <div className="mt-4 space-y-3">
-                    {relatedPlaces.map((related) => (
-                      <button
-                        key={related.id}
-                        type="button"
-                        onClick={() => onOpenPlace(related.id)}
-                        className="block w-full rounded-[1.15rem] bg-stone-50 px-4 py-4 text-left transition hover:bg-stone-100"
-                      >
-                        <p className="font-medium text-stone-900">{related.name}</p>
-                        <p className="mt-1 text-xs text-stone-500">
-                          {related.representativePriceLabel} ·{" "}
-                          {formatKrw(related.representativePriceAmount)}원
-                        </p>
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="mt-4 text-sm text-stone-500">
-                    비슷한 장소를 찾는 중이거나 아직 없습니다.
-                  </p>
-                )}
-              </section>
             </div>
           ) : null}
         </div>

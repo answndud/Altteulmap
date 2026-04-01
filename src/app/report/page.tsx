@@ -1,11 +1,5 @@
-import { redirect } from "next/navigation";
-
 import { ReportSubmitForm } from "@/features/reports/report-submit-form";
-import {
-  createLoginHref,
-  getSessionUser,
-  getSessionUserLabel,
-} from "@/lib/session";
+import { getSessionUser, getSessionUserLabel } from "@/lib/session";
 
 type ReportPageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -19,12 +13,7 @@ export default async function ReportPage({ searchParams }: ReportPageProps) {
   const params = await searchParams;
   const placeId = getFirstValue(params.placeId, "unknown-place");
   const placeName = getFirstValue(params.placeName, "이름 없는 장소");
-  const callbackUrl = `/report?placeId=${encodeURIComponent(placeId)}&placeName=${encodeURIComponent(placeName)}`;
   const user = await getSessionUser();
-
-  if (!user) {
-    redirect(createLoginHref(callbackUrl));
-  }
 
   return (
     <main className="bg-stone-50 px-4 py-8 sm:px-6">
@@ -35,8 +24,10 @@ export default async function ReportPage({ searchParams }: ReportPageProps) {
         <h1 className="mt-3 text-3xl font-semibold tracking-tight text-stone-900 sm:text-5xl">
           정보 수정 요청
         </h1>
-        <div className="mt-6 inline-flex rounded-full bg-stone-100 px-4 py-2 text-sm text-stone-700">
-          신고 계정: {getSessionUserLabel(user)}
+        <div className="altteulmap-badge mt-6 inline-flex bg-stone-100 px-4 py-2 text-sm text-stone-700">
+          {user
+            ? `신고 계정: ${getSessionUserLabel(user)}`
+            : "로그인 없이도 신고를 남길 수 있습니다."}
         </div>
 
         <div className="mt-8">

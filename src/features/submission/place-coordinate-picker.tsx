@@ -22,6 +22,7 @@ type PlaceCoordinatePickerProps = {
   longitude: string;
   onChange: (next: { latitude: string; longitude: string }) => void;
   disabled?: boolean;
+  showLookupButton?: boolean;
 };
 
 function formatCoordinate(value: number | null) {
@@ -57,6 +58,7 @@ export function PlaceCoordinatePicker({
   longitude,
   onChange,
   disabled = false,
+  showLookupButton = true,
 }: PlaceCoordinatePickerProps) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<NaverMapInstance | null>(null);
@@ -168,7 +170,7 @@ export function PlaceCoordinatePicker({
     markerRef.current = new naver.maps.Marker({
       map: mapInstanceRef.current,
       position: new LatLng(selectedPoint.lat, selectedPoint.lng),
-      title: placeName || "제보 위치",
+      title: placeName || "등록 위치",
     });
 
     mapInstanceRef.current.panTo?.(new LatLng(selectedPoint.lat, selectedPoint.lng));
@@ -202,9 +204,9 @@ export function PlaceCoordinatePicker({
 
   const statusMessage =
     status === "missing-key"
-      ? "지도 연결이 아직 준비되지 않아 숫자 입력으로만 위치를 지정할 수 있습니다."
+      ? "지도 연결이 아직 준비되지 않았습니다. 잠시 후 다시 시도해주세요."
       : status === "error"
-        ? "지도를 불러오지 못했습니다. 숫자 입력으로 대략적인 위치를 지정해주세요."
+        ? "지도를 불러오지 못했습니다. 잠시 후 다시 시도해주세요."
         : status === "loading"
           ? "지도를 불러오는 중입니다."
           : null;
@@ -216,7 +218,7 @@ export function PlaceCoordinatePicker({
           Location
         </p>
         <h2 className="mt-2 text-lg font-semibold text-stone-900">
-          대략적인 위치 선택
+          지도 위치 확인
         </h2>
         {placeName || district || address ? (
           <p className="mt-3 text-sm leading-6 text-stone-500">
@@ -233,50 +235,53 @@ export function PlaceCoordinatePicker({
             {status === "ready" ? "네이버 지도" : "프리뷰 안내"}
           </p>
           <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                startLookupTransition(async () => {
-                  if (!address.trim()) {
-                    setLookupMessage("주소를 먼저 입력한 뒤 좌표 찾기를 실행해주세요.");
-                    return;
-                  }
-
-                  if (status !== "ready") {
-                    setLookupMessage(
-                      "지도를 사용할 수 없어 주소 기반 좌표 찾기를 실행할 수 없습니다.",
-                    );
-                    return;
-                  }
-
-                  const query = [district.trim(), address.trim()]
-                    .filter(Boolean)
-                    .join(" ");
-
-                  try {
-                    const result = await geocodeAddress(query);
-
-                    if (!result) {
-                      setLookupMessage("입력한 주소로 좌표를 찾지 못했습니다.");
+            {showLookupButton ? (
+              <button
+                type="button"
+                data-testid="submit-geocode-button"
+                onClick={() => {
+                  startLookupTransition(async () => {
+                    if (!address.trim()) {
+                      setLookupMessage("주소를 먼저 입력한 뒤 위치 확인을 실행해주세요.");
                       return;
                     }
 
-                    onChange({
-                      latitude: result.point.lat.toFixed(6),
-                      longitude: result.point.lng.toFixed(6),
-                    });
-                    setLookupMessage("주소 기준 좌표를 채웠습니다. 필요하면 지도에서 다시 조정하세요.");
-                  } catch (error) {
-                    console.error("Failed to geocode submission address.", error);
-                    setLookupMessage("주소 좌표 검색에 실패했습니다. 잠시 후 다시 시도해주세요.");
-                  }
-                });
-              }}
-              disabled={disabled || isLookingUp}
-              className="rounded-full border border-stone-300 bg-white px-3 py-1.5 text-xs text-stone-700 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isLookingUp ? "주소 찾는 중..." : "주소로 좌표 찾기"}
-            </button>
+                    if (status !== "ready") {
+                      setLookupMessage(
+                        "지도를 사용할 수 없어 주소 기반 위치 확인을 실행할 수 없습니다.",
+                      );
+                      return;
+                    }
+
+                    const query = [district.trim(), address.trim()]
+                      .filter(Boolean)
+                      .join(" ");
+
+                    try {
+                      const result = await geocodeAddress(query);
+
+                      if (!result) {
+                        setLookupMessage("입력한 주소로 위치를 찾지 못했습니다.");
+                        return;
+                      }
+
+                      onChange({
+                        latitude: result.point.lat.toFixed(6),
+                        longitude: result.point.lng.toFixed(6),
+                      });
+                      setLookupMessage("주소 기준 위치를 채웠습니다. 필요하면 지도에서 다시 조정하세요.");
+                    } catch (error) {
+                      console.error("Failed to geocode submission address.", error);
+                      setLookupMessage("주소 위치 확인에 실패했습니다. 잠시 후 다시 시도해주세요.");
+                    }
+                  });
+                }}
+                disabled={disabled || isLookingUp}
+                className="altteulmap-button border border-stone-300 bg-white px-3 py-1.5 text-xs text-stone-700 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isLookingUp ? "위치 확인 중..." : "주소로 위치 확인"}
+              </button>
+            ) : null}
             {selectedPoint ? (
               <button
                 type="button"
@@ -287,9 +292,9 @@ export function PlaceCoordinatePicker({
                   })
                 }
                 disabled={disabled}
-                className="rounded-full border border-stone-300 bg-white px-3 py-1.5 text-xs text-stone-700 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-60"
+                className="altteulmap-button border border-stone-300 bg-white px-3 py-1.5 text-xs text-stone-700 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                좌표 비우기
+                위치 다시 선택
               </button>
             ) : null}
           </div>
@@ -304,7 +309,10 @@ export function PlaceCoordinatePicker({
             }`}
           />
         </div>
-        <p className="mt-3 text-sm leading-6 text-stone-600">{statusMessage}</p>
+        <p className="mt-3 text-sm leading-6 text-stone-600">
+          지도에 노출하려면 위치 확인이 필요합니다.
+          {statusMessage ? ` ${statusMessage}` : ""}
+        </p>
         {lookupMessage ? (
           <p className="mt-2 text-xs leading-5 text-stone-500">{lookupMessage}</p>
         ) : null}

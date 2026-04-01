@@ -46,10 +46,10 @@ export default async function BookmarksPage() {
               북마크
             </p>
             <h1 className="mt-3 text-3xl font-semibold tracking-tight text-stone-900 sm:text-5xl">
-              저장해 둔 장소
+              북마크한 장소
             </h1>
           </div>
-          <div className="whitespace-nowrap rounded-3xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-700">
+          <div className="altteulmap-badge whitespace-nowrap border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-700">
             {bookmarkResult.userLabel}
           </div>
         </div>
@@ -68,7 +68,7 @@ export default async function BookmarksPage() {
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-600">
-                        저장 {bookmark.createdAt}
+                        북마크 {bookmark.createdAt}
                       </p>
                       <h2 className="mt-2 text-2xl font-semibold text-stone-900">
                         {place.name}
@@ -80,7 +80,7 @@ export default async function BookmarksPage() {
                         {place.district}
                       </p>
                     </div>
-                    <div className="rounded-3xl bg-white px-4 py-3 text-right">
+                    <div className="rounded-[1.35rem] bg-white px-4 py-3 text-right">
                       <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
                         대표 가격
                       </p>
@@ -101,13 +101,13 @@ export default async function BookmarksPage() {
                     />
                     <Link
                       href={`/place/${place.id}`}
-                      className="altteulmap-accent-solid whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition"
+                      className="altteulmap-accent-solid altteulmap-button whitespace-nowrap px-4 py-2 text-sm font-medium transition"
                     >
                       상세
                     </Link>
                     <Link
                       href={`/?q=${encodeURIComponent(place.name)}&scope=global`}
-                      className="whitespace-nowrap rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
+                      className="altteulmap-button whitespace-nowrap border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
                     >
                       지도
                     </Link>
@@ -118,7 +118,7 @@ export default async function BookmarksPage() {
           </div>
         ) : (
           <div className="mt-8 rounded-[1.75rem] border border-dashed border-stone-300 bg-stone-50 p-8 text-sm leading-7 text-stone-600">
-            저장된 장소가 없습니다.
+            북마크한 장소가 없습니다.
           </div>
         )}
       </section>

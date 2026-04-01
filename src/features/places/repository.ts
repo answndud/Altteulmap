@@ -27,7 +27,6 @@ import {
   priceReports,
   users,
 } from "@/db/schema";
-import { getCategoryBySlug } from "@/features/categories/catalog";
 import { mockPlaces } from "@/features/places/mock-data";
 import {
   normalizePriceLabel,
@@ -37,7 +36,6 @@ import {
   getFilteredPlaces,
   getMapBounds,
   getPlaceById,
-  getRelatedPlaces,
   sortPlaceRecords,
 } from "@/features/places/queries";
 import type {
@@ -96,7 +94,6 @@ export type PlaceListResult = {
 
 export type PlaceDetailResult = {
   item: PlaceRecord | null;
-  related: PlaceRecord[];
   source: DataSource;
 };
 
@@ -156,6 +153,13 @@ type PlaceViewer = {
 } | null;
 
 type PlaceReactionActor = {
+  userId?: string | null;
+  visitorId?: string | null;
+  email?: string | null;
+  name?: string | null;
+} | null;
+
+type PlaceCommentActor = {
   userId?: string | null;
   visitorId?: string | null;
   email?: string | null;
@@ -583,7 +587,7 @@ function toPlaceRecord(
     lastPriceUpdatedAt: formatDate(row.lastPriceUpdatedAt),
     description:
       row.description ??
-      "아직 장소 설명이 등록되지 않았습니다. 이후 제보 데이터가 쌓이면 내용을 보강할 수 있습니다.",
+      "아직 장소 설명이 등록되지 않았습니다. 이후 정보가 쌓이면 내용을 보강할 수 있습니다.",
     note:
       row.note ??
       "운영 검토 전 단계이거나 추가 메모가 아직 등록되지 않았습니다.",
@@ -773,19 +777,11 @@ async function getDatabasePlaceDetail(
   if (!row) {
     return {
       item: null,
-      related: [],
       source: "database",
     };
   }
 
-  const [
-    categoryMap,
-    priceItemRows,
-    historyRows,
-    commentRows,
-    reactionSummaryMap,
-    relatedList,
-  ] =
+  const [categoryMap, priceItemRows, historyRows, commentRows, reactionSummaryMap] =
     await Promise.all([
       loadCategoryMap([row.internalId]),
       db
@@ -826,6 +822,7 @@ async function getDatabasePlaceDetail(
         .select({
           id: comments.id,
           userId: comments.userId,
+          visitorId: comments.visitorId,
           body: comments.body,
           createdAt: comments.createdAt,
           nickname: users.nickname,
@@ -836,7 +833,6 @@ async function getDatabasePlaceDetail(
         .where(and(eq(comments.placeId, row.internalId), eq(comments.status, "visible")))
         .orderBy(desc(comments.createdAt)),
       loadPlaceReactionSummary([row.internalId], viewer),
-      listDatabasePlaces({ sort: "price" }),
     ]);
 
   const categorySlug = categoryMap.get(row.internalId);
@@ -858,31 +854,19 @@ async function getDatabasePlaceDetail(
     })),
     comments: commentRows.map((comment) => ({
       id: comment.id,
-      authorLabel: toAuthorLabel(comment.nickname, comment.email, "사용자"),
+      authorLabel: toAuthorLabel(comment.nickname, comment.email, "익명"),
       body: comment.body,
       createdAt: formatDate(comment.createdAt),
       canDelete:
-        viewer?.role === "admin" || viewer?.userId === comment.userId,
+        viewer?.role === "admin" ||
+        (Boolean(comment.userId) && viewer?.userId === comment.userId) ||
+        (Boolean(comment.visitorId) && viewer?.visitorId === comment.visitorId),
     })),
     reactionSummary: reactionSummaryMap.get(row.internalId),
   });
 
-  const currentCategory = getCategoryBySlug(categorySlug);
-  const related = relatedList.items
-    .filter((candidate) => {
-      if (candidate.id === item.id) {
-        return false;
-      }
-
-      const candidateCategory = getCategoryBySlug(candidate.categorySlug);
-
-      return candidateCategory?.parentSlug === currentCategory?.parentSlug;
-    })
-    .slice(0, 3);
-
   return {
     item,
-    related,
     source: "database",
   };
 }
@@ -1245,7 +1229,7 @@ async function createDatabasePlaceSubmission(
 
   return {
     ok: true,
-    message: "제보가 접수되었습니다. 검토 후 공개 목록에 반영됩니다.",
+    message: "장소 등록 요청이 접수되었습니다. 검토 후 공개 목록에 반영됩니다.",
     mock: false,
     source: "database",
     preview: {
@@ -1268,7 +1252,7 @@ async function createDatabasePlaceSubmission(
 async function createDatabasePlaceComment(
   slug: string,
   input: PlaceCommentInput,
-  userId: string,
+  actor: PlaceCommentActor,
 ): Promise<PlaceCommentActionResult> {
   const db = getDb();
   const placeRow = await getActivePlaceIdentityBySlug(slug);
@@ -1287,7 +1271,8 @@ async function createDatabasePlaceComment(
     .insert(comments)
     .values({
       placeId: placeRow.id,
-      userId,
+      userId: actor?.userId ?? null,
+      visitorId: actor?.visitorId ?? null,
       body: input.body,
       status: "visible",
     })
@@ -1296,15 +1281,6 @@ async function createDatabasePlaceComment(
       createdAt: comments.createdAt,
     });
 
-  const [author] = await db
-    .select({
-      nickname: users.nickname,
-      email: users.email,
-    })
-    .from(users)
-    .where(eq(users.id, userId))
-    .limit(1);
-
   return {
     ok: true,
     message: "코멘트를 등록했습니다.",
@@ -1312,7 +1288,9 @@ async function createDatabasePlaceComment(
     mock: false,
     item: {
       id: createdComment.id,
-      authorLabel: toAuthorLabel(author?.nickname ?? null, author?.email ?? null, "나"),
+      authorLabel: actor?.userId
+        ? toAuthorLabel(actor.name ?? null, actor.email ?? null, "나")
+        : "익명",
       body: input.body,
       createdAt: formatDate(createdComment.createdAt),
       canDelete: true,
@@ -1342,6 +1320,7 @@ async function hideDatabasePlaceComment(
     .select({
       id: comments.id,
       userId: comments.userId,
+      visitorId: comments.visitorId,
       status: comments.status,
     })
     .from(comments)
@@ -1358,7 +1337,12 @@ async function hideDatabasePlaceComment(
     };
   }
 
-  if (viewer.role !== "admin" && existingComment.userId !== viewer.userId) {
+  const canDeleteAsOwner =
+    (Boolean(existingComment.userId) && existingComment.userId === viewer.userId) ||
+    (Boolean(existingComment.visitorId) &&
+      existingComment.visitorId === viewer.visitorId);
+
+  if (viewer.role !== "admin" && !canDeleteAsOwner) {
     return {
       ok: false,
       message: "삭제 권한이 없습니다.",
@@ -1388,7 +1372,7 @@ async function hideDatabasePlaceComment(
 async function createDatabasePlacePriceReport(
   slug: string,
   input: PlacePriceReportInput,
-  reporterUserId: string,
+  reporterUserId?: string | null,
 ): Promise<PlacePriceReportSubmissionResult> {
   const db = getDb();
   const placeRow = await getActivePlaceIdentityBySlug(slug);
@@ -1422,7 +1406,7 @@ async function createDatabasePlacePriceReport(
     .values({
       placeId: placeRow.id,
       priceItemId: matchedPriceItem?.id ?? null,
-      reporterUserId,
+      reporterUserId: reporterUserId ?? null,
       label: input.label,
       normalizedLabel,
       amount: input.amount,
@@ -2147,7 +2131,6 @@ function getMockPlaceDetail(id: string, viewer: PlaceViewer = null): PlaceDetail
           ...getMockReactionSummary(id, viewerKey),
         }
       : null,
-    related: getRelatedPlaces(id),
     source: "mock",
   };
 }
@@ -2252,7 +2235,7 @@ export async function createPlaceSubmission(
   if (!isDatabaseEnabled()) {
     return {
       ok: true,
-      message: "제보가 접수되었습니다. 검토 후 공개 목록에 반영됩니다.",
+      message: "장소 등록 요청이 접수되었습니다. 검토 후 공개 목록에 반영됩니다.",
       mock: true,
       source: "mock" as const,
       preview: toFallbackPlacePreview(input),
@@ -2266,7 +2249,7 @@ export async function createPlaceSubmission(
 
     return {
       ok: true,
-      message: "제보가 접수되었습니다. 검토 후 공개 목록에 반영됩니다.",
+      message: "장소 등록 요청이 접수되었습니다. 검토 후 공개 목록에 반영됩니다.",
       mock: true,
       source: "mock" as const,
       preview: toFallbackPlacePreview(input),
@@ -2325,7 +2308,7 @@ export async function moderatePlaceSubmission(
 export async function createPlaceComment(
   slug: string,
   input: PlaceCommentInput,
-  userId: string,
+  actor: PlaceCommentActor,
 ) {
   if (!isDatabaseEnabled()) {
     return {
@@ -2335,7 +2318,7 @@ export async function createPlaceComment(
       mock: true,
       item: {
         id: `mock-comment-${Date.now()}`,
-        authorLabel: "나",
+        authorLabel: actor?.userId ? "나" : "익명",
         body: input.body,
         createdAt: formatDate(new Date()),
         canDelete: true,
@@ -2344,7 +2327,7 @@ export async function createPlaceComment(
   }
 
   try {
-    return await createDatabasePlaceComment(slug, input, userId);
+    return await createDatabasePlaceComment(slug, input, actor);
   } catch (error) {
     console.error("Failed to create place comment.", error);
 
@@ -2391,7 +2374,7 @@ export async function deletePlaceComment(
 export async function createPlacePriceReport(
   slug: string,
   input: PlacePriceReportInput,
-  reporterUserId: string,
+  reporterUserId?: string | null,
 ) {
   if (!isDatabaseEnabled()) {
     return {

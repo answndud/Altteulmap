@@ -1,6 +1,6 @@
 import "dotenv/config";
 
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 import {
   ADMIN_EMAIL,
@@ -9,6 +9,40 @@ import {
   DEMO_PASSWORD,
   loginWithCredentials,
 } from "./helpers/auth";
+
+async function setHiddenCoordinate(
+  page: Page,
+  testId: "submit-latitude" | "submit-longitude",
+  value: string,
+) {
+  await page.getByTestId(testId).evaluate((element, nextValue) => {
+    const input = element as HTMLInputElement;
+    input.value = String(nextValue);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  }, value);
+}
+
+test("장소 등록 폼에서 주소가 바뀌면 좌표를 다시 확인해야 한다", async ({
+  page,
+}) => {
+  await page.goto("/submit");
+  await expect(page.getByTestId("place-submit-form")).toBeVisible();
+
+  await page.getByTestId("submit-district").fill("서울 성북구");
+  await page
+    .getByTestId("submit-road-address")
+    .fill("서울 성북구 동소문로22길 31");
+  await setHiddenCoordinate(page, "submit-latitude", "37.590100");
+  await setHiddenCoordinate(page, "submit-longitude", "127.015800");
+
+  await page
+    .getByTestId("submit-road-address")
+    .fill("서울 성북구 보문로 12");
+
+  await expect(page.getByTestId("submit-latitude")).toHaveValue("");
+  await expect(page.getByTestId("submit-longitude")).toHaveValue("");
+});
 
 test("장소를 등록하고 운영자가 승인하면 홈 검색에 노출된다", async ({
   browser,
@@ -57,8 +91,8 @@ test("장소를 등록하고 운영자가 승인하면 홈 검색에 노출된�
     await userPage
       .getByTestId("submit-note")
       .fill("E2E 승인 검증용 제출 데이터입니다.");
-    await userPage.getByTestId("submit-latitude").fill(latitude);
-    await userPage.getByTestId("submit-longitude").fill(longitude);
+    await setHiddenCoordinate(userPage, "submit-latitude", latitude);
+    await setHiddenCoordinate(userPage, "submit-longitude", longitude);
     await userPage.getByTestId("submit-place-button").click();
 
     await expect(userPage.getByTestId("submit-result")).toBeVisible();

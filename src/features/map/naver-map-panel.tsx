@@ -119,8 +119,8 @@ function createMarkerIconHtml(count: number, isActive: boolean) {
   const badgeBackground = isActive ? "rgba(255,255,255,0.18)" : "#fff2e8";
 
   return `
-    <div style="display:inline-flex;align-items:center;gap:6px;min-width:50px;height:34px;padding:0 11px;border-radius:9999px;background:${background};color:${textColor};border:1px solid ${borderColor};box-shadow:0 10px 22px ${shadowColor};font-size:12px;font-weight:700;line-height:1;transform:translate(-50%,-50%);">
-        <span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:9999px;background:${badgeBackground};font-size:11px;">👍</span>
+    <div style="display:inline-flex;align-items:center;gap:6px;min-width:50px;height:34px;padding:0 11px;border-radius:16px;background:${background};color:${textColor};border:1px solid ${borderColor};box-shadow:0 10px 22px ${shadowColor};font-size:12px;font-weight:700;line-height:1;transform:translate(-50%,-50%);">
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:10px;background:${badgeBackground};font-size:11px;">👍</span>
         <span>${formatLikeCount(count)}</span>
     </div>
   `;
@@ -184,7 +184,7 @@ function PreviewMap({
             }}
           >
             <span
-              className={`flex min-w-[3.35rem] items-center justify-center gap-1 rounded-full px-3 py-2 text-xs font-semibold shadow-lg transition ${
+              className={`flex min-w-[3.35rem] items-center justify-center gap-1 rounded-2xl px-3 py-2 text-xs font-semibold shadow-lg transition ${
                 isActive
                   ? "bg-[#dc8b5e] text-white"
                   : "border border-[#edd3bf] bg-white text-[#7c4a2f]"
@@ -225,7 +225,7 @@ function NaverMapFallback({
     >
       <div className="flex items-center justify-between border-b border-stone-200 px-6 py-4">
         <h2 className="text-lg font-semibold text-stone-900">주변 지도</h2>
-        <div className="whitespace-nowrap rounded-full bg-stone-100 px-3 py-1 text-sm text-stone-600">
+        <div className="altteulmap-badge whitespace-nowrap bg-stone-100 px-3 py-1 text-sm text-stone-600">
           {places.length}곳
         </div>
       </div>
@@ -815,7 +815,7 @@ function NaverMapPanelContent({
     >
       <div className="flex items-center justify-between border-b border-stone-200 px-6 py-4">
         <h2 className="text-lg font-semibold text-stone-900">주변 지도</h2>
-        <div className="whitespace-nowrap rounded-full bg-stone-100 px-3 py-1 text-sm text-stone-600">
+        <div className="altteulmap-badge whitespace-nowrap bg-stone-100 px-3 py-1 text-sm text-stone-600">
           {places.length}곳
         </div>
       </div>
@@ -843,9 +843,9 @@ function NaverMapPanelContent({
             type="button"
             onClick={locateCurrentPosition}
             disabled={status !== "ready" || isLocating}
-            className="whitespace-nowrap rounded-full border border-stone-300 bg-white/95 px-4 py-2 text-sm font-medium text-stone-800 shadow-sm backdrop-blur transition hover:bg-white disabled:cursor-not-allowed disabled:text-stone-400"
+            className="altteulmap-button whitespace-nowrap border border-stone-300 bg-white/95 px-3 py-1.5 text-xs font-semibold text-stone-800 shadow-sm backdrop-blur transition hover:bg-white disabled:cursor-not-allowed disabled:text-stone-400"
           >
-            {isLocating ? "위치 확인 중" : "현재 위치"}
+            {isLocating ? "위치 확인 중" : "내 위치"}
           </button>
 
           {locationMessage ? (

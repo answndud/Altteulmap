@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 
-import { SiteHeader } from "@/components/site-header";
 import { getSiteOrigin } from "@/lib/site";
 
 import "./globals.css";
@@ -46,9 +45,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko">
+    <html lang="ko" suppressHydrationWarning>
       <body className="min-h-screen bg-stone-50 text-stone-900 antialiased">
-        <SiteHeader />
         {children}
       </body>
     </html>

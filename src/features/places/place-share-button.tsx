@@ -61,14 +61,14 @@ export function PlaceShareButton({
   };
 
   return (
-    <div className="space-y-2">
+    <div className="flex flex-col items-start gap-2">
       <button
         type="button"
         onClick={handleShare}
         data-testid="place-share-button"
         className={
           className ??
-          "inline-flex whitespace-nowrap rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
+          "altteulmap-button inline-flex whitespace-nowrap border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
         }
       >
         <span className="inline-flex items-center gap-2">

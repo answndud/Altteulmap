@@ -1,15 +1,11 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import type { PlacePriceItem } from "@/features/places/types";
 
 type PlacePriceReportFormProps = {
   placeId: string;
-  authenticated: boolean;
-  loginHref: string;
   suggestedItems: PlacePriceItem[];
 };
 
@@ -20,11 +16,8 @@ type PriceReportActionResponse = {
 
 export function PlacePriceReportForm({
   placeId,
-  authenticated,
-  loginHref,
   suggestedItems,
 }: PlacePriceReportFormProps) {
-  const router = useRouter();
   const [label, setLabel] = useState("");
   const [amount, setAmount] = useState("");
   const [unitLabel, setUnitLabel] = useState("");
@@ -33,11 +26,6 @@ export function PlacePriceReportForm({
   const [isPending, startTransition] = useTransition();
 
   const handleSubmit = () => {
-    if (!authenticated) {
-      router.push(loginHref);
-      return;
-    }
-
     startTransition(async () => {
       const response = await fetch(`/api/places/${encodeURIComponent(placeId)}/prices`, {
         method: "POST",
@@ -53,10 +41,6 @@ export function PlacePriceReportForm({
       });
 
       const result = (await response.json()) as PriceReportActionResponse;
-      if (response.status === 401) {
-        router.push(loginHref);
-        return;
-      }
       setMessage(result.message);
 
       if (!response.ok || !result.ok) {
@@ -86,7 +70,7 @@ export function PlacePriceReportForm({
                 setUnitLabel(item.unitLabel ?? "");
               }}
               disabled={isPending}
-              className="whitespace-nowrap rounded-full border border-stone-300 bg-stone-50 px-3 py-1.5 text-xs text-stone-700 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-60"
+              className="altteulmap-button whitespace-nowrap border border-stone-300 bg-stone-50 px-3 py-1.5 text-xs text-stone-700 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {item.label}
             </button>
@@ -94,82 +78,74 @@ export function PlacePriceReportForm({
         </div>
       ) : null}
 
-      {authenticated ? (
-        <div className="mt-4 grid gap-3">
-          <div className="grid gap-3 sm:grid-cols-[1.2fr_0.8fr]">
-            <label className="grid gap-2 text-sm text-stone-700">
-              가격 항목명
-              <input
-                value={label}
-                onChange={(event) => setLabel(event.target.value)}
-                disabled={isPending}
-                data-testid="price-report-label"
-                className="rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900 disabled:cursor-not-allowed disabled:opacity-60"
-                placeholder="예: 기본 김밥"
-              />
-            </label>
-            <label className="grid gap-2 text-sm text-stone-700">
-              가격(원)
-              <input
-                type="number"
-                inputMode="numeric"
-                value={amount}
-                onChange={(event) => setAmount(event.target.value)}
-                disabled={isPending}
-                data-testid="price-report-amount"
-                className="rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900 disabled:cursor-not-allowed disabled:opacity-60"
-                placeholder="3500"
-              />
-            </label>
-          </div>
-
+      <div className="mt-4 grid gap-3">
+        <div className="grid gap-3 sm:grid-cols-[1.2fr_0.8fr]">
           <label className="grid gap-2 text-sm text-stone-700">
-            단위
+            가격 항목명
             <input
-              value={unitLabel}
-              onChange={(event) => setUnitLabel(event.target.value)}
+              value={label}
+              onChange={(event) => setLabel(event.target.value)}
               disabled={isPending}
-              data-testid="price-report-unit"
+              data-testid="price-report-label"
               className="rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900 disabled:cursor-not-allowed disabled:opacity-60"
-              placeholder="예: 1줄, 1인분"
+              placeholder="예: 기본 김밥"
             />
           </label>
-
           <label className="grid gap-2 text-sm text-stone-700">
-            메모
-            <textarea
-              value={comment}
-              onChange={(event) => setComment(event.target.value)}
-              rows={3}
+            가격(원)
+            <input
+              type="number"
+              inputMode="numeric"
+              value={amount}
+              onChange={(event) => setAmount(event.target.value)}
               disabled={isPending}
-              data-testid="price-report-comment"
+              data-testid="price-report-amount"
               className="rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900 disabled:cursor-not-allowed disabled:opacity-60"
-              placeholder="예: 2026-03-31 점심 기준 가격표 확인"
+              placeholder="3500"
             />
           </label>
+        </div>
 
-          <div className="flex flex-wrap items-center justify-end gap-3">
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={isPending || label.trim().length === 0 || amount.trim().length === 0}
-              data-testid="price-report-submit"
-              className="altteulmap-accent-solid whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isPending ? "접수 중..." : "제보 보내기"}
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="mt-4 flex justify-end rounded-[1.15rem] bg-stone-50 p-4">
-          <Link
-            href={loginHref}
-            className="whitespace-nowrap rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
+        <label className="grid gap-2 text-sm text-stone-700">
+          단위
+          <input
+            value={unitLabel}
+            onChange={(event) => setUnitLabel(event.target.value)}
+            disabled={isPending}
+            data-testid="price-report-unit"
+            className="rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900 disabled:cursor-not-allowed disabled:opacity-60"
+            placeholder="예: 1줄, 1인분"
+          />
+        </label>
+
+        <label className="grid gap-2 text-sm text-stone-700">
+          메모
+          <textarea
+            value={comment}
+            onChange={(event) => setComment(event.target.value)}
+            rows={3}
+            disabled={isPending}
+            data-testid="price-report-comment"
+            className="rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900 disabled:cursor-not-allowed disabled:opacity-60"
+            placeholder="예: 2026-03-31 점심 기준 가격표 확인"
+          />
+        </label>
+
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-xs text-stone-500">
+            로그인 없이 새 가격 제보를 보낼 수 있습니다.
+          </p>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={isPending || label.trim().length === 0 || amount.trim().length === 0}
+            data-testid="price-report-submit"
+            className="altteulmap-accent-solid altteulmap-button whitespace-nowrap px-4 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60"
           >
-            로그인 후 제보
-          </Link>
+            {isPending ? "접수 중..." : "제보 보내기"}
+          </button>
         </div>
-      )}
+      </div>
 
       {message ? (
         <p data-testid="price-report-message" className="mt-3 text-xs text-stone-500">
