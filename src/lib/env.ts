@@ -1,16 +1,32 @@
 import { z } from "zod";
 
+const optionalNonEmptyString = z.preprocess((value) => {
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : undefined;
+}, z.string().min(1).optional());
+
 const serverEnvSchema = z.object({
-  DATABASE_URL: z.string().min(1).optional(),
+  DATABASE_URL: optionalNonEmptyString,
   USE_MOCK_DATA: z.enum(["true", "false"]).default("false"),
-  AUTH_SECRET: z.string().min(1).optional(),
-  NEXTAUTH_URL: z.string().url().optional(),
+  AUTH_SECRET: optionalNonEmptyString,
+  NEXTAUTH_URL: z.preprocess((value) => {
+    if (typeof value !== "string") {
+      return value;
+    }
+
+    const normalized = value.trim();
+    return normalized.length > 0 ? normalized : undefined;
+  }, z.string().url().optional()),
   AUTH_DEMO_PASSWORD: z.string().min(1).default("demo1234"),
   AUTH_ADMIN_PASSWORD: z.string().min(1).default("admin1234"),
-  AUTH_KAKAO_CLIENT_ID: z.string().min(1).optional(),
-  AUTH_KAKAO_CLIENT_SECRET: z.string().min(1).optional(),
-  AUTH_NAVER_CLIENT_ID: z.string().min(1).optional(),
-  AUTH_NAVER_CLIENT_SECRET: z.string().min(1).optional(),
+  AUTH_KAKAO_CLIENT_ID: optionalNonEmptyString,
+  AUTH_KAKAO_CLIENT_SECRET: optionalNonEmptyString,
+  AUTH_NAVER_CLIENT_ID: optionalNonEmptyString,
+  AUTH_NAVER_CLIENT_SECRET: optionalNonEmptyString,
 });
 
 const serverEnv = serverEnvSchema.parse({

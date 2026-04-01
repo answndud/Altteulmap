@@ -16,6 +16,18 @@
 
 ## 실행 로그
 
+### 2026-04-01: GitHub Actions Verify job의 빈 OAuth env 실패 수정
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/lib/env.ts`에서 optional env를 빈 문자열이면 `undefined`로 정규화하도록 바꿔, CI나 로컬 환경에서 OAuth 관련 값이 빈 문자열로 들어와도 Zod 파싱이 실패하지 않게 했다.
+  - `/Users/alex/project/altteulmap/.github/workflows/ci.yml`의 `Verify`, `E2E` job에서는 불필요한 빈 OAuth env를 아예 주입하지 않도록 정리했다.
+- 원인
+  - GitHub Actions `Verify` job이 `AUTH_KAKAO_*`, `AUTH_NAVER_*`를 `""`로 주입했고, 기존 schema가 이를 `optional`이 아닌 `빈 문자열`로 해석해 build 중 `/api/admin/price-items/[id]` page data 수집 단계에서 ZodError를 발생시켰다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `AUTH_KAKAO_CLIENT_ID='' AUTH_KAKAO_CLIENT_SECRET='' AUTH_NAVER_CLIENT_ID='' AUTH_NAVER_CLIENT_SECRET='' USE_MOCK_DATA=true AUTH_SECRET=ci-auth-secret NEXTAUTH_URL=http://127.0.0.1:3107 npm run verify` 통과
+- 메모
+  - 이 수정으로 optional OAuth env가 없는 상태와 빈 문자열 상태를 동일하게 취급한다.
+
 ### 2026-04-01: GitHub Actions CI 추가와 Cloudflare Builds 분리 운영 정리
 - 완료 내용
   - `/Users/alex/project/altteulmap/.github/workflows/ci.yml`을 추가해 GitHub Actions에서 `Verify`, `E2E`, `Deploy Config Check` 세 job을 실행하도록 구성했다.
@@ -57,6 +69,8 @@
     - 상세 시트 정상 오픈 확인
   - 배포 URL `https://altteulmap.altteul-lab.workers.dev/` 재검증 시 네이버 SDK auth는 `200`으로 성공했고, 실제 지도 타일도 `nrbe.pstatic.net/styles/...png`로 내려오는 것을 확인했다.
   - 이후 `src/features/map/naver-map-panel.tsx`의 지도 표시 감지 조건에 `.pstatic.net/styles/`, `.pstatic.net/static/maps/`를 추가하고 `npm run verify`, `PORT=3112 NEXTAUTH_URL=http://127.0.0.1:3112 npm run start` + Playwright로 `지도를 불러오는 중입니다.` 문구와 preview overlay가 사라지는 것 확인
+  - `npm run deploy`로 Cloudflare 재배포 완료
+  - 재배포 후 `https://altteulmap.altteul-lab.workers.dev/`에서 Playwright로 재검증했고, preview overlay 없음, `지도를 불러오는 중입니다.` 문구 없음, 장소 목록 클릭 시 상세 시트 정상 오픈, `This page couldn’t load` 미발생 확인
 - 메모
   - 실제 Cloudflare 배포 주소에서 지도가 계속 로딩 상태로 남는 근본 원인은 네이버 지도 키의 허용 도메인/웹 서비스 URL에 `https://altteulmap.altteul-lab.workers.dev`가 등록되지 않았을 가능성이 높다.
   - 현재는 네이버 지도 키 허용 도메인 반영 이후 auth 자체는 풀렸고, 남은 증상은 우리 코드가 `nrbe.pstatic.net` 타일 URL을 지도 자산으로 인식하지 못해 preview overlay를 계속 유지하던 문제였다.
