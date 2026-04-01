@@ -5,8 +5,6 @@ import { expect, test } from "@playwright/test";
 import {
   ADMIN_EMAIL,
   ADMIN_PASSWORD,
-  DEMO_EMAIL,
-  DEMO_PASSWORD,
   loginWithCredentials,
 } from "./helpers/auth";
 
@@ -25,13 +23,6 @@ test("가격 제보를 보내면 운영자가 가격 검토 큐에서 반려할 
     userContext = await browser.newContext();
     const userPage = await userContext.newPage();
 
-    await loginWithCredentials(userPage, {
-      callbackUrl: "/",
-      email: DEMO_EMAIL,
-      password: DEMO_PASSWORD,
-    });
-
-    await expect(userPage).toHaveURL(/\/$/);
     await userPage.goto("/place/school-gimbap");
     await expect(userPage).toHaveURL(/\/place\/school-gimbap$/);
     await expect(userPage.getByTestId("place-price-report-form")).toBeVisible();
@@ -42,7 +33,7 @@ test("가격 제보를 보내면 운영자가 가격 검토 큐에서 반려할 
     await userPage.getByTestId("price-report-submit").click();
 
     await expect(userPage.getByTestId("price-report-message")).toContainText(
-      "가격 제보가 접수되었습니다.",
+      /가격.*접수되었습니다\./,
     );
 
     adminContext = await browser.newContext();

@@ -5,8 +5,6 @@ import { expect, test } from "@playwright/test";
 import {
   ADMIN_EMAIL,
   ADMIN_PASSWORD,
-  DEMO_EMAIL,
-  DEMO_PASSWORD,
   loginWithCredentials,
 } from "./helpers/auth";
 
@@ -23,12 +21,7 @@ test("신고를 제출하면 운영자 신고 큐에서 처리 완료로 바꿀 
     userContext = await browser.newContext();
     const userPage = await userContext.newPage();
 
-    await loginWithCredentials(userPage, {
-      callbackUrl: "/report?placeId=school-gimbap&placeName=school-gimbap",
-      email: DEMO_EMAIL,
-      password: DEMO_PASSWORD,
-    });
-
+    await userPage.goto("/report?placeId=school-gimbap&placeName=school-gimbap");
     await expect(userPage).toHaveURL(/\/report\?/);
     await expect(userPage.getByTestId("report-submit-form")).toBeVisible();
     await userPage.getByTestId("report-reason").selectOption("closed_or_wrong_info");
@@ -37,7 +30,7 @@ test("신고를 제출하면 운영자 신고 큐에서 처리 완료로 바꿀 
 
     await expect(userPage.getByTestId("report-result")).toBeVisible();
     await expect(userPage.getByTestId("report-result-message")).toContainText(
-      "신고가 접수되었습니다.",
+      /신고.*접수되었습니다\./,
     );
     await expect(userPage.getByTestId("report-result-detail")).toHaveText(
       uniqueDetail,

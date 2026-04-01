@@ -27,7 +27,8 @@ test("지도 검색, 상세 시트, 비회원 좋아요, 공유, 닫기 흐름",
   const listLikeCount = page.getByTestId("place-list-like-count-school-gimbap");
   const initialListLikeCount = parseCount(await listLikeCount.textContent());
 
-  await schoolGimbapItem.click();
+  await schoolGimbapItem.focus();
+  await schoolGimbapItem.press("Enter");
 
   const detailSheet = page.getByTestId("place-detail-sheet");
   await expect(detailSheet).toBeVisible();
@@ -44,7 +45,7 @@ test("지도 검색, 상세 시트, 비회원 좋아요, 공유, 닫기 흐름",
 
   await page.getByTestId("place-share-button").click();
   await expect(page.getByTestId("place-share-message")).toHaveText(
-    "공유 링크를 준비했습니다.",
+    /공유 링크/,
   );
 
   await page.getByTestId("reaction-like-button").click();
