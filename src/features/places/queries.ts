@@ -1,17 +1,46 @@
 import { getCategoryBySlug } from "@/features/categories/catalog";
 import { mockPlaces } from "@/features/places/mock-data";
-import type { PlaceQueryBounds, PlaceRecord } from "@/features/places/types";
+import type {
+  PlaceQueryBounds,
+  PlaceRecord,
+  PlaceSort,
+} from "@/features/places/types";
 
 type PlaceQuery = {
   category?: string | null;
   maxPrice?: number | null;
-  sort?: "price" | "recent";
+  sort?: PlaceSort;
   bounds?: PlaceQueryBounds | null;
   query?: string | null;
 };
 
 export function formatKrw(amount: number) {
   return new Intl.NumberFormat("ko-KR").format(amount);
+}
+
+export function sortPlaceRecords(items: PlaceRecord[], sort: PlaceSort) {
+  return [...items].sort((left, right) => {
+    if (sort === "recent") {
+      return (
+        new Date(right.lastPriceUpdatedAt).getTime() -
+        new Date(left.lastPriceUpdatedAt).getTime()
+      );
+    }
+
+    if (sort === "likes") {
+      if (right.likeCount !== left.likeCount) {
+        return right.likeCount - left.likeCount;
+      }
+
+      if (left.dislikeCount !== right.dislikeCount) {
+        return left.dislikeCount - right.dislikeCount;
+      }
+
+      return left.representativePriceAmount - right.representativePriceAmount;
+    }
+
+    return left.representativePriceAmount - right.representativePriceAmount;
+  });
 }
 
 function normalizeSearchText(value: string | null | undefined) {
@@ -64,16 +93,7 @@ export function getFilteredPlaces({
     return categoryMatches && priceMatches && boundsMatch && queryMatches;
   });
 
-  return filtered.sort((left, right) => {
-    if (sort === "recent") {
-      return (
-        new Date(right.lastPriceUpdatedAt).getTime() -
-        new Date(left.lastPriceUpdatedAt).getTime()
-      );
-    }
-
-    return left.representativePriceAmount - right.representativePriceAmount;
-  });
+  return sortPlaceRecords(filtered, sort);
 }
 
 export function getPlaceById(id: string) {

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getPlaceDetail } from "@/features/places/repository";
 import { getSessionUser } from "@/lib/session";
+import { getVisitorIdFromCookie } from "@/lib/visitor-id";
 
 type RouteContext = {
   params: Promise<{
@@ -11,9 +12,14 @@ type RouteContext = {
 
 export const dynamic = "force-dynamic";
 
+const noStoreHeaders = {
+  "Cache-Control": "no-store, max-age=0",
+};
+
 export async function GET(_: Request, context: RouteContext) {
   const { id } = await context.params;
   const user = await getSessionUser();
+  const visitorId = user ? null : await getVisitorIdFromCookie();
   const result = await getPlaceDetail(
     id,
     user
@@ -21,7 +27,12 @@ export async function GET(_: Request, context: RouteContext) {
           userId: user.id,
           role: user.role,
         }
-      : null,
+      : visitorId
+        ? {
+            role: "guest",
+            visitorId,
+          }
+        : null,
   );
   const place = result.item;
 
@@ -33,14 +44,22 @@ export async function GET(_: Request, context: RouteContext) {
           message: "Place not found",
         },
       },
-      { status: 404 },
+      {
+        status: 404,
+        headers: noStoreHeaders,
+      },
     );
   }
 
-  return NextResponse.json({
-    item: place,
-    related: result.related,
-    source: result.source,
-    mock: result.source === "mock",
-  });
+  return NextResponse.json(
+    {
+      item: place,
+      related: result.related,
+      source: result.source,
+      mock: result.source === "mock",
+    },
+    {
+      headers: noStoreHeaders,
+    },
+  );
 }

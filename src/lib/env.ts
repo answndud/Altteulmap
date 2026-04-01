@@ -7,6 +7,10 @@ const serverEnvSchema = z.object({
   NEXTAUTH_URL: z.string().url().optional(),
   AUTH_DEMO_PASSWORD: z.string().min(1).default("demo1234"),
   AUTH_ADMIN_PASSWORD: z.string().min(1).default("admin1234"),
+  AUTH_KAKAO_CLIENT_ID: z.string().min(1).optional(),
+  AUTH_KAKAO_CLIENT_SECRET: z.string().min(1).optional(),
+  AUTH_NAVER_CLIENT_ID: z.string().min(1).optional(),
+  AUTH_NAVER_CLIENT_SECRET: z.string().min(1).optional(),
 });
 
 const serverEnv = serverEnvSchema.parse({
@@ -16,6 +20,10 @@ const serverEnv = serverEnvSchema.parse({
   NEXTAUTH_URL: process.env.NEXTAUTH_URL,
   AUTH_DEMO_PASSWORD: process.env.AUTH_DEMO_PASSWORD,
   AUTH_ADMIN_PASSWORD: process.env.AUTH_ADMIN_PASSWORD,
+  AUTH_KAKAO_CLIENT_ID: process.env.AUTH_KAKAO_CLIENT_ID,
+  AUTH_KAKAO_CLIENT_SECRET: process.env.AUTH_KAKAO_CLIENT_SECRET,
+  AUTH_NAVER_CLIENT_ID: process.env.AUTH_NAVER_CLIENT_ID,
+  AUTH_NAVER_CLIENT_SECRET: process.env.AUTH_NAVER_CLIENT_SECRET,
 });
 
 export function getRequiredServerEnv(

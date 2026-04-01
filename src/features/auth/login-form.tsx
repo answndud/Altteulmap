@@ -7,21 +7,38 @@ import { useState, useTransition } from "react";
 import {
   appUserRoleLabelMap,
   authAccountHints,
+  socialAuthProviderLabelMap,
+  type SocialAuthProviderId,
 } from "@/features/auth/constants";
 
 const errorMessageMap: Record<string, string> = {
   CredentialsSignin: "이메일 또는 비밀번호가 맞지 않습니다.",
+  OAuthEmailRequired: "소셜 로그인 계정에서 이메일을 가져오지 못했습니다.",
+  OAuthAccountSyncFailed:
+    "소셜 로그인 계정을 로컬 사용자와 연결하지 못했습니다.",
+  OAuthSignin: "소셜 로그인 연결에 실패했습니다. 잠시 후 다시 시도해주세요.",
+  OAuthCallback:
+    "소셜 로그인 처리 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요.",
   default: "로그인 처리에 실패했습니다. 잠시 후 다시 시도해주세요.",
+};
+
+type SocialProviderOption = {
+  id: SocialAuthProviderId;
+  label: string;
+  enabled: boolean;
+  unavailableReason?: string;
 };
 
 type LoginFormProps = {
   callbackUrl: string;
   initialError?: string | null;
+  socialProviders: SocialProviderOption[];
 };
 
 export function LoginForm({
   callbackUrl,
   initialError = null,
+  socialProviders,
 }: LoginFormProps) {
   const router = useRouter();
   const [email, setEmail] = useState(authAccountHints[0]?.email ?? "");
@@ -29,7 +46,17 @@ export function LoginForm({
   const [message, setMessage] = useState(
     initialError ? errorMessageMap[initialError] ?? errorMessageMap.default : "",
   );
+  const [pendingAction, setPendingAction] = useState<
+    "credentials" | SocialAuthProviderId | null
+  >(null);
   const [isPending, startTransition] = useTransition();
+  function getSocialButtonClass(providerId: SocialAuthProviderId) {
+    if (providerId === "kakao") {
+      return "bg-[#FEE500] text-stone-900 hover:bg-[#f7d900]";
+    }
+
+    return "bg-[#03C75A] text-white hover:bg-[#02b351]";
+  }
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
@@ -63,22 +90,66 @@ export function LoginForm({
             router.refresh();
           });
         }}
+        data-testid="login-form"
         className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm sm:p-8"
       >
         <div className="grid gap-6">
           <section>
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-orange-600">
-              Auth
+            <p className="text-xs font-medium tracking-[0.18em] text-orange-600">
+              로그인
             </p>
             <h1 className="mt-3 text-3xl font-semibold tracking-tight text-stone-900 sm:text-5xl">
-              로컬 로그인
+              로그인
             </h1>
-            <p className="mt-4 max-w-2xl text-base leading-7 text-stone-600">
-              현재 단계에서는 로컬 개발용 credentials 로그인만 연결했습니다.
-              북마크, 등록, 신고, 운영자 화면은 로그인 후 같은 세션을
-              공유합니다.
-            </p>
           </section>
+
+          <section className="grid gap-3">
+            <p className="text-sm font-medium text-stone-700">소셜 로그인</p>
+            <div className="grid gap-3">
+              {socialProviders.map((provider) =>
+                provider.enabled ? (
+                  <button
+                    key={provider.id}
+                    type="button"
+                    onClick={() => {
+                      startTransition(async () => {
+                        setMessage("");
+                        setPendingAction(provider.id);
+                        await signIn(provider.id, {
+                          callbackUrl,
+                        });
+                        setPendingAction(null);
+                      });
+                    }}
+                    disabled={isPending}
+                    data-testid={`social-login-${provider.id}`}
+                    className={`whitespace-nowrap rounded-full px-5 py-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ${getSocialButtonClass(
+                      provider.id,
+                    )}`}
+                  >
+                    {pendingAction === provider.id
+                      ? `${socialAuthProviderLabelMap[provider.id]}로 이동 중...`
+                      : `${socialAuthProviderLabelMap[provider.id]}로 로그인`}
+                  </button>
+                ) : (
+                  <div
+                    key={provider.id}
+                    className="rounded-3xl border border-dashed border-stone-300 bg-stone-50 px-4 py-4"
+                  >
+                    <p className="text-sm font-medium text-stone-900">
+                      {provider.label} 로그인 준비 중
+                    </p>
+                  </div>
+                ),
+              )}
+            </div>
+          </section>
+
+          <div className="flex items-center gap-3 text-xs uppercase tracking-[0.18em] text-stone-400">
+            <span className="h-px flex-1 bg-stone-200" />
+            또는
+            <span className="h-px flex-1 bg-stone-200" />
+          </div>
 
           <label className="grid gap-2 text-sm text-stone-700">
             이메일
@@ -86,6 +157,7 @@ export function LoginForm({
               type="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
+              data-testid="login-email"
               className="rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900"
               placeholder="demo@altteulmap.local"
               autoComplete="email"
@@ -98,8 +170,9 @@ export function LoginForm({
               type="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
+              data-testid="login-password"
               className="rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900"
-              placeholder="로컬 개발용 비밀번호"
+              placeholder="비밀번호"
               autoComplete="current-password"
             />
           </label>
@@ -113,20 +186,23 @@ export function LoginForm({
           <button
             type="submit"
             disabled={isPending}
-            className="rounded-full bg-stone-900 px-5 py-3 text-sm font-medium text-white transition hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-60"
+            data-testid="login-submit"
+            className="altteulmap-accent-solid whitespace-nowrap rounded-full px-5 py-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isPending ? "로그인 중..." : "로그인"}
+            {pendingAction === "credentials" || isPending
+              ? "로그인 중..."
+              : "이메일로 로그인"}
           </button>
         </div>
       </form>
 
       <aside className="space-y-6">
         <section className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-orange-600">
-            Dev accounts
+          <p className="text-xs font-medium tracking-[0.18em] text-orange-600">
+            테스트 계정
           </p>
           <h2 className="mt-3 text-xl font-semibold text-stone-900">
-            준비된 로컬 계정
+            바로 확인해볼 계정
           </h2>
           <div className="mt-4 grid gap-3">
             {authAccountHints.map((account) => (
@@ -144,21 +220,11 @@ export function LoginForm({
                 </p>
                 <p className="mt-1 text-sm text-stone-600">{account.email}</p>
                 <p className="mt-2 text-xs text-stone-500">
-                  비밀번호는 `.env`의 `{account.passwordEnv}` 값을 사용합니다.
+                  비밀번호는 로컬 설정값을 사용합니다.
                 </p>
               </button>
             ))}
           </div>
-        </section>
-
-        <section className="rounded-[2rem] border border-stone-200 bg-stone-50 p-6">
-          <h2 className="text-xl font-semibold text-stone-900">로그인 후 열리는 기능</h2>
-          <ul className="mt-4 space-y-3 text-sm leading-6 text-stone-600">
-            <li>장소 북마크 저장과 해제</li>
-            <li>신규 장소 제보 제출</li>
-            <li>오류/중복/폐업 신고 제출</li>
-            <li>운영자 계정의 승인 큐와 신고 큐 접근</li>
-          </ul>
         </section>
       </aside>
     </div>

@@ -7,12 +7,13 @@ import { getCategoryBySlug } from "@/features/categories/catalog";
 import { NaverMapPanel } from "@/features/map/naver-map-panel";
 import type { MapViewport } from "@/features/map/naver-map-sdk";
 import { PlaceDetailSheet } from "@/features/places/place-detail-sheet";
-import { PlaceStatusBadge } from "@/features/places/place-status-badge";
+import type { PlaceReactionUpdate } from "@/features/places/place-reaction-buttons";
 import { formatKrw } from "@/features/places/queries";
 import type {
   PlaceBounds,
   PlaceRecord,
   PlaceSearchScope,
+  PlaceSort,
 } from "@/features/places/types";
 
 type MapExplorerProps = {
@@ -21,13 +22,13 @@ type MapExplorerProps = {
   bookmarkLoginHref: string;
   category: string | null;
   currentMapHref: string;
+  initialBounds: PlaceBounds;
   maxPrice: number | null;
   places: PlaceRecord[];
   query: string | null;
   searchScope: PlaceSearchScope;
   selectedCategoryLabel: string | null;
-  sort: "price" | "recent";
-  source: "database" | "mock";
+  sort: PlaceSort;
 };
 
 type MapPlacesResponse = {
@@ -39,16 +40,17 @@ type MapPlacesResponse = {
     maxPrice: number | null;
     query: string | null;
     searchScope: PlaceSearchScope;
-    sort: "price" | "recent";
+    sort: PlaceSort;
   };
   items: PlaceRecord[];
-  mock: boolean;
-  source: "database" | "mock";
 };
 
 type PlaceListProps = {
   bookmarkedPlaceIds: string[];
   bookmarkLoginHref: string;
+  itemTestIdPrefix?: string;
+  likeCountTestIdPrefix?: string;
+  listTestId?: string;
   places: PlaceRecord[];
   query: string | null;
   searchScope: PlaceSearchScope;
@@ -67,16 +69,19 @@ function getListDescription(params: {
 }) {
   if (params.query) {
     return params.searchScope === "global"
-      ? `전체 검색 · ${params.query}`
-      : `현재 지도 검색 · ${params.query}`;
+      ? `전체 검색 결과 · ${params.query}`
+      : `지도 안에서 · ${params.query}`;
   }
 
-  return params.viewport ? "현재 보이는 지도 영역 기준" : "초기 결과";
+  return params.viewport ? "현재 보이는 영역" : "기본 결과";
 }
 
 function PlaceList({
   bookmarkedPlaceIds,
   bookmarkLoginHref,
+  itemTestIdPrefix = "place-list-item",
+  likeCountTestIdPrefix = "place-list-like-count",
+  listTestId = "place-list",
   places,
   query,
   searchScope,
@@ -103,7 +108,7 @@ function PlaceList({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" data-testid={listTestId}>
       {places.map((place) => {
         const category = getCategoryBySlug(place.categorySlug);
         const isActive = selectedPlaceId === place.id;
@@ -113,6 +118,7 @@ function PlaceList({
             key={place.id}
             role="button"
             tabIndex={0}
+            data-testid={`${itemTestIdPrefix}-${place.id}`}
             onClick={() => onSelectPlace(place.id)}
             onKeyDown={(event) => {
               if (isActivationKey(event.key)) {
@@ -122,7 +128,7 @@ function PlaceList({
             }}
             className={`rounded-[1.35rem] border p-4 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 ${
               isActive
-                ? "border-orange-300 bg-orange-50 shadow-sm"
+                ? "border-[#e4c2a8] bg-[#fff7ef] shadow-sm"
                 : "border-stone-200 bg-white hover:border-stone-300 hover:bg-stone-50"
             }`}
           >
@@ -135,13 +141,13 @@ function PlaceList({
                   {place.name}
                 </h3>
                 <p className="mt-1 truncate text-xs text-stone-500">
-                  {category?.name ?? "기타"} · {place.district}
+                  {category?.name ?? "기타"}
+                </p>
+                <p className="mt-1 truncate text-xs text-stone-400">
+                  {place.district}
                 </p>
               </div>
-              <div className="flex flex-col items-end gap-2">
-                <PlaceStatusBadge
-                  verified={place.verificationStatus === "verified"}
-                />
+              <div className="shrink-0">
                 <BookmarkToggleButton
                   placeId={place.id}
                   initialBookmarked={bookmarkedPlaceIds.includes(place.id)}
@@ -159,9 +165,17 @@ function PlaceList({
                   {formatKrw(place.representativePriceAmount)}원
                 </p>
               </div>
-              <p className="text-right text-xs text-stone-500">
-                갱신 {place.lastPriceUpdatedAt}
-              </p>
+              <div className="text-right">
+                <p
+                  className="text-xs font-medium text-[#a06a48]"
+                  data-testid={`${likeCountTestIdPrefix}-${place.id}`}
+                >
+                  👍 {place.likeCount}
+                </p>
+                <p className="mt-1 text-xs text-stone-500">
+                  갱신 {place.lastPriceUpdatedAt}
+                </p>
+              </div>
             </div>
           </article>
         );
@@ -176,7 +190,7 @@ function buildMapQuery(params: {
   maxPrice: number | null;
   query: string | null;
   searchScope: PlaceSearchScope;
-  sort: "price" | "recent";
+  sort: PlaceSort;
 }) {
   const search = new URLSearchParams();
 
@@ -226,20 +240,19 @@ export function MapExplorer({
   bookmarkLoginHref,
   category,
   currentMapHref,
+  initialBounds,
   maxPrice,
   places,
   query,
   searchScope,
   selectedCategoryLabel,
   sort,
-  source,
 }: MapExplorerProps) {
   const [visiblePlaces, setVisiblePlaces] = useState(places);
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
   const [viewport, setViewport] = useState<MapViewport | null>(null);
   const [isFetchingPlaces, setIsFetchingPlaces] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [dataSource, setDataSource] = useState<"database" | "mock">(source);
   const [isMobileListOpen, setIsMobileListOpen] = useState(false);
   const activeBounds = searchScope === "viewport" ? viewport?.bounds ?? null : null;
   const boundsKey = serializeBounds(activeBounds);
@@ -255,6 +268,10 @@ export function MapExplorer({
     searchScope,
     viewport,
   });
+
+  useEffect(() => {
+    setVisiblePlaces(places);
+  }, [places]);
 
   useEffect(() => {
     if (searchScope === "viewport" && !activeBounds) {
@@ -285,7 +302,6 @@ export function MapExplorer({
       .then((result) => {
         startTransition(() => {
           setVisiblePlaces(result.items);
-          setDataSource(result.source);
           setIsFetchingPlaces(false);
         });
       })
@@ -321,11 +337,27 @@ export function MapExplorer({
     }
   };
 
+  const handlePlaceReactionChange = (nextState: PlaceReactionUpdate) => {
+    setVisiblePlaces((currentPlaces) =>
+      currentPlaces.map((place) =>
+        place.id === nextState.placeId
+          ? {
+              ...place,
+              likeCount: nextState.likeCount,
+              dislikeCount: nextState.dislikeCount,
+              viewerReaction: nextState.viewerReaction,
+            }
+          : place,
+      ),
+    );
+  };
+
   return (
     <div className="relative mt-8">
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.75fr)_18.5rem]">
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.95fr)_16.5rem]">
         <div className="relative">
           <NaverMapPanel
+            initialBounds={initialBounds}
             places={visiblePlaces}
             selectedCategoryLabel={selectedCategoryLabel}
             activePlaceId={resolvedSelectedPlaceId}
@@ -343,11 +375,12 @@ export function MapExplorer({
               <button
                 type="button"
                 onClick={() => setIsMobileListOpen(true)}
-                className="rounded-full bg-stone-900 px-4 py-2 text-sm font-medium text-white"
+                data-testid="mobile-place-list-open"
+                className="altteulmap-accent-solid whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium"
               >
-                목록
+                목록 보기
               </button>
-              <span className="rounded-full bg-stone-100 px-3 py-2 text-xs text-stone-600">
+              <span className="whitespace-nowrap rounded-full bg-stone-100 px-3 py-2 text-xs text-stone-600">
                 {visiblePlaces.length}곳
               </span>
             </div>
@@ -357,23 +390,12 @@ export function MapExplorer({
         <section className="hidden max-h-[44rem] flex-col overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-sm xl:flex">
           <div className="flex items-center justify-between border-b border-stone-200 px-4 py-4">
             <div>
-              <h2 className="text-base font-semibold text-stone-900">
-                플레이스 목록
-              </h2>
+              <h2 className="text-base font-semibold text-stone-900">장소 목록</h2>
               <p className="text-xs text-stone-500">{listDescription}</p>
             </div>
             <div className="flex items-center gap-2">
-              <p className="rounded-full bg-stone-100 px-3 py-1 text-xs text-stone-600">
+              <p className="whitespace-nowrap rounded-full bg-stone-100 px-3 py-1 text-xs text-stone-600">
                 {visiblePlaces.length}곳
-              </p>
-              <p
-                className={`rounded-full px-3 py-1 text-xs ${
-                  dataSource === "database"
-                    ? "bg-emerald-100 text-emerald-700"
-                    : "bg-orange-100 text-orange-700"
-                }`}
-              >
-                {dataSource === "database" ? "DB" : "목업"}
               </p>
             </div>
           </div>
@@ -409,22 +431,26 @@ export function MapExplorer({
             onClick={() => setIsMobileListOpen(false)}
             className="absolute inset-0 bg-stone-950/35"
           />
-          <section className="absolute inset-x-0 bottom-0 max-h-[72vh] overflow-hidden rounded-t-[2rem] border-t border-stone-200 bg-white shadow-2xl">
+          <section
+            role="dialog"
+            aria-modal="true"
+            data-testid="mobile-place-list-sheet"
+            className="absolute inset-x-0 bottom-0 max-h-[72vh] overflow-hidden rounded-t-[2rem] border-t border-stone-200 bg-white shadow-2xl"
+          >
             <div className="flex items-center justify-between border-b border-stone-200 px-4 py-4">
               <div>
-                <h2 className="text-base font-semibold text-stone-900">
-                  플레이스 목록
-                </h2>
+                <h2 className="text-base font-semibold text-stone-900">장소 목록</h2>
                 <p className="text-xs text-stone-500">{listDescription}</p>
               </div>
               <div className="flex items-center gap-2">
-                <p className="rounded-full bg-stone-100 px-3 py-1 text-xs text-stone-600">
+                <p className="whitespace-nowrap rounded-full bg-stone-100 px-3 py-1 text-xs text-stone-600">
                   {visiblePlaces.length}곳
                 </p>
                 <button
                   type="button"
                   onClick={() => setIsMobileListOpen(false)}
-                  className="rounded-full border border-stone-300 bg-white px-3 py-1.5 text-xs text-stone-700"
+                  data-testid="mobile-place-list-close"
+                  className="whitespace-nowrap rounded-full border border-stone-300 bg-white px-3 py-1.5 text-xs text-stone-700"
                 >
                   닫기
                 </button>
@@ -444,6 +470,9 @@ export function MapExplorer({
               <PlaceList
                 bookmarkedPlaceIds={bookmarkedPlaceIds}
                 bookmarkLoginHref={bookmarkLoginHref}
+                itemTestIdPrefix="mobile-place-list-item"
+                likeCountTestIdPrefix="mobile-place-list-like-count"
+                listTestId="mobile-place-list"
                 places={visiblePlaces}
                 query={query}
                 searchScope={searchScope}
@@ -463,6 +492,7 @@ export function MapExplorer({
         previewPlace={selectedPlace}
         onClose={() => setSelectedPlaceId(null)}
         onOpenPlace={handlePlaceSelect}
+        onPlaceReactionChange={handlePlaceReactionChange}
       />
     </div>
   );

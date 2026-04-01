@@ -62,7 +62,10 @@ export function AdminPlaceReviewForm({
   };
 
   return (
-    <div className="space-y-4 rounded-3xl border border-stone-200 bg-white p-4">
+    <div
+      data-testid="admin-review-form"
+      className="space-y-4 rounded-3xl border border-stone-200 bg-white p-4"
+    >
       <AdminPlaceCoordinatePicker
         placeName={placeName}
         address={address}
@@ -85,6 +88,7 @@ export function AdminPlaceReviewForm({
             value={latitude}
             onChange={(event) => setLatitude(event.target.value)}
             disabled={disabled || isPending}
+            data-testid="admin-latitude"
             className="rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900 disabled:cursor-not-allowed disabled:opacity-60"
             placeholder="37.5665"
           />
@@ -97,6 +101,7 @@ export function AdminPlaceReviewForm({
             value={longitude}
             onChange={(event) => setLongitude(event.target.value)}
             disabled={disabled || isPending}
+            data-testid="admin-longitude"
             className="rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900 disabled:cursor-not-allowed disabled:opacity-60"
             placeholder="126.9780"
           />
@@ -108,6 +113,7 @@ export function AdminPlaceReviewForm({
           type="button"
           onClick={() => submitDecision("approve")}
           disabled={disabled || isPending}
+          data-testid="admin-approve-button"
           className="rounded-full bg-stone-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
           승인
@@ -116,6 +122,7 @@ export function AdminPlaceReviewForm({
           type="button"
           onClick={() => submitDecision("reject")}
           disabled={disabled || isPending}
+          data-testid="admin-reject-button"
           className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-60"
         >
           반려
@@ -123,7 +130,7 @@ export function AdminPlaceReviewForm({
       </div>
 
       {message ? (
-        <p className="text-xs text-stone-500">
+        <p data-testid="admin-review-message" className="text-xs text-stone-500">
           {isPending ? "처리 중..." : message}
         </p>
       ) : null}

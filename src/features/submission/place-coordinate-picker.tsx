@@ -202,12 +202,12 @@ export function PlaceCoordinatePicker({
 
   const statusMessage =
     status === "missing-key"
-      ? "NEXT_PUBLIC_NAVER_MAP_KEY_ID가 없어 지도 선택 대신 숫자 입력만 사용할 수 있습니다."
+      ? "지도 연결이 아직 준비되지 않아 숫자 입력으로만 위치를 지정할 수 있습니다."
       : status === "error"
-        ? "네이버 지도 SDK를 불러오지 못했습니다. 숫자 입력으로 대략적인 위치를 지정해주세요."
+        ? "지도를 불러오지 못했습니다. 숫자 입력으로 대략적인 위치를 지정해주세요."
         : status === "loading"
-          ? "네이버 지도를 불러오는 중입니다."
-          : "지도를 클릭하면 제보 위치의 위도와 경도가 자동 입력됩니다.";
+          ? "지도를 불러오는 중입니다."
+          : null;
 
   return (
     <section className="space-y-4 rounded-3xl border border-stone-200 bg-stone-50 p-4">
@@ -218,15 +218,13 @@ export function PlaceCoordinatePicker({
         <h2 className="mt-2 text-lg font-semibold text-stone-900">
           대략적인 위치 선택
         </h2>
-        <p className="mt-2 text-sm leading-6 text-stone-600">
-          주소만으로 위치가 애매할 때 지도로 보완할 수 있습니다. 운영자는 이
-          좌표를 기준으로 승인 전에 최종 위치를 조정합니다.
-        </p>
-        <p className="mt-3 text-sm leading-6 text-stone-500">
-          {placeName || "상호명 미입력"} · {district || "지역 미입력"}
-          <br />
-          {address || "주소를 먼저 입력하면 검토할 때 더 정확합니다."}
-        </p>
+        {placeName || district || address ? (
+          <p className="mt-3 text-sm leading-6 text-stone-500">
+            {[placeName || null, district || null, address || null]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
+        ) : null}
       </div>
 
       <div className="rounded-3xl border border-stone-200 bg-white p-4">
@@ -246,7 +244,7 @@ export function PlaceCoordinatePicker({
 
                   if (status !== "ready") {
                     setLookupMessage(
-                      "네이버 지도를 사용할 수 없는 상태라 주소 기반 좌표 찾기를 실행할 수 없습니다.",
+                      "지도를 사용할 수 없어 주소 기반 좌표 찾기를 실행할 수 없습니다.",
                     );
                     return;
                   }

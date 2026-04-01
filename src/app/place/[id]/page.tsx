@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -5,11 +6,13 @@ import { BookmarkToggleButton } from "@/features/bookmarks/bookmark-toggle-butto
 import { listBookmarks } from "@/features/bookmarks/repository";
 import { getCategoryBySlug } from "@/features/categories/catalog";
 import { PlaceCommentsSection } from "@/features/places/place-comments-section";
+import { PlaceReactionButtons } from "@/features/places/place-reaction-buttons";
+import { PlaceShareButton } from "@/features/places/place-share-button";
 import { PlacePriceReportForm } from "@/features/places/place-price-report-form";
 import { formatKrw } from "@/features/places/queries";
 import { getPlaceDetail } from "@/features/places/repository";
-import { PlaceStatusBadge } from "@/features/places/place-status-badge";
 import { createLoginHref, getSessionUser } from "@/lib/session";
+import { getVisitorIdFromCookie } from "@/lib/visitor-id";
 
 type PlacePageProps = {
   params: Promise<{
@@ -17,9 +20,57 @@ type PlacePageProps = {
   }>;
 };
 
+export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: PlacePageProps): Promise<Metadata> {
+  const { id } = await params;
+  const result = await getPlaceDetail(id, null);
+  const place = result.item;
+
+  if (!place) {
+    return {
+      title: "장소를 찾을 수 없습니다",
+      robots: {
+        index: false,
+        follow: false,
+      },
+    };
+  }
+
+  const category = getCategoryBySlug(place.categorySlug);
+  const title = `${place.name} ${formatKrw(place.representativePriceAmount)}원`;
+  const description = [
+    place.address,
+    category?.name,
+    `${place.representativePriceLabel} ${formatKrw(place.representativePriceAmount)}원`,
+  ].join(" · ");
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: `/place/${place.id}`,
+    },
+    openGraph: {
+      type: "article",
+      title,
+      description,
+      url: `/place/${place.id}`,
+    },
+    twitter: {
+      card: "summary",
+      title,
+      description,
+    },
+  };
+}
+
 export default async function PlacePage({ params }: PlacePageProps) {
   const { id } = await params;
   const user = await getSessionUser();
+  const visitorId = user ? null : await getVisitorIdFromCookie();
   const [result, bookmarkResult] = await Promise.all([
     getPlaceDetail(
       id,
@@ -28,7 +79,12 @@ export default async function PlacePage({ params }: PlacePageProps) {
             userId: user.id,
             role: user.role,
           }
-        : null,
+        : visitorId
+          ? {
+              role: "guest",
+              visitorId,
+            }
+          : null,
     ),
     listBookmarks(user),
   ]);
@@ -51,10 +107,10 @@ export default async function PlacePage({ params }: PlacePageProps) {
     <main className="bg-stone-50 px-4 py-8 sm:px-6">
       <div className="mx-auto max-w-6xl">
         <Link
-          href="/map"
-          className="inline-flex rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
+          href="/"
+          className="inline-flex whitespace-nowrap rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
         >
-          지도 목록으로 돌아가기
+          목록으로 돌아가기
         </Link>
         <section className="mt-6 rounded-[2rem] border border-stone-200 bg-white p-8 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -65,36 +121,34 @@ export default async function PlacePage({ params }: PlacePageProps) {
               <h1 className="mt-3 text-3xl font-semibold tracking-tight text-stone-900 sm:text-5xl">
                 {place.name}
               </h1>
-              <p className="mt-3 text-sm text-stone-500">
-                {place.businessName ?? place.name} · {category?.name ?? "기타"} ·{" "}
-                {place.address}
+              {place.businessName && place.businessName !== place.name ? (
+                <p className="mt-3 text-sm text-stone-500">{place.businessName}</p>
+              ) : null}
+              <p className="mt-1 text-sm text-stone-500">
+                {category?.name ?? "기타"}
               </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <span
-                className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                  result.source === "database"
-                    ? "bg-emerald-100 text-emerald-700"
-                    : "bg-orange-100 text-orange-700"
-                }`}
-              >
-                {result.source === "database" ? "DB" : "목업"}
-              </span>
-              <PlaceStatusBadge
-                verified={place.verificationStatus === "verified"}
-              />
+              <p className="mt-1 text-sm text-stone-500">{place.address}</p>
             </div>
           </div>
 
           <div className="mt-8 grid gap-4 sm:grid-cols-3">
-            <div className="rounded-3xl bg-stone-900 p-6 text-white">
-              <p className="text-sm text-stone-300">대표 가격</p>
+            <div className="altteulmap-accent-panel rounded-3xl p-6">
+              <p className="text-sm text-[#a06a48]">대표 가격</p>
               <p className="mt-3 text-3xl font-semibold">
                 {formatKrw(place.representativePriceAmount)}원
               </p>
-              <p className="mt-2 text-sm text-stone-300">
+              <p className="mt-2 text-sm text-[#a06a48]">
                 {place.representativePriceLabel}
               </p>
+              <div className="mt-4">
+                <PlaceReactionButtons
+                  key={`${place.id}:${place.likeCount}:${place.dislikeCount}:${place.viewerReaction ?? "none"}`}
+                  placeId={place.id}
+                  initialLikeCount={place.likeCount}
+                  initialDislikeCount={place.dislikeCount}
+                  initialViewerReaction={place.viewerReaction}
+                />
+              </div>
             </div>
             <div className="rounded-3xl border border-stone-200 bg-stone-50 p-6">
               <p className="text-sm text-stone-500">최근 갱신일</p>
@@ -114,11 +168,15 @@ export default async function PlacePage({ params }: PlacePageProps) {
                   initialBookmarked={isBookmarked}
                   loginHref={bookmarkLoginHref}
                 />
+                <PlaceShareButton
+                  path={`/place/${place.id}`}
+                  title={place.name}
+                />
                 <Link
                   href={reportHref}
-                  className="inline-flex rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
+                  className="inline-flex whitespace-nowrap rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
                 >
-                  정보가 잘못됐나요? 신고하기
+                  신고하기
                 </Link>
               </div>
             </div>
@@ -151,43 +209,7 @@ export default async function PlacePage({ params }: PlacePageProps) {
                         {formatKrw(item.amount)}원
                         {item.unitLabel ? ` / ${item.unitLabel}` : ""}
                       </p>
-                      <p
-                        className={`mt-1 text-xs font-semibold ${
-                          item.verificationStatus === "verified"
-                            ? "text-emerald-600"
-                            : "text-amber-600"
-                        }`}
-                      >
-                        {item.verificationStatus === "verified"
-                          ? "검증됨"
-                          : "미검증"}
-                      </p>
                     </div>
-                  </div>
-                ))}
-              </div>
-
-              <h2 className="mt-10 text-xl font-semibold text-stone-900">
-                가격 이력
-              </h2>
-              <div className="mt-4 grid gap-3">
-                {place.history.map((entry) => (
-                  <div
-                    key={entry.id}
-                    className="rounded-2xl border border-stone-200 bg-white px-4 py-4"
-                  >
-                    <div className="flex items-center justify-between gap-4">
-                      <p className="font-medium text-stone-900">{entry.label}</p>
-                      <p className="font-semibold text-stone-900">
-                        {formatKrw(entry.amount)}원
-                      </p>
-                    </div>
-                    <p className="mt-1 text-sm text-stone-500">
-                      {entry.recordedAt} ·{" "}
-                      {entry.verificationStatus === "verified"
-                        ? "검증됨"
-                        : "미검증"}
-                    </p>
                   </div>
                 ))}
               </div>

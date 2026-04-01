@@ -17,6 +17,9 @@ export const mockPlaces: PlaceRecord[] = [
     description:
       "학교와 지하철 사이 골목에 있는 분식집입니다. 혼밥 수요가 많고 빠르게 식사하기 좋습니다.",
     note: "점심시간에는 포장 줄이 짧은 편입니다.",
+    likeCount: 18,
+    dislikeCount: 1,
+    viewerReaction: null,
     priceItems: [
       {
         id: "school-gimbap-1",
@@ -81,6 +84,9 @@ export const mockPlaces: PlaceRecord[] = [
     description:
       "백반, 찌개, 제육류를 파는 직장인 점심 식당입니다. 기본 반찬이 안정적입니다.",
     note: "13시 이후 방문 시 대기 없이 식사하기 쉽습니다.",
+    likeCount: 12,
+    dislikeCount: 0,
+    viewerReaction: null,
     priceItems: [
       {
         id: "budget-baekban-1",
@@ -145,6 +151,9 @@ export const mockPlaces: PlaceRecord[] = [
     description:
       "동네 단골이 많은 세탁소입니다. 셔츠와 바지 기본 세탁 가격이 비교적 안정적입니다.",
     note: "현금 결제 시 빠른 수령 안내를 해주는 편입니다.",
+    likeCount: 9,
+    dislikeCount: 1,
+    viewerReaction: null,
     priceItems: [
       {
         id: "onsaemiro-laundry-1",
@@ -202,6 +211,9 @@ export const mockPlaces: PlaceRecord[] = [
     description:
       "대형마트는 아니지만 일상 장보기 가격이 괜찮은 동네형 마트입니다.",
     note: "행사 진열대 가격표 업데이트가 느릴 수 있습니다.",
+    likeCount: 7,
+    dislikeCount: 2,
+    viewerReaction: null,
     priceItems: [
       {
         id: "dongne-mart24-1",
@@ -259,6 +271,9 @@ export const mockPlaces: PlaceRecord[] = [
     description:
       "학생과 취준생 수요가 많은 출력 전문점입니다. 기본 출력과 제본 가격이 명확한 편입니다.",
     note: "USB보다 메일 전송 출력이 빠릅니다.",
+    likeCount: 15,
+    dislikeCount: 1,
+    viewerReaction: null,
     priceItems: [
       {
         id: "print-station-1",
@@ -323,6 +338,9 @@ export const mockPlaces: PlaceRecord[] = [
     description:
       "일반 상비약 가격이 비교적 낮고 상담이 친절한 동네 약국입니다.",
     note: "저녁 시간 방문객이 많습니다.",
+    likeCount: 8,
+    dislikeCount: 3,
+    viewerReaction: null,
     priceItems: [
       {
         id: "kind-pharmacy-1",

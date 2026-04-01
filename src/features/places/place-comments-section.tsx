@@ -92,12 +92,7 @@ export function PlaceCommentsSection({
   return (
     <section className="rounded-[1.5rem] border border-stone-200 bg-white p-5">
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <h4 className="text-sm font-semibold text-stone-900">사용자 코멘트</h4>
-          <p className="mt-2 text-sm leading-6 text-stone-500">
-            현장 분위기나 이용 팁처럼 가격표에 없는 정보를 남길 수 있습니다.
-          </p>
-        </div>
+        <h4 className="text-sm font-semibold text-stone-900">사용자 코멘트</h4>
         <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-600">
           {comments.length}개
         </span>
@@ -114,30 +109,24 @@ export function PlaceCommentsSection({
               className="w-full rounded-[1rem] border border-stone-300 bg-white px-4 py-3 text-sm leading-6 text-stone-700 outline-none transition focus:border-stone-900 disabled:cursor-not-allowed disabled:opacity-60"
               placeholder="예: 점심시간 전에는 금방 품절돼요. 현금 결제만 가능합니다."
             />
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-xs text-stone-500">
-                공격적이거나 개인정보가 포함된 내용은 운영 검토 대상이 됩니다.
-              </p>
+            <div className="flex flex-wrap items-center justify-end gap-3">
               <button
                 type="button"
                 onClick={handleSubmit}
                 disabled={isPending || body.trim().length < 2}
-                className="rounded-full bg-stone-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-60"
+                className="altteulmap-accent-solid whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isPending ? "등록 중..." : "코멘트 등록"}
+                {isPending ? "등록 중..." : "남기기"}
               </button>
             </div>
           </div>
         ) : (
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm leading-6 text-stone-600">
-              코멘트를 남기려면 로그인이 필요합니다.
-            </p>
+          <div className="flex justify-end">
             <Link
               href={loginHref}
-              className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
+              className="whitespace-nowrap rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
             >
-              로그인하고 코멘트 남기기
+              로그인 후 코멘트
             </Link>
           </div>
         )}
@@ -169,7 +158,7 @@ export function PlaceCommentsSection({
                     type="button"
                     onClick={() => handleDelete(comment.id)}
                     disabled={isPending}
-                    className="rounded-full border border-stone-300 bg-white px-3 py-1.5 text-xs text-stone-700 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="whitespace-nowrap rounded-full border border-stone-300 bg-white px-3 py-1.5 text-xs text-stone-700 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     삭제
                   </button>

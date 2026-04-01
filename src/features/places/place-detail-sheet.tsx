@@ -6,9 +6,13 @@ import { useEffect, useRef, useState } from "react";
 import { BookmarkToggleButton } from "@/features/bookmarks/bookmark-toggle-button";
 import { getCategoryBySlug } from "@/features/categories/catalog";
 import { PlaceCommentsSection } from "@/features/places/place-comments-section";
+import {
+  PlaceReactionButtons,
+  type PlaceReactionUpdate,
+} from "@/features/places/place-reaction-buttons";
+import { PlaceShareButton } from "@/features/places/place-share-button";
 import { PlacePriceReportForm } from "@/features/places/place-price-report-form";
 import { formatKrw } from "@/features/places/queries";
-import { PlaceStatusBadge } from "@/features/places/place-status-badge";
 import type { PlaceRecord } from "@/features/places/types";
 
 type PlaceDetailResponse = {
@@ -26,6 +30,7 @@ type PlaceDetailSheetProps = {
   previewPlace: PlaceRecord | null;
   onClose: () => void;
   onOpenPlace: (placeId: string) => void;
+  onPlaceReactionChange?: (nextState: PlaceReactionUpdate) => void;
 };
 
 type PlaceDetailState = {
@@ -62,6 +67,7 @@ export function PlaceDetailSheet({
   previewPlace,
   onClose,
   onOpenPlace,
+  onPlaceReactionChange,
 }: PlaceDetailSheetProps) {
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const [detailState, setDetailState] = useState<PlaceDetailState>({
@@ -149,7 +155,6 @@ export function PlaceDetailSheet({
   const error = detailState.placeId === placeId ? detailState.error : null;
   const isLoading = detailState.placeId !== placeId;
   const place = data?.item ?? previewPlace;
-  const detailSource = data?.source ?? null;
   const category = place ? getCategoryBySlug(place.categorySlug) : null;
   const relatedPlaces = data?.related ?? [];
   const isBookmarked = place ? bookmarkedPlaceIds.includes(place.id) : false;
@@ -164,6 +169,33 @@ export function PlaceDetailSheet({
       : createLoginHref(reportPath)
     : null;
 
+  const handleReactionUpdate = (nextState: PlaceReactionUpdate) => {
+    setDetailState((current) => {
+      if (
+        current.placeId !== nextState.placeId ||
+        !current.item ||
+        current.item.item.id !== nextState.placeId
+      ) {
+        return current;
+      }
+
+      return {
+        ...current,
+        item: {
+          ...current.item,
+          item: {
+            ...current.item.item,
+            likeCount: nextState.likeCount,
+            dislikeCount: nextState.dislikeCount,
+            viewerReaction: nextState.viewerReaction,
+          },
+        },
+      };
+    });
+
+    onPlaceReactionChange?.(nextState);
+  };
+
   return (
     <div className="pointer-events-none fixed inset-0 z-50 xl:absolute xl:inset-0">
       <button
@@ -176,21 +208,18 @@ export function PlaceDetailSheet({
       <aside
         role="dialog"
         aria-modal="true"
+        data-testid="place-detail-sheet"
         className="pointer-events-auto absolute inset-x-0 bottom-0 flex max-h-[82vh] w-full flex-col overflow-hidden rounded-t-[2rem] border-t border-stone-200 bg-white shadow-2xl xl:inset-x-auto xl:inset-y-0 xl:right-0 xl:max-h-none xl:max-w-[28rem] xl:rounded-l-[2rem] xl:rounded-t-none xl:border-l xl:border-t-0"
       >
         <div className="flex items-center justify-between border-b border-stone-200 px-4 py-4 sm:px-5">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-orange-600">
-              Place detail
-            </p>
-            <h2 className="mt-2 text-lg font-semibold text-stone-900">
-              플레이스 상세
-            </h2>
+            <h2 className="text-lg font-semibold text-stone-900">상세 정보</h2>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full border border-stone-300 bg-white px-3 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
+            data-testid="place-detail-close"
+            className="whitespace-nowrap rounded-full border border-stone-300 bg-white px-3 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
           >
             닫기
           </button>
@@ -211,9 +240,9 @@ export function PlaceDetailSheet({
               {placePath ? (
                 <Link
                   href={placePath}
-                  className="mt-4 inline-flex rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
+                  className="mt-4 inline-flex whitespace-nowrap rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
                 >
-                  전체 페이지로 열기
+                  페이지로 보기
                 </Link>
               ) : null}
             </div>
@@ -229,61 +258,63 @@ export function PlaceDetailSheet({
                   <h3 className="mt-2 text-2xl font-semibold tracking-tight text-stone-900">
                     {place.name}
                   </h3>
-                  <p className="mt-3 text-sm leading-6 text-stone-500">
-                    {place.businessName ?? place.name} · {category?.name ?? "기타"} ·{" "}
+                  {place.businessName && place.businessName !== place.name ? (
+                    <p className="mt-3 text-sm text-stone-500">
+                      {place.businessName}
+                    </p>
+                  ) : null}
+                  <p className="mt-1 text-sm text-stone-500">
+                    {category?.name ?? "기타"}
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-stone-500">
                     {place.address}
                   </p>
                 </div>
-                <div className="flex flex-col items-end gap-2">
-                  {detailSource ? (
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                        detailSource === "database"
-                          ? "bg-emerald-100 text-emerald-700"
-                          : "bg-orange-100 text-orange-700"
-                      }`}
-                    >
-                      {detailSource === "database" ? "DB" : "목업"}
-                    </span>
-                  ) : (
-                    <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-stone-600">
-                      불러오는 중
-                    </span>
-                  )}
-                  <PlaceStatusBadge
-                    verified={place.verificationStatus === "verified"}
-                  />
-                </div>
               </div>
 
-              <section className="rounded-[1.75rem] bg-stone-900 p-5 text-white">
-                <p className="text-sm text-stone-300">대표 가격</p>
+              <section className="altteulmap-accent-panel rounded-[1.75rem] p-5">
+                <p className="text-sm text-[#a06a48]">대표 가격</p>
                 <p className="mt-2 text-3xl font-semibold">
                   {formatKrw(place.representativePriceAmount)}원
                 </p>
-                <p className="mt-2 text-sm text-stone-300">
+                <p className="mt-2 text-sm text-[#a06a48]">
                   {place.representativePriceLabel}
                 </p>
+                <div className="mt-4">
+                  <PlaceReactionButtons
+                    key={`${place.id}:${place.likeCount}:${place.dislikeCount}:${place.viewerReaction ?? "none"}`}
+                    placeId={place.id}
+                    initialLikeCount={place.likeCount}
+                    initialDislikeCount={place.dislikeCount}
+                    initialViewerReaction={place.viewerReaction}
+                    onUpdate={handleReactionUpdate}
+                  />
+                </div>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <BookmarkToggleButton
                     placeId={place.id}
                     initialBookmarked={isBookmarked}
                     loginHref={bookmarkLoginHref}
                   />
+                  <PlaceShareButton
+                    path={`/place/${place.id}`}
+                    title={place.name}
+                    className="inline-flex whitespace-nowrap rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
+                  />
                   {reportHref ? (
                     <Link
                       href={reportHref}
-                      className="inline-flex rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm text-white transition hover:bg-white/15"
+                      className="altteulmap-accent-ghost inline-flex whitespace-nowrap rounded-full border px-4 py-2 text-sm transition"
                     >
-                      정보 신고
+                      신고하기
                     </Link>
                   ) : null}
                   {placePath ? (
                     <Link
                       href={placePath}
-                      className="inline-flex rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm text-white transition hover:bg-white/15"
+                      className="altteulmap-accent-ghost inline-flex whitespace-nowrap rounded-full border px-4 py-2 text-sm transition"
                     >
-                      전체 페이지
+                      페이지로 보기
                     </Link>
                   ) : null}
                 </div>
@@ -291,7 +322,7 @@ export function PlaceDetailSheet({
 
               {isLoading ? (
                 <div className="rounded-[1.35rem] border border-stone-200 bg-stone-50 px-4 py-3 text-xs text-stone-500">
-                  세부 가격 이력과 코멘트를 불러오는 중입니다.
+                  세부 가격과 코멘트를 불러오는 중입니다.
                 </div>
               ) : null}
 
@@ -345,17 +376,6 @@ export function PlaceDetailSheet({
                               {formatKrw(item.amount)}원
                               {item.unitLabel ? ` / ${item.unitLabel}` : ""}
                             </p>
-                            <p
-                              className={`mt-1 text-xs font-semibold ${
-                                item.verificationStatus === "verified"
-                                  ? "text-emerald-600"
-                                  : "text-amber-600"
-                              }`}
-                            >
-                              {item.verificationStatus === "verified"
-                                ? "검증됨"
-                                : "미검증"}
-                            </p>
                           </div>
                         </div>
                       </div>
@@ -367,38 +387,6 @@ export function PlaceDetailSheet({
                   </p>
                 )}
               </section>
-
-              <section className="rounded-[1.5rem] border border-stone-200 bg-white p-5">
-                <h4 className="text-sm font-semibold text-stone-900">가격 이력</h4>
-                {place.history.length > 0 ? (
-                  <div className="mt-4 space-y-3">
-                    {place.history.map((entry) => (
-                      <div
-                        key={entry.id}
-                        className="rounded-[1.15rem] bg-stone-50 px-4 py-4"
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <p className="font-medium text-stone-900">{entry.label}</p>
-                          <p className="font-semibold text-stone-900">
-                            {formatKrw(entry.amount)}원
-                          </p>
-                        </div>
-                        <p className="mt-2 text-xs text-stone-500">
-                          {entry.recordedAt} ·{" "}
-                          {entry.verificationStatus === "verified"
-                            ? "검증됨"
-                            : "미검증"}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="mt-4 text-sm text-stone-500">
-                    아직 가격 이력이 없습니다.
-                  </p>
-                )}
-              </section>
-
               <PlacePriceReportForm
                 key={`${place.id}-price-form`}
                 placeId={place.id}

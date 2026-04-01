@@ -36,7 +36,7 @@ export default async function AdminReportsPage() {
         eyebrow="Admin"
         title="운영자 권한이 필요합니다"
         description={`${getSessionUserLabel(user)} 계정은 신고 검토 큐에 접근할 수 없습니다. 운영자 계정으로 다시 로그인하거나 일반 사용자 화면으로 돌아가세요.`}
-        primaryHref="/map"
+        primaryHref="/"
         primaryLabel="지도 화면으로 이동"
         secondaryHref="/login?callbackUrl=%2Fadmin%2Freports"
         secondaryLabel="운영자 계정으로 로그인"
@@ -103,10 +103,11 @@ export default async function AdminReportsPage() {
           </span>
         </div>
 
-        <div className="mt-8 grid gap-4">
+        <div data-testid="admin-report-list" className="mt-8 grid gap-4">
           {result.items.map((report) => (
             <article
               key={report.id}
+              data-testid="admin-report-card"
               className="rounded-[1.75rem] border border-stone-200 bg-stone-50 p-5"
             >
               <div className="flex flex-wrap items-start justify-between gap-4">
@@ -114,7 +115,10 @@ export default async function AdminReportsPage() {
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-600">
                     {report.id}
                   </p>
-                  <h2 className="mt-2 text-xl font-semibold text-stone-900">
+                  <h2
+                    data-testid="admin-report-place-name"
+                    className="mt-2 text-xl font-semibold text-stone-900"
+                  >
                     {report.placeName}
                   </h2>
                   <p className="mt-2 text-sm text-stone-500">
@@ -122,6 +126,7 @@ export default async function AdminReportsPage() {
                   </p>
                 </div>
                 <span
+                  data-testid="admin-report-status-badge"
                   className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClassMap[report.status]}`}
                 >
                   {reportStatusMap[report.status]}

@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { listPlaces } from "@/features/places/repository";
+import type { PlaceSort } from "@/features/places/types";
+
+export const dynamic = "force-dynamic";
+
+const noStoreHeaders = {
+  "Cache-Control": "no-store, max-age=0",
+};
 
 function parsePositiveNumber(value: string | null) {
   if (!value) {
@@ -22,6 +29,18 @@ function parseFiniteNumber(value: string | null) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function parseSort(value: string | null): PlaceSort {
+  if (value === "recent") {
+    return "recent";
+  }
+
+  if (value === "likes") {
+    return "likes";
+  }
+
+  return "price";
+}
+
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const category = searchParams.get("category");
@@ -33,8 +52,7 @@ export async function GET(request: NextRequest) {
   const maxLat = parseFiniteNumber(searchParams.get("maxLat"));
   const minLng = parseFiniteNumber(searchParams.get("minLng"));
   const maxLng = parseFiniteNumber(searchParams.get("maxLng"));
-  const sort =
-    searchParams.get("sort") === "recent" ? "recent" : ("price" as const);
+  const sort = parseSort(searchParams.get("sort"));
   const bounds =
     minLat !== null && maxLat !== null && minLng !== null && maxLng !== null
       ? {
@@ -53,19 +71,24 @@ export async function GET(request: NextRequest) {
     bounds: searchScope === "viewport" ? bounds : null,
   });
 
-  return NextResponse.json({
-    items: result.items,
-    count: result.items.length,
-    bounds: result.bounds,
-    filters: {
-      category,
-      maxPrice,
-      query,
-      searchScope,
-      sort,
-      bounds: searchScope === "viewport" ? bounds : null,
+  return NextResponse.json(
+    {
+      items: result.items,
+      count: result.items.length,
+      bounds: result.bounds,
+      filters: {
+        category,
+        maxPrice,
+        query,
+        searchScope,
+        sort,
+        bounds: searchScope === "viewport" ? bounds : null,
+      },
+      source: result.source,
+      mock: result.source === "mock",
     },
-    source: result.source,
-    mock: result.source === "mock",
-  });
+    {
+      headers: noStoreHeaders,
+    },
+  );
 }

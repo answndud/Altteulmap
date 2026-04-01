@@ -1,5 +1,56 @@
 @import "tailwindcss";
 
+:root {
+  --altteul-accent: #c97949;
+  --altteul-accent-hover: #b4683c;
+  --altteul-accent-soft: #f4e1d2;
+  --altteul-accent-soft-hover: #edd6c3;
+  --altteul-accent-border: #e4c2a8;
+  --altteul-accent-text: #8f522f;
+  --altteul-accent-ink: #6d4128;
+  --altteul-accent-panel-a: #fff7ef;
+  --altteul-accent-panel-b: #f2dfcf;
+}
+
 .altteulmap-naver-map img {
   max-width: none !important;
+}
+
+.altteulmap-accent-solid {
+  background-color: var(--altteul-accent);
+  color: #fff;
+}
+
+.altteulmap-accent-solid:hover {
+  background-color: var(--altteul-accent-hover);
+}
+
+.altteulmap-accent-chip {
+  border-color: var(--altteul-accent-border);
+  background-color: var(--altteul-accent-soft);
+  color: var(--altteul-accent-text);
+}
+
+.altteulmap-accent-chip:hover {
+  background-color: var(--altteul-accent-soft-hover);
+}
+
+.altteulmap-accent-panel {
+  border: 1px solid var(--altteul-accent-border);
+  background: linear-gradient(
+    135deg,
+    var(--altteul-accent-panel-a) 0%,
+    var(--altteul-accent-panel-b) 100%
+  );
+  color: var(--altteul-accent-ink);
+}
+
+.altteulmap-accent-ghost {
+  border-color: var(--altteul-accent-border);
+  background-color: rgba(255, 250, 246, 0.88);
+  color: var(--altteul-accent-ink);
+}
+
+.altteulmap-accent-ghost:hover {
+  background-color: #fff;
 }

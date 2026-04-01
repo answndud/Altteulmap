@@ -57,7 +57,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     revalidatePath("/api/admin/prices");
     revalidatePath(`/place/${result.item.placeId}`);
     revalidatePath(`/api/places/${result.item.placeId}`);
-    revalidatePath("/map");
+    revalidatePath("/");
     revalidatePath("/api/places/map");
   }
 

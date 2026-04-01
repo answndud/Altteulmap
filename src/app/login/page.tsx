@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { listSocialAuthProviders } from "@/features/auth/repository";
 import { LoginForm } from "@/features/auth/login-form";
 import { getSessionUser, normalizeCallbackUrl } from "@/lib/session";
 
@@ -16,6 +17,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const callbackUrl = normalizeCallbackUrl(getFirstValue(params.callbackUrl));
   const error = getFirstValue(params.error) ?? null;
   const user = await getSessionUser();
+  const socialProviders = listSocialAuthProviders();
 
   if (user) {
     redirect(callbackUrl);
@@ -24,7 +26,11 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   return (
     <main className="bg-stone-50 px-4 py-8 sm:px-6">
       <section className="mx-auto max-w-7xl">
-        <LoginForm callbackUrl={callbackUrl} initialError={error} />
+        <LoginForm
+          callbackUrl={callbackUrl}
+          initialError={error}
+          socialProviders={socialProviders}
+        />
       </section>
     </main>
   );

@@ -141,6 +141,7 @@ async function main() {
             amount: item.amount,
             currency: "KRW" as const,
             unitLabel: item.unitLabel ?? null,
+            isActive: true,
             isRepresentative: item.label === place.representativePriceLabel,
             verificationStatus: item.verificationStatus,
             verifiedReportCount: item.verificationStatus === "verified" ? 2 : 0,

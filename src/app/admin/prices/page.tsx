@@ -4,7 +4,10 @@ import { redirect } from "next/navigation";
 import { AccessDeniedPanel } from "@/components/access-denied-panel";
 import { AdminPriceReportReviewForm } from "@/features/places/admin-price-report-review-form";
 import { formatKrw } from "@/features/places/queries";
-import { listPendingPriceReports } from "@/features/places/repository";
+import {
+  listPendingPriceReports,
+  listPlaces,
+} from "@/features/places/repository";
 import {
   createLoginHref,
   getSessionUser,
@@ -26,7 +29,7 @@ export default async function AdminPricesPage() {
         eyebrow="Admin"
         title="운영자 권한이 필요합니다"
         description={`${getSessionUserLabel(user)} 계정은 가격 제보 검토 큐에 접근할 수 없습니다. 운영자 계정으로 다시 로그인하거나 일반 사용자 화면으로 돌아가세요.`}
-        primaryHref="/map"
+        primaryHref="/"
         primaryLabel="지도 화면으로 이동"
         secondaryHref="/login?callbackUrl=%2Fadmin%2Fprices"
         secondaryLabel="운영자 계정으로 로그인"
@@ -34,7 +37,10 @@ export default async function AdminPricesPage() {
     );
   }
 
-  const result = await listPendingPriceReports();
+  const [result, recentPlaces] = await Promise.all([
+    listPendingPriceReports(),
+    listPlaces({ sort: "recent" }),
+  ]);
 
   return (
     <main className="bg-stone-50 px-4 py-8 sm:px-6">
@@ -93,10 +99,11 @@ export default async function AdminPricesPage() {
         </div>
 
         {result.items.length > 0 ? (
-          <div className="mt-8 grid gap-4">
+          <div data-testid="admin-price-report-list" className="mt-8 grid gap-4">
             {result.items.map((report) => (
               <article
                 key={report.id}
+                data-testid="admin-price-report-card"
                 className="rounded-[1.75rem] border border-stone-200 bg-stone-50 p-5"
               >
                 <div className="flex flex-wrap items-start justify-between gap-4">
@@ -104,7 +111,10 @@ export default async function AdminPricesPage() {
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-600">
                       {report.id}
                     </p>
-                    <h2 className="mt-2 text-2xl font-semibold text-stone-900">
+                    <h2
+                      data-testid="admin-price-report-place-name"
+                      className="mt-2 text-2xl font-semibold text-stone-900"
+                    >
                       {report.placeName}
                     </h2>
                     <p className="mt-2 text-sm text-stone-500">
@@ -115,7 +125,10 @@ export default async function AdminPricesPage() {
                     <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
                       제보 가격
                     </p>
-                    <p className="mt-2 text-lg font-semibold text-stone-900">
+                    <p
+                      data-testid="admin-price-report-amount"
+                      className="mt-2 text-lg font-semibold text-stone-900"
+                    >
                       {formatKrw(report.amount)}원
                     </p>
                     <p className="text-sm text-stone-500">
@@ -169,6 +182,12 @@ export default async function AdminPricesPage() {
                       >
                         장소 보기
                       </Link>
+                      <Link
+                        href={`/admin/prices/places/${report.placeId}`}
+                        className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
+                      >
+                        현재 가격 관리
+                      </Link>
                     </div>
                   </div>
 
@@ -197,6 +216,59 @@ export default async function AdminPricesPage() {
             현재 검토 대기 중인 가격 제보가 없습니다.
           </div>
         )}
+
+        <section className="mt-10">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-semibold text-stone-900">
+                현재 가격 관리
+              </h2>
+              <p className="mt-3 text-sm leading-6 text-stone-600">
+                최근 업데이트된 장소부터 현재 가격 항목을 직접 수정하거나 숨길 수
+                있습니다.
+              </p>
+            </div>
+            <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-stone-600">
+              {recentPlaces.items.length}개 장소
+            </span>
+          </div>
+
+          <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {recentPlaces.items.slice(0, 9).map((place) => (
+              <article
+                key={place.id}
+                className="rounded-[1.5rem] border border-stone-200 bg-stone-50 p-5"
+              >
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-600">
+                  {place.district}
+                </p>
+                <h3 className="mt-2 text-xl font-semibold text-stone-900">
+                  {place.name}
+                </h3>
+                <p className="mt-3 text-sm text-stone-500">
+                  {place.representativePriceLabel}
+                </p>
+                <p className="mt-1 text-lg font-semibold text-stone-900">
+                  {formatKrw(place.representativePriceAmount)}원
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Link
+                    href={`/admin/prices/places/${place.id}`}
+                    className="rounded-full bg-stone-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-stone-700"
+                  >
+                    가격 관리
+                  </Link>
+                  <Link
+                    href={`/place/${place.id}`}
+                    className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
+                  >
+                    장소 보기
+                  </Link>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
       </section>
     </main>
   );

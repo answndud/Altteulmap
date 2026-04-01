@@ -95,7 +95,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     revalidatePath("/admin");
     revalidatePath("/admin/places");
     revalidatePath("/api/admin/places");
-    revalidatePath("/map");
+    revalidatePath("/");
     revalidatePath("/api/places/map");
     revalidatePath(`/place/${id}`);
     revalidatePath(`/api/places/${id}`);

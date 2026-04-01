@@ -198,11 +198,11 @@ export function AdminPlaceCoordinatePicker({
 
   const statusMessage =
     status === "missing-key"
-      ? "NEXT_PUBLIC_NAVER_MAP_KEY_ID가 없어 지도 선택 대신 숫자 입력만 사용할 수 있습니다."
+      ? "지도 연결이 아직 준비되지 않아 숫자 입력으로만 좌표를 지정할 수 있습니다."
       : status === "error"
-        ? "네이버 지도 SDK를 불러오지 못했습니다. 숫자 입력으로 좌표를 지정해주세요."
+        ? "지도를 불러오지 못했습니다. 숫자 입력으로 좌표를 지정해주세요."
         : status === "loading"
-          ? "네이버 지도를 불러오는 중입니다."
+          ? "지도를 불러오는 중입니다."
           : "지도를 클릭하면 위도와 경도가 자동 입력됩니다.";
 
   return (

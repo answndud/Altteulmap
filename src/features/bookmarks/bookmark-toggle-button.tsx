@@ -71,25 +71,32 @@ export function BookmarkToggleButton({
           event.stopPropagation();
           toggleBookmark();
         }}
+        aria-label={bookmarked ? "북마크 해제" : "북마크 저장"}
         disabled={disabled || isPending}
-        className={`rounded-full transition disabled:cursor-not-allowed disabled:opacity-60 ${
+        data-testid={`bookmark-toggle-${placeId}`}
+        className={`inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-full transition disabled:cursor-not-allowed disabled:opacity-60 ${
           compact
             ? bookmarked
-              ? "bg-stone-900 px-3 py-1.5 text-xs font-medium text-white"
+              ? "altteulmap-accent-solid px-3 py-1.5 text-xs font-medium"
               : "border border-stone-300 bg-white px-3 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-100"
             : bookmarked
-              ? "bg-stone-900 px-4 py-2 text-sm font-medium text-white"
-              : "border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 hover:bg-stone-100"
+              ? "altteulmap-accent-solid px-4 py-2 text-sm font-medium"
+              : "border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-100"
         }`}
       >
         {isPending
-          ? "처리 중..."
+          ? "저장 중"
           : bookmarked
-            ? "북마크 저장됨"
-            : "북마크 저장"}
+            ? "저장됨"
+            : "저장"}
       </button>
       {message && !compact ? (
-        <p className="text-xs text-stone-500">{message}</p>
+        <p
+          data-testid={`bookmark-message-${placeId}`}
+          className="text-xs text-stone-500"
+        >
+          {message}
+        </p>
       ) : null}
     </div>
   );

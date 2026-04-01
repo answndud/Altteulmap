@@ -45,6 +45,10 @@ export const commentStatusEnum = pgEnum("comment_status", [
   "visible",
   "hidden",
 ]);
+export const placeReactionTypeEnum = pgEnum("place_reaction_type", [
+  "like",
+  "dislike",
+]);
 export const contentReportTargetTypeEnum = pgEnum(
   "content_report_target_type",
   ["place", "price_item", "comment"],
@@ -221,6 +225,7 @@ export const priceItems = pgTable(
     amount: integer("amount").notNull(),
     currency: varchar("currency", { length: 3 }).default("KRW").notNull(),
     unitLabel: varchar("unit_label", { length: 50 }),
+    isActive: boolean("is_active").default(true).notNull(),
     isRepresentative: boolean("is_representative").default(false).notNull(),
     verificationStatus: verificationStatusEnum("verification_status")
       .default("unverified")
@@ -239,6 +244,7 @@ export const priceItems = pgTable(
       table.placeId,
       table.normalizedLabel,
     ),
+    index("price_items_place_active_idx").on(table.placeId, table.isActive),
     index("price_items_place_representative_idx").on(
       table.placeId,
       table.isRepresentative,
@@ -324,6 +330,42 @@ export const bookmarks = pgTable(
       columns: [table.userId, table.placeId],
       name: "bookmarks_pk",
     }),
+  ],
+);
+
+export const placeReactions = pgTable(
+  "place_reactions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
+    visitorId: varchar("visitor_id", { length: 64 }),
+    placeId: uuid("place_id")
+      .notNull()
+      .references(() => places.id, { onDelete: "cascade" }),
+    reactionType: placeReactionTypeEnum("reaction_type").notNull(),
+    ...withTimestamps(),
+  },
+  (table) => [
+    uniqueIndex("place_reactions_user_place_unique").on(
+      table.userId,
+      table.placeId,
+    ),
+    uniqueIndex("place_reactions_visitor_place_unique").on(
+      table.visitorId,
+      table.placeId,
+    ),
+    index("place_reactions_place_type_idx").on(
+      table.placeId,
+      table.reactionType,
+    ),
+    index("place_reactions_user_updated_at_idx").on(
+      table.userId,
+      table.updatedAt,
+    ),
+    index("place_reactions_visitor_updated_at_idx").on(
+      table.visitorId,
+      table.updatedAt,
+    ),
   ],
 );
 

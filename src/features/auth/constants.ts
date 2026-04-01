@@ -1,4 +1,5 @@
 export type AppUserRole = "user" | "admin";
+export type SocialAuthProviderId = "kakao" | "naver";
 
 export const authAccountHints = [
   {
@@ -18,4 +19,12 @@ export const authAccountHints = [
 export const appUserRoleLabelMap: Record<AppUserRole, string> = {
   user: "일반 사용자",
   admin: "운영자",
+};
+
+export const socialAuthProviderLabelMap: Record<
+  SocialAuthProviderId,
+  string
+> = {
+  kakao: "카카오",
+  naver: "네이버",
 };

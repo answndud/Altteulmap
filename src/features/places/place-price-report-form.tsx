@@ -69,12 +69,11 @@ export function PlacePriceReportForm({
   };
 
   return (
-    <section className="rounded-[1.5rem] border border-stone-200 bg-white p-5">
+    <section
+      data-testid="place-price-report-form"
+      className="rounded-[1.5rem] border border-stone-200 bg-white p-5"
+    >
       <h4 className="text-sm font-semibold text-stone-900">새 가격 제보</h4>
-      <p className="mt-2 text-sm leading-6 text-stone-500">
-        현재 가격이 바뀌었거나 새로운 항목을 발견했다면 남겨주세요. 운영 검토
-        후 반영됩니다.
-      </p>
 
       {suggestedItems.length > 0 ? (
         <div className="mt-4 flex flex-wrap gap-2">
@@ -87,7 +86,7 @@ export function PlacePriceReportForm({
                 setUnitLabel(item.unitLabel ?? "");
               }}
               disabled={isPending}
-              className="rounded-full border border-stone-300 bg-stone-50 px-3 py-1.5 text-xs text-stone-700 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-60"
+              className="whitespace-nowrap rounded-full border border-stone-300 bg-stone-50 px-3 py-1.5 text-xs text-stone-700 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {item.label}
             </button>
@@ -104,6 +103,7 @@ export function PlacePriceReportForm({
                 value={label}
                 onChange={(event) => setLabel(event.target.value)}
                 disabled={isPending}
+                data-testid="price-report-label"
                 className="rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900 disabled:cursor-not-allowed disabled:opacity-60"
                 placeholder="예: 기본 김밥"
               />
@@ -116,6 +116,7 @@ export function PlacePriceReportForm({
                 value={amount}
                 onChange={(event) => setAmount(event.target.value)}
                 disabled={isPending}
+                data-testid="price-report-amount"
                 className="rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900 disabled:cursor-not-allowed disabled:opacity-60"
                 placeholder="3500"
               />
@@ -128,6 +129,7 @@ export function PlacePriceReportForm({
               value={unitLabel}
               onChange={(event) => setUnitLabel(event.target.value)}
               disabled={isPending}
+              data-testid="price-report-unit"
               className="rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900 disabled:cursor-not-allowed disabled:opacity-60"
               placeholder="예: 1줄, 1인분"
             />
@@ -140,41 +142,40 @@ export function PlacePriceReportForm({
               onChange={(event) => setComment(event.target.value)}
               rows={3}
               disabled={isPending}
+              data-testid="price-report-comment"
               className="rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900 disabled:cursor-not-allowed disabled:opacity-60"
               placeholder="예: 2026-03-31 점심 기준 가격표 확인"
             />
           </label>
 
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-xs text-stone-500">
-              같은 가격이 두 번 이상 누적되면 이후 검증 로직과 연결할 수 있게
-              기록합니다.
-            </p>
+          <div className="flex flex-wrap items-center justify-end gap-3">
             <button
               type="button"
               onClick={handleSubmit}
               disabled={isPending || label.trim().length === 0 || amount.trim().length === 0}
-              className="rounded-full bg-stone-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-60"
+              data-testid="price-report-submit"
+              className="altteulmap-accent-solid whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isPending ? "접수 중..." : "가격 제보 보내기"}
+              {isPending ? "접수 중..." : "제보 보내기"}
             </button>
           </div>
         </div>
       ) : (
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[1.15rem] bg-stone-50 p-4">
-          <p className="text-sm leading-6 text-stone-600">
-            가격 제보를 남기려면 로그인이 필요합니다.
-          </p>
+        <div className="mt-4 flex justify-end rounded-[1.15rem] bg-stone-50 p-4">
           <Link
             href={loginHref}
-            className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
+            className="whitespace-nowrap rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
           >
-            로그인하고 제보하기
+            로그인 후 제보
           </Link>
         </div>
       )}
 
-      {message ? <p className="mt-3 text-xs text-stone-500">{message}</p> : null}
+      {message ? (
+        <p data-testid="price-report-message" className="mt-3 text-xs text-stone-500">
+          {message}
+        </p>
+      ) : null}
     </section>
   );
 }

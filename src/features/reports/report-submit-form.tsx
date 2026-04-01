@@ -73,9 +73,16 @@ export function ReportSubmitForm({
   });
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+    <div
+      className={
+        submitResult
+          ? "grid gap-6 lg:grid-cols-[1.05fr_0.95fr]"
+          : "grid gap-6"
+      }
+    >
       <form
         onSubmit={onSubmit}
+        data-testid="report-submit-form"
         className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm sm:p-8"
       >
         <div className="grid gap-6">
@@ -84,7 +91,6 @@ export function ReportSubmitForm({
             <h2 className="mt-2 text-2xl font-semibold text-stone-900">
               {placeName}
             </h2>
-            <p className="mt-2 text-sm text-stone-500">ID: {placeId}</p>
           </section>
 
           <input type="hidden" {...register("placeId")} />
@@ -94,6 +100,7 @@ export function ReportSubmitForm({
             신고 유형
             <select
               {...register("reasonType")}
+              data-testid="report-reason"
               className="rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900"
             >
               {reportReasonOptions.map((option) => (
@@ -114,6 +121,7 @@ export function ReportSubmitForm({
             <textarea
               {...register("detail")}
               rows={8}
+              data-testid="report-detail"
               className="rounded-3xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900"
               placeholder="예: 가격표는 7,500원으로 바뀌었는데 화면에는 7,000원으로 표시됩니다."
             />
@@ -127,34 +135,21 @@ export function ReportSubmitForm({
           <button
             type="submit"
             disabled={isPending}
-            className="rounded-full bg-stone-900 px-5 py-3 text-sm font-medium text-white transition hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-60"
+            data-testid="report-submit-button"
+            className="altteulmap-accent-solid whitespace-nowrap rounded-full px-5 py-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isPending ? "신고 접수 중..." : "신고 제출"}
           </button>
         </div>
       </form>
 
-      <aside className="space-y-6">
-        <section className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-orange-600">
-            Reporting
-          </p>
-          <h2 className="mt-3 text-xl font-semibold text-stone-900">
-            현재 단계에서 가능한 것
-          </h2>
-          <ul className="mt-4 space-y-3 text-sm leading-6 text-stone-600">
-            <li>장소별 신고 진입과 유형 선택</li>
-            <li>Zod 기반 서버 검증</li>
-            <li>운영자 검토용 payload 확인</li>
-            <li>목업 fallback 또는 DB 저장 경로 준비</li>
-          </ul>
-        </section>
-
-        <section className="rounded-[2rem] border border-stone-200 bg-stone-50 p-6">
-          <h2 className="text-xl font-semibold text-stone-900">신고 결과</h2>
-          {submitResult ? (
+      {submitResult ? (
+        <aside data-testid="report-result">
+          <section className="rounded-[2rem] border border-stone-200 bg-stone-50 p-6">
+            <h2 className="text-xl font-semibold text-stone-900">접수 내용</h2>
             <div className="mt-4 space-y-4">
               <div
+                data-testid="report-result-message"
                 className={`rounded-2xl px-4 py-3 text-sm ${
                   submitResult.ok
                     ? "bg-emerald-100 text-emerald-800"
@@ -165,37 +160,23 @@ export function ReportSubmitForm({
               </div>
               {submitResult.preview ? (
                 <div className="rounded-3xl border border-stone-200 bg-white p-5 text-sm text-stone-700">
-                  <p className="text-stone-500">신고 ID</p>
-                  <p className="mt-1 font-medium text-stone-900">
-                    {submitResult.preview.id}
-                  </p>
-                  {submitResult.source ? (
-                    <>
-                      <p className="mt-4 text-stone-500">처리 경로</p>
-                      <p className="mt-1 font-medium text-stone-900">
-                        {submitResult.source === "database" ? "DB" : "목업"}
-                      </p>
-                    </>
-                  ) : null}
-                  <p className="mt-4 text-stone-500">유형</p>
+                  <p className="text-stone-500">유형</p>
                   <p className="mt-1 font-medium text-stone-900">
                     {reportReasonMap[submitResult.preview.reasonType]}
                   </p>
                   <p className="mt-4 text-stone-500">상세 설명</p>
-                  <p className="mt-1 leading-6 text-stone-700">
+                  <p
+                    data-testid="report-result-detail"
+                    className="mt-1 leading-6 text-stone-700"
+                  >
                     {submitResult.preview.detail}
                   </p>
                 </div>
               ) : null}
             </div>
-          ) : (
-            <p className="mt-4 text-sm leading-6 text-stone-600">
-              아직 신고하지 않았습니다. 제출하면 서버 검증 결과와 정리된 신고
-              payload를 여기서 확인할 수 있습니다.
-            </p>
-          )}
-        </section>
-      </aside>
+          </section>
+        </aside>
+      ) : null}
     </div>
   );
 }

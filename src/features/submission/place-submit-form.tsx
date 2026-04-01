@@ -128,9 +128,16 @@ export function PlaceSubmitForm() {
   });
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+    <div
+      className={
+        submitResult
+          ? "grid gap-6 lg:grid-cols-[1.2fr_0.8fr]"
+          : "grid gap-6"
+      }
+    >
       <form
         onSubmit={onSubmit}
+        data-testid="place-submit-form"
         className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm sm:p-8"
       >
         <div className="grid gap-6">
@@ -141,6 +148,7 @@ export function PlaceSubmitForm() {
                 상호명
                 <input
                   {...register("name")}
+                  data-testid="submit-name"
                   className="rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900"
                   placeholder="예: 학교앞김밥"
                 />
@@ -154,6 +162,7 @@ export function PlaceSubmitForm() {
                 사업장 이름
                 <input
                   {...register("businessName")}
+                  data-testid="submit-business-name"
                   className="rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900"
                   placeholder="예: 학교앞김밥 성신점"
                 />
@@ -164,6 +173,7 @@ export function PlaceSubmitForm() {
                 카테고리
                 <select
                   {...register("categorySlug")}
+                  data-testid="submit-category"
                   className="rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900"
                 >
                   <option value="">카테고리 선택</option>
@@ -187,6 +197,7 @@ export function PlaceSubmitForm() {
                 지역 구분
                 <input
                   {...register("district")}
+                  data-testid="submit-district"
                   className="rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900"
                   placeholder="예: 서울 성북구"
                 />
@@ -201,6 +212,7 @@ export function PlaceSubmitForm() {
               주소
               <input
                 {...register("roadAddress")}
+                data-testid="submit-road-address"
                 className="rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900"
                 placeholder="예: 서울 성북구 동소문로22길 31"
               />
@@ -224,7 +236,7 @@ export function PlaceSubmitForm() {
                     unitLabel: "",
                   })
                 }
-                className="rounded-full border border-stone-300 px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
+                className="whitespace-nowrap rounded-full border border-stone-300 px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
               >
                 항목 추가
               </button>
@@ -240,6 +252,7 @@ export function PlaceSubmitForm() {
                       항목명
                       <input
                         {...register(`priceItems.${index}.label`)}
+                        data-testid={`submit-price-label-${index}`}
                         className="rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900"
                         placeholder="예: 김치찌개"
                       />
@@ -249,6 +262,7 @@ export function PlaceSubmitForm() {
                       <input
                         type="number"
                         {...register(`priceItems.${index}.amount`)}
+                        data-testid={`submit-price-amount-${index}`}
                         className="rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900"
                         placeholder="7000"
                       />
@@ -257,6 +271,7 @@ export function PlaceSubmitForm() {
                       단위
                       <input
                         {...register(`priceItems.${index}.unitLabel`)}
+                        data-testid={`submit-price-unit-${index}`}
                         className="rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900"
                         placeholder="1인분"
                       />
@@ -298,6 +313,7 @@ export function PlaceSubmitForm() {
               추가 메모
               <textarea
                 {...register("note")}
+                data-testid="submit-note"
                 rows={5}
                 className="rounded-3xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900"
                 placeholder="예: 점심시간 줄이 짧고 현금 결제 손님이 많습니다."
@@ -337,6 +353,7 @@ export function PlaceSubmitForm() {
                   type="number"
                   step="0.000001"
                   {...register("latitude")}
+                  data-testid="submit-latitude"
                   className="rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900"
                   placeholder="37.566500"
                 />
@@ -353,6 +370,7 @@ export function PlaceSubmitForm() {
                   type="number"
                   step="0.000001"
                   {...register("longitude")}
+                  data-testid="submit-longitude"
                   className="rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900"
                   placeholder="126.978000"
                 />
@@ -368,35 +386,21 @@ export function PlaceSubmitForm() {
           <button
             type="submit"
             disabled={isPending}
-            className="rounded-full bg-stone-900 px-5 py-3 text-sm font-medium text-white transition hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-60"
+            data-testid="submit-place-button"
+            className="altteulmap-accent-solid whitespace-nowrap rounded-full px-5 py-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isPending ? "제출 확인 중..." : "제보 제출하기"}
           </button>
         </div>
       </form>
 
-      <aside className="space-y-6">
-        <section className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-orange-600">
-            Submission flow
-          </p>
-          <h2 className="mt-3 text-xl font-semibold text-stone-900">
-            현재 단계에서 가능한 것
-          </h2>
-          <ul className="mt-4 space-y-3 text-sm leading-6 text-stone-600">
-            <li>카테고리 선택과 가격 항목 다중 입력</li>
-            <li>대략적인 좌표 선택 또는 수동 입력</li>
-            <li>Zod 기반 입력 검증</li>
-            <li>서버 API로 제출 payload 검증</li>
-            <li>목업 fallback 또는 DB 저장 결과 확인</li>
-          </ul>
-        </section>
-
-        <section className="rounded-[2rem] border border-stone-200 bg-stone-50 p-6">
-          <h2 className="text-xl font-semibold text-stone-900">제출 결과</h2>
-          {submitResult ? (
+      {submitResult ? (
+        <aside data-testid="submit-result">
+          <section className="rounded-[2rem] border border-stone-200 bg-stone-50 p-6">
+            <h2 className="text-xl font-semibold text-stone-900">접수 내용</h2>
             <div className="mt-4 space-y-4">
               <div
+                data-testid="submit-result-message"
                 className={`rounded-2xl px-4 py-3 text-sm ${
                   submitResult.ok
                     ? "bg-emerald-100 text-emerald-800"
@@ -407,20 +411,11 @@ export function PlaceSubmitForm() {
               </div>
               {submitResult.preview ? (
                 <div className="rounded-3xl border border-stone-200 bg-white p-5">
-                  <p className="text-sm text-stone-500">생성 ID</p>
-                  <p className="mt-1 font-medium text-stone-900">
-                    {submitResult.preview.id}
-                  </p>
-                  {submitResult.source ? (
-                    <>
-                      <p className="mt-4 text-sm text-stone-500">처리 경로</p>
-                      <p className="mt-1 font-medium text-stone-900">
-                        {submitResult.source === "database" ? "DB" : "목업"}
-                      </p>
-                    </>
-                  ) : null}
-                  <p className="mt-4 text-sm text-stone-500">상호명</p>
-                  <p className="mt-1 font-medium text-stone-900">
+                  <p className="text-sm text-stone-500">상호명</p>
+                  <p
+                    data-testid="submit-result-name"
+                    className="mt-1 font-medium text-stone-900"
+                  >
                     {submitResult.preview.name}
                   </p>
                   <p className="mt-4 text-sm text-stone-500">주소</p>
@@ -452,14 +447,9 @@ export function PlaceSubmitForm() {
                 </div>
               ) : null}
             </div>
-          ) : (
-            <p className="mt-4 text-sm leading-6 text-stone-600">
-              아직 제출하지 않았습니다. 폼을 입력하고 제출하면 서버 검증 결과와
-              정리된 payload를 여기에서 확인할 수 있습니다.
-            </p>
-          )}
-        </section>
-      </aside>
+          </section>
+        </aside>
+      ) : null}
     </div>
   );
 }

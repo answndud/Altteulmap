@@ -45,7 +45,7 @@ export async function PUT(request: Request, context: RouteContext) {
   if (result.ok) {
     revalidatePath("/bookmarks");
     revalidatePath("/api/bookmarks");
-    revalidatePath("/map");
+    revalidatePath("/");
     revalidatePath("/api/places/map");
     revalidatePath(`/place/${id}`);
     revalidatePath(`/api/places/${id}`);

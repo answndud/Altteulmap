@@ -40,12 +40,13 @@ export function AdminPriceReportReviewForm({
   };
 
   return (
-    <div className="space-y-3">
+    <div data-testid="admin-price-review-form" className="space-y-3">
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
           onClick={() => submitDecision("approve")}
           disabled={disabled || isPending}
+          data-testid="admin-price-approve-button"
           className="rounded-full bg-stone-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
           승인
@@ -54,13 +55,14 @@ export function AdminPriceReportReviewForm({
           type="button"
           onClick={() => submitDecision("reject")}
           disabled={disabled || isPending}
+          data-testid="admin-price-reject-button"
           className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-60"
         >
           반려
         </button>
       </div>
       {message ? (
-        <p className="text-xs text-stone-500">
+        <p data-testid="admin-price-review-message" className="text-xs text-stone-500">
           {isPending ? "처리 중..." : message}
         </p>
       ) : null}

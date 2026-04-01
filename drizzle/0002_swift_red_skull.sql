@@ -1,0 +1,2 @@
+ALTER TABLE "price_items" ADD COLUMN "is_active" boolean DEFAULT true NOT NULL;--> statement-breakpoint
+CREATE INDEX "price_items_place_active_idx" ON "price_items" USING btree ("place_id","is_active");

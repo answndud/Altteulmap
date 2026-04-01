@@ -37,6 +37,7 @@ export type NaverMapsSdk = {
       setCenter?: (latLng: unknown) => void;
       setZoom?: (zoom: number) => void;
       panTo?: (latLng: unknown) => void;
+      fitBounds?: (bounds: unknown) => void;
       destroy?: () => void;
       autoResize?: () => void;
     };
@@ -44,6 +45,9 @@ export type NaverMapsSdk = {
       setMap?: (map: unknown) => void;
     };
     LatLng: new (lat: number, lng: number) => unknown;
+    LatLngBounds: new (southWest: unknown, northEast: unknown) => unknown;
+    Point: new (x: number, y: number) => unknown;
+    Size: new (width: number, height: number) => unknown;
     Event: {
       addListener: <TArgs extends unknown[]>(
         target: unknown,

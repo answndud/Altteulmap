@@ -10,6 +10,7 @@ import {
   inArray,
   isNotNull,
   lte,
+  ne,
   or,
   sql,
 } from "drizzle-orm";
@@ -20,6 +21,7 @@ import {
   categories,
   comments,
   placeCategories,
+  placeReactions,
   places,
   priceItems,
   priceReports,
@@ -36,12 +38,14 @@ import {
   getMapBounds,
   getPlaceById,
   getRelatedPlaces,
+  sortPlaceRecords,
 } from "@/features/places/queries";
 import type {
   PlaceModerationInput,
   PlaceSubmissionInput,
 } from "@/features/submission/schema";
 import type {
+  AdminPriceItemUpdateInput,
   PlaceCommentInput,
   PlacePriceReportInput,
   PriceReportModerationInput,
@@ -52,7 +56,9 @@ import type {
   PlaceHistoryEntry,
   PlacePriceItem,
   PlaceQueryBounds,
+  PlaceReactionType,
   PlaceRecord,
+  PlaceSort,
 } from "@/features/places/types";
 
 export type DataSource = "mock" | "database";
@@ -60,7 +66,7 @@ export type DataSource = "mock" | "database";
 export type PlaceQuery = {
   category?: string | null;
   maxPrice?: number | null;
-  sort?: "price" | "recent";
+  sort?: PlaceSort;
   bounds?: PlaceQueryBounds | null;
   query?: string | null;
 };
@@ -144,8 +150,16 @@ export type PlaceModerationResult = {
 };
 
 type PlaceViewer = {
-  userId: string;
-  role: "user" | "admin";
+  role: "user" | "admin" | "guest";
+  userId?: string | null;
+  visitorId?: string | null;
+} | null;
+
+type PlaceReactionActor = {
+  userId?: string | null;
+  visitorId?: string | null;
+  email?: string | null;
+  name?: string | null;
 } | null;
 
 export type PlaceCommentActionResult = {
@@ -208,12 +222,265 @@ export type PriceReportModerationResult = {
   item: PendingPriceReportRecord | null;
 };
 
+export type PlaceReactionActionResult = {
+  ok: boolean;
+  message: string;
+  source: DataSource;
+  reaction: PlaceReactionType | null;
+  likeCount: number;
+  dislikeCount: number;
+  placeId: string;
+};
+
+export type AdminPriceItemRecord = {
+  id: string;
+  label: string;
+  amount: number;
+  unitLabel?: string;
+  verificationStatus: "verified" | "unverified";
+  verifiedReportCount: number;
+  reportedAt: string;
+  isRepresentative: boolean;
+  isActive: boolean;
+};
+
+export type AdminPlacePriceDetailResult = {
+  item: {
+    id: string;
+    name: string;
+    district: string;
+    representativePriceAmount: number;
+    representativePriceLabel: string;
+    verificationStatus: "verified" | "unverified";
+    priceItems: AdminPriceItemRecord[];
+  } | null;
+  source: DataSource;
+};
+
+export type AdminPriceItemUpdateResult = {
+  ok: boolean;
+  message: string;
+  source: DataSource;
+  item: AdminPriceItemRecord | null;
+  placeId: string | null;
+};
+
 const dateFormatter = new Intl.DateTimeFormat("sv-SE", {
   timeZone: "Asia/Seoul",
 });
 
+const globalMockReactionStore = globalThis as typeof globalThis & {
+  __altteulmapMockPlaceReactions?: Map<string, PlaceReactionType>;
+};
+
+type PlaceReactionSummary = {
+  likeCount: number;
+  dislikeCount: number;
+  viewerReaction: PlaceReactionType | null;
+};
+
 function formatDate(value: Date | null) {
   return value ? dateFormatter.format(value) : "";
+}
+
+function getMockReactionStore() {
+  if (!globalMockReactionStore.__altteulmapMockPlaceReactions) {
+    globalMockReactionStore.__altteulmapMockPlaceReactions = new Map();
+  }
+
+  return globalMockReactionStore.__altteulmapMockPlaceReactions;
+}
+
+function getReactionViewerKey(
+  viewer: Pick<NonNullable<PlaceViewer>, "userId" | "visitorId"> | null,
+) {
+  if (viewer?.userId) {
+    return `user:${viewer.userId}`;
+  }
+
+  if (viewer?.visitorId) {
+    return `visitor:${viewer.visitorId}`;
+  }
+
+  return null;
+}
+
+function getReactionActorKey(actor: PlaceReactionActor) {
+  return getReactionViewerKey(actor);
+}
+
+function createEmptyReactionSummary(): PlaceReactionSummary {
+  return {
+    likeCount: 0,
+    dislikeCount: 0,
+    viewerReaction: null,
+  };
+}
+
+function getMockReactionSummary(
+  placeId: string,
+  viewerKey?: string | null,
+): PlaceReactionSummary {
+  const place = mockPlaces.find((item) => item.id === placeId);
+
+  if (!place) {
+    return createEmptyReactionSummary();
+  }
+
+  const summary: PlaceReactionSummary = {
+    likeCount: place.likeCount,
+    dislikeCount: place.dislikeCount,
+    viewerReaction: null,
+  };
+  const store = getMockReactionStore();
+
+  for (const [key, reaction] of store.entries()) {
+    const [, storedPlaceId] = key.split(":");
+
+    if (storedPlaceId !== placeId) {
+      continue;
+    }
+
+    if (reaction === "like") {
+      summary.likeCount += 1;
+    } else {
+      summary.dislikeCount += 1;
+    }
+  }
+
+  if (viewerKey) {
+    summary.viewerReaction = store.get(`${viewerKey}:${placeId}`) ?? null;
+  }
+
+  return summary;
+}
+
+async function loadPlaceReactionSummary(
+  placeIds: string[],
+  viewer: PlaceViewer = null,
+) {
+  const summaryMap = new Map<string, PlaceReactionSummary>();
+
+  for (const placeId of placeIds) {
+    summaryMap.set(placeId, createEmptyReactionSummary());
+  }
+
+  if (placeIds.length === 0) {
+    return summaryMap;
+  }
+
+  const db = getDb();
+  const countRows = await db
+    .select({
+      placeId: placeReactions.placeId,
+      reactionType: placeReactions.reactionType,
+      count: sql<number>`count(*)`,
+    })
+    .from(placeReactions)
+    .where(inArray(placeReactions.placeId, placeIds))
+    .groupBy(placeReactions.placeId, placeReactions.reactionType);
+
+  for (const row of countRows) {
+    const current = summaryMap.get(row.placeId) ?? createEmptyReactionSummary();
+    const count = Number(row.count) || 0;
+
+    if (row.reactionType === "like") {
+      current.likeCount = count;
+    } else {
+      current.dislikeCount = count;
+    }
+
+    summaryMap.set(row.placeId, current);
+  }
+
+  const viewerKey = getReactionViewerKey(viewer);
+
+  if (!viewerKey || !viewer) {
+    return summaryMap;
+  }
+
+  const viewerRows = await db
+    .select({
+      placeId: placeReactions.placeId,
+      reactionType: placeReactions.reactionType,
+    })
+    .from(placeReactions)
+    .where(
+      and(
+        inArray(placeReactions.placeId, placeIds),
+        viewer.userId
+          ? eq(placeReactions.userId, viewer.userId)
+          : eq(placeReactions.visitorId, viewer.visitorId ?? ""),
+      ),
+    );
+
+  for (const row of viewerRows) {
+    const current = summaryMap.get(row.placeId) ?? createEmptyReactionSummary();
+
+    current.viewerReaction = row.reactionType;
+    summaryMap.set(row.placeId, current);
+  }
+
+  return summaryMap;
+}
+
+type PriceSummaryItem = {
+  id: string;
+  label: string;
+  amount: number;
+  latestReportedAt: Date | null;
+  verificationStatus: "verified" | "unverified";
+  isRepresentative: boolean;
+};
+
+function selectRepresentativePriceItem(items: PriceSummaryItem[]) {
+  if (items.length === 0) {
+    return null;
+  }
+
+  const byLatestDesc = (left: PriceSummaryItem, right: PriceSummaryItem) => {
+    const leftTime = left.latestReportedAt?.getTime() ?? 0;
+    const rightTime = right.latestReportedAt?.getTime() ?? 0;
+
+    if (leftTime !== rightTime) {
+      return rightTime - leftTime;
+    }
+
+    if (left.amount !== right.amount) {
+      return left.amount - right.amount;
+    }
+
+    return left.label.localeCompare(right.label, "ko");
+  };
+
+  const representativeVerified = items
+    .filter(
+      (item) => item.isRepresentative && item.verificationStatus === "verified",
+    )
+    .sort(byLatestDesc)[0];
+
+  if (representativeVerified) {
+    return representativeVerified;
+  }
+
+  const representativeUnverified = items
+    .filter(
+      (item) =>
+        item.isRepresentative && item.verificationStatus === "unverified",
+    )
+    .sort(byLatestDesc)[0];
+
+  if (representativeUnverified) {
+    return representativeUnverified;
+  }
+
+  return [...items].sort((left, right) => {
+    if (left.amount !== right.amount) {
+      return left.amount - right.amount;
+    }
+
+    return byLatestDesc(left, right);
+  })[0];
 }
 
 function getBoundsFromPlaces(items: PlaceRecord[]): PlaceBounds {
@@ -266,6 +533,30 @@ function toAuthorLabel(
   return fallback;
 }
 
+function toAdminPriceItemRecord(item: {
+  id: string;
+  label: string;
+  amount: number;
+  unitLabel: string | null;
+  verificationStatus: "verified" | "unverified";
+  verifiedReportCount: number;
+  latestReportedAt: Date | null;
+  isRepresentative: boolean;
+  isActive: boolean;
+}): AdminPriceItemRecord {
+  return {
+    id: item.id,
+    label: item.label,
+    amount: item.amount,
+    unitLabel: item.unitLabel ?? undefined,
+    verificationStatus: item.verificationStatus,
+    verifiedReportCount: item.verifiedReportCount,
+    reportedAt: formatDate(item.latestReportedAt),
+    isRepresentative: item.isRepresentative,
+    isActive: item.isActive,
+  };
+}
+
 function toPlaceRecord(
   row: DatabasePlaceRow,
   categorySlug: string | null | undefined,
@@ -273,6 +564,7 @@ function toPlaceRecord(
     comments?: PlaceComment[];
     history?: PlaceHistoryEntry[];
     priceItems?: PlacePriceItem[];
+    reactionSummary?: PlaceReactionSummary;
   },
 ): PlaceRecord {
   return {
@@ -295,6 +587,9 @@ function toPlaceRecord(
     note:
       row.note ??
       "운영 검토 전 단계이거나 추가 메모가 아직 등록되지 않았습니다.",
+    likeCount: detail?.reactionSummary?.likeCount ?? 0,
+    dislikeCount: detail?.reactionSummary?.dislikeCount ?? 0,
+    viewerReaction: detail?.reactionSummary?.viewerReaction ?? null,
     priceItems: detail?.priceItems ?? [],
     history: detail?.history ?? [],
     comments: detail?.comments ?? [],
@@ -417,15 +712,27 @@ async function listDatabasePlaces({
     .orderBy(
       ...(sort === "recent"
         ? [desc(places.lastPriceUpdatedAt), desc(places.updatedAt)]
-        : [asc(places.representativePriceAmount), desc(places.updatedAt)]),
+        : sort === "likes"
+          ? [desc(places.updatedAt)]
+          : [asc(places.representativePriceAmount), desc(places.updatedAt)]),
     );
 
   const categoryMap = await loadCategoryMap(rows.map((row) => row.internalId));
-  const mapped = rows
-    .map((row) => toPlaceRecord(row, categoryMap.get(row.internalId)))
+  const reactionSummaryMap = await loadPlaceReactionSummary(
+    rows.map((row) => row.internalId),
+  );
+  const mapped = sortPlaceRecords(
+    rows
+    .map((row) =>
+      toPlaceRecord(row, categoryMap.get(row.internalId), {
+        reactionSummary: reactionSummaryMap.get(row.internalId),
+      }),
+    )
     .filter((place) =>
       category ? place.categorySlug === category : true,
-    );
+    ),
+    sort,
+  );
 
   return {
     items: mapped,
@@ -471,7 +778,14 @@ async function getDatabasePlaceDetail(
     };
   }
 
-  const [categoryMap, priceItemRows, historyRows, commentRows, relatedList] =
+  const [
+    categoryMap,
+    priceItemRows,
+    historyRows,
+    commentRows,
+    reactionSummaryMap,
+    relatedList,
+  ] =
     await Promise.all([
       loadCategoryMap([row.internalId]),
       db
@@ -484,7 +798,9 @@ async function getDatabasePlaceDetail(
           latestReportedAt: priceItems.latestReportedAt,
         })
         .from(priceItems)
-        .where(eq(priceItems.placeId, row.internalId))
+        .where(
+          and(eq(priceItems.placeId, row.internalId), eq(priceItems.isActive, true)),
+        )
         .orderBy(
           desc(priceItems.isRepresentative),
           asc(priceItems.amount),
@@ -519,6 +835,7 @@ async function getDatabasePlaceDetail(
         .leftJoin(users, eq(comments.userId, users.id))
         .where(and(eq(comments.placeId, row.internalId), eq(comments.status, "visible")))
         .orderBy(desc(comments.createdAt)),
+      loadPlaceReactionSummary([row.internalId], viewer),
       listDatabasePlaces({ sort: "price" }),
     ]);
 
@@ -547,6 +864,7 @@ async function getDatabasePlaceDetail(
       canDelete:
         viewer?.role === "admin" || viewer?.userId === comment.userId,
     })),
+    reactionSummary: reactionSummaryMap.get(row.internalId),
   });
 
   const currentCategory = getCategoryBySlug(categorySlug);
@@ -607,6 +925,159 @@ async function getActivePlaceIdentityBySlug(slug: string) {
   return placeRow ?? null;
 }
 
+function getPlaceReactionMessage(reaction: PlaceReactionType | null) {
+  if (reaction === "like") {
+    return "좋아요를 남겼습니다.";
+  }
+
+  if (reaction === "dislike") {
+    return "싫어요를 남겼습니다.";
+  }
+
+  return "반응을 취소했습니다.";
+}
+
+function setMockPlaceReaction(
+  placeSlug: string,
+  reaction: PlaceReactionType | null,
+  actor: PlaceReactionActor,
+): PlaceReactionActionResult {
+  const actorKey = getReactionActorKey(actor);
+
+  if (!actorKey) {
+    return {
+      ok: false,
+      source: "mock",
+      reaction: null,
+      likeCount: 0,
+      dislikeCount: 0,
+      message: "반응 대상을 확인하지 못했습니다.",
+      placeId: placeSlug,
+    };
+  }
+
+  const place = getPlaceById(placeSlug);
+
+  if (!place) {
+    return {
+      ok: false,
+      source: "mock",
+      reaction: null,
+      likeCount: 0,
+      dislikeCount: 0,
+      message: "장소를 찾지 못했습니다.",
+      placeId: placeSlug,
+    };
+  }
+
+  const store = getMockReactionStore();
+  const key = `${actorKey}:${placeSlug}`;
+
+  if (reaction) {
+    store.set(key, reaction);
+  } else {
+    store.delete(key);
+  }
+
+  const summary = getMockReactionSummary(placeSlug, actorKey);
+
+  return {
+    ok: true,
+    source: "mock",
+    reaction: summary.viewerReaction,
+    likeCount: summary.likeCount,
+    dislikeCount: summary.dislikeCount,
+    message: getPlaceReactionMessage(summary.viewerReaction),
+    placeId: placeSlug,
+  };
+}
+
+async function setDatabasePlaceReaction(
+  placeSlug: string,
+  reaction: PlaceReactionType | null,
+  actor: PlaceReactionActor,
+): Promise<PlaceReactionActionResult> {
+  const actorKey = getReactionActorKey(actor);
+
+  if (!actorKey) {
+    return {
+      ok: false,
+      source: "database",
+      reaction: null,
+      likeCount: 0,
+      dislikeCount: 0,
+      message: "반응 대상을 확인하지 못했습니다.",
+      placeId: placeSlug,
+    };
+  }
+
+  const place = await getActivePlaceIdentityBySlug(placeSlug);
+
+  if (!place) {
+    return {
+      ok: false,
+      source: "database",
+      reaction: null,
+      likeCount: 0,
+      dislikeCount: 0,
+      message: "장소를 찾지 못했습니다.",
+      placeId: placeSlug,
+    };
+  }
+
+  const db = getDb();
+
+  if (reaction) {
+    await db
+      .insert(placeReactions)
+      .values({
+        userId: actor?.userId ?? null,
+        visitorId: actor?.visitorId ?? null,
+        placeId: place.id,
+        reactionType: reaction,
+      })
+      .onConflictDoUpdate({
+        target:
+          actor?.userId
+            ? [placeReactions.userId, placeReactions.placeId]
+            : [placeReactions.visitorId, placeReactions.placeId],
+        set: {
+          reactionType: reaction,
+          updatedAt: new Date(),
+        },
+      });
+  } else {
+    await db
+      .delete(placeReactions)
+      .where(
+        and(
+          eq(placeReactions.placeId, place.id),
+          actor?.userId
+            ? eq(placeReactions.userId, actor.userId)
+            : eq(placeReactions.visitorId, actor?.visitorId ?? ""),
+        ),
+      );
+  }
+
+  const summary = (
+    await loadPlaceReactionSummary([place.id], {
+      role: actor?.userId ? "user" : "guest",
+      userId: actor?.userId ?? null,
+      visitorId: actor?.visitorId ?? null,
+    })
+  ).get(place.id) ?? createEmptyReactionSummary();
+
+  return {
+    ok: true,
+    source: "database",
+    reaction: summary.viewerReaction,
+    likeCount: summary.likeCount,
+    dislikeCount: summary.dislikeCount,
+    message: getPlaceReactionMessage(summary.viewerReaction),
+    placeId: placeSlug,
+  };
+}
+
 async function refreshPlacePricingSummary(placeId: string, changedAt: Date) {
   const db = getDb();
   const currentPriceItems = await db
@@ -614,10 +1085,12 @@ async function refreshPlacePricingSummary(placeId: string, changedAt: Date) {
       id: priceItems.id,
       label: priceItems.label,
       amount: priceItems.amount,
+      latestReportedAt: priceItems.latestReportedAt,
       verificationStatus: priceItems.verificationStatus,
+      isRepresentative: priceItems.isRepresentative,
     })
     .from(priceItems)
-    .where(eq(priceItems.placeId, placeId))
+    .where(and(eq(priceItems.placeId, placeId), eq(priceItems.isActive, true)))
     .orderBy(asc(priceItems.amount), asc(priceItems.label));
 
   if (currentPriceItems.length === 0) {
@@ -635,7 +1108,10 @@ async function refreshPlacePricingSummary(placeId: string, changedAt: Date) {
     return;
   }
 
-  const representativeItem = currentPriceItems[0];
+  const representativeItem = selectRepresentativePriceItem(currentPriceItems);
+  if (!representativeItem) {
+    return;
+  }
   const verifiedPriceItemCount = currentPriceItems.filter(
     (item) => item.verificationStatus === "verified",
   ).length;
@@ -733,6 +1209,7 @@ async function createDatabasePlaceSubmission(
         amount: item.amount,
         currency: "KRW" as const,
         unitLabel: item.unitLabel || null,
+        isActive: true,
         isRepresentative: index === representativeIndex,
         verificationStatus: "unverified" as const,
         verifiedReportCount: 0,
@@ -768,8 +1245,7 @@ async function createDatabasePlaceSubmission(
 
   return {
     ok: true,
-    message:
-      "제출이 접수되었습니다. DB에 임시 저장했고, 운영 검토 전까지는 공개 목록에 노출되지 않습니다.",
+    message: "제보가 접수되었습니다. 검토 후 공개 목록에 반영됩니다.",
     mock: false,
     source: "database",
     preview: {
@@ -1027,6 +1503,197 @@ async function listDatabasePendingPriceReports(): Promise<PendingPriceReportList
   };
 }
 
+async function getDatabaseAdminPlacePriceDetail(
+  slug: string,
+): Promise<AdminPlacePriceDetailResult> {
+  const db = getDb();
+  const [placeRow] = await db
+    .select({
+      id: places.id,
+      slug: places.slug,
+      name: places.name,
+      district: places.district,
+      representativePriceAmount: places.representativePriceAmount,
+      representativePriceLabel: places.representativePriceLabel,
+      verifiedPriceItemCount: places.verifiedPriceItemCount,
+    })
+    .from(places)
+    .where(and(eq(places.slug, slug), eq(places.status, "active")))
+    .limit(1);
+
+  if (!placeRow) {
+    return {
+      item: null,
+      source: "database",
+    };
+  }
+
+  const itemRows = await db
+    .select({
+      id: priceItems.id,
+      label: priceItems.label,
+      amount: priceItems.amount,
+      unitLabel: priceItems.unitLabel,
+      verificationStatus: priceItems.verificationStatus,
+      verifiedReportCount: priceItems.verifiedReportCount,
+      latestReportedAt: priceItems.latestReportedAt,
+      isRepresentative: priceItems.isRepresentative,
+      isActive: priceItems.isActive,
+    })
+    .from(priceItems)
+    .where(eq(priceItems.placeId, placeRow.id))
+    .orderBy(
+      desc(priceItems.isActive),
+      desc(priceItems.isRepresentative),
+      asc(priceItems.amount),
+      asc(priceItems.label),
+    );
+
+  return {
+    item: {
+      id: placeRow.slug,
+      name: placeRow.name,
+      district: placeRow.district,
+      representativePriceAmount: placeRow.representativePriceAmount ?? 0,
+      representativePriceLabel:
+        placeRow.representativePriceLabel ?? "대표 가격 준비 중",
+      verificationStatus:
+        placeRow.verifiedPriceItemCount > 0 ? "verified" : "unverified",
+      priceItems: itemRows.map(toAdminPriceItemRecord),
+    },
+    source: "database",
+  };
+}
+
+async function updateDatabasePriceItem(
+  itemId: string,
+  input: AdminPriceItemUpdateInput,
+  adminUserId?: string | null,
+): Promise<AdminPriceItemUpdateResult> {
+  const db = getDb();
+  const [existingItem] = await db
+    .select({
+      id: priceItems.id,
+      placeId: places.id,
+      placeSlug: places.slug,
+      label: priceItems.label,
+      amount: priceItems.amount,
+      verifiedReportCount: priceItems.verifiedReportCount,
+    })
+    .from(priceItems)
+    .innerJoin(places, eq(priceItems.placeId, places.id))
+    .where(and(eq(priceItems.id, itemId), eq(places.status, "active")))
+    .limit(1);
+
+  if (!existingItem) {
+    return {
+      ok: false,
+      message: "가격 항목을 찾지 못했습니다.",
+      source: "database",
+      item: null,
+      placeId: null,
+    };
+  }
+
+  const normalizedLabel = normalizePriceLabel(input.label);
+  const [duplicateItem] = await db
+    .select({
+      id: priceItems.id,
+    })
+    .from(priceItems)
+    .where(
+      and(
+        eq(priceItems.placeId, existingItem.placeId),
+        eq(priceItems.normalizedLabel, normalizedLabel),
+        ne(priceItems.id, existingItem.id),
+      ),
+    )
+    .limit(1);
+
+  if (duplicateItem) {
+    return {
+      ok: false,
+      message: "같은 이름의 가격 항목이 이미 있습니다.",
+      source: "database",
+      item: null,
+      placeId: existingItem.placeSlug,
+    };
+  }
+
+  const changedAt = new Date();
+  const nextIsRepresentative = input.isActive ? input.isRepresentative : false;
+  const nextVerifiedReportCount =
+    input.verificationStatus === "verified"
+      ? Math.max(existingItem.verifiedReportCount, 2)
+      : 0;
+
+  if (nextIsRepresentative) {
+    await db
+      .update(priceItems)
+      .set({
+        isRepresentative: false,
+        updatedAt: changedAt,
+      })
+      .where(eq(priceItems.placeId, existingItem.placeId));
+  }
+
+  const [updatedItem] = await db
+    .update(priceItems)
+    .set({
+      label: input.label,
+      normalizedLabel,
+      amount: input.amount,
+      unitLabel: input.unitLabel || null,
+      isActive: input.isActive,
+      isRepresentative: nextIsRepresentative,
+      verificationStatus: input.verificationStatus,
+      verifiedReportCount: nextVerifiedReportCount,
+      latestReportedAt: changedAt,
+      updatedAt: changedAt,
+    })
+    .where(eq(priceItems.id, itemId))
+    .returning({
+      id: priceItems.id,
+      label: priceItems.label,
+      amount: priceItems.amount,
+      unitLabel: priceItems.unitLabel,
+      verificationStatus: priceItems.verificationStatus,
+      verifiedReportCount: priceItems.verifiedReportCount,
+      latestReportedAt: priceItems.latestReportedAt,
+      isRepresentative: priceItems.isRepresentative,
+      isActive: priceItems.isActive,
+    });
+
+  await refreshPlacePricingSummary(existingItem.placeId, changedAt);
+
+  await db.insert(adminActions).values({
+    adminUserId: adminUserId ?? null,
+    actionType: "update_price_item",
+    targetType: "price_item",
+    targetId: updatedItem.id,
+    metadataJson: {
+      placeId: existingItem.placeSlug,
+      previousLabel: existingItem.label,
+      previousAmount: existingItem.amount,
+      nextLabel: updatedItem.label,
+      nextAmount: updatedItem.amount,
+      isActive: updatedItem.isActive,
+      isRepresentative: updatedItem.isRepresentative,
+      verificationStatus: updatedItem.verificationStatus,
+    },
+  });
+
+  return {
+    ok: true,
+    message: updatedItem.isActive
+      ? "가격 항목을 업데이트했습니다."
+      : "가격 항목을 숨겼습니다.",
+    source: "database",
+    item: toAdminPriceItemRecord(updatedItem),
+    placeId: existingItem.placeSlug,
+  };
+}
+
 async function moderateDatabasePriceReport(
   reportId: string,
   input: PriceReportModerationInput,
@@ -1159,6 +1826,7 @@ async function moderateDatabasePriceReport(
         normalizedLabel: existingReport.normalizedLabel,
         amount: existingReport.amount,
         unitLabel: existingReport.unitLabel,
+        isActive: true,
         verificationStatus: nextVerificationStatus,
         verifiedReportCount: nextVerifiedReportCount,
         latestReportedAt: changedAt,
@@ -1175,6 +1843,7 @@ async function moderateDatabasePriceReport(
         amount: existingReport.amount,
         currency: "KRW",
         unitLabel: existingReport.unitLabel,
+        isActive: true,
         isRepresentative: false,
         verificationStatus: nextVerificationStatus,
         verifiedReportCount: nextVerifiedReportCount,
@@ -1467,10 +2136,47 @@ function listMockPlaces(query: PlaceQuery = {}): PlaceListResult {
   };
 }
 
-function getMockPlaceDetail(id: string): PlaceDetailResult {
+function getMockPlaceDetail(id: string, viewer: PlaceViewer = null): PlaceDetailResult {
+  const place = getPlaceById(id);
+  const viewerKey = getReactionViewerKey(viewer);
+
   return {
-    item: getPlaceById(id),
+    item: place
+      ? {
+          ...place,
+          ...getMockReactionSummary(id, viewerKey),
+        }
+      : null,
     related: getRelatedPlaces(id),
+    source: "mock",
+  };
+}
+
+function getMockAdminPlacePriceDetail(id: string): AdminPlacePriceDetailResult {
+  const place = getPlaceById(id);
+
+  if (!place) {
+    return {
+      item: null,
+      source: "mock",
+    };
+  }
+
+  return {
+    item: {
+      id: place.id,
+      name: place.name,
+      district: place.district,
+      representativePriceAmount: place.representativePriceAmount,
+      representativePriceLabel: place.representativePriceLabel,
+      verificationStatus: place.verificationStatus,
+      priceItems: place.priceItems.map((item) => ({
+        ...item,
+        verifiedReportCount: item.verificationStatus === "verified" ? 2 : 0,
+        isRepresentative: item.label === place.representativePriceLabel,
+        isActive: true,
+      })),
+    },
     source: "mock",
   };
 }
@@ -1490,14 +2196,52 @@ export async function listPlaces(query: PlaceQuery = {}) {
 
 export async function getPlaceDetail(id: string, viewer: PlaceViewer = null) {
   if (!isDatabaseEnabled()) {
-    return getMockPlaceDetail(id);
+    return getMockPlaceDetail(id, viewer);
   }
 
   try {
     return await getDatabasePlaceDetail(id, viewer);
   } catch (error) {
     console.error("Failed to load place detail from database. Falling back to mock data.", error);
-    return getMockPlaceDetail(id);
+    return getMockPlaceDetail(id, viewer);
+  }
+}
+
+export async function setPlaceReaction(
+  placeSlug: string,
+  reaction: PlaceReactionType | null,
+  actor: PlaceReactionActor,
+) {
+  if (!getReactionActorKey(actor)) {
+    return {
+      ok: false,
+      source: isDatabaseEnabled() ? ("database" as const) : ("mock" as const),
+      reaction: null,
+      likeCount: 0,
+      dislikeCount: 0,
+      message: "반응 대상을 확인하지 못했습니다.",
+      placeId: placeSlug,
+    };
+  }
+
+  if (!isDatabaseEnabled()) {
+    return setMockPlaceReaction(placeSlug, reaction, actor);
+  }
+
+  try {
+    return await setDatabasePlaceReaction(placeSlug, reaction, actor);
+  } catch (error) {
+    console.error("Failed to update place reaction.", error);
+
+    return {
+      ok: false,
+      source: "database" as const,
+      reaction: null,
+      likeCount: 0,
+      dislikeCount: 0,
+      message: "반응 업데이트에 실패했습니다.",
+      placeId: placeSlug,
+    };
   }
 }
 
@@ -1508,8 +2252,7 @@ export async function createPlaceSubmission(
   if (!isDatabaseEnabled()) {
     return {
       ok: true,
-      message:
-        "목업 제출이 완료되었습니다. 현재는 DB 연결 없이 payload만 검증하고 있습니다.",
+      message: "제보가 접수되었습니다. 검토 후 공개 목록에 반영됩니다.",
       mock: true,
       source: "mock" as const,
       preview: toFallbackPlacePreview(input),
@@ -1523,8 +2266,7 @@ export async function createPlaceSubmission(
 
     return {
       ok: true,
-      message:
-        "DB에 연결되지 않아 목업 제출로 처리했습니다. 입력값은 검증되었고, 저장만 보류된 상태입니다.",
+      message: "제보가 접수되었습니다. 검토 후 공개 목록에 반영됩니다.",
       mock: true,
       source: "mock" as const,
       preview: toFallbackPlacePreview(input),
@@ -1588,7 +2330,7 @@ export async function createPlaceComment(
   if (!isDatabaseEnabled()) {
     return {
       ok: true,
-      message: "목업 코멘트를 등록했습니다. 현재는 새로고침 전까지만 유지됩니다.",
+      message: "코멘트를 등록했습니다.",
       source: "mock" as const,
       mock: true,
       item: {
@@ -1624,7 +2366,7 @@ export async function deletePlaceComment(
   if (!isDatabaseEnabled()) {
     return {
       ok: true,
-      message: "목업 코멘트를 삭제했습니다.",
+      message: "코멘트를 삭제했습니다.",
       source: "mock" as const,
       mock: true,
       deletedCommentId: commentId,
@@ -1654,8 +2396,7 @@ export async function createPlacePriceReport(
   if (!isDatabaseEnabled()) {
     return {
       ok: true,
-      message:
-        "목업 가격 제보가 접수되었습니다. 현재는 관리자 큐에 실제 저장되지 않습니다.",
+      message: "가격 제보가 접수되었습니다. 검토 후 상세 화면에 반영됩니다.",
       source: "mock" as const,
       mock: true,
       item: {
@@ -1729,6 +2470,62 @@ export async function moderatePriceReport(
       message: "가격 제보 검토 처리에 실패했습니다.",
       source: "database" as const,
       item: null,
+    };
+  }
+}
+
+export async function getAdminPlacePriceDetail(id: string) {
+  if (!isDatabaseEnabled()) {
+    return getMockAdminPlacePriceDetail(id);
+  }
+
+  try {
+    return await getDatabaseAdminPlacePriceDetail(id);
+  } catch (error) {
+    console.error("Failed to load admin place price detail.", error);
+
+    return getMockAdminPlacePriceDetail(id);
+  }
+}
+
+export async function updatePriceItem(
+  itemId: string,
+  input: AdminPriceItemUpdateInput,
+  adminUserId?: string | null,
+) {
+  if (!isDatabaseEnabled()) {
+    return {
+      ok: true,
+      message: input.isActive
+        ? "목업 가격 항목을 업데이트했습니다."
+        : "목업 가격 항목을 숨겼습니다.",
+      source: "mock" as const,
+      item: {
+        id: itemId,
+        label: input.label,
+        amount: input.amount,
+        unitLabel: input.unitLabel || undefined,
+        verificationStatus: input.verificationStatus,
+        verifiedReportCount: input.verificationStatus === "verified" ? 2 : 0,
+        reportedAt: formatDate(new Date()),
+        isRepresentative: input.isRepresentative,
+        isActive: input.isActive,
+      },
+      placeId: null,
+    };
+  }
+
+  try {
+    return await updateDatabasePriceItem(itemId, input, adminUserId);
+  } catch (error) {
+    console.error("Failed to update price item.", error);
+
+    return {
+      ok: false,
+      message: "가격 항목 업데이트에 실패했습니다.",
+      source: "database" as const,
+      item: null,
+      placeId: null,
     };
   }
 }

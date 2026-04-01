@@ -14,13 +14,30 @@ export type SessionUser = {
 
 export function normalizeCallbackUrl(
   value: string | null | undefined,
-  fallback = "/map",
+  fallback = "/",
 ) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) {
     return fallback;
   }
 
-  return value === "/login" ? fallback : value;
+  const [pathAndQuery, hashFragment] = value.split("#", 2);
+  const queryIndex = pathAndQuery.indexOf("?");
+  const pathname =
+    queryIndex >= 0 ? pathAndQuery.slice(0, queryIndex) : pathAndQuery;
+
+  if (pathname === "/login") {
+    return fallback;
+  }
+
+  const rawQuery = queryIndex >= 0 ? pathAndQuery.slice(queryIndex + 1) : "";
+  const encodedQuery = rawQuery ? new URLSearchParams(rawQuery).toString() : "";
+  const normalizedPath = encodedQuery ? `${pathname}?${encodedQuery}` : pathname;
+
+  if (!hashFragment) {
+    return normalizedPath;
+  }
+
+  return `${normalizedPath}#${encodeURIComponent(hashFragment)}`;
 }
 
 export function createLoginHref(callbackUrl: string) {

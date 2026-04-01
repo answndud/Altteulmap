@@ -13,9 +13,10 @@ import {
   type NaverMapInstance,
   type NaverMarkerInstance,
 } from "@/features/map/naver-map-sdk";
-import type { PlaceRecord } from "@/features/places/types";
+import type { PlaceBounds, PlaceRecord } from "@/features/places/types";
 
 type NaverMapPanelProps = {
+  initialBounds?: PlaceBounds | null;
   places: PlaceRecord[];
   selectedCategoryLabel: string | null;
   activePlaceId?: string | null;
@@ -44,6 +45,13 @@ function getMapCenter(places: PlaceRecord[]) {
   return {
     lat: totals.lat / places.length,
     lng: totals.lng / places.length,
+  };
+}
+
+function getCenterFromBounds(bounds: PlaceBounds) {
+  return {
+    lat: (bounds.minLat + bounds.maxLat) / 2,
+    lng: (bounds.minLng + bounds.maxLng) / 2,
   };
 }
 
@@ -80,6 +88,63 @@ function serializeViewport(viewport: MapViewport) {
   ].join(":");
 }
 
+function isPlaceInsideViewport(
+  place: PlaceRecord,
+  viewport: MapViewport | null,
+  padding = 0.0003,
+) {
+  if (!viewport) {
+    return false;
+  }
+
+  return (
+    place.latitude >= viewport.bounds.minLat - padding &&
+    place.latitude <= viewport.bounds.maxLat + padding &&
+    place.longitude >= viewport.bounds.minLng - padding &&
+    place.longitude <= viewport.bounds.maxLng + padding
+  );
+}
+
+function formatLikeCount(count: number) {
+  return new Intl.NumberFormat("ko-KR").format(count);
+}
+
+function createMarkerIconHtml(count: number, isActive: boolean) {
+  const background = isActive ? "#d97f4d" : "#ffffff";
+  const textColor = isActive ? "#ffffff" : "#7c4a2f";
+  const borderColor = isActive ? "#d97f4d" : "#edd3bf";
+  const shadowColor = isActive
+    ? "rgba(169, 95, 53, 0.34)"
+    : "rgba(104, 71, 53, 0.16)";
+  const badgeBackground = isActive ? "rgba(255,255,255,0.18)" : "#fff2e8";
+
+  return `
+    <div style="display:inline-flex;align-items:center;gap:6px;min-width:50px;height:34px;padding:0 11px;border-radius:9999px;background:${background};color:${textColor};border:1px solid ${borderColor};box-shadow:0 10px 22px ${shadowColor};font-size:12px;font-weight:700;line-height:1;transform:translate(-50%,-50%);">
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:9999px;background:${badgeBackground};font-size:11px;">👍</span>
+        <span>${formatLikeCount(count)}</span>
+    </div>
+  `;
+}
+
+function createMapMarkerIcon(
+  count: number,
+  isActive: boolean,
+  naver: ReturnType<typeof getLoadedNaverMapSdk>,
+) {
+  const Point = naver?.maps.Point;
+  const Size = naver?.maps.Size;
+
+  if (!Point || !Size) {
+    return undefined;
+  }
+
+  return {
+    content: createMarkerIconHtml(count, isActive),
+    size: new Size(68, 34),
+    anchor: new Point(34, 17),
+  };
+}
+
 function PreviewMap({
   places,
   selectedCategoryLabel,
@@ -96,9 +161,12 @@ function PreviewMap({
   const lngRange = Math.max(bounds.maxLng - bounds.minLng, 0.01);
 
   return (
-    <div className="relative h-[36rem] bg-[linear-gradient(to_right,#e7e5e4_1px,transparent_1px),linear-gradient(to_bottom,#e7e5e4_1px,transparent_1px)] bg-[size:32px_32px] bg-stone-50 lg:h-[44rem]">
+    <div
+      className="relative h-[36rem] bg-[linear-gradient(to_right,#e7e5e4_1px,transparent_1px),linear-gradient(to_bottom,#e7e5e4_1px,transparent_1px)] bg-[size:32px_32px] bg-stone-50 lg:h-[44rem]"
+      data-testid="map-panel-preview"
+    >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(251,146,60,0.18),transparent_30%),radial-gradient(circle_at_bottom_left,rgba(245,158,11,0.12),transparent_28%)]" />
-      {places.map((place, index) => {
+      {places.map((place) => {
         const top = ((bounds.maxLat - place.latitude) / latRange) * 70 + 10;
         const left = ((place.longitude - bounds.minLng) / lngRange) * 72 + 8;
         const isActive = activePlaceId === place.id;
@@ -107,6 +175,7 @@ function PreviewMap({
           <button
             key={place.id}
             type="button"
+            data-testid={`map-preview-marker-${place.id}`}
             onClick={() => onSelectPlace(place.id)}
             className="absolute"
             style={{
@@ -115,13 +184,16 @@ function PreviewMap({
             }}
           >
             <span
-              className={`flex h-10 min-w-10 items-center justify-center rounded-full px-3 text-xs font-semibold shadow-lg transition ${
+              className={`flex min-w-[3.35rem] items-center justify-center gap-1 rounded-full px-3 py-2 text-xs font-semibold shadow-lg transition ${
                 isActive
-                  ? "bg-orange-600 text-white"
-                  : "bg-stone-900 text-white"
+                  ? "bg-[#dc8b5e] text-white"
+                  : "border border-[#edd3bf] bg-white text-[#7c4a2f]"
               }`}
             >
-              {index + 1}
+              <span className={`text-[11px] ${isActive ? "" : "opacity-90"}`}>
+                👍
+              </span>
+              <span>{formatLikeCount(place.likeCount)}</span>
             </span>
           </button>
         );
@@ -136,6 +208,7 @@ function PreviewMap({
 }
 
 export function NaverMapPanel({
+  initialBounds,
   places,
   selectedCategoryLabel,
   activePlaceId: controlledActivePlaceId,
@@ -312,7 +385,9 @@ export function NaverMapPanel({
           return;
         }
 
-        const center = getMapCenter(places);
+        const center = initialBounds
+          ? getCenterFromBounds(initialBounds)
+          : getMapCenter(places);
         const centerLatLng = new naver.maps.LatLng(center.lat, center.lng);
         const nextZoom = getMapZoom(places.length);
         const map = new naver.maps.Map(mapContainerRef.current, {
@@ -324,6 +399,19 @@ export function NaverMapPanel({
         });
 
         mapInstanceRef.current = map;
+
+        if (initialBounds && places.length > 1) {
+          const southWest = new naver.maps.LatLng(
+            initialBounds.minLat,
+            initialBounds.minLng,
+          );
+          const northEast = new naver.maps.LatLng(
+            initialBounds.maxLat,
+            initialBounds.maxLng,
+          );
+
+          map.fitBounds?.(new naver.maps.LatLngBounds(southWest, northEast));
+        }
 
         const syncViewport = () => {
           map.autoResize?.();
@@ -360,6 +448,7 @@ export function NaverMapPanel({
     containerSize.height,
     containerSize.width,
     emitViewportChange,
+    initialBounds,
     naverMapKeyId,
     places,
   ]);
@@ -447,22 +536,21 @@ export function NaverMapPanel({
 
     markerInstancesRef.current.forEach((marker) => marker.setMap?.(null));
     markerInstancesRef.current = places.map((place) => {
+      const isActive = activePlaceId === place.id;
       const marker = new naver.maps.Marker({
         map: mapInstanceRef.current,
         position: new naver.maps.LatLng(place.latitude, place.longitude),
         title: place.name,
+        icon: createMapMarkerIcon(place.likeCount, isActive, naver),
       });
 
       naver.maps.Event.addListener(marker, "click", () => {
         emitPlaceSelect(place.id);
-        mapInstanceRef.current?.panTo?.(
-          new naver.maps.LatLng(place.latitude, place.longitude),
-        );
       });
 
       return marker;
     });
-  }, [emitPlaceSelect, places, status]);
+  }, [activePlaceId, emitPlaceSelect, places, status]);
 
   useEffect(() => {
     if (status !== "ready" || !activePlace || !mapInstanceRef.current) {
@@ -472,6 +560,12 @@ export function NaverMapPanel({
     const LatLng = getLoadedNaverMapSdk()?.maps.LatLng;
 
     if (!LatLng) {
+      return;
+    }
+
+    const currentViewport = getViewportFromMap(mapInstanceRef.current);
+
+    if (isPlaceInsideViewport(activePlace, currentViewport)) {
       return;
     }
 
@@ -555,29 +649,23 @@ export function NaverMapPanel({
     };
   }, []);
 
-  const statusLabel =
-    status === "ready"
-      ? "네이버 지도"
-      : status === "loading"
-        ? "지도 로딩 중"
-        : "프리뷰 모드";
   const statusMessage =
     status === "missing-key"
-      ? "NEXT_PUBLIC_NAVER_MAP_KEY_ID가 없어 임시 프리뷰로 표시합니다."
+      ? "지도 설정이 아직 준비되지 않아 임시 미리보기로 표시합니다."
       : status === "error"
-        ? "네이버 지도 SDK를 불러오지 못해 임시 프리뷰로 표시합니다."
+        ? "지도를 불러오지 못해 임시 미리보기로 표시합니다."
         : showPreview
-          ? "네이버 지도 SDK를 불러오는 중입니다."
+          ? "지도를 불러오는 중입니다."
           : null;
 
   return (
-    <section className="overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-sm">
+    <section
+      className="overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-sm"
+      data-testid="map-panel-shell"
+    >
       <div className="flex items-center justify-between border-b border-stone-200 px-6 py-4">
-        <div>
-          <h2 className="text-lg font-semibold text-stone-900">지도 탐색</h2>
-          <p className="text-sm text-stone-500">{statusLabel}</p>
-        </div>
-        <div className="rounded-full bg-stone-100 px-3 py-1 text-sm text-stone-600">
+        <h2 className="text-lg font-semibold text-stone-900">주변 지도</h2>
+        <div className="whitespace-nowrap rounded-full bg-stone-100 px-3 py-1 text-sm text-stone-600">
           {places.length}곳
         </div>
       </div>
@@ -585,6 +673,7 @@ export function NaverMapPanel({
       <div className="relative h-[36rem] lg:h-[44rem]">
         <div
           ref={mapContainerRef}
+          data-testid="map-panel"
           className="altteulmap-naver-map h-full w-full overflow-hidden bg-stone-100"
         />
 
@@ -604,7 +693,7 @@ export function NaverMapPanel({
             type="button"
             onClick={locateCurrentPosition}
             disabled={status !== "ready" || isLocating}
-            className="rounded-full border border-stone-300 bg-white/95 px-4 py-2 text-sm font-medium text-stone-800 shadow-sm backdrop-blur transition hover:bg-white disabled:cursor-not-allowed disabled:text-stone-400"
+            className="whitespace-nowrap rounded-full border border-stone-300 bg-white/95 px-4 py-2 text-sm font-medium text-stone-800 shadow-sm backdrop-blur transition hover:bg-white disabled:cursor-not-allowed disabled:text-stone-400"
           >
             {isLocating ? "위치 확인 중" : "현재 위치"}
           </button>

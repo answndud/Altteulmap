@@ -15,6 +15,27 @@
       "when": 1774917177548,
       "tag": "0001_vengeful_war_machine",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1774949208525,
+      "tag": "0002_swift_red_skull",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1774957139244,
+      "tag": "0003_graceful_ma_gnuci",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1774958548639,
+      "tag": "0004_yellow_morlocks",
+      "breakpoints": true
     }
   ]
 }

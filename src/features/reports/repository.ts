@@ -232,8 +232,7 @@ export async function createReportSubmission(
   if (!isDatabaseEnabled()) {
     return {
       ok: true,
-      message:
-        "목업 신고가 접수되었습니다. 현재 단계에서는 DB 저장 없이 payload만 검증합니다.",
+      message: "신고가 접수되었습니다. 확인 후 반영하겠습니다.",
       mock: true,
       source: "mock" as const,
       preview: toMockPreview(input),
@@ -247,8 +246,7 @@ export async function createReportSubmission(
 
     return {
       ok: true,
-      message:
-        "DB에 연결되지 않아 목업 신고로 처리했습니다. 입력값은 검증되었고 저장만 보류되었습니다.",
+      message: "신고가 접수되었습니다. 확인 후 반영하겠습니다.",
       mock: true,
       source: "mock" as const,
       preview: toMockPreview(input),

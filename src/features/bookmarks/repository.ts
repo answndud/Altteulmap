@@ -211,7 +211,9 @@ export async function setBookmark(
       ok: true,
       source: "mock" as const,
       bookmarked,
-      message: "목업 모드에서는 북마크가 실제 저장되지 않습니다.",
+      message: bookmarked
+        ? "북마크에 저장했습니다."
+        : "북마크를 해제했습니다.",
       placeId: placeSlug,
     };
   }

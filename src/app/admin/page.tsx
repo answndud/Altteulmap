@@ -28,7 +28,7 @@ export default async function AdminPage() {
         eyebrow="Admin"
         title="운영자 권한이 필요합니다"
         description={`${getSessionUserLabel(user)} 계정은 운영 대시보드에 접근할 수 없습니다. 운영자 계정으로 다시 로그인하거나 일반 사용자 화면으로 돌아가세요.`}
-        primaryHref="/map"
+        primaryHref="/"
         primaryLabel="지도 화면으로 이동"
         secondaryHref="/login?callbackUrl=%2Fadmin"
         secondaryLabel="다른 계정으로 로그인"

@@ -47,7 +47,7 @@ export function AdminReportStatusForm({
   };
 
   return (
-    <div className="space-y-3">
+    <div data-testid="admin-report-status-form" className="space-y-3">
       <div className="flex flex-wrap gap-2">
         {reportStatusOptions.map((option) => {
           const isActive = option.value === currentStatus;
@@ -58,6 +58,7 @@ export function AdminReportStatusForm({
               type="button"
               onClick={() => handleUpdate(option.value)}
               disabled={disabled || isPending || isActive}
+              data-testid={`admin-report-status-${option.value}`}
               className={`rounded-full px-3 py-2 text-xs font-medium transition ${
                 isActive
                   ? "bg-stone-900 text-white"
@@ -70,7 +71,7 @@ export function AdminReportStatusForm({
         })}
       </div>
       {message ? (
-        <p className="text-xs text-stone-500">
+        <p data-testid="admin-report-status-message" className="text-xs text-stone-500">
           {isPending ? "처리 중..." : message}
         </p>
       ) : null}

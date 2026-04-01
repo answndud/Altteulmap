@@ -15,6 +15,8 @@ export type PlaceComment = {
   canDelete?: boolean;
 };
 
+export type PlaceReactionType = "like" | "dislike";
+
 export type PlaceHistoryEntry = {
   id: string;
   label: string;
@@ -33,6 +35,7 @@ export type PlaceBounds = {
 export type PlaceQueryBounds = PlaceBounds;
 
 export type PlaceSearchScope = "viewport" | "global";
+export type PlaceSort = "price" | "recent" | "likes";
 
 export type PlaceRecord = {
   id: string;
@@ -49,6 +52,9 @@ export type PlaceRecord = {
   lastPriceUpdatedAt: string;
   description: string;
   note: string;
+  likeCount: number;
+  dislikeCount: number;
+  viewerReaction: PlaceReactionType | null;
   priceItems: PlacePriceItem[];
   history: PlaceHistoryEntry[];
   comments: PlaceComment[];

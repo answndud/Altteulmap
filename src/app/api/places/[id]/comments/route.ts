@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { createPlaceComment } from "@/features/places/repository";
 import { placeCommentSchema } from "@/features/places/write-schema";
+import { consumeRateLimit } from "@/lib/rate-limit";
 import { getSessionUser } from "@/lib/session";
 
 type RouteContext = {
@@ -21,6 +22,24 @@ export async function POST(request: Request, context: RouteContext) {
         message: "로그인이 필요합니다.",
       },
       { status: 401 },
+    );
+  }
+
+  const rateLimit = consumeRateLimit({
+    scope: "place_comment_submission",
+    key: user.id,
+    limit: 10,
+    windowMs: 10 * 60 * 1000,
+  });
+
+  if (!rateLimit.ok) {
+    return NextResponse.json(
+      {
+        ok: false,
+        message: "코멘트 등록 요청이 너무 빠릅니다. 잠시 후 다시 시도해주세요.",
+        retryAfterMs: rateLimit.retryAfterMs,
+      },
+      { status: 429 },
     );
   }
 
