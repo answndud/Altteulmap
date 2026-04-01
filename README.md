@@ -149,6 +149,20 @@ npm run test:e2e
 Cloudflare 배포 전 점검은 아래 문서를 기준으로 합니다.
 
 - [docs/deploy-cloudflare.md](/Users/alex/project/altteulmap/docs/deploy-cloudflare.md)
+- [docs/cloudflare-account-to-deploy.md](/Users/alex/project/altteulmap/docs/cloudflare-account-to-deploy.md)
+
+## CI/CD
+
+- GitHub Actions: `Verify`, `E2E`, `Deploy Config Check`
+- Cloudflare Builds: `main` push 후 자동 배포
+
+현재 권장 운영 방식은 `GitHub Actions가 검사`, `Cloudflare Builds가 배포`를 맡는 구조입니다.
+
+- `Verify`: `npm run verify`
+- `E2E`: 로컬 Postgres service container + `npm run test:e2e`
+- `Deploy Config Check`: GitHub repo `Secrets/Variables`에 저장한 운영 env로 `npm run deploy:check`
+
+GitHub Actions의 운영 env 이름은 `.env.production.local`과 동일하게 맞추는 것을 기준으로 합니다.
 
 작업을 마치고 로컬 DB를 내리려면:
 

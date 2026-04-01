@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Component, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   DEFAULT_MAP_CENTER,
@@ -207,7 +207,87 @@ function PreviewMap({
   );
 }
 
-export function NaverMapPanel({
+function NaverMapFallback({
+  places,
+  selectedCategoryLabel,
+  activePlaceId,
+  onSelectPlace,
+}: {
+  places: PlaceRecord[];
+  selectedCategoryLabel: string | null;
+  activePlaceId: string | null;
+  onSelectPlace: (placeId: string) => void;
+}) {
+  return (
+    <section
+      className="overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-sm"
+      data-testid="map-panel-shell"
+    >
+      <div className="flex items-center justify-between border-b border-stone-200 px-6 py-4">
+        <h2 className="text-lg font-semibold text-stone-900">주변 지도</h2>
+        <div className="whitespace-nowrap rounded-full bg-stone-100 px-3 py-1 text-sm text-stone-600">
+          {places.length}곳
+        </div>
+      </div>
+
+      <div className="relative h-[36rem] lg:h-[44rem]">
+        <PreviewMap
+          places={places}
+          selectedCategoryLabel={selectedCategoryLabel}
+          activePlaceId={activePlaceId}
+          onSelectPlace={onSelectPlace}
+        />
+        <div className="absolute left-4 top-4 z-10 rounded-2xl bg-white/95 px-4 py-3 text-sm text-stone-700 shadow-sm backdrop-blur">
+          지도를 불러오지 못해 임시 미리보기로 표시합니다.
+        </div>
+      </div>
+    </section>
+  );
+}
+
+type NaverMapPanelBoundaryState = {
+  hasError: boolean;
+};
+
+class NaverMapPanelBoundary extends Component<
+  NaverMapPanelProps,
+  NaverMapPanelBoundaryState
+> {
+  override state: NaverMapPanelBoundaryState = {
+    hasError: false,
+  };
+
+  static getDerivedStateFromError() {
+    return {
+      hasError: true,
+    };
+  }
+
+  override componentDidCatch(error: unknown) {
+    console.error("NAVER map panel crashed. Falling back to preview.", error);
+  }
+
+  override render() {
+    if (this.state.hasError) {
+      return (
+        <NaverMapFallback
+          places={this.props.places}
+          selectedCategoryLabel={this.props.selectedCategoryLabel}
+          activePlaceId={this.props.activePlaceId ?? null}
+          onSelectPlace={this.props.onSelectPlace ?? (() => {})}
+        />
+      );
+    }
+
+    return <NaverMapPanelContent {...this.props} />;
+  }
+}
+
+export function NaverMapPanel(props: NaverMapPanelProps) {
+  return <NaverMapPanelBoundary {...props} />;
+}
+
+function NaverMapPanelContent({
   initialBounds,
   places,
   selectedCategoryLabel,
@@ -259,6 +339,25 @@ export function NaverMapPanel({
     },
     [selectPlace],
   );
+  const clearMapInstance = useCallback(() => {
+    markerInstancesRef.current.forEach((marker) => marker.setMap?.(null));
+    markerInstancesRef.current = [];
+    currentLocationMarkerRef.current?.setMap?.(null);
+    currentLocationMarkerRef.current = null;
+    mapInstanceRef.current?.destroy?.();
+    mapInstanceRef.current = null;
+    lastViewportKeyRef.current = null;
+    lastFocusPlacesKeyRef.current = null;
+  }, []);
+  const failMap = useCallback(
+    (message: string, error?: unknown) => {
+      console.error(message, error);
+      clearMapInstance();
+      setHasVisibleMap(false);
+      setStatus("error");
+    },
+    [clearMapInstance],
+  );
   const emitViewportChange = useCallback(() => {
     const viewport = getViewportFromMap(mapInstanceRef.current);
 
@@ -293,8 +392,8 @@ export function NaverMapPanel({
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const naver = getLoadedNaverMapSdk();
-        const LatLng = naver?.maps.LatLng;
-        const Marker = naver?.maps.Marker;
+        const LatLng = naver?.maps?.LatLng;
+        const Marker = naver?.maps?.Marker;
 
         if (!LatLng || !Marker || !mapInstanceRef.current) {
           setIsLocating(false);
@@ -366,6 +465,35 @@ export function NaverMapPanel({
   }, []);
 
   useEffect(() => {
+    if (!naverMapKeyId) {
+      return;
+    }
+
+    const handleSdkRuntimeError = (event: ErrorEvent) => {
+      const filename = event.filename ?? "";
+      const isNaverMapsRuntimeError =
+        filename.includes("oapi.map.naver.com/openapi/v3/maps.js") ||
+        filename.includes("map.naver.com/openapi/v3/maps.js");
+
+      if (!isNaverMapsRuntimeError) {
+        return;
+      }
+
+      event.preventDefault();
+      failMap(
+        "NAVER Maps SDK runtime error.",
+        event.error ?? new Error(event.message),
+      );
+    };
+
+    window.addEventListener("error", handleSdkRuntimeError);
+
+    return () => {
+      window.removeEventListener("error", handleSdkRuntimeError);
+    };
+  }, [failMap, naverMapKeyId]);
+
+  useEffect(() => {
     if (
       !naverMapKeyId ||
       !mapContainerRef.current ||
@@ -385,55 +513,64 @@ export function NaverMapPanel({
           return;
         }
 
-        const center = initialBounds
-          ? getCenterFromBounds(initialBounds)
-          : getMapCenter(places);
-        const centerLatLng = new naver.maps.LatLng(center.lat, center.lng);
-        const nextZoom = getMapZoom(places.length);
-        const map = new naver.maps.Map(mapContainerRef.current, {
-          center: centerLatLng,
-          zoom: nextZoom,
-          mapDataControl: false,
-          scaleControl: false,
-          logoControl: false,
-        });
+        try {
+          const maps = naver?.maps;
 
-        mapInstanceRef.current = map;
+          if (!maps?.Map || !maps?.LatLng || !maps?.LatLngBounds || !maps?.Event) {
+            throw new Error("NAVER Maps SDK primitives are unavailable.");
+          }
 
-        if (initialBounds && places.length > 1) {
-          const southWest = new naver.maps.LatLng(
-            initialBounds.minLat,
-            initialBounds.minLng,
-          );
-          const northEast = new naver.maps.LatLng(
-            initialBounds.maxLat,
-            initialBounds.maxLng,
-          );
+          const center = initialBounds
+            ? getCenterFromBounds(initialBounds)
+            : getMapCenter(places);
+          const centerLatLng = new maps.LatLng(center.lat, center.lng);
+          const nextZoom = getMapZoom(places.length);
+          const map = new maps.Map(mapContainerRef.current, {
+            center: centerLatLng,
+            zoom: nextZoom,
+            mapDataControl: false,
+            scaleControl: false,
+            logoControl: false,
+          });
 
-          map.fitBounds?.(new naver.maps.LatLngBounds(southWest, northEast));
+          mapInstanceRef.current = map;
+
+          if (initialBounds && places.length > 1) {
+            const southWest = new maps.LatLng(
+              initialBounds.minLat,
+              initialBounds.minLng,
+            );
+            const northEast = new maps.LatLng(
+              initialBounds.maxLat,
+              initialBounds.maxLng,
+            );
+
+            map.fitBounds?.(new maps.LatLngBounds(southWest, northEast));
+          }
+
+          const syncViewport = () => {
+            map.autoResize?.();
+            emitViewportChange();
+          };
+
+          maps.Event.addListener(map, "idle", () => {
+            emitViewportChange();
+          });
+
+          setHasVisibleMap(false);
+          window.requestAnimationFrame(syncViewport);
+          window.setTimeout(syncViewport, 0);
+          resizeTimeoutId = window.setTimeout(syncViewport, 180);
+          setStatus("ready");
+        } catch (error) {
+          if (!cancelled) {
+            failMap("Failed to initialize NAVER Maps.", error);
+          }
         }
-
-        const syncViewport = () => {
-          map.autoResize?.();
-          emitViewportChange();
-        };
-
-        naver.maps.Event.addListener(map, "idle", () => {
-          emitViewportChange();
-        });
-
-        setHasVisibleMap(false);
-        window.requestAnimationFrame(syncViewport);
-        window.setTimeout(syncViewport, 0);
-        resizeTimeoutId = window.setTimeout(syncViewport, 180);
-        setStatus("ready");
       })
       .catch((error) => {
-        console.error("Failed to initialize NAVER Maps.", error);
-
         if (!cancelled) {
-          setHasVisibleMap(false);
-          setStatus("error");
+          failMap("Failed to initialize NAVER Maps.", error);
         }
       });
 
@@ -448,6 +585,7 @@ export function NaverMapPanel({
     containerSize.height,
     containerSize.width,
     emitViewportChange,
+    failMap,
     initialBounds,
     naverMapKeyId,
     places,
@@ -472,6 +610,8 @@ export function NaverMapPanel({
 
         const isMapAsset =
           image.src.includes("map.naver.net") ||
+          image.src.includes(".pstatic.net/styles/") ||
+          image.src.includes(".pstatic.net/static/maps/") ||
           image.src.includes("pstatic.net/maps") ||
           image.src.includes("static.naver.net/maps");
 
@@ -528,51 +668,61 @@ export function NaverMapPanel({
       return;
     }
 
-    const naver = getLoadedNaverMapSdk();
+    const maps = getLoadedNaverMapSdk()?.maps;
 
-    if (!naver?.maps) {
+    if (!maps?.Marker || !maps?.LatLng || !maps?.Event) {
+      failMap("NAVER Maps marker primitives are unavailable.");
       return;
     }
 
-    markerInstancesRef.current.forEach((marker) => marker.setMap?.(null));
-    markerInstancesRef.current = places.map((place) => {
-      const isActive = activePlaceId === place.id;
-      const marker = new naver.maps.Marker({
-        map: mapInstanceRef.current,
-        position: new naver.maps.LatLng(place.latitude, place.longitude),
-        title: place.name,
-        icon: createMapMarkerIcon(place.likeCount, isActive, naver),
-      });
+    try {
+      markerInstancesRef.current.forEach((marker) => marker.setMap?.(null));
+      markerInstancesRef.current = places.map((place) => {
+        const isActive = activePlaceId === place.id;
+        const marker = new maps.Marker({
+          map: mapInstanceRef.current,
+          position: new maps.LatLng(place.latitude, place.longitude),
+          title: place.name,
+          icon: createMapMarkerIcon(place.likeCount, isActive, { maps }),
+        });
 
-      naver.maps.Event.addListener(marker, "click", () => {
-        emitPlaceSelect(place.id);
-      });
+        maps.Event.addListener(marker, "click", () => {
+          emitPlaceSelect(place.id);
+        });
 
-      return marker;
-    });
-  }, [activePlaceId, emitPlaceSelect, places, status]);
+        return marker;
+      });
+    } catch (error) {
+      failMap("Failed to render NAVER map markers.", error);
+    }
+  }, [activePlaceId, emitPlaceSelect, failMap, places, status]);
 
   useEffect(() => {
     if (status !== "ready" || !activePlace || !mapInstanceRef.current) {
       return;
     }
 
-    const LatLng = getLoadedNaverMapSdk()?.maps.LatLng;
+    const LatLng = getLoadedNaverMapSdk()?.maps?.LatLng;
 
     if (!LatLng) {
+      failMap("NAVER Maps LatLng API is unavailable.");
       return;
     }
 
-    const currentViewport = getViewportFromMap(mapInstanceRef.current);
+    try {
+      const currentViewport = getViewportFromMap(mapInstanceRef.current);
 
-    if (isPlaceInsideViewport(activePlace, currentViewport)) {
-      return;
+      if (isPlaceInsideViewport(activePlace, currentViewport)) {
+        return;
+      }
+
+      mapInstanceRef.current.panTo?.(
+        new LatLng(activePlace.latitude, activePlace.longitude),
+      );
+    } catch (error) {
+      failMap("Failed to move the NAVER map viewport.", error);
     }
-
-    mapInstanceRef.current.panTo?.(
-      new LatLng(activePlace.latitude, activePlace.longitude),
-    );
-  }, [activePlace, status]);
+  }, [activePlace, failMap, status]);
 
   useEffect(() => {
     if (
@@ -588,23 +738,28 @@ export function NaverMapPanel({
       return;
     }
 
-    const LatLng = getLoadedNaverMapSdk()?.maps.LatLng;
+    const LatLng = getLoadedNaverMapSdk()?.maps?.LatLng;
 
     if (!LatLng) {
+      failMap("NAVER Maps LatLng API is unavailable.");
       return;
     }
 
-    const focusCenter = getMapCenter(places);
-    const point = new LatLng(focusCenter.lat, focusCenter.lng);
+    try {
+      const focusCenter = getMapCenter(places);
+      const point = new LatLng(focusCenter.lat, focusCenter.lng);
 
-    lastFocusPlacesKeyRef.current = focusPlacesKey;
-    mapInstanceRef.current.setCenter?.(point);
-    mapInstanceRef.current.setZoom?.(getMapZoom(places.length));
-    mapInstanceRef.current.panTo?.(point);
-    window.setTimeout(() => {
-      emitViewportChange();
-    }, 100);
-  }, [emitViewportChange, focusPlacesKey, places, status]);
+      lastFocusPlacesKeyRef.current = focusPlacesKey;
+      mapInstanceRef.current.setCenter?.(point);
+      mapInstanceRef.current.setZoom?.(getMapZoom(places.length));
+      mapInstanceRef.current.panTo?.(point);
+      window.setTimeout(() => {
+        emitViewportChange();
+      }, 100);
+    } catch (error) {
+      failMap("Failed to focus the NAVER map viewport.", error);
+    }
+  }, [emitViewportChange, failMap, focusPlacesKey, places, status]);
 
   useEffect(() => {
     if (status !== "ready" || !mapInstanceRef.current) {
@@ -640,14 +795,9 @@ export function NaverMapPanel({
 
   useEffect(() => {
     return () => {
-      markerInstancesRef.current.forEach((marker) => marker.setMap?.(null));
-      markerInstancesRef.current = [];
-      currentLocationMarkerRef.current?.setMap?.(null);
-      currentLocationMarkerRef.current = null;
-      mapInstanceRef.current?.destroy?.();
-      mapInstanceRef.current = null;
+      clearMapInstance();
     };
-  }, []);
+  }, [clearMapInstance]);
 
   const statusMessage =
     status === "missing-key"
