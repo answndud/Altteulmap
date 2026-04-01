@@ -122,7 +122,7 @@ export function LoginForm({
                 onChange={(event) => setEmail(event.target.value)}
                 data-testid="login-email"
                 className="altteulmap-input px-4 py-3.5 text-stone-900"
-                placeholder="name@example.com"
+                placeholder="이메일 주소"
                 autoComplete="email"
               />
             </label>

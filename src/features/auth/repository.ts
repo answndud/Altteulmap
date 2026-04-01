@@ -226,7 +226,7 @@ export function listSocialAuthProviders(): SocialAuthProviderAvailability[] {
         id: provider.id,
         label: provider.label,
         enabled: false,
-        unavailableReason: "로컬 DB 연결 후 사용할 수 있습니다.",
+        unavailableReason: "데이터 연결 후 사용할 수 있습니다.",
       };
     }
 
@@ -235,7 +235,7 @@ export function listSocialAuthProviders(): SocialAuthProviderAvailability[] {
         id: provider.id,
         label: provider.label,
         enabled: false,
-        unavailableReason: `AUTH_${provider.id.toUpperCase()}_CLIENT_ID와 AUTH_${provider.id.toUpperCase()}_CLIENT_SECRET이 필요합니다.`,
+        unavailableReason: "로그인 연동 설정이 아직 완료되지 않았습니다.",
       };
     }
 
@@ -257,7 +257,7 @@ export async function createCredentialsUser(
   if (!isDatabaseEnabled()) {
     return {
       ok: false,
-      message: "회원가입은 DB 연결 후 사용할 수 있습니다.",
+      message: "회원가입은 데이터 연결 후 사용할 수 있습니다.",
       item: null,
     };
   }

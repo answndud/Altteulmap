@@ -40,7 +40,7 @@ export function SignupForm({
         event.preventDefault();
 
         if (!credentialsSignupEnabled) {
-          setMessage("회원가입은 DB 연결 후 사용할 수 있습니다.");
+          setMessage("회원가입은 데이터 연결 후 사용할 수 있습니다.");
           return;
         }
 
@@ -107,9 +107,6 @@ export function SignupForm({
 
         <section className="grid gap-4">
           <p className="text-sm font-medium text-stone-700">이메일로 가입</p>
-          <p className="text-sm leading-6 text-stone-500">
-            가입이 완료되면 같은 이메일과 비밀번호로 바로 로그인됩니다.
-          </p>
 
           <label className="grid gap-2 text-sm text-stone-700">
             닉네임
@@ -134,7 +131,7 @@ export function SignupForm({
               disabled={isPending || !credentialsSignupEnabled}
               data-testid="signup-email"
               className="altteulmap-input px-4 py-3.5 text-stone-900"
-              placeholder="name@example.com"
+              placeholder="이메일 주소"
               autoComplete="email"
             />
           </label>
@@ -167,12 +164,6 @@ export function SignupForm({
             />
           </label>
 
-          {!credentialsSignupEnabled ? (
-            <div className="rounded-[1.25rem] border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-600">
-              새 계정 생성은 DB 연결 후 사용할 수 있습니다. 지금은 기존 시드 계정이나
-              소셜 로그인만 사용할 수 있습니다.
-            </div>
-          ) : null}
         </section>
 
         {message ? (

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AccessDeniedPanel } from "@/components/access-denied-panel";
+import { SessionActionGroup } from "@/features/auth/session-action-group";
 import { AdminPriceReportReviewForm } from "@/features/places/admin-price-report-review-form";
 import { formatKrw } from "@/features/places/queries";
 import {
@@ -26,7 +27,7 @@ export default async function AdminPricesPage() {
   if (user.role !== "admin") {
     return (
       <AccessDeniedPanel
-        eyebrow="Admin"
+        eyebrow="운영"
         title="운영자 권한이 필요합니다"
         description={`${getSessionUserLabel(user)} 계정은 가격 제보 검토 큐에 접근할 수 없습니다. 운영자 계정으로 다시 로그인하거나 일반 사용자 화면으로 돌아가세요.`}
         primaryHref="/"
@@ -48,7 +49,7 @@ export default async function AdminPricesPage() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-orange-600">
-              Admin
+              운영
             </p>
             <h1 className="mt-3 text-3xl font-semibold tracking-tight text-stone-900 sm:text-5xl">
               가격 제보 검토 큐
@@ -81,8 +82,9 @@ export default async function AdminPricesPage() {
               href="/api/admin/prices"
               className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
             >
-              API 보기
+              응답 보기
             </Link>
+            <SessionActionGroup user={user} signOutCallbackUrl="/" compact />
           </div>
         </div>
 
@@ -94,7 +96,7 @@ export default async function AdminPricesPage() {
                 : "bg-orange-100 text-orange-700"
             }`}
           >
-            데이터 소스: {result.source === "database" ? "DB" : "목업"}
+            데이터 구분: {result.source === "database" ? "실데이터" : "목업"}
           </span>
         </div>
 

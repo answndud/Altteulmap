@@ -32,13 +32,18 @@
 }
 
 .altteulmap-accent-chip {
-  border-color: var(--altteul-accent-border);
-  background-color: var(--altteul-accent-soft);
-  color: var(--altteul-accent-text);
+  border-color: #9c5934;
+  background: linear-gradient(180deg, #cb7c4d 0%, #b96b41 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 0 0 1px rgba(156, 89, 52, 0.12);
+  color: #fff;
 }
 
 .altteulmap-accent-chip:hover {
-  background-color: var(--altteul-accent-soft-hover);
+  border-color: #8f522f;
+  background: linear-gradient(180deg, #bf7145 0%, #a95f38 100%);
+  color: #fff;
 }
 
 .altteulmap-accent-panel {
@@ -105,16 +110,49 @@
 
 .altteulmap-chip {
   border-radius: 0.9rem;
-  background-color: rgba(255, 251, 247, 0.94);
+  background-color: rgba(255, 255, 255, 0.96);
   transition:
     border-color 160ms ease,
     background-color 160ms ease,
-    color 160ms ease;
+    color 160ms ease,
+    box-shadow 160ms ease;
 }
 
 .altteulmap-chip:hover {
   border-color: var(--altteul-surface-border-strong);
   background-color: var(--altteul-surface-fill-hover);
+}
+
+.altteulmap-scope-chip {
+  border: 1px solid rgba(186, 173, 161, 0.75);
+  background-color: rgba(255, 255, 255, 0.96);
+  color: rgb(68, 64, 60);
+}
+
+.altteulmap-scope-input:hover + .altteulmap-scope-chip {
+  border-color: var(--altteul-surface-border-strong);
+  background-color: var(--altteul-surface-fill-hover);
+}
+
+.altteulmap-scope-input:checked + .altteulmap-scope-chip {
+  border-color: #9c5934;
+  background: linear-gradient(180deg, #cb7c4d 0%, #b96b41 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 0 0 1px rgba(156, 89, 52, 0.14);
+  color: #fff;
+}
+
+.altteulmap-scope-input:focus-visible + .altteulmap-scope-chip {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--altteul-focus-ring);
+}
+
+.altteulmap-scope-input:checked:focus-visible + .altteulmap-scope-chip {
+  box-shadow:
+    0 0 0 3px var(--altteul-focus-ring),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 0 0 1px rgba(156, 89, 52, 0.14);
 }
 
 .altteulmap-badge {

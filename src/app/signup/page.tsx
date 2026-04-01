@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { BrandMark } from "@/components/brand-mark";
@@ -52,13 +50,6 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
           socialProviders={socialProviders}
           credentialsSignupEnabled={credentialsSignupEnabled}
         />
-        {!credentialsSignupEnabled ? (
-          <p className="px-2 text-sm leading-6 text-stone-500">
-            로컬 DB 없이 실행 중이면 회원가입은 저장되지 않습니다. 기존 계정 로그인이
-            필요하면 <Link href={loginHref} className="font-medium text-stone-900">로그인</Link>
-            을 사용하세요.
-          </p>
-        ) : null}
       </section>
     </main>
   );

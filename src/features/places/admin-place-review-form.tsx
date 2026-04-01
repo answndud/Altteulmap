@@ -66,6 +66,11 @@ export function AdminPlaceReviewForm({
       data-testid="admin-review-form"
       className="space-y-4 rounded-3xl border border-stone-200 bg-white p-4"
     >
+      <div className="rounded-[1.25rem] border border-stone-200 bg-stone-50 px-4 py-3 text-sm leading-6 text-stone-600">
+        공개 등록은 텍스트 정보만 받습니다. 승인 전에 운영자가 네이버 지도
+        검색 결과와 주소를 대조해 위치를 확정해주세요.
+      </div>
+
       <AdminPlaceCoordinatePicker
         placeName={placeName}
         address={address}
