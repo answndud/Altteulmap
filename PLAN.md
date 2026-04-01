@@ -1,6 +1,6 @@
 # PLAN.md
 
-기준일: 2026-03-31  
+기준일: 2026-04-01  
 목표: Altteulmap를 `지도 기반 절약 장소 탐색 + 가격 제보` 서비스 기준에서 MVP 완성도와 출시 준비 수준까지 끌어올린다.
 
 ## 운영 규칙
@@ -15,7 +15,7 @@
 ## 범위 원칙
 - 우선순위: `지도 Read MVP -> 쓰기 데이터 축적 -> 운영 품질 -> 인증/출시 -> 확장 기능`
 - MVP 원칙: 지도 탐색과 가격 데이터 축적이 흔들리면 확장 기능은 뒤로 미룬다
-- 현재 정책: `비회원 읽기, 회원 쓰기`를 기본값으로 유지한다
+- 현재 정책: `비회원 읽기, 비회원 반응, 회원 쓰기`를 기본값으로 유지한다
 - 별도 정책 결정 전 보류:
   - 익명 제보/익명 댓글
   - 커뮤니티 `bang`
@@ -23,11 +23,11 @@
   - 좋아요 랭킹
 
 ## 현재 우선순위
-1. 지도 Read MVP polish: 검색, URL 상태, 모바일 상세 시트, 빈 상태/제보 유도 UX
-2. Write MVP completion: 댓글 작성/삭제, 기존 장소 가격 추가 제보, 신고/수정 요청 정리
-3. 운영 품질: 가격 검증 흐름, 관리자 가격 수정, 중복/숨김 정책, rate limit
-4. 인증 정리: 로컬 credentials 중심 구조를 실제 로그인 가능한 형태로 확장
-5. 출시 준비: 테스트, SEO, Cloudflare 배포 체크리스트
+1. 인증 정리와 출시 준비: 실제 로그인 경로, 반복 가능한 검증 절차, Cloudflare 배포 체크리스트
+2. 공개 UI polish: 헤더 간소화, 개발 문구 제거, 버튼/칩 줄바꿈 방지, 지도/상세 밀도 정리
+3. 운영 품질 후속 정리: rate limit 수치 조정, 관리자 UX polish, 캐시/재검증 보강
+4. 확장 기능 1차: 플레이스 좋아요/싫어요 반응 모델과 UI 우선 도입
+5. 확장 기능 2차: 공유/사진 업로드 범위와 우선순위 재결정
 6. repo-local 개발 워크플로우 유지: `.agents` skills/reviewers, `.githooks`, `verify` 스크립트
 
 ## 현재 제품 상태
@@ -44,28 +44,38 @@
 - 장소 등록/신고
 - 관리자 장소 승인/반려
 - 관리자 신고 검토
+- 댓글 작성/삭제
+- 기존 장소 가격 제보
+- 관리자 가격 제보 검토 큐
+- 관리자 가격 직접 수정/대표 지정/숨김
+- 플레이스 좋아요/싫어요 반응
+- 비로그인 visitor cookie 기반 좋아요/싫어요
+- 지도 목록 좋아요 노출과 좋아요순 정렬
+- 대표 가격 재계산과 동일 가격 2회 검증 처리
+- 쓰기 API 최소 rate limit
 - 로컬 Auth.js credentials 로그인
 - Docker + Drizzle + PostgreSQL 로컬 개발 경로
+- sitemap/robots/canonical/기본 metadata
 
 ### 부분 구현
 - 모바일 바텀시트 UX
   - 목록은 usable 상태지만 상세 시트 전환 감각과 스냅 동작은 더 다듬어야 함
-- 가격 검증 표시
-  - 읽기 표시는 되지만 운영자가 가격 자체를 수정/정리하는 흐름은 아직 없음
 - 검색 URL 상태
   - 검색어/검색 범위는 반영되지만 지도 중심/줌 상태까지는 아직 URL에 싣지 않음
+- 출시 준비
+  - robots, sitemap, canonical, `smoke:local`, `deploy:check`, Playwright E2E 기본 흐름, credentials 로그인/등록/북마크/신고/관리자 승인/관리자 가격 검토 E2E, Cloudflare 배포 체크 문서는 정리했고, 현재 E2E는 두 그룹 실행 기준으로 반복 가능하다. 실제 OAuth와 실제 도메인 기준 production 점검은 남아 있다
 - 인증
-  - 로컬 credentials로 개발은 가능하지만 실제 외부 사용자 로그인 경로는 미구현
+  - 로컬 credentials와 카카오/네이버 OAuth scaffolding은 준비됐다. 현재 `.env.local` 기준으로 네이버는 활성화 가능 상태이고, 카카오는 client secret 누락 시 비활성화된다. 실제 provider credential과 callback URL로 끝까지 검증한 외부 로그인 경로는 아직 없다
+- 반응 기능
+  - 상세/상세 시트/지도 마커/지도 목록과 좋아요순 정렬까지 반영됐다. 별도 랭킹 화면은 아직 없다
+- 공유 기능
+  - 상세 페이지와 상세 시트에서 링크 공유는 가능하지만, 목록 단위 공유나 공유 유입 추적은 아직 없다
 
 ### 미구현 핵심
-- 댓글 작성/삭제
-- 기존 장소에 가격 추가 제보
-- 좋아요/랭킹
-- 공유 링크
+- 좋아요 랭킹
 - 사진 업로드
-- rate limit
 - 테스트 체계
-- SEO/sitemap/canonical 정리
+  - 지도/상세/비회원 좋아요/좋아요순/공유, 모바일 목록 시트/상세 시트, credentials 로그인, 장소 등록, 북마크, 신고 제출/관리자 상태 변경, 관리자 장소 승인, 관리자 가격 검토 기준 Playwright E2E는 들어갔다. 현재는 DB 기반 `bookmarks/map`, mock runtime의 `map.mobile`, DB 기반 `price-review/report-admin/submission-admin` 세 그룹으로 반복 실행한다. 실제 소셜 로그인 E2E와 더 깊은 모바일 제스처 검증은 더 필요하다
 - 커뮤니티 `bang`
 - 핫딜 `deal`
 
@@ -89,19 +99,20 @@
 ### Cycle 4: 운영 품질과 관리자 가격 관리
 | 작업명 | 담당 에이전트 | 우선순위 | 상태 | 완료기준(DoD) | 의존성 |
 |---|---|---|---|---|---|
-| 가격 검증/대표 가격 산정과 관리자 가격 수정 흐름을 정리하고, 쓰기 API에 최소 rate limit을 추가한다 | Codex | P1 | `pending` | 가격 대표값 산정 규칙이 코드와 화면에서 일치하고, 운영자가 가격 항목을 수정/비활성화할 수 있으며, 장소 등록/신고/댓글/가격 제보 API에 최소 rate limit이 들어가고, 관련 검증이 `PROGRESS.md`에 남는다 | `trd.md`, `src/features/places/repository.ts`, `src/app/api/places/**`, `src/app/api/reports/**`, 관리자 페이지, DB schema |
+| 가격 검증/대표 가격 산정과 관리자 가격 수정 흐름을 정리하고, 쓰기 API에 최소 rate limit을 추가한다 | Codex | P1 | `done` | 가격 대표값 산정 규칙이 코드와 화면에서 일치하고, 운영자가 가격 항목을 수정/비활성화할 수 있으며, 장소 등록/신고/댓글/가격 제보 API에 최소 rate limit이 들어가고, 관련 검증이 `PROGRESS.md`에 남는다 | `trd.md`, `src/features/places/repository.ts`, `src/app/api/places/**`, `src/app/api/reports/**`, 관리자 페이지, DB schema |
 
 ### Cycle 5: 인증 정리와 출시 준비
 | 작업명 | 담당 에이전트 | 우선순위 | 상태 | 완료기준(DoD) | 의존성 |
 |---|---|---|---|---|---|
-| 로컬 credentials 중심 인증을 실제 로그인 경로로 확장하고, 핵심 사용자 흐름 테스트/SEO/배포 체크리스트를 정리한다 | Codex | P2 | `pending` | 최소 1개의 실제 로그인 경로가 동작하고, 지도 탐색/등록/북마크/신고의 반복 가능한 검증 절차가 정리되며, sitemap/canonical/metadata와 Cloudflare 배포 체크리스트가 최신 상태가 된다 | `src/auth.ts`, `src/app/login/page.tsx`, 테스트 코드, `README.md`, `trd.md` |
+| 로컬 credentials 중심 인증을 실제 로그인 경로로 확장하고, 핵심 사용자 흐름 테스트/SEO/배포 체크리스트를 정리한다 | Codex | P2 | `in_progress` | 로컬 credentials 로그인과 지도 탐색/모바일 시트/등록/북마크/신고/관리자 승인/관리자 가격 검토 E2E가 반복 가능하게 정리되고, 이후 실제 OAuth 1개 이상이 end-to-end로 확인되며, sitemap/canonical/metadata와 Cloudflare 배포 체크리스트가 최신 상태가 된다 | `src/auth.ts`, `src/app/login/page.tsx`, 테스트 코드, `README.md`, `trd.md` |
 
 ### Cycle 6: 반복 방문 기능 확장
 | 작업명 | 담당 에이전트 | 우선순위 | 상태 | 완료기준(DoD) | 의존성 |
 |---|---|---|---|---|---|
-| 좋아요/공유/사진 업로드를 먼저 붙이고, 이후 `bang`/`deal` 확장 여부를 재판단한다 | Codex | P3 | `pending` | 지도 핵심 흐름을 건드리지 않고 상호작용 기능이 추가되며, `bang`/`deal`은 별도 PRD/TRD 보강 후 착수 여부를 결정한다 | 벤치마크 분석 메모, `prd.md`, `trd.md` |
+| 플레이스별 좋아요/싫어요를 먼저 붙여 공개 카운트와 사용자 반응 저장을 제공하고, 이후 공유/사진 업로드 순서를 재판단한다 | Codex | P2 | `in_progress` | 공개 상세와 상세 시트에 좋아요/싫어요 UI가 생기고, visitor cookie 또는 로그인 사용자 기준으로 한 플레이스에 한 반응만 저장되며, 공개 읽기에는 카운트가 노출되고, route/schema/repository/DB migration/검증 결과가 `PROGRESS.md`에 남는다 | 벤치마크 분석 메모, `prd.md`, `trd.md`, `src/db/schema.ts`, `src/features/places/repository.ts`, `src/app/api/places/**` |
 
 ## 결정 메모
 - 현재 계획 기준의 핵심 서비스는 여전히 `지도 + 가격 데이터`다.
 - 벤치마크 사이트에서 영감을 받은 기능은 확장 후보로 유지하되, core loop를 약하게 만들 정도로 범위를 넓히지 않는다.
-- 익명 참여를 도입하려면 `prd.md`, `trd.md`, 인증/신고 정책을 같이 수정해야 한다.
+- 현재 익명 허용 범위는 `좋아요/싫어요` 같은 가벼운 반응까지다.
+- 익명 제보/익명 댓글까지 넓히려면 `prd.md`, `trd.md`, 인증/신고 정책을 같이 수정해야 한다.
