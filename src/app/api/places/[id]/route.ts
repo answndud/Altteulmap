@@ -1,5 +1,3 @@
-import { NextResponse } from "next/server";
-
 import { getPlaceDetail } from "@/features/places/repository";
 import { getSessionUser } from "@/lib/session";
 import { getVisitorIdFromCookie } from "@/lib/visitor-id";
@@ -37,7 +35,7 @@ export async function GET(_: Request, context: RouteContext) {
   const place = result.item;
 
   if (!place) {
-    return NextResponse.json(
+    return Response.json(
       {
         error: {
           code: "NOT_FOUND",
@@ -51,7 +49,7 @@ export async function GET(_: Request, context: RouteContext) {
     );
   }
 
-  return NextResponse.json(
+  return Response.json(
     {
       item: place,
       source: result.source,

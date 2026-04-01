@@ -35,7 +35,7 @@ export type PlaceBounds = {
 export type PlaceQueryBounds = PlaceBounds;
 
 export type PlaceSearchScope = "viewport" | "global";
-export type PlaceSort = "price" | "recent" | "likes";
+export type PlaceSort = "price" | "recent";
 
 export type PlaceRecord = {
   id: string;

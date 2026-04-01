@@ -1,22 +1,14 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useFieldArray, useForm, useWatch } from "react-hook-form";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useFieldArray, useForm } from "react-hook-form";
+import { useState, useTransition } from "react";
 
 import { categoryGroups } from "@/features/categories/catalog";
 import {
-  geocodeAddress,
-  getNaverMapKeyId,
-  loadNaverMapSdk,
-} from "@/features/map/naver-map-sdk";
-import {
   type PlaceSubmissionFormInput,
   type PlaceSubmissionFormValues,
-  type PlaceSubmissionInput,
-  placeSubmissionCoordinateRequirementMessage,
   placeSubmissionFormSchema,
-  placeSubmissionSchema,
 } from "@/features/submission/schema";
 
 type SubmitResult = {
@@ -29,8 +21,6 @@ type SubmitResult = {
     categorySlug: string;
     roadAddress: string;
     district: string;
-    latitude?: number;
-    longitude?: number;
     priceItems: Array<{
       label: string;
       amount: number;
@@ -45,8 +35,6 @@ const defaultValues: PlaceSubmissionFormInput = {
   categorySlug: "",
   roadAddress: "",
   district: "",
-  latitude: "",
-  longitude: "",
   note: "",
   priceItems: [
     {
@@ -60,12 +48,6 @@ const defaultValues: PlaceSubmissionFormInput = {
 export function PlaceSubmitForm() {
   const [submitResult, setSubmitResult] = useState<SubmitResult | null>(null);
   const [isPending, startTransition] = useTransition();
-  const [isResolvingLocation, startLocationResolveTransition] = useTransition();
-  const [locationMessage, setLocationMessage] = useState<string | null>(null);
-  const previousLocationInputRef = useRef<{
-    address: string;
-    district: string;
-  } | null>(null);
 
   const form = useForm<
     PlaceSubmissionFormInput,
@@ -80,11 +62,6 @@ export function PlaceSubmitForm() {
     register,
     control,
     handleSubmit,
-    clearErrors,
-    getValues,
-    setError,
-    setValue,
-    trigger,
     formState: { errors },
   } = form;
 
@@ -92,258 +69,17 @@ export function PlaceSubmitForm() {
     control,
     name: "priceItems",
   });
-  const watchedAddress = useWatch({
-    control,
-    name: "roadAddress",
-    defaultValue: "",
-  });
-  const watchedDistrict = useWatch({
-    control,
-    name: "district",
-    defaultValue: "",
-  });
-  const watchedLatitude = useWatch({
-    control,
-    name: "latitude",
-    defaultValue: "",
-  });
-  const watchedLongitude = useWatch({
-    control,
-    name: "longitude",
-    defaultValue: "",
-  });
-  const latitudeValue =
-    typeof watchedLatitude === "string"
-      ? watchedLatitude
-      : watchedLatitude == null
-        ? ""
-        : String(watchedLatitude);
-  const longitudeValue =
-    typeof watchedLongitude === "string"
-      ? watchedLongitude
-      : watchedLongitude == null
-        ? ""
-        : String(watchedLongitude);
-  const isLocationConfirmed = Boolean(latitudeValue && longitudeValue);
-
-  const setCoordinateFields = (latitude: string, longitude: string) => {
-    setValue("latitude", latitude, {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-    setValue("longitude", longitude, {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-  };
-
-  useEffect(() => {
-    const previous = previousLocationInputRef.current;
-    previousLocationInputRef.current = {
-      address: watchedAddress,
-      district: watchedDistrict,
-    };
-
-    if (!previous) {
-      return;
-    }
-
-    const addressChanged =
-      previous.address !== watchedAddress || previous.district !== watchedDistrict;
-
-    if (!addressChanged || !latitudeValue || !longitudeValue) {
-      return;
-    }
-
-    setValue("latitude", "", {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-    setValue("longitude", "", {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-    setError("latitude", {
-      type: "manual",
-      message: "주소가 바뀌어 위치를 다시 확인해주세요.",
-    });
-    setError("longitude", {
-      type: "manual",
-      message: "주소가 바뀌어 위치를 다시 확인해주세요.",
-    });
-  }, [
-    latitudeValue,
-    longitudeValue,
-    setError,
-    setValue,
-    watchedAddress,
-    watchedDistrict,
-  ]);
-
-  const resolveCoordinatesFromAddress = async (
-    values: PlaceSubmissionFormValues,
-  ): Promise<PlaceSubmissionInput | null> => {
-    if (
-      typeof values.latitude === "number" &&
-      typeof values.longitude === "number"
-    ) {
-      clearErrors(["latitude", "longitude"]);
-      return placeSubmissionSchema.parse(getValues());
-    }
-
-    if (
-      typeof values.latitude === "number" ||
-      typeof values.longitude === "number"
-    ) {
-      setError("latitude", {
-        type: "manual",
-        message: "위도와 경도는 함께 입력해주세요.",
-      });
-      setError("longitude", {
-        type: "manual",
-        message: "위도와 경도는 함께 입력해주세요.",
-      });
-      return null;
-    }
-
-    if (!values.roadAddress.trim()) {
-      setError("latitude", {
-        type: "manual",
-        message: placeSubmissionCoordinateRequirementMessage,
-      });
-      setError("longitude", {
-        type: "manual",
-        message: placeSubmissionCoordinateRequirementMessage,
-      });
-      return null;
-    }
-
-    const naverMapKeyId = getNaverMapKeyId();
-
-    if (!naverMapKeyId) {
-      setError("latitude", {
-        type: "manual",
-        message:
-          "주소 위치를 자동으로 확인할 수 없습니다. 잠시 후 다시 시도해주세요.",
-      });
-      setError("longitude", {
-        type: "manual",
-        message:
-          "주소 위치를 자동으로 확인할 수 없습니다. 잠시 후 다시 시도해주세요.",
-      });
-      return null;
-    }
-
-    try {
-      const query = [values.district.trim(), values.roadAddress.trim()]
-        .filter(Boolean)
-        .join(" ");
-      const result = await loadNaverMapSdk(naverMapKeyId).then(() =>
-        geocodeAddress(query),
-      );
-
-      if (!result) {
-        setLocationMessage(null);
-        setError("latitude", {
-          type: "manual",
-          message:
-            "입력한 주소로 위치를 찾지 못했습니다. 주소를 다시 확인해주세요.",
-        });
-        setError("longitude", {
-          type: "manual",
-          message:
-            "입력한 주소로 위치를 찾지 못했습니다. 주소를 다시 확인해주세요.",
-        });
-        return null;
-      }
-
-      const nextLatitude = result.point.lat.toFixed(6);
-      const nextLongitude = result.point.lng.toFixed(6);
-
-      setCoordinateFields(nextLatitude, nextLongitude);
-      clearErrors(["latitude", "longitude"]);
-      setLocationMessage("주소 확인이 완료되었습니다.");
-
-      const parsed = placeSubmissionSchema.safeParse({
-        ...getValues(),
-        latitude: nextLatitude,
-        longitude: nextLongitude,
-      });
-
-      if (!parsed.success) {
-        setLocationMessage(null);
-        setError("latitude", {
-          type: "manual",
-          message: placeSubmissionCoordinateRequirementMessage,
-        });
-        setError("longitude", {
-          type: "manual",
-          message: placeSubmissionCoordinateRequirementMessage,
-        });
-        return null;
-      }
-
-      return parsed.data;
-    } catch {
-      setLocationMessage(null);
-      setError("latitude", {
-        type: "manual",
-        message:
-          "주소 기준 위치 확인에 실패했습니다. 잠시 후 다시 시도해주세요.",
-      });
-      setError("longitude", {
-        type: "manual",
-        message:
-          "주소 기준 위치 확인에 실패했습니다. 잠시 후 다시 시도해주세요.",
-      });
-      return null;
-    }
-  };
-
-  const handleAddressLookup = () => {
-    startLocationResolveTransition(async () => {
-      const values = getValues();
-      const query = [values.district?.trim(), values.roadAddress?.trim()]
-        .filter(Boolean)
-        .join(" ");
-
-      if (!query) {
-        setLocationMessage(null);
-        setError("roadAddress", {
-          type: "manual",
-          message: "업장 주소를 먼저 입력해주세요.",
-        });
-        setLocationMessage(null);
-        return;
-      }
-
-      clearErrors(["roadAddress", "latitude", "longitude"]);
-      await resolveCoordinatesFromAddress(values as PlaceSubmissionFormValues);
-    });
-  };
 
   const onSubmit = handleSubmit((values) => {
     startTransition(async () => {
       setSubmitResult(null);
-
-      const payload = await resolveCoordinatesFromAddress(values);
-
-      if (!payload) {
-        return;
-      }
-
-      const isValid = await trigger();
-
-      if (!isValid) {
-        return;
-      }
 
       const response = await fetch("/api/places", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(values),
       });
 
       const result = (await response.json()) as SubmitResult;
@@ -376,9 +112,6 @@ export function PlaceSubmitForm() {
                   className="rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900"
                   placeholder="예: 학교앞김밥, 성북청년밥집"
                 />
-                <p className="text-xs text-stone-500">
-                  간판명이나 사용자가 바로 알아볼 수 있는 이름 하나만 입력하면 됩니다.
-                </p>
                 {errors.name ? (
                   <span className="text-xs text-rose-600">
                     {errors.name.message}
@@ -427,50 +160,18 @@ export function PlaceSubmitForm() {
               </label>
             </div>
             <div className="mt-4 rounded-[1.5rem] border border-stone-200 bg-stone-50 p-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-medium text-stone-700">업장 주소</p>
-                  <p className="mt-1 text-xs text-stone-500">
-                    도로명 주소를 입력하고 위치 확인까지 끝내야 지도에 표시됩니다.
-                  </p>
-                </div>
-                <span
-                  className={`rounded-full px-3 py-1 text-xs font-medium ${
-                    isLocationConfirmed
-                      ? "bg-emerald-100 text-emerald-700"
-                      : "bg-stone-200 text-stone-600"
-                  }`}
-                >
-                  {isLocationConfirmed ? "위치 확인됨" : "위치 미확인"}
-                </span>
-              </div>
-              <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+              <label className="grid gap-2 text-sm text-stone-700">
+                업장 주소
                 <input
                   {...register("roadAddress")}
                   data-testid="submit-road-address"
-                  className="min-w-0 flex-1 rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900"
+                  className="min-w-0 rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900"
                   placeholder="예: 서울 성북구 동소문로22길 31"
                 />
-                <button
-                  type="button"
-                  onClick={handleAddressLookup}
-                  data-testid="submit-address-lookup-button"
-                  disabled={isPending || isResolvingLocation}
-                  className="altteulmap-button shrink-0 whitespace-nowrap border border-stone-300 bg-white px-4 py-3 text-sm text-stone-700 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {isResolvingLocation ? "위치 확인 중..." : "주소로 위치 확인"}
-                </button>
-              </div>
+              </label>
               {errors.roadAddress ? (
                 <p className="mt-2 text-xs text-rose-600">
                   {errors.roadAddress.message}
-                </p>
-              ) : null}
-              {isLocationConfirmed && locationMessage ? (
-                <p
-                  className="mt-2 text-xs text-emerald-700"
-                >
-                  {locationMessage}
                 </p>
               ) : null}
             </div>
@@ -578,39 +279,13 @@ export function PlaceSubmitForm() {
             </label>
           </section>
 
-          <section className="grid gap-4">
-            <div className="rounded-[1.5rem] border border-stone-200 bg-stone-50 px-4 py-3 text-sm leading-6 text-stone-600">
-              주소 텍스트를 기준으로 내부 위치 확인을 진행합니다. 정확한 도로명 주소를 입력해주세요.
-            </div>
-            <input
-              type="hidden"
-              {...register("latitude")}
-              data-testid="submit-latitude"
-            />
-            <input
-              type="hidden"
-              {...register("longitude")}
-              data-testid="submit-longitude"
-            />
-            {errors.latitude || errors.longitude ? (
-              <div className="rounded-[1.25rem] border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                {errors.latitude?.message ?? errors.longitude?.message}
-              </div>
-            ) : null}
-            <div className="rounded-[1.5rem] border border-stone-200 bg-white px-4 py-3 text-sm leading-6 text-stone-600">
-              {isLocationConfirmed
-                ? "업장 위치 확인이 완료되었습니다. 제출 시 이 주소 기준으로 저장됩니다."
-                : "아직 업장 위치가 확인되지 않았습니다. 주소로 위치 확인이 필요합니다."}
-            </div>
-          </section>
-
           <button
             type="submit"
             disabled={isPending}
             data-testid="submit-place-button"
             className="altteulmap-accent-solid altteulmap-button whitespace-nowrap px-5 py-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isPending ? "등록 확인 중..." : "장소 등록하기"}
+            {isPending ? "등록 접수 중..." : "장소 등록하기"}
           </button>
         </div>
       </form>
@@ -644,16 +319,6 @@ export function PlaceSubmitForm() {
                     {submitResult.preview.roadAddress} ·{" "}
                     {submitResult.preview.district}
                   </p>
-                  {typeof submitResult.preview.latitude === "number" &&
-                  typeof submitResult.preview.longitude === "number" ? (
-                    <>
-                      <p className="mt-4 text-sm text-stone-500">제출 좌표</p>
-                      <p className="mt-1 text-sm leading-6 text-stone-700">
-                        {submitResult.preview.latitude.toFixed(6)},{" "}
-                        {submitResult.preview.longitude.toFixed(6)}
-                      </p>
-                    </>
-                  ) : null}
                   <div className="mt-4 grid gap-2">
                     {submitResult.preview.priceItems.map((item) => (
                       <div

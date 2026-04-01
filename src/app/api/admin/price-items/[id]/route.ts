@@ -1,6 +1,4 @@
 import { revalidatePath } from "next/cache";
-import { NextResponse } from "next/server";
-
 import { updatePriceItem } from "@/features/places/repository";
 import { adminPriceItemUpdateSchema } from "@/features/places/write-schema";
 import { getSessionUser } from "@/lib/session";
@@ -15,7 +13,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   const user = await getSessionUser();
 
   if (!user) {
-    return NextResponse.json(
+    return Response.json(
       {
         ok: false,
         message: "로그인이 필요합니다.",
@@ -25,7 +23,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   if (user.role !== "admin") {
-    return NextResponse.json(
+    return Response.json(
       {
         ok: false,
         message: "운영자 권한이 필요합니다.",
@@ -38,7 +36,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   const parsed = adminPriceItemUpdateSchema.safeParse(body);
 
   if (!parsed.success) {
-    return NextResponse.json(
+    return Response.json(
       {
         ok: false,
         message: "가격 항목 수정 입력값 검증에 실패했습니다.",
@@ -72,5 +70,5 @@ export async function PATCH(request: Request, context: RouteContext) {
       ? 400
       : 404;
 
-  return NextResponse.json(result, { status });
+  return Response.json(result, { status });
 }

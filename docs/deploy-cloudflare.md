@@ -56,6 +56,9 @@ npm run smoke:local
 npm run deploy:check
 ```
 
+배포는 `npm run deploy`를 사용한다. 이 명령은 `.next`, `.open-next`를 먼저 비우고 다시 OpenNext build를 만든 뒤 업로드한다.
+현재 저장소는 Cloudflare Workers Free 한도에 맞추기 위해 `webpack` build를 사용한다.
+
 preview 기준으로 로컬 URL 허용 상태만 보려면:
 
 ```bash
@@ -63,7 +66,7 @@ npm run deploy:check -- --preview
 ```
 
 ## 7. 첫 배포 직후 확인
-1. `/map`에서 지도 렌더링
+1. `/`에서 지도 렌더링
 2. `/login`에서 카카오/네이버 로그인 버튼 노출
 3. `/robots.txt`
 4. `/sitemap.xml`

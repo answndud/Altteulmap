@@ -1,6 +1,4 @@
 import { revalidatePath } from "next/cache";
-import { NextResponse } from "next/server";
-
 import {
   listPendingPlaces,
   moderatePlaceSubmission,
@@ -18,7 +16,7 @@ export async function GET(_: Request, context: RouteContext) {
   const user = await getSessionUser();
 
   if (!user) {
-    return NextResponse.json(
+    return Response.json(
       {
         ok: false,
         message: "로그인이 필요합니다.",
@@ -28,7 +26,7 @@ export async function GET(_: Request, context: RouteContext) {
   }
 
   if (user.role !== "admin") {
-    return NextResponse.json(
+    return Response.json(
       {
         ok: false,
         message: "운영자 권한이 필요합니다.",
@@ -41,7 +39,7 @@ export async function GET(_: Request, context: RouteContext) {
   const result = await listPendingPlaces();
   const item = result.items.find((place) => place.id === id) ?? null;
 
-  return NextResponse.json(
+  return Response.json(
     {
       item,
       source: result.source,
@@ -55,7 +53,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   const user = await getSessionUser();
 
   if (!user) {
-    return NextResponse.json(
+    return Response.json(
       {
         ok: false,
         message: "로그인이 필요합니다.",
@@ -65,7 +63,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   if (user.role !== "admin") {
-    return NextResponse.json(
+    return Response.json(
       {
         ok: false,
         message: "운영자 권한이 필요합니다.",
@@ -78,7 +76,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   const parsed = placeModerationSchema.safeParse(body);
 
   if (!parsed.success) {
-    return NextResponse.json(
+    return Response.json(
       {
         ok: false,
         message: "장소 검토 입력값 검증에 실패했습니다.",
@@ -101,5 +99,5 @@ export async function PATCH(request: Request, context: RouteContext) {
     revalidatePath(`/api/places/${id}`);
   }
 
-  return NextResponse.json(result, { status: result.ok ? 200 : 404 });
+  return Response.json(result, { status: result.ok ? 200 : 404 });
 }

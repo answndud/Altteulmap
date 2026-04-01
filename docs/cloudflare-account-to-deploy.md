@@ -102,6 +102,10 @@ npx wrangler login
 
 현재 저장소는 `npm run deploy` 시 로컬에서 OpenNext build를 만든 뒤 Cloudflare로 업로드한다.
 
+현재 배포 경로는 Cloudflare Workers Free 한도 기준으로 `next build --webpack`과 clean build를 전제로 맞춰져 있다.
+- `npm run deploy`는 내부적으로 `cf:clean -> opennextjs-cloudflare build -> opennextjs-cloudflare deploy` 순서로 실행된다.
+- 직접 배포할 때는 `.next`, `.open-next`를 남긴 채 재사용하지 않는 것이 안전하다.
+
 즉 환경 변수는 두 군데가 모두 중요하다.
 
 ### A. 로컬 빌드 환경 변수
