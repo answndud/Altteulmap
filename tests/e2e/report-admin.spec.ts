@@ -5,6 +5,8 @@ import { expect, test } from "@playwright/test";
 import {
   ADMIN_EMAIL,
   ADMIN_PASSWORD,
+  DEMO_EMAIL,
+  DEMO_PASSWORD,
   loginWithCredentials,
 } from "./helpers/auth";
 
@@ -22,6 +24,15 @@ test("신고를 제출하면 운영자 신고 큐에서 처리 완료로 바꿀 
     const userPage = await userContext.newPage();
 
     await userPage.goto("/report?placeId=school-gimbap&placeName=school-gimbap");
+
+    if (/\/login\?/.test(userPage.url())) {
+      await loginWithCredentials(userPage, {
+        callbackUrl: "/report?placeId=school-gimbap&placeName=school-gimbap",
+        email: DEMO_EMAIL,
+        password: DEMO_PASSWORD,
+      });
+    }
+
     await expect(userPage).toHaveURL(/\/report\?/);
     await expect(userPage.getByTestId("report-submit-form")).toBeVisible();
     await userPage.getByTestId("report-reason").selectOption("closed_or_wrong_info");
