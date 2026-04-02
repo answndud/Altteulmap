@@ -101,7 +101,7 @@ export function ReportSubmitForm({
             <select
               {...register("reasonType")}
               data-testid="report-reason"
-              className="rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900"
+              className="altteulmap-input px-4 py-3.5 text-stone-900"
             >
               {reportReasonOptions.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -122,7 +122,7 @@ export function ReportSubmitForm({
               {...register("detail")}
               rows={8}
               data-testid="report-detail"
-              className="rounded-3xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900"
+              className="altteulmap-input min-h-44 resize-y px-4 py-3.5 text-stone-900"
               placeholder="예: 가격표는 7,500원으로 바뀌었는데 화면에는 7,000원으로 표시됩니다."
             />
             {errors.detail ? (
@@ -136,7 +136,7 @@ export function ReportSubmitForm({
             type="submit"
             disabled={isPending}
             data-testid="report-submit-button"
-            className="altteulmap-accent-solid altteulmap-button whitespace-nowrap px-5 py-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60"
+            className="altteulmap-accent-solid altteulmap-button inline-flex w-full items-center justify-center whitespace-nowrap px-5 py-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
           >
             {isPending ? "신고 접수 중..." : "신고 제출"}
           </button>

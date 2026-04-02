@@ -37,7 +37,7 @@ export type PlaceQueryBounds = PlaceBounds;
 export type PlaceSearchScope = "viewport" | "global";
 export type PlaceSort = "price" | "recent";
 
-export type PlaceRecord = {
+export type PlacePreviewRecord = {
   id: string;
   name: string;
   businessName?: string;
@@ -55,6 +55,29 @@ export type PlaceRecord = {
   likeCount: number;
   dislikeCount: number;
   viewerReaction: PlaceReactionType | null;
+  priceItems?: PlacePriceItem[];
+  history?: PlaceHistoryEntry[];
+  comments?: PlaceComment[];
+};
+
+export type PlaceMapPlaceMarkerRecord = PlacePreviewRecord & {
+  kind: "place";
+};
+
+export type PlaceMapClusterMarkerRecord = {
+  kind: "cluster";
+  id: string;
+  latitude: number;
+  longitude: number;
+  bounds: PlaceBounds;
+  placeCount: number;
+};
+
+export type PlaceMapMarkerRecord =
+  | PlaceMapPlaceMarkerRecord
+  | PlaceMapClusterMarkerRecord;
+
+export type PlaceRecord = PlacePreviewRecord & {
   priceItems: PlacePriceItem[];
   history: PlaceHistoryEntry[];
   comments: PlaceComment[];

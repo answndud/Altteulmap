@@ -52,7 +52,11 @@ import type {
   PlaceComment,
   PlaceBounds,
   PlaceHistoryEntry,
+  PlaceMapClusterMarkerRecord,
+  PlaceMapMarkerRecord,
+  PlaceMapPlaceMarkerRecord,
   PlacePriceItem,
+  PlacePreviewRecord,
   PlaceQueryBounds,
   PlaceReactionType,
   PlaceRecord,
@@ -67,6 +71,7 @@ export type PlaceQuery = {
   sort?: PlaceSort;
   bounds?: PlaceQueryBounds | null;
   query?: string | null;
+  zoom?: number | null;
 };
 
 type DatabasePlaceRow = {
@@ -80,8 +85,11 @@ type DatabasePlaceRow = {
   district: string;
   latitude: number | null;
   longitude: number | null;
+  primaryCategorySlug: string | null;
   representativePriceAmount: number | null;
   representativePriceLabel: string | null;
+  likeCount: number;
+  dislikeCount: number;
   verifiedPriceItemCount: number;
   lastPriceUpdatedAt: Date | null;
 };
@@ -91,6 +99,16 @@ export type PlaceListResult = {
   bounds: PlaceBounds;
   source: DataSource;
 };
+
+export type PlacePreviewListResult = {
+  items: PlacePreviewRecord[];
+  mapMarkers: PlaceMapMarkerRecord[];
+  bounds: PlaceBounds;
+  count: number;
+  source: DataSource;
+};
+
+const MAP_LIST_RESPONSE_LIMIT = 120;
 
 export type PlaceDetailResult = {
   item: PlaceRecord | null;
@@ -357,50 +375,17 @@ function getMockReactionSummary(
   return summary;
 }
 
-async function loadPlaceReactionSummary(
+async function loadViewerReactionMap(
   placeIds: string[],
   viewer: PlaceViewer = null,
 ) {
-  const summaryMap = new Map<string, PlaceReactionSummary>();
+  const viewerReactionMap = new Map<string, PlaceReactionType>();
 
-  for (const placeId of placeIds) {
-    summaryMap.set(placeId, createEmptyReactionSummary());
-  }
-
-  if (placeIds.length === 0) {
-    return summaryMap;
+  if (placeIds.length === 0 || !viewer) {
+    return viewerReactionMap;
   }
 
   const db = getDb();
-  const countRows = await db
-    .select({
-      placeId: placeReactions.placeId,
-      reactionType: placeReactions.reactionType,
-      count: sql<number>`count(*)`,
-    })
-    .from(placeReactions)
-    .where(inArray(placeReactions.placeId, placeIds))
-    .groupBy(placeReactions.placeId, placeReactions.reactionType);
-
-  for (const row of countRows) {
-    const current = summaryMap.get(row.placeId) ?? createEmptyReactionSummary();
-    const count = Number(row.count) || 0;
-
-    if (row.reactionType === "like") {
-      current.likeCount = count;
-    } else {
-      current.dislikeCount = count;
-    }
-
-    summaryMap.set(row.placeId, current);
-  }
-
-  const viewerKey = getReactionViewerKey(viewer);
-
-  if (!viewerKey || !viewer) {
-    return summaryMap;
-  }
-
   const viewerRows = await db
     .select({
       placeId: placeReactions.placeId,
@@ -417,13 +402,45 @@ async function loadPlaceReactionSummary(
     );
 
   for (const row of viewerRows) {
-    const current = summaryMap.get(row.placeId) ?? createEmptyReactionSummary();
-
-    current.viewerReaction = row.reactionType;
-    summaryMap.set(row.placeId, current);
+    viewerReactionMap.set(row.placeId, row.reactionType);
   }
 
-  return summaryMap;
+  return viewerReactionMap;
+}
+
+async function refreshPlaceReactionSummary(placeId: string) {
+  const db = getDb();
+  const countRows = await db
+    .select({
+      reactionType: placeReactions.reactionType,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(placeReactions)
+    .where(eq(placeReactions.placeId, placeId))
+    .groupBy(placeReactions.reactionType);
+
+  const summary = createEmptyReactionSummary();
+
+  for (const row of countRows) {
+    const count = Number(row.count) || 0;
+
+    if (row.reactionType === "like") {
+      summary.likeCount = count;
+    } else {
+      summary.dislikeCount = count;
+    }
+  }
+
+  await db
+    .update(places)
+    .set({
+      likeCount: summary.likeCount,
+      dislikeCount: summary.dislikeCount,
+      updatedAt: new Date(),
+    })
+    .where(eq(places.id, placeId));
+
+  return summary;
 }
 
 type PriceSummaryItem = {
@@ -485,7 +502,9 @@ function selectRepresentativePriceItem(items: PriceSummaryItem[]) {
   })[0];
 }
 
-function getBoundsFromPlaces(items: PlaceRecord[]): PlaceBounds {
+function getBoundsFromPlaces(
+  items: Array<Pick<PlacePreviewRecord, "latitude" | "longitude">>,
+): PlaceBounds {
   const source = items.length > 0 ? items : mockPlaces;
   const latitudes = source.map((place) => place.latitude);
   const longitudes = source.map((place) => place.longitude);
@@ -496,6 +515,125 @@ function getBoundsFromPlaces(items: PlaceRecord[]): PlaceBounds {
     minLng: Math.min(...longitudes),
     maxLng: Math.max(...longitudes),
   };
+}
+
+function getCappedMapListItems(items: PlacePreviewRecord[]) {
+  return items.slice(0, MAP_LIST_RESPONSE_LIMIT);
+}
+
+function toMapPlaceMarkerRecord(
+  place: PlacePreviewRecord,
+): PlaceMapPlaceMarkerRecord {
+  return {
+    kind: "place",
+    ...place,
+  };
+}
+
+function getMapMarkerLimit(zoom: number | null, query: string | null) {
+  if (query?.trim()) {
+    if (!zoom) {
+      return 40;
+    }
+
+    if (zoom >= 15) {
+      return 80;
+    }
+
+    if (zoom >= 14) {
+      return 56;
+    }
+
+    return 48;
+  }
+
+  if (!zoom) {
+    return 36;
+  }
+
+  if (zoom >= 15) {
+    return 96;
+  }
+
+  if (zoom >= 14) {
+    return 64;
+  }
+
+  if (zoom >= 13) {
+    return 48;
+  }
+
+  if (zoom >= 12) {
+    return 32;
+  }
+
+  return 24;
+}
+
+function getTileSummarizedMapMarkers(
+  items: PlacePreviewRecord[],
+  bounds: PlaceBounds,
+  query: string | null,
+  zoom: number | null,
+) {
+  const markerLimit = getMapMarkerLimit(zoom, query);
+
+  if (items.length <= markerLimit || query?.trim()) {
+    return items
+      .slice(0, markerLimit)
+      .map((place) => toMapPlaceMarkerRecord(place)) as PlaceMapMarkerRecord[];
+  }
+
+  const latSpan = Math.max(bounds.maxLat - bounds.minLat, 0.0001);
+  const lngSpan = Math.max(bounds.maxLng - bounds.minLng, 0.0001);
+  const aspectRatio = Math.max(lngSpan / latSpan, 0.65);
+  const columnCount = Math.max(
+    1,
+    Math.round(Math.sqrt(markerLimit * aspectRatio)),
+  );
+  const rowCount = Math.max(1, Math.ceil(markerLimit / columnCount));
+  const cells = new Map<string, PlacePreviewRecord[]>();
+
+  for (const place of items) {
+    const rowIndex = Math.min(
+      rowCount - 1,
+      Math.floor(((place.latitude - bounds.minLat) / latSpan) * rowCount),
+    );
+    const columnIndex = Math.min(
+      columnCount - 1,
+      Math.floor(((place.longitude - bounds.minLng) / lngSpan) * columnCount),
+    );
+    const cellKey = `${rowIndex}:${columnIndex}`;
+    const bucket = cells.get(cellKey) ?? [];
+
+    bucket.push(place);
+    cells.set(cellKey, bucket);
+  }
+
+  const mapMarkers: PlaceMapMarkerRecord[] = [];
+
+  for (const [cellKey, bucket] of cells.entries()) {
+    if (bucket.length === 1) {
+      mapMarkers.push(toMapPlaceMarkerRecord(bucket[0]));
+      continue;
+    }
+
+    const latitude =
+      bucket.reduce((sum, place) => sum + place.latitude, 0) / bucket.length;
+    const longitude =
+      bucket.reduce((sum, place) => sum + place.longitude, 0) / bucket.length;
+
+    mapMarkers.push({
+      kind: "cluster",
+      id: `cluster:${cellKey}:${bucket.length}`,
+      latitude,
+      longitude,
+      bounds: getBoundsFromPlaces(bucket),
+      placeCount: bucket.length,
+    } satisfies PlaceMapClusterMarkerRecord);
+  }
+
+  return mapMarkers;
 }
 
 function toFallbackPlacePreview(
@@ -557,21 +695,24 @@ function toAdminPriceItemRecord(item: {
   };
 }
 
-function toPlaceRecord(
+function toPlacePreviewRecord(
   row: DatabasePlaceRow,
   categorySlug: string | null | undefined,
-  detail?: {
-    comments?: PlaceComment[];
-    history?: PlaceHistoryEntry[];
-    priceItems?: PlacePriceItem[];
-    reactionSummary?: PlaceReactionSummary;
-  },
-): PlaceRecord {
+  reactionSummary?: PlaceReactionSummary,
+): PlacePreviewRecord {
+  const resolvedReactionSummary =
+    reactionSummary ??
+    ({
+      likeCount: row.likeCount,
+      dislikeCount: row.dislikeCount,
+      viewerReaction: null,
+    } satisfies PlaceReactionSummary);
+
   return {
     id: row.slug,
     name: row.name,
     businessName: row.businessName ?? undefined,
-    categorySlug: categorySlug ?? "other-service",
+    categorySlug: row.primaryCategorySlug ?? categorySlug ?? "other-service",
     address: row.roadAddress,
     district: row.district,
     latitude: row.latitude ?? 37.5665,
@@ -587,9 +728,30 @@ function toPlaceRecord(
     note:
       row.note ??
       "운영 검토 전 단계이거나 추가 메모가 아직 등록되지 않았습니다.",
-    likeCount: detail?.reactionSummary?.likeCount ?? 0,
-    dislikeCount: detail?.reactionSummary?.dislikeCount ?? 0,
-    viewerReaction: detail?.reactionSummary?.viewerReaction ?? null,
+    likeCount: resolvedReactionSummary.likeCount,
+    dislikeCount: resolvedReactionSummary.dislikeCount,
+    viewerReaction: resolvedReactionSummary.viewerReaction,
+  };
+}
+
+function toPlaceRecord(
+  row: DatabasePlaceRow,
+  categorySlug: string | null | undefined,
+  detail?: {
+    comments?: PlaceComment[];
+    history?: PlaceHistoryEntry[];
+    priceItems?: PlacePriceItem[];
+    reactionSummary?: PlaceReactionSummary;
+  },
+): PlaceRecord {
+  const preview = toPlacePreviewRecord(
+    row,
+    categorySlug,
+    detail?.reactionSummary,
+  );
+
+  return {
+    ...preview,
     priceItems: detail?.priceItems ?? [],
     history: detail?.history ?? [],
     comments: detail?.comments ?? [],
@@ -605,7 +767,7 @@ function toPendingPlaceRecord(
     id: row.slug,
     name: row.name,
     businessName: row.businessName ?? undefined,
-    categorySlug: categorySlug ?? "other-service",
+    categorySlug: row.primaryCategorySlug ?? categorySlug ?? "other-service",
     address: row.roadAddress,
     district: row.district,
     note:
@@ -667,6 +829,10 @@ async function listDatabasePlaces({
     conditions.push(lte(places.representativePriceAmount, maxPrice));
   }
 
+  if (category) {
+    conditions.push(eq(places.primaryCategorySlug, category));
+  }
+
   if (normalizedQuery) {
     const queryPattern = `%${normalizedQuery}%`;
 
@@ -702,8 +868,11 @@ async function listDatabasePlaces({
       district: places.district,
       latitude: places.latitude,
       longitude: places.longitude,
+      primaryCategorySlug: places.primaryCategorySlug,
       representativePriceAmount: places.representativePriceAmount,
       representativePriceLabel: places.representativePriceLabel,
+      likeCount: places.likeCount,
+      dislikeCount: places.dislikeCount,
       verifiedPriceItemCount: places.verifiedPriceItemCount,
       lastPriceUpdatedAt: places.lastPriceUpdatedAt,
     })
@@ -715,20 +884,12 @@ async function listDatabasePlaces({
         : [asc(places.representativePriceAmount), desc(places.updatedAt)]),
     );
 
-  const categoryMap = await loadCategoryMap(rows.map((row) => row.internalId));
-  const reactionSummaryMap = await loadPlaceReactionSummary(
-    rows.map((row) => row.internalId),
-  );
   const mapped = sortPlaceRecords(
     rows
-    .map((row) =>
-      toPlaceRecord(row, categoryMap.get(row.internalId), {
-        reactionSummary: reactionSummaryMap.get(row.internalId),
-      }),
-    )
-    .filter((place) =>
-      category ? place.categorySlug === category : true,
-    ),
+      .map((row) => toPlaceRecord(row, row.primaryCategorySlug))
+      .filter((place) =>
+        category ? place.categorySlug === category : true,
+      ),
     sort,
   );
 
@@ -738,6 +899,128 @@ async function listDatabasePlaces({
       mapped.length > 0
         ? getBoundsFromPlaces(mapped)
         : bounds ?? getMapBounds(),
+    source: "database",
+  };
+}
+
+function toMapPreviewRecord(place: PlaceRecord): PlacePreviewRecord {
+  return {
+    id: place.id,
+    name: place.name,
+    businessName: place.businessName,
+    categorySlug: place.categorySlug,
+    address: place.address,
+    district: place.district,
+    latitude: place.latitude,
+    longitude: place.longitude,
+    representativePriceAmount: place.representativePriceAmount,
+    representativePriceLabel: place.representativePriceLabel,
+    verificationStatus: place.verificationStatus,
+    lastPriceUpdatedAt: place.lastPriceUpdatedAt,
+    description: place.description,
+    note: place.note,
+    likeCount: place.likeCount,
+    dislikeCount: place.dislikeCount,
+    viewerReaction: place.viewerReaction,
+  };
+}
+
+async function listDatabaseMapPlaces({
+  category,
+  maxPrice,
+  sort = "price",
+  bounds,
+  query,
+  zoom = null,
+}: PlaceQuery = {}): Promise<PlacePreviewListResult> {
+  const db = getDb();
+  const conditions = [
+    eq(places.status, "active"),
+    isNotNull(places.latitude),
+    isNotNull(places.longitude),
+  ];
+  const normalizedQuery = query?.trim();
+
+  if (maxPrice) {
+    conditions.push(lte(places.representativePriceAmount, maxPrice));
+  }
+
+  if (category) {
+    conditions.push(eq(places.primaryCategorySlug, category));
+  }
+
+  if (normalizedQuery) {
+    const queryPattern = `%${normalizedQuery}%`;
+
+    conditions.push(
+      or(
+        ilike(places.name, queryPattern),
+        ilike(places.businessName, queryPattern),
+        ilike(places.roadAddress, queryPattern),
+        ilike(places.district, queryPattern),
+        ilike(places.representativePriceLabel, queryPattern),
+        ilike(places.description, queryPattern),
+        ilike(places.note, queryPattern),
+      )!,
+    );
+  }
+
+  if (bounds) {
+    conditions.push(gte(places.latitude, bounds.minLat));
+    conditions.push(lte(places.latitude, bounds.maxLat));
+    conditions.push(gte(places.longitude, bounds.minLng));
+    conditions.push(lte(places.longitude, bounds.maxLng));
+  }
+
+  const rows = await db
+    .select({
+      internalId: places.id,
+      slug: places.slug,
+      name: places.name,
+      businessName: places.businessName,
+      description: places.description,
+      note: places.note,
+      roadAddress: places.roadAddress,
+      district: places.district,
+      latitude: places.latitude,
+      longitude: places.longitude,
+      primaryCategorySlug: places.primaryCategorySlug,
+      representativePriceAmount: places.representativePriceAmount,
+      representativePriceLabel: places.representativePriceLabel,
+      likeCount: places.likeCount,
+      dislikeCount: places.dislikeCount,
+      verifiedPriceItemCount: places.verifiedPriceItemCount,
+      lastPriceUpdatedAt: places.lastPriceUpdatedAt,
+    })
+    .from(places)
+    .where(and(...conditions))
+    .orderBy(
+      ...(sort === "recent"
+        ? [desc(places.lastPriceUpdatedAt), desc(places.updatedAt)]
+        : [asc(places.representativePriceAmount), desc(places.updatedAt)]),
+    );
+
+  const mapped = sortPlaceRecords(
+    rows
+      .map((row) => toPlacePreviewRecord(row, row.primaryCategorySlug))
+      .filter((place) => (category ? place.categorySlug === category : true)),
+    sort,
+  );
+  const boundsForResult =
+    mapped.length > 0 ? getBoundsFromPlaces(mapped) : bounds ?? getMapBounds();
+  const items = getCappedMapListItems(mapped);
+  const mapMarkers = getTileSummarizedMapMarkers(
+    mapped,
+    boundsForResult,
+    normalizedQuery ?? null,
+    zoom,
+  );
+
+  return {
+    items,
+    mapMarkers,
+    bounds: boundsForResult,
+    count: mapped.length,
     source: "database",
   };
 }
@@ -759,8 +1042,11 @@ async function getDatabasePlaceDetail(
       district: places.district,
       latitude: places.latitude,
       longitude: places.longitude,
+      primaryCategorySlug: places.primaryCategorySlug,
       representativePriceAmount: places.representativePriceAmount,
       representativePriceLabel: places.representativePriceLabel,
+      likeCount: places.likeCount,
+      dislikeCount: places.dislikeCount,
       verifiedPriceItemCount: places.verifiedPriceItemCount,
       lastPriceUpdatedAt: places.lastPriceUpdatedAt,
     })
@@ -775,9 +1061,8 @@ async function getDatabasePlaceDetail(
     };
   }
 
-  const [categoryMap, priceItemRows, historyRows, commentRows, reactionSummaryMap] =
+  const [priceItemRows, historyRows, commentRows, viewerReactionMap] =
     await Promise.all([
-      loadCategoryMap([row.internalId]),
       db
         .select({
           id: priceItems.id,
@@ -826,11 +1111,10 @@ async function getDatabasePlaceDetail(
         .leftJoin(users, eq(comments.userId, users.id))
         .where(and(eq(comments.placeId, row.internalId), eq(comments.status, "visible")))
         .orderBy(desc(comments.createdAt)),
-      loadPlaceReactionSummary([row.internalId], viewer),
+      loadViewerReactionMap([row.internalId], viewer),
     ]);
 
-  const categorySlug = categoryMap.get(row.internalId);
-  const item = toPlaceRecord(row, categorySlug, {
+  const item = toPlaceRecord(row, row.primaryCategorySlug, {
     priceItems: priceItemRows.map((priceItem) => ({
       id: priceItem.id,
       label: priceItem.label,
@@ -856,7 +1140,11 @@ async function getDatabasePlaceDetail(
         (Boolean(comment.userId) && viewer?.userId === comment.userId) ||
         (Boolean(comment.visitorId) && viewer?.visitorId === comment.visitorId),
     })),
-    reactionSummary: reactionSummaryMap.get(row.internalId),
+    reactionSummary: {
+      likeCount: row.likeCount,
+      dislikeCount: row.dislikeCount,
+      viewerReaction: viewerReactionMap.get(row.internalId) ?? null,
+    },
   });
 
   return {
@@ -1037,13 +1325,8 @@ async function setDatabasePlaceReaction(
       );
   }
 
-  const summary = (
-    await loadPlaceReactionSummary([place.id], {
-      role: actor?.userId ? "user" : "guest",
-      userId: actor?.userId ?? null,
-      visitorId: actor?.visitorId ?? null,
-    })
-  ).get(place.id) ?? createEmptyReactionSummary();
+  const summary = await refreshPlaceReactionSummary(place.id);
+  summary.viewerReaction = reaction;
 
   return {
     ok: true,
@@ -1160,8 +1443,11 @@ async function createDatabasePlaceSubmission(
       latitude: null,
       longitude: null,
       status: "pending_review",
+      primaryCategorySlug: input.categorySlug,
       representativePriceAmount: input.priceItems[representativeIndex].amount,
       representativePriceLabel: input.priceItems[representativeIndex].label,
+      likeCount: 0,
+      dislikeCount: 0,
       verifiedPriceItemCount: 0,
       lastPriceUpdatedAt: now,
       createdByUserId: createdByUserId ?? null,
@@ -1922,8 +2208,11 @@ async function listDatabasePendingPlaces(): Promise<PendingPlaceListResult> {
       district: places.district,
       latitude: places.latitude,
       longitude: places.longitude,
+      primaryCategorySlug: places.primaryCategorySlug,
       representativePriceAmount: places.representativePriceAmount,
       representativePriceLabel: places.representativePriceLabel,
+      likeCount: places.likeCount,
+      dislikeCount: places.dislikeCount,
       verifiedPriceItemCount: places.verifiedPriceItemCount,
       lastPriceUpdatedAt: places.lastPriceUpdatedAt,
       createdAt: places.createdAt,
@@ -1998,8 +2287,11 @@ async function moderateDatabasePlace(
       district: places.district,
       latitude: places.latitude,
       longitude: places.longitude,
+      primaryCategorySlug: places.primaryCategorySlug,
       representativePriceAmount: places.representativePriceAmount,
       representativePriceLabel: places.representativePriceLabel,
+      likeCount: places.likeCount,
+      dislikeCount: places.dislikeCount,
       verifiedPriceItemCount: places.verifiedPriceItemCount,
       lastPriceUpdatedAt: places.lastPriceUpdatedAt,
       createdAt: places.createdAt,
@@ -2156,6 +2448,29 @@ function getMockAdminPlacePriceDetail(id: string): AdminPlacePriceDetailResult {
   };
 }
 
+function listMockMapPlaces(query: PlaceQuery = {}): PlacePreviewListResult {
+  const allItems = getFilteredPlaces(query).map(toMapPreviewRecord);
+  const bounds =
+    allItems.length > 0
+      ? getBoundsFromPlaces(allItems)
+      : query.bounds ?? getMapBounds();
+  const items = getCappedMapListItems(allItems);
+  const mapMarkers = getTileSummarizedMapMarkers(
+    allItems,
+    bounds,
+    query.query ?? null,
+    query.zoom ?? null,
+  );
+
+  return {
+    items,
+    mapMarkers,
+    bounds,
+    count: allItems.length,
+    source: "mock",
+  };
+}
+
 export async function listPlaces(query: PlaceQuery = {}) {
   if (!isDatabaseEnabled()) {
     return listMockPlaces(query);
@@ -2166,6 +2481,24 @@ export async function listPlaces(query: PlaceQuery = {}) {
   } catch (error) {
     console.error("Failed to load places from database. Falling back to mock data.", error);
     return listMockPlaces(query);
+  }
+}
+
+export async function listMapPlaces(
+  query: PlaceQuery = {},
+): Promise<PlacePreviewListResult> {
+  if (!isDatabaseEnabled()) {
+    return listMockMapPlaces(query);
+  }
+
+  try {
+    return await listDatabaseMapPlaces(query);
+  } catch (error) {
+    console.error(
+      "Failed to load map places from database. Falling back to mock data.",
+      error,
+    );
+    return listMockMapPlaces(query);
   }
 }
 

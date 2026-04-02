@@ -104,12 +104,12 @@ export function PlaceSubmitForm() {
           <section>
             <h2 className="text-lg font-semibold text-stone-900">기본 정보</h2>
             <div className="mt-4 grid gap-4">
-              <label className="grid gap-2 text-sm text-stone-700">
+              <label className="grid min-w-0 gap-2 text-sm text-stone-700">
                 업장/장소 이름
                 <input
                   {...register("name")}
                   data-testid="submit-name"
-                  className="rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900"
+                  className="altteulmap-input px-4 py-3.5 text-stone-900"
                   placeholder="예: 학교앞김밥, 성북청년밥집"
                 />
                 {errors.name ? (
@@ -119,13 +119,13 @@ export function PlaceSubmitForm() {
                 ) : null}
               </label>
             </div>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <label className="grid gap-2 text-sm text-stone-700">
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <label className="grid min-w-0 gap-2 text-sm text-stone-700">
                 카테고리
                 <select
                   {...register("categorySlug")}
                   data-testid="submit-category"
-                  className="rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900"
+                  className="altteulmap-input px-4 py-3.5 text-stone-900"
                 >
                   <option value="">카테고리 선택</option>
                   {categoryGroups.map((group) => (
@@ -144,12 +144,12 @@ export function PlaceSubmitForm() {
                   </span>
                 ) : null}
               </label>
-              <label className="grid gap-2 text-sm text-stone-700">
+              <label className="grid min-w-0 gap-2 text-sm text-stone-700">
                 지역 구분
                 <input
                   {...register("district")}
                   data-testid="submit-district"
-                  className="rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900"
+                  className="altteulmap-input px-4 py-3.5 text-stone-900"
                   placeholder="예: 서울 성북구"
                 />
                 {errors.district ? (
@@ -165,7 +165,7 @@ export function PlaceSubmitForm() {
                 <input
                   {...register("roadAddress")}
                   data-testid="submit-road-address"
-                  className="min-w-0 rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900"
+                  className="altteulmap-input px-4 py-3.5 text-stone-900"
                   placeholder="예: 서울 성북구 동소문로22길 31"
                 />
               </label>
@@ -200,32 +200,32 @@ export function PlaceSubmitForm() {
                   key={field.id}
                   className="rounded-3xl border border-stone-200 bg-stone-50 p-4"
                 >
-                  <div className="grid gap-4 sm:grid-cols-[1.2fr_0.8fr_0.6fr_auto]">
-                    <label className="grid gap-2 text-sm text-stone-700">
+                  <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.85fr)_minmax(0,0.75fr)_auto] lg:items-end">
+                    <label className="grid min-w-0 gap-2 text-sm text-stone-700">
                       항목명
                       <input
                         {...register(`priceItems.${index}.label`)}
                         data-testid={`submit-price-label-${index}`}
-                        className="rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900"
+                        className="altteulmap-input px-4 py-3.5 text-stone-900"
                         placeholder="예: 김치찌개"
                       />
                     </label>
-                    <label className="grid gap-2 text-sm text-stone-700">
+                    <label className="grid min-w-0 gap-2 text-sm text-stone-700">
                       가격
                       <input
                         type="number"
                         {...register(`priceItems.${index}.amount`)}
                         data-testid={`submit-price-amount-${index}`}
-                        className="rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900"
+                        className="altteulmap-input px-4 py-3.5 text-stone-900"
                         placeholder="7000"
                       />
                     </label>
-                    <label className="grid gap-2 text-sm text-stone-700">
+                    <label className="grid min-w-0 gap-2 text-sm text-stone-700">
                       단위
                       <input
                         {...register(`priceItems.${index}.unitLabel`)}
                         data-testid={`submit-price-unit-${index}`}
-                        className="rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900"
+                        className="altteulmap-input px-4 py-3.5 text-stone-900"
                         placeholder="1인분"
                       />
                     </label>
@@ -234,7 +234,7 @@ export function PlaceSubmitForm() {
                         type="button"
                         onClick={() => remove(index)}
                         disabled={fields.length === 1}
-                        className="w-full rounded-2xl border border-stone-300 px-4 py-3 text-sm text-stone-700 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="altteulmap-button w-full whitespace-nowrap border border-stone-300 px-4 py-3 text-sm text-stone-700 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-50 lg:w-auto"
                       >
                         삭제
                       </button>
@@ -268,7 +268,7 @@ export function PlaceSubmitForm() {
                 {...register("note")}
                 data-testid="submit-note"
                 rows={5}
-                className="rounded-3xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900"
+                className="altteulmap-input min-h-40 resize-y px-4 py-3.5 text-stone-900"
                 placeholder="예: 점심시간 줄이 짧고 현금 결제 손님이 많습니다."
               />
               {errors.note ? (
@@ -283,7 +283,7 @@ export function PlaceSubmitForm() {
             type="submit"
             disabled={isPending}
             data-testid="submit-place-button"
-            className="altteulmap-accent-solid altteulmap-button whitespace-nowrap px-5 py-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60"
+            className="altteulmap-accent-solid altteulmap-button inline-flex w-full items-center justify-center whitespace-nowrap px-5 py-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
           >
             {isPending ? "등록 접수 중..." : "장소 등록하기"}
           </button>

@@ -166,10 +166,13 @@ export const places = pgTable(
     latitude: doublePrecision("latitude"),
     longitude: doublePrecision("longitude"),
     status: placeStatusEnum("status").default("active").notNull(),
+    primaryCategorySlug: varchar("primary_category_slug", { length: 80 }),
     representativePriceAmount: integer("representative_price_amount"),
     representativePriceLabel: varchar("representative_price_label", {
       length: 120,
     }),
+    likeCount: integer("like_count").default(0).notNull(),
+    dislikeCount: integer("dislike_count").default(0).notNull(),
     verifiedPriceItemCount: integer("verified_price_item_count")
       .default(0)
       .notNull(),
@@ -184,6 +187,10 @@ export const places = pgTable(
   (table) => [
     uniqueIndex("places_slug_unique").on(table.slug),
     index("places_status_updated_at_idx").on(table.status, table.updatedAt),
+    index("places_status_primary_category_idx").on(
+      table.status,
+      table.primaryCategorySlug,
+    ),
     index("places_representative_price_idx").on(
       table.representativePriceAmount,
     ),

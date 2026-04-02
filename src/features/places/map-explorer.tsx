@@ -16,9 +16,12 @@ import type { PlaceReactionUpdate } from "@/features/places/place-reaction-butto
 import { formatKrw } from "@/features/places/queries";
 import type {
   PlaceBounds,
-  PlaceRecord,
+  PlaceMapMarkerRecord,
+  PlacePreviewRecord,
   PlaceSearchScope,
 } from "@/features/places/types";
+
+const PLACE_LIST_RENDER_LIMIT = 120;
 
 type MapExplorerProps = {
   bookmarkedPlaceIds: string[];
@@ -26,8 +29,11 @@ type MapExplorerProps = {
   category: string | null;
   currentMapHref: string;
   initialBounds: PlaceBounds;
+  initialCount: number;
   maxPrice: number | null;
-  places: PlaceRecord[];
+  mapMarkers: PlaceMapMarkerRecord[];
+  prefetchedOnServer: boolean;
+  places: PlacePreviewRecord[];
   query: string | null;
   searchScope: PlaceSearchScope;
   selectedCategoryLabel: string | null;
@@ -43,16 +49,21 @@ type MapPlacesResponse = {
     query: string | null;
     searchScope: PlaceSearchScope;
   };
-  items: PlaceRecord[];
+  items: PlacePreviewRecord[];
+  mapMarkers: PlaceMapMarkerRecord[];
+  mapMarkerCount: number;
+  returnedCount: number;
+  truncated: boolean;
 };
 
 type PlaceListProps = {
   bookmarkedPlaceIds: string[];
   bookmarkLoginHref: string;
+  isLoading?: boolean;
   itemTestIdPrefix?: string;
   likeCountTestIdPrefix?: string;
   listTestId?: string;
-  places: PlaceRecord[];
+  places: PlacePreviewRecord[];
   query: string | null;
   searchScope: PlaceSearchScope;
   compact?: boolean;
@@ -81,6 +92,7 @@ function getListDescription(params: {
 function PlaceList({
   bookmarkedPlaceIds,
   bookmarkLoginHref,
+  isLoading = false,
   itemTestIdPrefix = "place-list-item",
   likeCountTestIdPrefix = "place-list-like-count",
   listTestId = "place-list",
@@ -91,6 +103,19 @@ function PlaceList({
   selectedPlaceId,
   onSelectPlace,
 }: PlaceListProps) {
+  if (isLoading && places.length === 0) {
+    return (
+      <div className="rounded-[1.35rem] border border-dashed border-stone-300 bg-white p-6 text-center text-sm leading-7 text-stone-500">
+        <p className="font-medium text-stone-900">
+          현재 지도 영역의 장소를 불러오는 중입니다.
+        </p>
+        <p className="mt-2">
+          첫 화면에서는 필요한 범위만 가져오고 있습니다. 잠시만 기다려 주세요.
+        </p>
+      </div>
+    );
+  }
+
   if (places.length === 0) {
     return (
       <div className="rounded-[1.35rem] border border-dashed border-stone-300 bg-white p-6 text-center text-sm leading-7 text-stone-500">
@@ -164,6 +189,7 @@ function PlaceList({
               </div>
               <div className="shrink-0">
                 <BookmarkToggleButton
+                  key={`${place.id}:${bookmarkedPlaceIds.includes(place.id) ? "on" : "off"}`}
                   placeId={place.id}
                   initialBookmarked={bookmarkedPlaceIds.includes(place.id)}
                   loginHref={bookmarkLoginHref}
@@ -211,6 +237,7 @@ function buildMapQuery(params: {
   maxPrice: number | null;
   query: string | null;
   searchScope: PlaceSearchScope;
+  zoom?: number | null;
 }) {
   const search = new URLSearchParams();
 
@@ -234,20 +261,24 @@ function buildMapQuery(params: {
     search.set("maxPrice", String(params.maxPrice));
   }
 
+  if (params.zoom !== null && params.zoom !== undefined) {
+    search.set("zoom", String(params.zoom));
+  }
+
   return search.toString();
 }
 
-function serializeBounds(bounds: PlaceBounds | null) {
+function roundBounds(bounds: PlaceBounds | null) {
   if (!bounds) {
-    return "global";
+    return null;
   }
 
-  return [
-    bounds.minLat.toFixed(4),
-    bounds.maxLat.toFixed(4),
-    bounds.minLng.toFixed(4),
-    bounds.maxLng.toFixed(4),
-  ].join(":");
+  return {
+    minLat: Number(bounds.minLat.toFixed(4)),
+    maxLat: Number(bounds.maxLat.toFixed(4)),
+    minLng: Number(bounds.minLng.toFixed(4)),
+    maxLng: Number(bounds.maxLng.toFixed(4)),
+  };
 }
 
 export function MapExplorer({
@@ -256,28 +287,53 @@ export function MapExplorer({
   category,
   currentMapHref,
   initialBounds,
+  initialCount,
   maxPrice,
+  mapMarkers,
+  prefetchedOnServer,
   places,
   query,
   searchScope,
   selectedCategoryLabel,
 }: MapExplorerProps) {
   const [visiblePlaces, setVisiblePlaces] = useState(places);
+  const [visibleMapMarkers, setVisibleMapMarkers] = useState(mapMarkers);
+  const [totalPlaceCount, setTotalPlaceCount] = useState(initialCount);
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
+  const [selectedPlacePreview, setSelectedPlacePreview] =
+    useState<PlacePreviewRecord | null>(null);
   const [viewport, setViewport] = useState<MapViewport | null>(null);
-  const [isFetchingPlaces, setIsFetchingPlaces] = useState(false);
+  const [isFetchingPlaces, setIsFetchingPlaces] = useState(
+    searchScope === "viewport" && !prefetchedOnServer,
+  );
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [isMobileListOpen, setIsMobileListOpen] = useState(false);
-  const hasSkippedInitialViewportFetchRef = useRef(false);
-  const activeBounds = searchScope === "viewport" ? viewport?.bounds ?? null : null;
-  const boundsKey = serializeBounds(activeBounds);
-  const resolvedSelectedPlaceId = visiblePlaces.some(
-    (place) => place.id === selectedPlaceId,
-  )
-    ? selectedPlaceId
-    : null;
+  const shouldSkipInitialFetchRef = useRef(prefetchedOnServer);
+  const activeBounds =
+    searchScope === "viewport" ? roundBounds(viewport?.bounds ?? null) : null;
+  const hasViewportBounds = activeBounds !== null;
+  const requestSearch = buildMapQuery({
+    bounds: activeBounds,
+    category,
+    maxPrice,
+    query,
+    searchScope,
+    zoom: searchScope === "viewport" ? viewport?.zoom ?? null : null,
+  });
+  const resolvedSelectedPlaceId = selectedPlaceId;
+  const displayPlaces = visiblePlaces.slice(0, PLACE_LIST_RENDER_LIMIT);
+  const isServerTrimmed = visiblePlaces.length < totalPlaceCount;
+  const isListTrimmed = displayPlaces.length < visiblePlaces.length;
   const selectedPlace =
-    visiblePlaces.find((place) => place.id === resolvedSelectedPlaceId) ?? null;
+    (selectedPlacePreview?.id === resolvedSelectedPlaceId
+      ? selectedPlacePreview
+      : null) ??
+    visiblePlaces.find((place) => place.id === resolvedSelectedPlaceId) ??
+    visibleMapMarkers.find(
+      (marker): marker is Extract<PlaceMapMarkerRecord, { kind: "place" }> =>
+        marker.kind === "place" && marker.id === resolvedSelectedPlaceId,
+    ) ??
+    null;
   const listDescription = getListDescription({
     query,
     searchScope,
@@ -285,78 +341,75 @@ export function MapExplorer({
   });
 
   useEffect(() => {
-    setVisiblePlaces(places);
-  }, [places]);
-
-  useEffect(() => {
-    if (searchScope === "viewport" && !activeBounds) {
+    if (searchScope === "viewport" && !hasViewportBounds) {
       return;
     }
 
-    if (
-      searchScope === "viewport" &&
-      !hasSkippedInitialViewportFetchRef.current
-    ) {
-      hasSkippedInitialViewportFetchRef.current = true;
+    if (shouldSkipInitialFetchRef.current) {
+      shouldSkipInitialFetchRef.current = false;
       return;
     }
 
     const controller = new AbortController();
-    const search = buildMapQuery({
-      bounds: activeBounds,
-      category,
-      maxPrice,
-      query,
-      searchScope,
-    });
+    const fetchTimeoutId = window.setTimeout(() => {
+      setIsFetchingPlaces(true);
+      setFetchError(null);
 
-    fetch(`/api/places/map?${search}`, {
-      cache: "no-store",
-      signal: controller.signal,
-    })
-      .then(async (response) => {
-        if (!response.ok) {
-          throw new Error("지도 영역의 장소를 불러오지 못했습니다.");
-        }
-
-        return (await response.json()) as MapPlacesResponse;
+      fetch(`/api/places/map?${requestSearch}`, {
+        cache: "no-store",
+        signal: controller.signal,
       })
-      .then((result) => {
-        startTransition(() => {
-          setVisiblePlaces(result.items);
+        .then(async (response) => {
+          if (!response.ok) {
+            throw new Error("지도 영역의 장소를 불러오지 못했습니다.");
+          }
+
+          return (await response.json()) as MapPlacesResponse;
+        })
+        .then((result) => {
+          startTransition(() => {
+            setVisiblePlaces(result.items);
+            setVisibleMapMarkers(result.mapMarkers);
+            setTotalPlaceCount(result.count);
+            setIsFetchingPlaces(false);
+          });
+        })
+        .catch((error: unknown) => {
+          if (controller.signal.aborted) {
+            return;
+          }
+
+          setFetchError(
+            error instanceof Error
+              ? error.message
+              : "지도 영역의 장소를 불러오지 못했습니다.",
+          );
           setIsFetchingPlaces(false);
         });
-      })
-      .catch((error: unknown) => {
-        if (controller.signal.aborted) {
-          return;
-        }
-
-        setFetchError(
-          error instanceof Error
-            ? error.message
-            : "지도 영역의 장소를 불러오지 못했습니다.",
-        );
-        setIsFetchingPlaces(false);
-      });
+    }, 180);
 
     return () => {
+      window.clearTimeout(fetchTimeoutId);
       controller.abort();
     };
-  }, [activeBounds, boundsKey, category, maxPrice, query, searchScope]);
+  }, [hasViewportBounds, requestSearch, searchScope]);
 
   const handlePlaceSelect = (placeId: string) => {
     setSelectedPlaceId(placeId);
+    setSelectedPlacePreview(
+      visiblePlaces.find((place) => place.id === placeId) ?? null,
+    );
+    setIsMobileListOpen(false);
+  };
+
+  const handleMapPlaceSelect = (place: PlacePreviewRecord) => {
+    setSelectedPlaceId(place.id);
+    setSelectedPlacePreview(place);
     setIsMobileListOpen(false);
   };
 
   const handleViewportChange = (nextViewport: MapViewport) => {
     setViewport(nextViewport);
-
-    if (searchScope === "viewport" && hasSkippedInitialViewportFetchRef.current) {
-      setIsFetchingPlaces(true);
-      setFetchError(null);
-    }
   };
 
   const handlePlaceReactionChange = (nextState: PlaceReactionUpdate) => {
@@ -372,15 +425,41 @@ export function MapExplorer({
           : place,
       ),
     );
+    setVisibleMapMarkers((currentMarkers) =>
+      currentMarkers.map((marker) => {
+        if (marker.kind !== "place" || marker.id !== nextState.placeId) {
+          return marker;
+        }
+
+        return {
+          ...marker,
+          likeCount: nextState.likeCount,
+          dislikeCount: nextState.dislikeCount,
+          viewerReaction: nextState.viewerReaction,
+        };
+      }),
+    );
+    setSelectedPlacePreview((currentPlace) =>
+      currentPlace && currentPlace.id === nextState.placeId
+        ? {
+            ...currentPlace,
+            likeCount: nextState.likeCount,
+            dislikeCount: nextState.dislikeCount,
+            viewerReaction: nextState.viewerReaction,
+          }
+        : currentPlace,
+    );
   };
 
   return (
     <div className="relative mt-8">
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.95fr)_16.5rem]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,2.2fr)_15rem] 2xl:grid-cols-[minmax(0,2.35fr)_15.5rem]">
         <div className="relative">
           <NaverMapPanel
             initialBounds={initialBounds}
-            places={visiblePlaces}
+            isLoading={isFetchingPlaces && visiblePlaces.length === 0}
+            mapMarkers={visibleMapMarkers}
+            placeCount={totalPlaceCount}
             selectedCategoryLabel={selectedCategoryLabel}
             activePlaceId={resolvedSelectedPlaceId}
             focusPlacesKey={
@@ -388,7 +467,7 @@ export function MapExplorer({
                 ? `${query}:${category ?? "all"}:${maxPrice ?? "all"}`
                 : null
             }
-            onSelectPlace={handlePlaceSelect}
+            onSelectPlace={handleMapPlaceSelect}
             onViewportChange={handleViewportChange}
           />
 
@@ -403,7 +482,7 @@ export function MapExplorer({
                 목록 보기
               </button>
               <span className="altteulmap-badge whitespace-nowrap bg-stone-100 px-3 py-2 text-xs text-stone-600">
-                {visiblePlaces.length}곳
+                {totalPlaceCount}곳
               </span>
             </div>
           </div>
@@ -417,7 +496,7 @@ export function MapExplorer({
             </div>
             <div className="flex items-center gap-2">
               <p className="altteulmap-badge whitespace-nowrap bg-stone-100 px-3 py-1 text-xs text-stone-600">
-                {visiblePlaces.length}곳
+                {totalPlaceCount}곳
               </p>
             </div>
           </div>
@@ -427,15 +506,26 @@ export function MapExplorer({
                 {fetchError}
               </div>
             ) : null}
+            {isServerTrimmed ? (
+              <div className="mb-3 rounded-[1.15rem] border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-600">
+                현재 조건에 맞는 장소는 총 {totalPlaceCount}곳이고, 성능을 위해 {visiblePlaces.length}곳만 먼저 불러왔습니다. 지도를 더 확대하거나 검색 조건을 좁히면 더 자세히 볼 수 있습니다.
+              </div>
+            ) : null}
             {isFetchingPlaces ? (
               <div className="mb-3 rounded-[1.15rem] border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-500">
                 현재 지도 영역의 장소를 불러오는 중입니다.
               </div>
             ) : null}
+            {isListTrimmed ? (
+              <div className="mb-3 rounded-[1.15rem] border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-600">
+                목록은 현재 {displayPlaces.length}곳만 먼저 표시합니다. 지도를 더 확대하면 범위를 좁혀 볼 수 있습니다.
+              </div>
+            ) : null}
             <PlaceList
               bookmarkedPlaceIds={bookmarkedPlaceIds}
               bookmarkLoginHref={bookmarkLoginHref}
-              places={visiblePlaces}
+              isLoading={isFetchingPlaces}
+              places={displayPlaces}
               query={query}
               searchScope={searchScope}
               selectedPlaceId={resolvedSelectedPlaceId}
@@ -470,7 +560,7 @@ export function MapExplorer({
                 </div>
                 <div className="flex items-center gap-2">
                   <p className="altteulmap-badge whitespace-nowrap bg-stone-100 px-3 py-1 text-xs text-stone-600">
-                    {visiblePlaces.length}곳
+                    {totalPlaceCount}곳
                   </p>
                   <button
                     type="button"
@@ -489,18 +579,29 @@ export function MapExplorer({
                   {fetchError}
                 </div>
               ) : null}
+              {isServerTrimmed ? (
+                <div className="mb-2.5 rounded-[1.15rem] border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-600">
+                  현재 조건에 맞는 장소는 총 {totalPlaceCount}곳이고, 성능을 위해 {visiblePlaces.length}곳만 먼저 불러왔습니다.
+                </div>
+              ) : null}
               {isFetchingPlaces ? (
                 <div className="mb-2.5 rounded-[1.15rem] border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-500">
                   현재 지도 영역의 장소를 불러오는 중입니다.
                 </div>
               ) : null}
+              {isListTrimmed ? (
+                <div className="mb-2.5 rounded-[1.15rem] border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-600">
+                  목록은 현재 {displayPlaces.length}곳만 먼저 표시합니다.
+                </div>
+              ) : null}
               <PlaceList
                 bookmarkedPlaceIds={bookmarkedPlaceIds}
                 bookmarkLoginHref={bookmarkLoginHref}
+                isLoading={isFetchingPlaces}
                 itemTestIdPrefix="mobile-place-list-item"
                 likeCountTestIdPrefix="mobile-place-list-like-count"
                 listTestId="mobile-place-list"
-                places={visiblePlaces}
+                places={displayPlaces}
                 compact
                 query={query}
                 searchScope={searchScope}
@@ -517,7 +618,10 @@ export function MapExplorer({
         currentMapHref={currentMapHref}
         placeId={resolvedSelectedPlaceId}
         previewPlace={selectedPlace}
-        onClose={() => setSelectedPlaceId(null)}
+        onClose={() => {
+          setSelectedPlaceId(null);
+          setSelectedPlacePreview(null);
+        }}
         onPlaceReactionChange={handlePlaceReactionChange}
       />
     </div>

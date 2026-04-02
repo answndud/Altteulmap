@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 
+import { GlobalHeader } from "@/components/global-header";
+import { getAdminAppHref } from "@/lib/admin-app";
+import { getSessionUser } from "@/lib/session";
 import { getSiteOrigin } from "@/lib/site";
 
 import "./globals.css";
@@ -17,14 +20,17 @@ export const metadata: Metadata = {
   description: siteDescription,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const user = await getSessionUser();
+
   return (
     <html lang="ko" suppressHydrationWarning>
       <body className="min-h-screen bg-stone-50 text-stone-900 antialiased">
+        <GlobalHeader user={user} adminHref={getAdminAppHref("/admin")} />
         {children}
       </body>
     </html>

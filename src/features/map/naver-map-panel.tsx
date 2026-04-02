@@ -13,39 +13,41 @@ import {
   type NaverMapInstance,
   type NaverMarkerInstance,
 } from "@/features/map/naver-map-sdk";
-import type { PlaceBounds, PlaceRecord } from "@/features/places/types";
+import type {
+  PlaceBounds,
+  PlaceMapClusterMarkerRecord,
+  PlaceMapMarkerRecord,
+  PlaceMapPlaceMarkerRecord,
+  PlacePreviewRecord,
+} from "@/features/places/types";
 
 type NaverMapPanelProps = {
   initialBounds?: PlaceBounds | null;
-  places: PlaceRecord[];
+  isLoading?: boolean;
+  mapMarkers: PlaceMapMarkerRecord[];
+  placeCount?: number;
   selectedCategoryLabel: string | null;
   activePlaceId?: string | null;
   focusPlacesKey?: string | null;
-  onSelectPlace?: (placeId: string) => void;
+  onSelectPlace?: (place: PlacePreviewRecord) => void;
   onViewportChange?: (viewport: MapViewport) => void;
 };
 
+type PlaceDisplayMarker = {
+  kind: "place";
+  id: string;
+  latitude: number;
+  longitude: number;
+  isActive: boolean;
+  place: PlacePreviewRecord;
+};
+
+type ClusterDisplayMarker = PlaceMapClusterMarkerRecord;
+
+type MapDisplayMarker = PlaceDisplayMarker | ClusterDisplayMarker;
+
 function getMapZoom(placeCount: number) {
   return placeCount > 1 ? 13 : 15;
-}
-
-function getMapCenter(places: PlaceRecord[]) {
-  if (places.length === 0) {
-    return DEFAULT_MAP_CENTER;
-  }
-
-  const totals = places.reduce(
-    (accumulator, place) => ({
-      lat: accumulator.lat + place.latitude,
-      lng: accumulator.lng + place.longitude,
-    }),
-    { lat: 0, lng: 0 },
-  );
-
-  return {
-    lat: totals.lat / places.length,
-    lng: totals.lng / places.length,
-  };
 }
 
 function getCenterFromBounds(bounds: PlaceBounds) {
@@ -55,8 +57,29 @@ function getCenterFromBounds(bounds: PlaceBounds) {
   };
 }
 
-function getPreviewBounds(places: PlaceRecord[]) {
-  if (places.length === 0) {
+function getMapCenter(items: Array<{ latitude: number; longitude: number }>) {
+  if (items.length === 0) {
+    return DEFAULT_MAP_CENTER;
+  }
+
+  const totals = items.reduce(
+    (accumulator, item) => ({
+      lat: accumulator.lat + item.latitude,
+      lng: accumulator.lng + item.longitude,
+    }),
+    { lat: 0, lng: 0 },
+  );
+
+  return {
+    lat: totals.lat / items.length,
+    lng: totals.lng / items.length,
+  };
+}
+
+function getPreviewBounds(
+  items: Array<{ latitude: number; longitude: number }>,
+) {
+  if (items.length === 0) {
     return {
       minLat: DEFAULT_MAP_CENTER.lat,
       maxLat: DEFAULT_MAP_CENTER.lat,
@@ -65,8 +88,8 @@ function getPreviewBounds(places: PlaceRecord[]) {
     };
   }
 
-  const latitudes = places.map((place) => place.latitude);
-  const longitudes = places.map((place) => place.longitude);
+  const latitudes = items.map((item) => item.latitude);
+  const longitudes = items.map((item) => item.longitude);
 
   return {
     minLat: Math.min(...latitudes),
@@ -74,6 +97,31 @@ function getPreviewBounds(places: PlaceRecord[]) {
     minLng: Math.min(...longitudes),
     maxLng: Math.max(...longitudes),
   };
+}
+
+function createPlaceDisplayMarker(
+  place: PlaceMapPlaceMarkerRecord,
+  isActive: boolean,
+): PlaceDisplayMarker {
+  return {
+    kind: "place",
+    id: place.id,
+    latitude: place.latitude,
+    longitude: place.longitude,
+    isActive,
+    place,
+  };
+}
+
+function getDisplayMarkers(
+  mapMarkers: PlaceMapMarkerRecord[],
+  activePlaceId: string | null,
+) {
+  return mapMarkers.map((marker) =>
+    marker.kind === "cluster"
+      ? marker
+      : createPlaceDisplayMarker(marker, marker.id === activePlaceId),
+  ) satisfies MapDisplayMarker[];
 }
 
 function serializeViewport(viewport: MapViewport) {
@@ -89,7 +137,7 @@ function serializeViewport(viewport: MapViewport) {
 }
 
 function isPlaceInsideViewport(
-  place: PlaceRecord,
+  place: Pick<PlacePreviewRecord, "latitude" | "longitude">,
   viewport: MapViewport | null,
   padding = 0.0003,
 ) {
@@ -145,20 +193,47 @@ function createMapMarkerIcon(
   };
 }
 
+function createClusterIconHtml(placeCount: number) {
+  return `
+    <div style="display:inline-flex;align-items:center;justify-content:center;min-width:44px;height:44px;padding:0 12px;border-radius:22px;background:#f3a162;color:#ffffff;border:1px solid #d97f4d;box-shadow:0 12px 24px rgba(169,95,53,0.28);font-size:13px;font-weight:800;line-height:1;transform:translate(-50%,-50%);">
+      <span>${formatLikeCount(placeCount)}</span>
+    </div>
+  `;
+}
+
+function createClusterMarkerIcon(
+  placeCount: number,
+  naver: ReturnType<typeof getLoadedNaverMapSdk>,
+) {
+  const Point = naver?.maps.Point;
+  const Size = naver?.maps.Size;
+
+  if (!Point || !Size) {
+    return undefined;
+  }
+
+  return {
+    content: createClusterIconHtml(placeCount),
+    size: new Size(64, 44),
+    anchor: new Point(32, 22),
+  };
+}
+
 function PreviewMap({
-  places,
+  markers,
   selectedCategoryLabel,
-  activePlaceId,
   onSelectPlace,
+  onActivateCluster,
 }: {
-  places: PlaceRecord[];
+  markers: MapDisplayMarker[];
   selectedCategoryLabel: string | null;
-  activePlaceId: string | null;
-  onSelectPlace: (placeId: string) => void;
+  onSelectPlace: (place: PlacePreviewRecord) => void;
+  onActivateCluster?: (marker: ClusterDisplayMarker) => void;
 }) {
-  const bounds = getPreviewBounds(places);
+  const bounds = getPreviewBounds(markers);
   const latRange = Math.max(bounds.maxLat - bounds.minLat, 0.01);
   const lngRange = Math.max(bounds.maxLng - bounds.minLng, 0.01);
+  const hasClusterMarkers = markers.some((marker) => marker.kind === "cluster");
 
   return (
     <div
@@ -166,17 +241,36 @@ function PreviewMap({
       data-testid="map-panel-preview"
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(251,146,60,0.18),transparent_30%),radial-gradient(circle_at_bottom_left,rgba(245,158,11,0.12),transparent_28%)]" />
-      {places.map((place) => {
-        const top = ((bounds.maxLat - place.latitude) / latRange) * 70 + 10;
-        const left = ((place.longitude - bounds.minLng) / lngRange) * 72 + 8;
-        const isActive = activePlaceId === place.id;
+      {markers.map((marker) => {
+        const top = ((bounds.maxLat - marker.latitude) / latRange) * 70 + 10;
+        const left = ((marker.longitude - bounds.minLng) / lngRange) * 72 + 8;
+
+        if (marker.kind === "cluster") {
+          return (
+            <button
+              key={marker.id}
+              type="button"
+              data-testid={`map-preview-marker-${marker.id}`}
+              onClick={() => onActivateCluster?.(marker)}
+              className="absolute"
+              style={{
+                top: `${top}%`,
+                left: `${left}%`,
+              }}
+            >
+              <span className="flex min-w-[3.1rem] items-center justify-center rounded-[1.35rem] border border-[#d97f4d] bg-[#f3a162] px-3 py-2 text-xs font-extrabold text-white shadow-lg transition">
+                {formatLikeCount(marker.placeCount)}
+              </span>
+            </button>
+          );
+        }
 
         return (
           <button
-            key={place.id}
+            key={marker.id}
             type="button"
-            data-testid={`map-preview-marker-${place.id}`}
-            onClick={() => onSelectPlace(place.id)}
+            data-testid={`map-preview-marker-${marker.id}`}
+            onClick={() => onSelectPlace(marker.place)}
             className="absolute"
             style={{
               top: `${top}%`,
@@ -185,15 +279,15 @@ function PreviewMap({
           >
             <span
               className={`flex min-w-[3.35rem] items-center justify-center gap-1 rounded-2xl px-3 py-2 text-xs font-semibold shadow-lg transition ${
-                isActive
+                marker.isActive
                   ? "bg-[#dc8b5e] text-white"
                   : "border border-[#edd3bf] bg-white text-[#7c4a2f]"
               }`}
             >
-              <span className={`text-[11px] ${isActive ? "" : "opacity-90"}`}>
+              <span className={`text-[11px] ${marker.isActive ? "" : "opacity-90"}`}>
                 👍
               </span>
-              <span>{formatLikeCount(place.likeCount)}</span>
+              <span>{formatLikeCount(marker.place.likeCount)}</span>
             </span>
           </button>
         );
@@ -202,22 +296,32 @@ function PreviewMap({
         {selectedCategoryLabel
           ? `${selectedCategoryLabel} 카테고리만 표시 중`
           : "전체 카테고리 표시 중"}
+        {hasClusterMarkers ? " · 가까운 장소는 묶어 표시합니다" : ""}
       </div>
     </div>
   );
 }
 
 function NaverMapFallback({
-  places,
+  isLoading = false,
+  mapMarkers,
+  placeCount,
   selectedCategoryLabel,
   activePlaceId,
   onSelectPlace,
 }: {
-  places: PlaceRecord[];
+  isLoading?: boolean;
+  mapMarkers: PlaceMapMarkerRecord[];
+  placeCount?: number;
   selectedCategoryLabel: string | null;
-  activePlaceId: string | null;
-  onSelectPlace: (placeId: string) => void;
+  activePlaceId?: string | null;
+  onSelectPlace: (place: PlacePreviewRecord) => void;
 }) {
+  const displayMarkers = useMemo(
+    () => getDisplayMarkers(mapMarkers, activePlaceId ?? null),
+    [activePlaceId, mapMarkers],
+  );
+
   return (
     <section
       className="overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-sm"
@@ -226,15 +330,16 @@ function NaverMapFallback({
       <div className="flex items-center justify-between border-b border-stone-200 px-6 py-4">
         <h2 className="text-lg font-semibold text-stone-900">주변 지도</h2>
         <div className="altteulmap-badge whitespace-nowrap bg-stone-100 px-3 py-1 text-sm text-stone-600">
-          {places.length}곳
+          {isLoading && mapMarkers.length === 0
+            ? "불러오는 중"
+            : `${placeCount ?? mapMarkers.length}곳`}
         </div>
       </div>
 
       <div className="relative h-[36rem] lg:h-[44rem]">
         <PreviewMap
-          places={places}
+          markers={displayMarkers}
           selectedCategoryLabel={selectedCategoryLabel}
-          activePlaceId={activePlaceId}
           onSelectPlace={onSelectPlace}
         />
         <div className="absolute left-4 top-4 z-10 rounded-2xl bg-white/95 px-4 py-3 text-sm text-stone-700 shadow-sm backdrop-blur">
@@ -271,7 +376,9 @@ class NaverMapPanelBoundary extends Component<
     if (this.state.hasError) {
       return (
         <NaverMapFallback
-          places={this.props.places}
+          isLoading={this.props.isLoading}
+          mapMarkers={this.props.mapMarkers}
+          placeCount={this.props.placeCount}
           selectedCategoryLabel={this.props.selectedCategoryLabel}
           activePlaceId={this.props.activePlaceId ?? null}
           onSelectPlace={this.props.onSelectPlace ?? (() => {})}
@@ -289,7 +396,9 @@ export function NaverMapPanel(props: NaverMapPanelProps) {
 
 function NaverMapPanelContent({
   initialBounds,
-  places,
+  isLoading = false,
+  mapMarkers,
+  placeCount,
   selectedCategoryLabel,
   activePlaceId: controlledActivePlaceId,
   focusPlacesKey,
@@ -310,7 +419,7 @@ function NaverMapPanelContent({
   const [isLocating, setIsLocating] = useState(false);
   const [locationMessage, setLocationMessage] = useState<string | null>(null);
   const [internalActivePlaceId, setInternalActivePlaceId] = useState<string | null>(
-    places[0]?.id ?? null,
+    mapMarkers.find((marker) => marker.kind === "place")?.id ?? null,
   );
   const naverMapKeyId = getNaverMapKeyId();
   const activePlaceId =
@@ -318,24 +427,32 @@ function NaverMapPanelContent({
       ? internalActivePlaceId
       : controlledActivePlaceId;
   const activePlace = useMemo(
-    () => places.find((place) => place.id === activePlaceId) ?? null,
-    [activePlaceId, places],
+    () =>
+      mapMarkers.find(
+        (marker): marker is PlaceMapPlaceMarkerRecord =>
+          marker.kind === "place" && marker.id === activePlaceId,
+      ) ?? null,
+    [activePlaceId, mapMarkers],
+  );
+  const displayMarkers = useMemo(
+    () => getDisplayMarkers(mapMarkers, activePlaceId ?? null),
+    [activePlaceId, mapMarkers],
   );
   const showPreview = status !== "ready" || !hasVisibleMap;
 
   const selectPlace = useCallback(
-    (placeId: string) => {
+    (place: PlacePreviewRecord) => {
       if (controlledActivePlaceId === undefined) {
-        setInternalActivePlaceId(placeId);
+        setInternalActivePlaceId(place.id);
       }
 
-      onSelectPlace?.(placeId);
+      onSelectPlace?.(place);
     },
     [controlledActivePlaceId, onSelectPlace],
   );
   const emitPlaceSelect = useCallback(
-    (placeId: string) => {
-      selectPlace(placeId);
+    (place: PlacePreviewRecord) => {
+      selectPlace(place);
     },
     [selectPlace],
   );
@@ -374,6 +491,51 @@ function NaverMapPanelContent({
     lastViewportKeyRef.current = nextKey;
     onViewportChange?.(viewport);
   }, [onViewportChange]);
+  const focusCluster = useCallback(
+    (marker: ClusterDisplayMarker) => {
+      if (status !== "ready" || !mapInstanceRef.current) {
+        return;
+      }
+
+      const maps = getLoadedNaverMapSdk()?.maps;
+
+      if (!maps?.LatLng || !maps?.LatLngBounds) {
+        failMap("NAVER Maps LatLng API is unavailable.");
+        return;
+      }
+
+      try {
+        const southWest = new maps.LatLng(
+          marker.bounds.minLat,
+          marker.bounds.minLng,
+        );
+        const northEast = new maps.LatLng(
+          marker.bounds.maxLat,
+          marker.bounds.maxLng,
+        );
+        const clusterBounds = new maps.LatLngBounds(southWest, northEast);
+        const nextCenter = new maps.LatLng(marker.latitude, marker.longitude);
+        const latSpan = Math.abs(marker.bounds.maxLat - marker.bounds.minLat);
+        const lngSpan = Math.abs(marker.bounds.maxLng - marker.bounds.minLng);
+
+        if (latSpan < 0.0004 && lngSpan < 0.0004) {
+          const currentZoom = mapInstanceRef.current.getZoom?.() ?? 13;
+          mapInstanceRef.current.setCenter?.(nextCenter);
+          mapInstanceRef.current.setZoom?.(Math.min(currentZoom + 2, 17));
+          mapInstanceRef.current.panTo?.(nextCenter);
+        } else {
+          mapInstanceRef.current.fitBounds?.(clusterBounds);
+        }
+
+        window.setTimeout(() => {
+          emitViewportChange();
+        }, 100);
+      } catch (error) {
+        failMap("Failed to focus the NAVER map cluster.", error);
+      }
+    },
+    [emitViewportChange, failMap, status],
+  );
 
   const locateCurrentPosition = () => {
     if (status !== "ready" || !mapInstanceRef.current) {
@@ -522,9 +684,9 @@ function NaverMapPanelContent({
 
           const center = initialBounds
             ? getCenterFromBounds(initialBounds)
-            : getMapCenter(places);
+            : getMapCenter(mapMarkers);
           const centerLatLng = new maps.LatLng(center.lat, center.lng);
-          const nextZoom = getMapZoom(places.length);
+          const nextZoom = getMapZoom(mapMarkers.length);
           const map = new maps.Map(mapContainerRef.current, {
             center: centerLatLng,
             zoom: nextZoom,
@@ -535,7 +697,7 @@ function NaverMapPanelContent({
 
           mapInstanceRef.current = map;
 
-          if (initialBounds && places.length > 1) {
+          if (initialBounds) {
             const southWest = new maps.LatLng(
               initialBounds.minLat,
               initialBounds.minLng,
@@ -587,8 +749,8 @@ function NaverMapPanelContent({
     emitViewportChange,
     failMap,
     initialBounds,
+    mapMarkers,
     naverMapKeyId,
-    places,
   ]);
 
   useEffect(() => {
@@ -661,7 +823,7 @@ function NaverMapPanelContent({
       window.clearTimeout(visibilityTimeoutId);
       mutationObserver.disconnect();
     };
-  }, [containerSize.height, containerSize.width, places, status]);
+  }, [containerSize.height, containerSize.width, mapMarkers, status]);
 
   useEffect(() => {
     if (status !== "ready" || !mapInstanceRef.current) {
@@ -677,17 +839,32 @@ function NaverMapPanelContent({
 
     try {
       markerInstancesRef.current.forEach((marker) => marker.setMap?.(null));
-      markerInstancesRef.current = places.map((place) => {
-        const isActive = activePlaceId === place.id;
+      markerInstancesRef.current = displayMarkers.map((markerItem) => {
+        const title =
+          markerItem.kind === "cluster"
+            ? `${formatLikeCount(markerItem.placeCount)}곳`
+            : markerItem.place.name;
         const marker = new maps.Marker({
           map: mapInstanceRef.current,
-          position: new maps.LatLng(place.latitude, place.longitude),
-          title: place.name,
-          icon: createMapMarkerIcon(place.likeCount, isActive, { maps }),
+          position: new maps.LatLng(markerItem.latitude, markerItem.longitude),
+          title,
+          icon:
+            markerItem.kind === "cluster"
+              ? createClusterMarkerIcon(markerItem.placeCount, { maps })
+              : createMapMarkerIcon(
+                  markerItem.place.likeCount,
+                  markerItem.isActive,
+                  { maps },
+                ),
         });
 
         maps.Event.addListener(marker, "click", () => {
-          emitPlaceSelect(place.id);
+          if (markerItem.kind === "cluster") {
+            focusCluster(markerItem);
+            return;
+          }
+
+          emitPlaceSelect(markerItem.place);
         });
 
         return marker;
@@ -695,7 +872,7 @@ function NaverMapPanelContent({
     } catch (error) {
       failMap("Failed to render NAVER map markers.", error);
     }
-  }, [activePlaceId, emitPlaceSelect, failMap, places, status]);
+  }, [displayMarkers, emitPlaceSelect, failMap, focusCluster, status]);
 
   useEffect(() => {
     if (status !== "ready" || !activePlace || !mapInstanceRef.current) {
@@ -729,7 +906,7 @@ function NaverMapPanelContent({
       status !== "ready" ||
       !mapInstanceRef.current ||
       !focusPlacesKey ||
-      places.length === 0
+      mapMarkers.length === 0
     ) {
       return;
     }
@@ -746,12 +923,12 @@ function NaverMapPanelContent({
     }
 
     try {
-      const focusCenter = getMapCenter(places);
+      const focusCenter = getMapCenter(mapMarkers);
       const point = new LatLng(focusCenter.lat, focusCenter.lng);
 
       lastFocusPlacesKeyRef.current = focusPlacesKey;
       mapInstanceRef.current.setCenter?.(point);
-      mapInstanceRef.current.setZoom?.(getMapZoom(places.length));
+      mapInstanceRef.current.setZoom?.(getMapZoom(mapMarkers.length));
       mapInstanceRef.current.panTo?.(point);
       window.setTimeout(() => {
         emitViewportChange();
@@ -759,7 +936,7 @@ function NaverMapPanelContent({
     } catch (error) {
       failMap("Failed to focus the NAVER map viewport.", error);
     }
-  }, [emitViewportChange, failMap, focusPlacesKey, places, status]);
+  }, [emitViewportChange, failMap, focusPlacesKey, mapMarkers, status]);
 
   useEffect(() => {
     if (status !== "ready" || !mapInstanceRef.current) {
@@ -816,7 +993,9 @@ function NaverMapPanelContent({
       <div className="flex items-center justify-between border-b border-stone-200 px-6 py-4">
         <h2 className="text-lg font-semibold text-stone-900">주변 지도</h2>
         <div className="altteulmap-badge whitespace-nowrap bg-stone-100 px-3 py-1 text-sm text-stone-600">
-          {places.length}곳
+          {isLoading && mapMarkers.length === 0
+            ? "불러오는 중"
+            : `${placeCount ?? mapMarkers.length}곳`}
         </div>
       </div>
 
@@ -830,10 +1009,10 @@ function NaverMapPanelContent({
         {showPreview ? (
           <div className="absolute inset-0">
             <PreviewMap
-              places={places}
+              markers={displayMarkers}
               selectedCategoryLabel={selectedCategoryLabel}
-              activePlaceId={activePlaceId}
               onSelectPlace={selectPlace}
+              onActivateCluster={focusCluster}
             />
           </div>
         ) : null}

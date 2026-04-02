@@ -1,4 +1,4 @@
-import { listPlaces } from "@/features/places/repository";
+import { listMapPlaces } from "@/features/places/repository";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +37,7 @@ export async function GET(request: Request) {
   const maxLat = parseFiniteNumber(searchParams.get("maxLat"));
   const minLng = parseFiniteNumber(searchParams.get("minLng"));
   const maxLng = parseFiniteNumber(searchParams.get("maxLng"));
+  const zoom = parseFiniteNumber(searchParams.get("zoom"));
   const bounds =
     minLat !== null && maxLat !== null && minLng !== null && maxLng !== null
       ? {
@@ -47,17 +48,22 @@ export async function GET(request: Request) {
         }
       : null;
 
-  const result = await listPlaces({
+  const result = await listMapPlaces({
     category,
     maxPrice,
     query,
     bounds: searchScope === "viewport" ? bounds : null,
+    zoom: searchScope === "viewport" ? zoom : null,
   });
 
   return Response.json(
     {
       items: result.items,
-      count: result.items.length,
+      mapMarkers: result.mapMarkers,
+      count: result.count,
+      returnedCount: result.items.length,
+      mapMarkerCount: result.mapMarkers.length,
+      truncated: result.items.length < result.count,
       bounds: result.bounds,
       filters: {
         category,
@@ -65,6 +71,7 @@ export async function GET(request: Request) {
         query,
         searchScope,
         bounds: searchScope === "viewport" ? bounds : null,
+        zoom: searchScope === "viewport" ? zoom : null,
       },
       source: result.source,
       mock: result.source === "mock",

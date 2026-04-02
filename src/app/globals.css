@@ -162,6 +162,9 @@
 }
 
 .altteulmap-input {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   border: 1px solid rgba(186, 173, 161, 0.75);
   border-radius: 1.15rem;
   background-color: rgba(255, 255, 255, 0.92);
@@ -173,6 +176,10 @@
 
 .altteulmap-input:hover {
   border-color: rgba(158, 138, 121, 0.8);
+}
+
+.altteulmap-input::placeholder {
+  color: rgb(168 162 158);
 }
 
 .altteulmap-input:focus {
