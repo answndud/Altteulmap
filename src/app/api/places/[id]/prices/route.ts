@@ -1,6 +1,4 @@
 import { revalidatePath } from "next/cache";
-import { NextResponse } from "next/server";
-
 import { createPlacePriceReport } from "@/features/places/repository";
 import { placePriceReportSchema } from "@/features/places/write-schema";
 import {
@@ -26,7 +24,7 @@ export async function POST(request: Request, context: RouteContext) {
   });
 
   if (!rateLimit.ok) {
-    const response = NextResponse.json(
+    const response = Response.json(
       {
         ok: false,
         message: "가격 제보 요청이 너무 빠릅니다. 잠시 후 다시 시도해주세요.",
@@ -44,7 +42,7 @@ export async function POST(request: Request, context: RouteContext) {
   const parsed = placePriceReportSchema.safeParse(body);
 
   if (!parsed.success) {
-    const response = NextResponse.json(
+    const response = Response.json(
       {
         ok: false,
         message: "가격 제보 입력값 검증에 실패했습니다.",
@@ -69,7 +67,7 @@ export async function POST(request: Request, context: RouteContext) {
     revalidatePath(`/api/places/${id}`);
   }
 
-  const response = NextResponse.json(result, { status: result.ok ? 200 : 404 });
+  const response = Response.json(result, { status: result.ok ? 200 : 404 });
   setPublicWriteActorCookie(response, actor, request);
   return response;
 }

@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 
 import { hashPassword } from "../features/auth/password";
 import { categoryGroups } from "../features/categories/catalog";
-import { mockPlaces } from "../features/places/mock-data";
+import { mockPlaces } from "../features/places/catalog-data";
 import { normalizePriceLabel } from "../features/places/normalization";
 import { mockReports } from "../features/reports/mock-data";
 

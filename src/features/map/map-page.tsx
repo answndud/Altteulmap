@@ -3,13 +3,14 @@ import Link from "next/link";
 
 import { BrandMark } from "@/components/brand-mark";
 import { listBookmarks } from "@/features/bookmarks/repository";
+import { SessionActionGroup } from "@/features/auth/session-action-group";
 import {
   categoryGroups,
   getCategoryBySlug,
 } from "@/features/categories/catalog";
 import { MapExplorer } from "@/features/places/map-explorer";
 import { listPlaces } from "@/features/places/repository";
-import type { PlaceSearchScope, PlaceSort } from "@/features/places/types";
+import type { PlaceSearchScope } from "@/features/places/types";
 import { createLoginHref, getSessionUser } from "@/lib/session";
 
 type MapPageProps = {
@@ -19,7 +20,6 @@ type MapPageProps = {
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "지도에서 알뜰 장소 찾기",
   description:
     "주변 식당, 문구점, 프린트, 생활 서비스 가격을 지도에서 비교하고 알뜰 장소를 찾아보세요.",
   alternates: {
@@ -34,11 +34,16 @@ const priceOptions = [
   { label: "20,000원 이하", value: 20000 },
 ];
 
-const sortOptions = [
-  { label: "가격순", value: "price" },
-  { label: "최근 갱신순", value: "recent" },
-  { label: "좋아요순", value: "likes" },
-] as const;
+const mobileFilterChipClass =
+  "altteulmap-chip whitespace-nowrap border px-3 py-2 text-xs transition";
+const desktopFilterChipClass =
+  "altteulmap-chip whitespace-nowrap border px-4 py-2 text-sm transition";
+const inactiveFilterChipClass =
+  "border-stone-300 bg-white text-stone-700 hover:bg-stone-100";
+const mobileScopeChipClass =
+  "altteulmap-chip altteulmap-scope-chip inline-flex whitespace-nowrap px-3 py-2 text-xs transition";
+const desktopScopeChipClass =
+  "altteulmap-chip altteulmap-scope-chip inline-flex whitespace-nowrap px-4 py-2 text-sm transition";
 
 function getFirstValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -49,7 +54,6 @@ function createHref(params: {
   maxPrice?: number | null;
   query?: string | null;
   searchScope?: PlaceSearchScope;
-  sort?: PlaceSort | null;
 }) {
   const search = new URLSearchParams();
   const trimmedQuery = params.query?.trim();
@@ -67,27 +71,9 @@ function createHref(params: {
     search.set("maxPrice", String(params.maxPrice));
   }
 
-  if (params.sort && params.sort !== "price") {
-    search.set("sort", params.sort);
-  }
-
   const query = search.toString();
 
   return query ? `/?${query}` : "/";
-}
-
-function parseSort(value: string | string[] | undefined): PlaceSort {
-  const sort = getFirstValue(value);
-
-  if (sort === "recent") {
-    return "recent";
-  }
-
-  if (sort === "likes") {
-    return "likes";
-  }
-
-  return "price";
 }
 
 export default async function MapPage({ searchParams }: MapPageProps) {
@@ -99,7 +85,6 @@ export default async function MapPage({ searchParams }: MapPageProps) {
     activeQuery && getFirstValue(params.scope) === "global"
       ? "global"
       : "viewport";
-  const activeSort = parseSort(params.sort);
   const user = await getSessionUser();
 
   const [result, bookmarkResult] = await Promise.all([
@@ -107,7 +92,6 @@ export default async function MapPage({ searchParams }: MapPageProps) {
       category: activeCategory,
       maxPrice: activeMaxPrice,
       query: activeQuery,
-      sort: activeSort,
     }),
     listBookmarks(user),
   ]);
@@ -116,7 +100,6 @@ export default async function MapPage({ searchParams }: MapPageProps) {
     maxPrice: activeMaxPrice,
     query: activeQuery,
     searchScope: activeSearchScope,
-    sort: activeSort,
   });
   const loginHref = createLoginHref(currentMapHref);
   const bookmarkLoginHref = createLoginHref(currentMapHref);
@@ -128,13 +111,10 @@ export default async function MapPage({ searchParams }: MapPageProps) {
   const selectedCategory = getCategoryBySlug(activeCategory);
   const activePriceLabel =
     priceOptions.find((option) => option.value === activeMaxPrice)?.label ?? null;
-  const activeSortLabel =
-    sortOptions.find((option) => option.value === activeSort)?.label ?? "가격순";
   const mobileSummaryItems = [
     activeQuery ? `검색 ${activeQuery}` : null,
     selectedCategory?.name ?? null,
     activePriceLabel,
-    activeSort !== "price" ? activeSortLabel : null,
     activeSearchScope === "global" ? "전체 검색" : "현재 지도",
   ].filter((item): item is string => Boolean(item));
 
@@ -157,14 +137,11 @@ export default async function MapPage({ searchParams }: MapPageProps) {
               >
                 북마크
               </Link>
-              {!user ? (
-                <Link
-                  href={loginHref}
-                  className="altteulmap-button whitespace-nowrap border border-stone-300 bg-white px-5 py-3 text-sm font-medium text-stone-900 transition hover:bg-stone-100"
-                >
-                  로그인
-                </Link>
-              ) : null}
+              <SessionActionGroup
+                user={user}
+                loginHref={loginHref}
+                signOutCallbackUrl={currentMapHref}
+              />
             </div>
           </div>
 
@@ -180,7 +157,6 @@ export default async function MapPage({ searchParams }: MapPageProps) {
                     href={createHref({
                       category: activeCategory,
                       maxPrice: activeMaxPrice,
-                      sort: activeSort,
                     })}
                     className="text-xs font-medium text-stone-500 transition hover:text-stone-900"
                   >
@@ -239,9 +215,9 @@ export default async function MapPage({ searchParams }: MapPageProps) {
                           name="scope"
                           value="viewport"
                           defaultChecked={activeSearchScope === "viewport"}
-                          className="peer sr-only"
+                          className="altteulmap-scope-input sr-only"
                         />
-                        <span className="altteulmap-chip inline-flex whitespace-nowrap border border-stone-300 bg-white px-3 py-2 text-xs text-stone-700 transition peer-checked:border-[#e4c2a8] peer-checked:bg-[#f4e1d2] peer-checked:text-[#8f522f]">
+                        <span className={mobileScopeChipClass}>
                           현재 지도에서 찾기
                         </span>
                       </label>
@@ -251,43 +227,12 @@ export default async function MapPage({ searchParams }: MapPageProps) {
                           name="scope"
                           value="global"
                           defaultChecked={activeSearchScope === "global"}
-                          className="peer sr-only"
+                          className="altteulmap-scope-input sr-only"
                         />
-                        <span className="altteulmap-chip inline-flex whitespace-nowrap border border-stone-300 bg-white px-3 py-2 text-xs text-stone-700 transition peer-checked:border-[#e4c2a8] peer-checked:bg-[#f4e1d2] peer-checked:text-[#8f522f]">
+                        <span className={mobileScopeChipClass}>
                           전체에서 찾기
                         </span>
                       </label>
-                    </div>
-                  </section>
-
-                  <section>
-                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-stone-500">
-                      정렬
-                    </p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {sortOptions.map((option) => {
-                        const isActive = activeSort === option.value;
-
-                        return (
-                          <Link
-                            key={option.value}
-                            href={createHref({
-                              category: activeCategory,
-                              maxPrice: activeMaxPrice,
-                              query: activeQuery,
-                              searchScope: activeSearchScope,
-                              sort: option.value,
-                            })}
-                            className={`altteulmap-chip whitespace-nowrap border px-3 py-2 text-xs transition ${
-                              isActive
-                                ? "altteulmap-accent-chip"
-                                : "border border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
-                            }`}
-                          >
-                            {option.label}
-                          </Link>
-                        );
-                      })}
                     </div>
                   </section>
 
@@ -307,12 +252,11 @@ export default async function MapPage({ searchParams }: MapPageProps) {
                               maxPrice: option.value,
                               query: activeQuery,
                               searchScope: activeSearchScope,
-                              sort: activeSort,
                             })}
-                            className={`altteulmap-chip whitespace-nowrap border px-3 py-2 text-xs transition ${
+                            className={`${mobileFilterChipClass} ${
                               isActive
                                 ? "altteulmap-accent-chip"
-                                : "border border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
+                                : inactiveFilterChipClass
                             }`}
                           >
                             {option.label}
@@ -333,12 +277,11 @@ export default async function MapPage({ searchParams }: MapPageProps) {
                           maxPrice: activeMaxPrice,
                           query: activeQuery,
                           searchScope: activeSearchScope,
-                          sort: activeSort,
                         })}
-                        className={`altteulmap-chip whitespace-nowrap border px-3 py-2 text-xs transition ${
+                        className={`${mobileFilterChipClass} ${
                           !activeCategory
                             ? "altteulmap-accent-chip"
-                            : "border border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
+                            : inactiveFilterChipClass
                         }`}
                       >
                         전체
@@ -350,17 +293,16 @@ export default async function MapPage({ searchParams }: MapPageProps) {
                           return (
                             <Link
                               key={category.slug}
-                              href={createHref({
-                                category: category.slug,
-                                maxPrice: activeMaxPrice,
-                                query: activeQuery,
-                                searchScope: activeSearchScope,
-                                sort: activeSort,
-                              })}
-                              className={`altteulmap-chip whitespace-nowrap border px-3 py-2 text-xs transition ${
+                                href={createHref({
+                                  category: category.slug,
+                                  maxPrice: activeMaxPrice,
+                                  query: activeQuery,
+                                  searchScope: activeSearchScope,
+                                })}
+                              className={`${mobileFilterChipClass} ${
                                 isActive
                                   ? "altteulmap-accent-chip"
-                                  : "border border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
+                                  : inactiveFilterChipClass
                               }`}
                             >
                               {category.name}
@@ -379,9 +321,6 @@ export default async function MapPage({ searchParams }: MapPageProps) {
               {activeMaxPrice ? (
                 <input type="hidden" name="maxPrice" value={activeMaxPrice} />
               ) : null}
-              {activeSort !== "price" ? (
-                <input type="hidden" name="sort" value={activeSort} />
-              ) : null}
             </form>
           </section>
 
@@ -395,12 +334,11 @@ export default async function MapPage({ searchParams }: MapPageProps) {
                     maxPrice: activeMaxPrice,
                     query: activeQuery,
                     searchScope: activeSearchScope,
-                    sort: activeSort,
                   })}
-                  className={`altteulmap-chip whitespace-nowrap border px-4 py-2 text-sm transition ${
+                  className={`${desktopFilterChipClass} ${
                     !activeCategory
                       ? "altteulmap-accent-chip"
-                      : "border border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
+                      : inactiveFilterChipClass
                   }`}
                 >
                   전체
@@ -417,12 +355,11 @@ export default async function MapPage({ searchParams }: MapPageProps) {
                           maxPrice: activeMaxPrice,
                           query: activeQuery,
                           searchScope: activeSearchScope,
-                          sort: activeSort,
                         })}
-                        className={`altteulmap-chip whitespace-nowrap border px-4 py-2 text-sm transition ${
+                        className={`${desktopFilterChipClass} ${
                           isActive
                             ? "altteulmap-accent-chip"
-                            : "border border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
+                            : inactiveFilterChipClass
                         }`}
                       >
                         {category.name}
@@ -433,7 +370,7 @@ export default async function MapPage({ searchParams }: MapPageProps) {
               </div>
             </section>
 
-            <section className="grid gap-4 lg:grid-cols-2">
+            <section>
               <div>
                 <p className="text-sm font-medium text-stone-700">가격 필터</p>
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -448,42 +385,11 @@ export default async function MapPage({ searchParams }: MapPageProps) {
                           maxPrice: option.value,
                           query: activeQuery,
                           searchScope: activeSearchScope,
-                          sort: activeSort,
                         })}
-                        className={`altteulmap-chip whitespace-nowrap border px-4 py-2 text-sm transition ${
+                        className={`${desktopFilterChipClass} ${
                           isActive
                             ? "altteulmap-accent-chip"
-                            : "border border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
-                        }`}
-                      >
-                        {option.label}
-                      </Link>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div>
-                <p className="text-sm font-medium text-stone-700">정렬</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {sortOptions.map((option) => {
-                    const isActive = activeSort === option.value;
-
-                    return (
-                      <Link
-                        key={option.value}
-                        href={createHref({
-                          category: activeCategory,
-                          maxPrice: activeMaxPrice,
-                          query: activeQuery,
-                          searchScope: activeSearchScope,
-                          sort: option.value,
-                        })}
-                        data-testid={`sort-option-${option.value}`}
-                        className={`altteulmap-chip whitespace-nowrap border px-4 py-2 text-sm transition ${
-                          isActive
-                            ? "altteulmap-accent-chip"
-                            : "border border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
+                            : inactiveFilterChipClass
                         }`}
                       >
                         {option.label}
@@ -502,7 +408,6 @@ export default async function MapPage({ searchParams }: MapPageProps) {
                     href={createHref({
                       category: activeCategory,
                       maxPrice: activeMaxPrice,
-                      sort: activeSort,
                     })}
                     className="altteulmap-button whitespace-nowrap border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
                   >
@@ -538,9 +443,9 @@ export default async function MapPage({ searchParams }: MapPageProps) {
                       value="viewport"
                       data-testid="search-scope-viewport"
                       defaultChecked={activeSearchScope === "viewport"}
-                      className="peer sr-only"
+                      className="altteulmap-scope-input sr-only"
                     />
-                    <span className="altteulmap-chip inline-flex whitespace-nowrap border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition peer-checked:border-[#e4c2a8] peer-checked:bg-[#f4e1d2] peer-checked:text-[#8f522f]">
+                    <span className={desktopScopeChipClass}>
                       현재 지도에서 찾기
                     </span>
                   </label>
@@ -551,9 +456,9 @@ export default async function MapPage({ searchParams }: MapPageProps) {
                       value="global"
                       data-testid="search-scope-global"
                       defaultChecked={activeSearchScope === "global"}
-                      className="peer sr-only"
+                      className="altteulmap-scope-input sr-only"
                     />
-                    <span className="altteulmap-chip inline-flex whitespace-nowrap border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition peer-checked:border-[#e4c2a8] peer-checked:bg-[#f4e1d2] peer-checked:text-[#8f522f]">
+                    <span className={desktopScopeChipClass}>
                       전체에서 찾기
                     </span>
                   </label>
@@ -565,15 +470,12 @@ export default async function MapPage({ searchParams }: MapPageProps) {
                 {activeMaxPrice ? (
                   <input type="hidden" name="maxPrice" value={activeMaxPrice} />
                 ) : null}
-                {activeSort !== "price" ? (
-                  <input type="hidden" name="sort" value={activeSort} />
-                ) : null}
               </form>
             </section>
           </div>
 
           <MapExplorer
-            key={`${activeCategory ?? "all"}:${activeMaxPrice ?? "all"}:${activeSort}:${activeQuery ?? "all"}:${activeSearchScope}`}
+            key={`${activeCategory ?? "all"}:${activeMaxPrice ?? "all"}:${activeQuery ?? "all"}:${activeSearchScope}`}
             bookmarkedPlaceIds={Array.from(bookmarkedIds)}
             bookmarkLoginHref={bookmarkLoginHref}
             category={activeCategory}
@@ -584,7 +486,6 @@ export default async function MapPage({ searchParams }: MapPageProps) {
             query={activeQuery}
             searchScope={activeSearchScope}
             selectedCategoryLabel={selectedCategory?.name ?? null}
-            sort={activeSort}
           />
         </section>
       </div>

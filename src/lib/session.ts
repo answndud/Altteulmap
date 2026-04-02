@@ -2,8 +2,9 @@ import "server-only";
 
 import { getServerSession } from "next-auth";
 
-import { authOptions } from "@/auth";
+import { getAuthOptions } from "@/auth";
 import type { AppUserRole } from "@/features/auth/constants";
+import { serverEnv } from "@/lib/env";
 
 export type SessionUser = {
   id: string;
@@ -58,7 +59,11 @@ export function createSignupHref(callbackUrl: string) {
 }
 
 export async function getSessionUser(): Promise<SessionUser | null> {
-  const session = await getServerSession(authOptions);
+  if (!serverEnv.AUTH_SECRET) {
+    return null;
+  }
+
+  const session = await getServerSession(getAuthOptions());
   const user = session?.user;
 
   if (!user?.id || !user.email) {

@@ -30,11 +30,6 @@ function BrandMarkInner({
   return (
     <span className={`inline-flex min-w-0 flex-col ${classes.wrapper} ${className}`.trim()}>
       <span
-        className={`text-[0.72rem] font-semibold uppercase ${classes.eyebrow}`}
-      >
-        Local Saving Map
-      </span>
-      <span
         className={`truncate font-semibold tracking-[-0.07em] text-stone-950 ${classes.title}`}
       >
         알뜰맵

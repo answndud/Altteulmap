@@ -1,5 +1,5 @@
 import { getCategoryBySlug } from "@/features/categories/catalog";
-import { mockPlaces } from "@/features/places/mock-data";
+import { mockPlaces } from "@/features/places/catalog-data";
 import type {
   PlaceQueryBounds,
   PlaceRecord,
@@ -25,18 +25,6 @@ export function sortPlaceRecords(items: PlaceRecord[], sort: PlaceSort) {
         new Date(right.lastPriceUpdatedAt).getTime() -
         new Date(left.lastPriceUpdatedAt).getTime()
       );
-    }
-
-    if (sort === "likes") {
-      if (right.likeCount !== left.likeCount) {
-        return right.likeCount - left.likeCount;
-      }
-
-      if (left.dislikeCount !== right.dislikeCount) {
-        return left.dislikeCount - right.dislikeCount;
-      }
-
-      return left.representativePriceAmount - right.representativePriceAmount;
     }
 
     return left.representativePriceAmount - right.representativePriceAmount;

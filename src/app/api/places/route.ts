@@ -1,5 +1,3 @@
-import { NextResponse } from "next/server";
-
 import { createPlaceSubmission } from "@/features/places/repository";
 import { placeSubmissionSchema } from "@/features/submission/schema";
 import {
@@ -19,7 +17,7 @@ export async function POST(request: Request) {
   });
 
   if (!rateLimit.ok) {
-    const response = NextResponse.json(
+    const response = Response.json(
       {
         ok: false,
         message: "장소 등록 요청이 너무 빠릅니다. 잠시 후 다시 시도해주세요.",
@@ -37,7 +35,7 @@ export async function POST(request: Request) {
   const parsed = placeSubmissionSchema.safeParse(body);
 
   if (!parsed.success) {
-    const response = NextResponse.json(
+    const response = Response.json(
       {
         ok: false,
         message: "입력값 검증에 실패했습니다.",
@@ -52,7 +50,7 @@ export async function POST(request: Request) {
   }
 
   const result = await createPlaceSubmission(parsed.data, actor.user?.id ?? null);
-  const response = NextResponse.json(result);
+  const response = Response.json(result);
 
   setPublicWriteActorCookie(response, actor, request);
 

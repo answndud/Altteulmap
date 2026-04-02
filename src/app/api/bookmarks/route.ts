@@ -1,5 +1,3 @@
-import { NextResponse } from "next/server";
-
 import { listBookmarks } from "@/features/bookmarks/repository";
 import { getSessionUser } from "@/lib/session";
 
@@ -9,7 +7,7 @@ export async function GET() {
   const user = await getSessionUser();
 
   if (!user) {
-    return NextResponse.json(
+    return Response.json(
       {
         ok: false,
         message: "로그인이 필요합니다.",
@@ -20,7 +18,7 @@ export async function GET() {
 
   const result = await listBookmarks(user);
 
-  return NextResponse.json({
+  return Response.json({
     items: result.items,
     count: result.items.length,
     source: result.source,

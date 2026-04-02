@@ -209,7 +209,7 @@ export function AdminPlaceCoordinatePicker({
     <section className="space-y-4 rounded-3xl border border-stone-200 bg-stone-50 p-4">
       <div>
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-600">
-          Coordinate picker
+          위치 선택
         </p>
         <h3 className="mt-2 text-lg font-semibold text-stone-900">
           지도에서 승인 좌표 선택

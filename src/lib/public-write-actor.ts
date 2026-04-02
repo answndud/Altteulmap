@@ -1,7 +1,5 @@
 import "server-only";
 
-import type { NextResponse } from "next/server";
-
 import { getSessionUser, type SessionUser } from "@/lib/session";
 import {
   createVisitorId,
@@ -41,7 +39,7 @@ export async function getPublicWriteActor(
 }
 
 export function setPublicWriteActorCookie(
-  response: NextResponse,
+  response: Response,
   actor: PublicWriteActor,
   request: Request,
 ) {
