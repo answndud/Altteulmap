@@ -94,6 +94,32 @@ type DatabasePlaceRow = {
   lastPriceUpdatedAt: Date | null;
 };
 
+type MapTileAggregateRow = {
+  rowIndex: number;
+  columnIndex: number;
+  placeCount: number;
+  latitude: number;
+  longitude: number;
+  minLat: number;
+  maxLat: number;
+  minLng: number;
+  maxLng: number;
+  slug: string | null;
+  name: string | null;
+  businessName: string | null;
+  description: string | null;
+  note: string | null;
+  roadAddress: string | null;
+  district: string | null;
+  primaryCategorySlug: string | null;
+  representativePriceAmount: number | null;
+  representativePriceLabel: string | null;
+  likeCount: number | null;
+  dislikeCount: number | null;
+  verifiedPriceItemCount: number | null;
+  lastPriceUpdatedAt: Date | null;
+};
+
 export type PlaceListResult = {
   items: PlaceRecord[];
   bounds: PlaceBounds;
@@ -109,6 +135,26 @@ export type PlacePreviewListResult = {
 };
 
 const MAP_LIST_RESPONSE_LIMIT = 120;
+
+const mapPlaceSelectFields = {
+  internalId: places.id,
+  slug: places.slug,
+  name: places.name,
+  businessName: places.businessName,
+  description: places.description,
+  note: places.note,
+  roadAddress: places.roadAddress,
+  district: places.district,
+  latitude: places.latitude,
+  longitude: places.longitude,
+  primaryCategorySlug: places.primaryCategorySlug,
+  representativePriceAmount: places.representativePriceAmount,
+  representativePriceLabel: places.representativePriceLabel,
+  likeCount: places.likeCount,
+  dislikeCount: places.dislikeCount,
+  verifiedPriceItemCount: places.verifiedPriceItemCount,
+  lastPriceUpdatedAt: places.lastPriceUpdatedAt,
+};
 
 export type PlaceDetailResult = {
   item: PlaceRecord | null;
@@ -568,6 +614,245 @@ function getMapMarkerLimit(zoom: number | null, query: string | null) {
   }
 
   return 24;
+}
+
+function getMapTileGrid(bounds: PlaceBounds, markerLimit: number) {
+  const latSpan = Math.max(bounds.maxLat - bounds.minLat, 0.0001);
+  const lngSpan = Math.max(bounds.maxLng - bounds.minLng, 0.0001);
+  const aspectRatio = Math.max(lngSpan / latSpan, 0.65);
+  const columnCount = Math.max(
+    1,
+    Math.round(Math.sqrt(markerLimit * aspectRatio)),
+  );
+  const rowCount = Math.max(1, Math.ceil(markerLimit / columnCount));
+
+  return {
+    latSpan,
+    lngSpan,
+    rowCount,
+    columnCount,
+  };
+}
+
+function getDatabaseMapPlaceWhereClause({
+  category,
+  maxPrice,
+  bounds,
+  normalizedQuery,
+}: {
+  category?: string | null;
+  maxPrice?: number | null;
+  bounds?: PlaceQueryBounds | null;
+  normalizedQuery?: string | null;
+}) {
+  const conditions = [
+    eq(places.status, "active"),
+    isNotNull(places.latitude),
+    isNotNull(places.longitude),
+  ];
+
+  if (maxPrice) {
+    conditions.push(lte(places.representativePriceAmount, maxPrice));
+  }
+
+  if (category) {
+    conditions.push(eq(places.primaryCategorySlug, category));
+  }
+
+  if (normalizedQuery) {
+    const queryPattern = `%${normalizedQuery}%`;
+
+    conditions.push(
+      or(
+        ilike(places.name, queryPattern),
+        ilike(places.businessName, queryPattern),
+        ilike(places.roadAddress, queryPattern),
+        ilike(places.district, queryPattern),
+        ilike(places.representativePriceLabel, queryPattern),
+        ilike(places.description, queryPattern),
+        ilike(places.note, queryPattern),
+      )!,
+    );
+  }
+
+  if (bounds) {
+    conditions.push(gte(places.latitude, bounds.minLat));
+    conditions.push(lte(places.latitude, bounds.maxLat));
+    conditions.push(gte(places.longitude, bounds.minLng));
+    conditions.push(lte(places.longitude, bounds.maxLng));
+  }
+
+  return and(...conditions);
+}
+
+function getDatabaseMapPlaceOrder(sort: PlaceSort) {
+  return sort === "recent"
+    ? [desc(places.lastPriceUpdatedAt), desc(places.updatedAt)]
+    : [asc(places.representativePriceAmount), desc(places.updatedAt)];
+}
+
+async function loadDatabaseMapPlaceRows(params: {
+  whereClause: ReturnType<typeof and>;
+  sort: PlaceSort;
+  limit?: number;
+}) {
+  const db = getDb();
+  let queryBuilder = db
+    .select(mapPlaceSelectFields)
+    .from(places)
+    .where(params.whereClause)
+    .orderBy(...getDatabaseMapPlaceOrder(params.sort));
+
+  if (typeof params.limit === "number") {
+    queryBuilder = queryBuilder.limit(params.limit);
+  }
+
+  return queryBuilder;
+}
+
+function toPlacePreviewRecords(rows: DatabasePlaceRow[]) {
+  return rows
+    .map((row) => toPlacePreviewRecord(row, row.primaryCategorySlug))
+    .filter((place) => place.latitude && place.longitude);
+}
+
+function toDatabaseRowFromTileAggregate(
+  row: MapTileAggregateRow,
+): DatabasePlaceRow | null {
+  if (
+    !row.slug ||
+    !row.name ||
+    !row.roadAddress ||
+    !row.district ||
+    row.representativePriceAmount === null ||
+    row.representativePriceLabel === null ||
+    row.likeCount === null ||
+    row.dislikeCount === null ||
+    row.verifiedPriceItemCount === null
+  ) {
+    return null;
+  }
+
+  return {
+    internalId: row.slug,
+    slug: row.slug,
+    name: row.name,
+    businessName: row.businessName,
+    description: row.description,
+    note: row.note,
+    roadAddress: row.roadAddress,
+    district: row.district,
+    latitude: row.latitude,
+    longitude: row.longitude,
+    primaryCategorySlug: row.primaryCategorySlug,
+    representativePriceAmount: row.representativePriceAmount,
+    representativePriceLabel: row.representativePriceLabel,
+    likeCount: row.likeCount,
+    dislikeCount: row.dislikeCount,
+    verifiedPriceItemCount: row.verifiedPriceItemCount,
+    lastPriceUpdatedAt: row.lastPriceUpdatedAt,
+  };
+}
+
+async function loadDatabaseMapTileMarkers(params: {
+  whereClause: ReturnType<typeof and>;
+  bounds: PlaceBounds;
+  zoom: number | null;
+}) {
+  const markerLimit = getMapMarkerLimit(params.zoom, null);
+  const { latSpan, lngSpan, rowCount, columnCount } = getMapTileGrid(
+    params.bounds,
+    markerLimit,
+  );
+  const rowIndexExpression = sql<number>`
+    least(
+      ${rowCount - 1},
+      greatest(
+        0,
+        floor(((${places.latitude} - ${params.bounds.minLat}) / ${latSpan}) * ${rowCount})::int
+      )
+    )
+  `;
+  const columnIndexExpression = sql<number>`
+    least(
+      ${columnCount - 1},
+      greatest(
+        0,
+        floor(((${places.longitude} - ${params.bounds.minLng}) / ${lngSpan}) * ${columnCount})::int
+      )
+    )
+  `;
+  const db = getDb();
+  const rows = await db
+    .select({
+      rowIndex: rowIndexExpression,
+      columnIndex: columnIndexExpression,
+      placeCount: sql<number>`count(*)::int`,
+      latitude: sql<number>`avg(${places.latitude})::float8`,
+      longitude: sql<number>`avg(${places.longitude})::float8`,
+      minLat: sql<number>`min(${places.latitude})::float8`,
+      maxLat: sql<number>`max(${places.latitude})::float8`,
+      minLng: sql<number>`min(${places.longitude})::float8`,
+      maxLng: sql<number>`max(${places.longitude})::float8`,
+      slug: sql<string | null>`min(${places.slug})`,
+      name: sql<string | null>`min(${places.name})`,
+      businessName: sql<string | null>`min(${places.businessName})`,
+      description: sql<string | null>`min(${places.description})`,
+      note: sql<string | null>`min(${places.note})`,
+      roadAddress: sql<string | null>`min(${places.roadAddress})`,
+      district: sql<string | null>`min(${places.district})`,
+      primaryCategorySlug: sql<string | null>`min(${places.primaryCategorySlug})`,
+      representativePriceAmount: sql<number | null>`min(${places.representativePriceAmount})::int`,
+      representativePriceLabel: sql<string | null>`min(${places.representativePriceLabel})`,
+      likeCount: sql<number | null>`min(${places.likeCount})::int`,
+      dislikeCount: sql<number | null>`min(${places.dislikeCount})::int`,
+      verifiedPriceItemCount: sql<number | null>`min(${places.verifiedPriceItemCount})::int`,
+      lastPriceUpdatedAt: sql<Date | null>`max(${places.lastPriceUpdatedAt})`,
+    })
+    .from(places)
+    .where(params.whereClause)
+    .groupBy(rowIndexExpression, columnIndexExpression)
+    .orderBy(asc(rowIndexExpression), asc(columnIndexExpression));
+
+  return rows.map((row) => {
+    if (row.placeCount === 1) {
+      const singletonRow = toDatabaseRowFromTileAggregate(row);
+
+      if (!singletonRow) {
+        return {
+          kind: "cluster",
+          id: `cluster:${row.rowIndex}:${row.columnIndex}:${row.placeCount}`,
+          latitude: row.latitude,
+          longitude: row.longitude,
+          bounds: {
+            minLat: row.minLat,
+            maxLat: row.maxLat,
+            minLng: row.minLng,
+            maxLng: row.maxLng,
+          },
+          placeCount: row.placeCount,
+        } satisfies PlaceMapClusterMarkerRecord;
+      }
+
+      return toMapPlaceMarkerRecord(
+        toPlacePreviewRecord(singletonRow, singletonRow.primaryCategorySlug),
+      );
+    }
+
+    return {
+      kind: "cluster",
+      id: `cluster:${row.rowIndex}:${row.columnIndex}:${row.placeCount}`,
+      latitude: row.latitude,
+      longitude: row.longitude,
+      bounds: {
+        minLat: row.minLat,
+        maxLat: row.maxLat,
+        minLng: row.minLng,
+        maxLng: row.maxLng,
+      },
+      placeCount: row.placeCount,
+    } satisfies PlaceMapClusterMarkerRecord;
+  }) as PlaceMapMarkerRecord[];
 }
 
 function getTileSummarizedMapMarkers(
