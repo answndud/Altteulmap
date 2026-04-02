@@ -35,11 +35,14 @@ npm run test:e2e:smoke
 npm run test:e2e
 npm run smoke:local
 npm run deploy:check
+npm run admin:build
+npm run cf:build:admin
 npm run hooks:install
 npm run db:up
 npm run db:generate
 npm run db:push
 npm run db:seed
+npm run data:goodprice
 npm run db:down
 npm run preview
 ```
@@ -52,19 +55,36 @@ npm run preview
 - `test:e2e`: Playwright E2E 실행
 - `smoke:local`: 실행 중인 로컬 서버에 대해 SEO/API/credentials 로그인 기본 스모크 체크
 - `deploy:check`: Cloudflare 배포 전 필수 환경 변수와 URL 설정 점검
+- `admin:sync`: public 앱의 관리자 route entrypoint를 `embedded` 또는 `external` 구현으로 동기화
+- `admin:build`: 별도 `apps/admin` 관리자 앱 빌드
+- `cf:build:admin`: 별도 `apps/admin` 관리자 Worker용 OpenNext build
 - `hooks:install`: 이 저장소 전용 git hook 활성화
 - `db:up`: 로컬 Postgres 컨테이너 시작
 - `db:generate`: Drizzle 마이그레이션 SQL 생성
 - `db:push`: 로컬/개발 DB에 스키마 반영
-- `db:seed`: 로컬 DB에 목업 시드 데이터 입력
+- `db:seed`: 로컬 DB에 시드 데이터 입력 (`imported-goodprice.json`이 있으면 실제 착한가격업소 1000건 우선 사용)
+- `data:goodprice`: 행정안전부 `착한가격업소` 사이트에서 `1만원 이하` 실제 업소를 수집해 `src/features/places/imported-goodprice.json`과 `data/goodprice/import-meta.json` 생성
 - `db:down`: 로컬 Postgres 컨테이너 중지
 - `cf:clean`: Cloudflare 빌드 전 `.next`, `.next-dev`, `.open-next` 정리
 - `cf:build`: Cloudflare 배포용 clean build
 - `preview`: OpenNext로 Cloudflare Workers 런타임 미리보기
+- `preview:public`: 관리자 route를 제외한 public 앱 preview
+- `preview:admin`: 별도 관리자 앱 preview
+- `deploy:public`: 관리자 route를 제외한 public 앱 배포
+- `deploy:admin`: 별도 관리자 앱 배포
 
-`deploy`, `upload`는 Cloudflare 계정과 Wrangler 인증이 준비된 뒤 사용하면 됩니다.
+`deploy`, `deploy:public`, `deploy:admin`, `upload`는 Cloudflare 계정과 Wrangler 인증이 준비된 뒤 사용하면 됩니다.
 
-현재 산출물 경로는 `dev -> .next-dev`, `build/start/e2e -> .next`, `Cloudflare preview/deploy -> .open-next`로 분리돼 있습니다. Cloudflare 무료 플랜 기준 경량화는 `next build --webpack` + `cf:clean` 경로를 전제로 맞춰져 있습니다. 배포는 `npm run deploy`를 그대로 쓰면 됩니다.
+현재 산출물 경로는 `dev -> .next-dev`, `build/start/e2e -> .next`, `Cloudflare preview/deploy -> .open-next`로 분리돼 있습니다. Cloudflare 무료 플랜 기준 경량화는 `next build --webpack` + `cf:clean` 경로를 전제로 맞춰져 있습니다.
+
+관리자 분리 1차가 들어가 있어서, 현재 배포 경로는 두 가지입니다.
+- 기본 `deploy`: 관리자 구현을 포함한 현재 앱 전체 배포
+- `deploy:public`: public 앱만 배포하고 `/admin`, `/api/admin`은 번들에서 제외하는 경로
+- `deploy:admin`: `apps/admin`을 `altteulmap-admin` 같은 별도 Worker로 배포하는 경로
+
+`deploy:public`은 `ADMIN_APP_URL`이 반드시 있어야 합니다. public 앱에서 관리자 링크를 별도 관리자 앱으로 보낼 때 쓰는 값이기 때문입니다.
+
+별도 관리자 앱은 `apps/admin`에서 관리하며, 로컬 검증은 `npm run admin:build`, Worker 번들 검증은 `npm run cf:build:admin`으로 먼저 확인합니다.
 
 ## DB 시작
 
@@ -90,11 +110,22 @@ npm run db:seed
 
 DB가 연결된 상태에서는 `/signup`에서 새 이메일 계정을 직접 만들 수 있습니다. 가입이 끝나면 같은 이메일/비밀번호로 바로 로그인됩니다.
 
+실제 데이터를 다시 받으려면 아래 순서로 실행하면 됩니다.
+
+```bash
+npm run data:goodprice -- --delay-ms=50 --timeout-ms=10000
+npm run db:seed
+```
+
+생성된 `src/features/places/imported-goodprice.json`은 mock fallback과 DB seed 양쪽에서 공통으로 우선 사용합니다. 수집 메타와 원본 업소 id/지역 분포는 `data/goodprice/import-meta.json`에 남습니다.
+
 기본 예시는 `.env.example`에 들어 있고, 로컬 `.env`도 같은 값으로 맞춰두었습니다.
 
 `/`에서 실제 네이버 지도를 보려면 `NEXT_PUBLIC_NAVER_MAP_KEY_ID`를 설정하면 됩니다. 아직 키가 없으면 같은 화면에서 자동으로 임시 프리뷰 지도로 fallback됩니다. 기존 `NEXT_PUBLIC_NAVER_MAP_CLIENT_ID` 값도 함께 지원합니다.
 
 `NEXTAUTH_URL`은 로그인 callback뿐 아니라 `robots.txt`, `sitemap.xml`, canonical metadata의 기준 URL로도 사용합니다. 배포 시에는 반드시 실제 도메인으로 바꿔야 합니다.
+
+관리자 앱을 분리할 때는 `ADMIN_APP_URL`도 같이 설정합니다. 예를 들면 `https://altteulmap-admin.altteul-lab.workers.dev`처럼 별도 관리자 Worker 주소를 넣고, 그 뒤 public 앱을 `deploy:public`으로 배포합니다.
 
 소셜 로그인을 붙일 때는 지도 키와 분리해서 아래 환경 변수를 사용합니다.
 
@@ -201,6 +232,7 @@ npm run db:down
 ## Cloudflare 관련 파일
 
 - `wrangler.jsonc`: Workers 설정 파일
+- `wrangler.admin.jsonc`: 별도 관리자 Worker 설정 파일
 - `open-next.config.ts`: OpenNext 설정 파일
 - `.dev.vars`: 로컬 Cloudflare 개발용 변수
 - `public/_headers`: 정적 자산 캐시 헤더

@@ -3,6 +3,7 @@
 기준일: 2026-04-01
 
 ## 진행 현황 요약
+- Cycle 10: 관리자 실제 구현을 `src/features/admin/**`로 모으고, public 앱 `entrypoints`와 별도 `apps/admin` 빌드를 추가해 관리자 분리 1차 스캐폴딩 완료. `deploy:admin`과 `deploy:public` 경로도 분리했고, 실제 admin deploy와 `ADMIN_APP_URL` cutover는 마지막 운영 적용만 남아 있음
 - Cycle 0: 프로젝트 로컬 기반, DB 경로, 지도 탐색, 장소 상세, 등록, 신고, 북마크, 관리자 검토, 로컬 인증, 네이버 지도 연동 완료
 - Cycle 1: 현재 위치 버튼, viewport 재조회, 모바일 목록 바텀시트, 모바일 상세 시트 기초 정리 완료
 - Cycle 2: `PLAN.md`/`PROGRESS.md` 운영 문서 형식 정비, 지역/전역 검색, 검색 URL 상태 반영 완료
@@ -14,9 +15,94 @@
 - Cycle 6: 좋아요/싫어요 반응 도입 완료, 비로그인 visitor cookie 반응과 공개 메타 줄 분리까지 반영. 랭킹/목록 노출 확장은 남아 있음
 - Cycle 7: repo-local AI workflow 설정 완료 (`.agents`, `.githooks`, `verify`, local commit rules)
 - Cycle 8: 로컬 dev/runtime 안정화 완료 (`.next-dev` 분리, `webpack` dev 고정, build/e2e와 출력 경로 분리)
+- Cycle 9: 행정안전부 `착한가격업소` 실제 데이터 1000건 import 완료. 지역 라운드로빈 수집, 상세 메뉴 보강, DB seed/API 검증까지 반영됨
 - 다음 우선순위: 관리자 visit/activity telemetry 2차, 이후 실제 외부 로그인 E2E와 운영 도메인 점검
 
 ## 실행 로그
+
+### 2026-04-02 09:08 KST: `착한가격업소` 실제 데이터 importer 구현과 1000건 seed 반영
+- 완료 내용
+  - `/Users/alex/project/altteulmap/scripts/import-goodprice.ts`를 추가했다. `bsshList.do`를 지역별 round-robin으로 순차 POST 요청해 `대표 가격 <= 10000원`인 업소만 모으고, 선택된 업소에 한해서 `bsshInfo.json`으로 상세 메뉴를 보강한 뒤 앱용 `PlaceRecord[]`로 변환한다.
+  - 수집 결과는 `/Users/alex/project/altteulmap/src/features/places/imported-goodprice.json`과 `/Users/alex/project/altteulmap/data/goodprice/import-meta.json`으로 저장된다. 전자는 앱/seed 입력, 후자는 `bsshSn`, 지역 분포, 업종 분포, 선택 옵션 같은 수집 메타를 남긴다.
+  - `/Users/alex/project/altteulmap/src/features/places/catalog-data.ts`를 추가하고 `/Users/alex/project/altteulmap/src/features/places/repository.ts`, `/Users/alex/project/altteulmap/src/features/places/queries.ts`, `/Users/alex/project/altteulmap/src/features/admin/repository.ts`, `/Users/alex/project/altteulmap/src/db/seed.ts`를 실제 import 데이터 우선 사용 구조로 바꿨다. `imported-goodprice.json`이 비어 있지 않으면 mock fallback과 DB seed가 모두 이 데이터를 사용한다.
+  - `/Users/alex/project/altteulmap/package.json`, `/Users/alex/project/altteulmap/README.md`에 `npm run data:goodprice` 실행 경로를 추가했다.
+  - 실제 생성 결과는 2026-04-02 기준 `1000` places, `2616` price items이며, 대표 가격 최대값은 `10000원`, `priceItems > 10000`은 `0건`이었다.
+- 검증 결과
+  - `npm run data:goodprice -- --limit=20 --delay-ms=50 --include-detail=false --output=/tmp/goodprice-test.json --manifest=/tmp/goodprice-test-manifest.json` 통과
+  - `npm run data:goodprice -- --limit=50 --delay-ms=50 --timeout-ms=10000 --include-detail=true --output=/tmp/goodprice-50.json --manifest=/tmp/goodprice-50-manifest.json` 통과
+  - `npm run data:goodprice -- --delay-ms=50 --timeout-ms=10000` 통과
+  - `python3`로 `/Users/alex/project/altteulmap/src/features/places/imported-goodprice.json` 검사 결과 `1000`건, 평균 `2.62` price items, 대표 가격 최대 `10000`, `priceItems > 10000` `0건` 확인
+  - `npm run verify:quick` 통과. 단, 저장소 기존 `apps/admin/.open-next/**` generated 파일 때문에 ESLint warning은 계속 남음
+  - `rm -rf .next && npm run verify`는 동일한 `apps/admin/.open-next/**` generated lint 오류 때문에 실패. 이번 importer 변경과 직접 관련된 오류는 아니고, `npm run build` 단독 경로는 통과
+  - `npm run build` 통과
+  - `npm run db:up` 통과
+  - `npm run db:push` 통과
+  - `npm run db:seed` 통과
+  - `PORT=3111 USE_MOCK_DATA=false NEXTAUTH_URL=http://127.0.0.1:3111 npm run start` 후 `curl http://127.0.0.1:3111/api/places/map` 응답에서 `source: "database"`와 실제 `goodprice-*` payload 확인
+- 메모
+  - 현재 importer는 공공 사이트 부하를 줄이기 위해 병렬 대량 요청 대신 지역별 순차 수집과 timeout/fallback을 사용한다.
+  - 좌표는 목록 페이지의 `articleObject2`에서 가져오고, 상세 메뉴는 `bsshInfo.json`에서 보강한다. 공식 Excel export는 구조 파악과 분포 확인에는 유용했지만, 좌표가 없어 1차 앱 적재 원천으로는 직접 쓰지 않았다.
+  - `apps/admin/.open-next/**` 경로는 저장소 기존 generated 결과물이라 `verify` 전체 통과를 막고 있다. importer 작업 자체의 build/seed/API 경로는 정상 확인했다.
+
+### 2026-04-02 10:12 KST: 관리자 Worker 배포 경로 보정과 public/admin cutover 조건 고정
+- 완료 내용
+  - `/Users/alex/project/altteulmap/scripts/build-admin-worker.mjs`, `/Users/alex/project/altteulmap/apps/admin/open-next.config.ts`를 추가해 `apps/admin`이 자기 cwd에서 OpenNext build를 만들도록 정리했다.
+  - `/Users/alex/project/altteulmap/package.json`의 `cf:build:admin`, `preview:admin`, `deploy:admin`을 별도 관리자 앱 기준으로 바꿨고, `/Users/alex/project/altteulmap/wrangler.admin.jsonc`도 `apps/admin/.open-next/**`를 바라보도록 수정했다.
+  - `/Users/alex/project/altteulmap/scripts/build-public-worker.mjs`는 `ADMIN_APP_URL`이 없으면 실패하게 바꿨다. public-only 배포가 `/admin`, `/api/admin`을 제거하므로 외부 관리자 앱 주소 없이 배포되면 링크가 깨지기 때문이다.
+  - `/Users/alex/project/altteulmap/.env.example`, `/Users/alex/project/altteulmap/README.md`, `/Users/alex/project/altteulmap/docs/deploy-cloudflare.md`, `/Users/alex/project/altteulmap/docs/cloudflare-account-to-deploy.md`를 새 배포 순서에 맞게 갱신했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run cf:build:admin` 통과
+  - `ADMIN_APP_URL=https://altteulmap-admin.altteul-lab.workers.dev npm run cf:build:public` 통과
+- 메모
+  - 이전 `deploy:admin`은 root app OpenNext 산출물을 다시 배포하는 구조라 실제 별도 관리자 앱 배포로 이어지지 않았다. 지금 수정은 그 경로를 바로잡는 목적이다.
+  - `cf:build:admin` 결과 route 목록에 `/admin`, `/api/admin/*`, `/login`, `/signup`만 남는 것을 확인했다.
+  - `cf:build:public` 결과 route 목록에서 `/admin`, `/api/admin/*`가 빠지는 것을 확인했다.
+
+### 2026-04-02 09:24 KST: 관리자 분리 1차 스캐폴딩과 public/admin 빌드 경로 정리
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/admin/pages`, `/Users/alex/project/altteulmap/src/features/admin/api`를 관리자 실제 구현 기준으로 두고, `/Users/alex/project/altteulmap/src/app/admin/**`, `/Users/alex/project/altteulmap/src/app/api/admin/**`는 `/Users/alex/project/altteulmap/src/features/admin/entrypoints/**`를 바라보도록 정리했다.
+  - `/Users/alex/project/altteulmap/scripts/sync-admin-entrypoints.mjs`를 추가해 `ALTTEULMAP_ADMIN_MODE=embedded|external`에 따라 entrypoint가 실제 구현 또는 stub(`/Users/alex/project/altteulmap/src/features/admin/stubs/**`)을 바라보게 했다.
+  - `/Users/alex/project/altteulmap/src/lib/admin-app.ts`와 stub 페이지/API를 보강해서 `ADMIN_APP_URL`이 없을 때는 redirect loop 대신 안내 패널 또는 `503` 응답을 반환하게 했다.
+  - `/Users/alex/project/altteulmap/apps/admin/**`에 별도 Next 앱을 스캐폴딩했다. 이 앱은 `/admin`, `/api/admin`, `/login`, `/signup`, `/api/auth/[...nextauth]`만 노출하고, 루트의 shared admin/auth 구현을 재사용한다.
+  - `/Users/alex/project/altteulmap/package.json`에는 `admin:sync`, `admin:build`, `admin:dev`, `admin:start`를 추가했고, 루트 `build/dev/cf:build`는 entrypoint를 먼저 동기화하도록 맞췄다.
+- 검증 결과
+  - `npm run admin:sync` 통과
+  - `npm run verify:quick` 통과
+  - `npm run build` 통과
+  - `npm run admin:build` 통과
+  - `ALTTEULMAP_ADMIN_MODE=external npm run admin:sync` 후 `src/features/admin/entrypoints/pages/dashboard-page.tsx`, `src/features/admin/entrypoints/api/places-list.ts`가 stub 구현으로 바뀌는 것 확인 후 `npm run admin:sync`로 embedded 복구
+- 메모
+  - 현재는 build 경로와 별도 admin 앱 빌드만 정리된 상태다. 실제 운영에서는 `apps/admin`을 `altteulmap-admin`으로 배포하고, public 앱은 `ADMIN_APP_URL`과 `ALTTEULMAP_ADMIN_MODE=external` 기준으로 cutover하는 단계가 한 번 더 필요하다.
+
+### 2026-04-02 09:05 KST: Cloudflare preview build에서 AUTH_SECRET 누락으로 죽던 auth eager load 수정
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/auth.ts`에서 `authOptions` 상수와 default `NextAuth(...)` eager 초기화를 제거하고, `getAuthOptions()` factory로 바꿨다. 이제 module import만으로 `AUTH_SECRET`을 바로 읽지 않는다.
+  - `/Users/alex/project/altteulmap/src/app/api/auth/[...nextauth]/route.ts`는 request 시점에 `NextAuth(getAuthOptions())`를 생성하도록 바꿨다.
+  - `/Users/alex/project/altteulmap/src/lib/session.ts`는 `AUTH_SECRET`이 없는 환경에서는 `getSessionUser()`를 `null`로 반환해, Cloudflare preview build의 prerender 단계에서 `/submit` 같은 공개 페이지가 로그인 세션 조회 때문에 실패하지 않게 정리했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `tmpdir=$(mktemp -d) && rsync -a --delete --exclude '.git' --exclude '.env' --exclude '.env.*' --exclude '.dev.vars' --exclude '.dev.vars.*' --exclude 'node_modules' ./ "$tmpdir/" && cd "$tmpdir" && npm ci --ignore-scripts && env -i HOME="$HOME" PATH="$PATH" NODE_ENV=production npm run cf:build` 통과
+- 메모
+  - 수정 전에는 같은 무환경 build에서 `AUTH_SECRET is not set` 예외가 `/api/bookmarks/[id]`, `/api/admin/places/[id]`, `/submit` prerender 단계까지 전파돼 Cloudflare external build가 실패하는 것을 재현했다.
+  - 이 수정은 build 시점 강제만 제거한 것이다. 실제 runtime auth를 쓰려면 Cloudflare 쪽 `AUTH_SECRET`은 계속 필요하다.
+
+### 2026-04-02 08:39 KST: 행정안전부 `착한가격업소` 수집 구조 조사와 1차 적재 계획 정리
+- 완료 내용
+  - `https://goodprice.go.kr/bssh/bsshList.do`가 서버 렌더 POST 폼 목록 페이지임을 확인했다. `pageIndex`, `srchCtpvCd`, `srchSggCd`, `srchIndutyCdArr`, `srchBsshNm`, `srchKeyword`, 편의시설 플래그를 hidden field로 보내며, 페이지당 목록은 4건씩 렌더된다.
+  - 같은 페이지의 JS에서 목록 마커 좌표가 `articleObject2` 문자열로 현재 페이지 4건에 한해 포함되는 것을 확인했다. 즉 공식 좌표는 목록 HTML에만 있고, 상세 JSON에는 없다.
+  - `https://goodprice.go.kr/bssh/bsshInfo.json`는 `bsshSn` 기준 상세 API로 열려 있고, 업소명/주소/업종/전화/편의시설/부서 연락처/이미지 메타와 `menuList`를 JSON으로 준다. 다만 여기에는 `lat`, `lot`이 비어 있다.
+  - `https://goodprice.go.kr/bssh/bsshPageExcel.do`는 현재 검색 조건 전체 결과를 `.xls`로 내려준다. `pageIndex=1&menuId=MN-0103`만 보내도 2026-04-02 기준 전체 `12,109`건이 한 번에 내려왔고, 열은 `업종명/업소명/주요품목/가격/전화/주소/편의시설/지역화폐/이미지명`까지 포함한다.
+  - 같은 전체 Excel에서 `가격 <= 10000원` 조건을 적용해 보니 `8,661`건이 남았다. 업종 분포는 `한식 5,258`, `미용업 976`, `기타요식업 690`, `중식 632` 순이고, 지역 상위는 `서울특별시 1,389`, `경기도 1,264`, `부산광역시 810`이었다.
+  - `robots.txt`는 일부 커뮤니티 경로만 막고 있지만, 기본적으로 공공 사이트이므로 대량 병렬 크롤링 대신 `공식 Excel 우선 + 필요한 상세/좌표만 저속 보강` 전략으로 잡는다.
+- 검증 결과
+  - `curl -L 'https://goodprice.go.kr/bssh/bsshList.do'`로 목록 HTML/폼 구조 확인
+  - `curl -s 'https://goodprice.go.kr/bssh/bsshInfo.json' -X POST -F 'bsshSn=11005' ... | jq`로 상세 JSON 필드 확인
+  - `curl -s -D - -o /tmp/goodprice-page.xls 'https://goodprice.go.kr/bssh/bsshPageExcel.do' -X POST -d 'pageIndex=1&menuId=MN-0103'`로 전체 Excel export 확인
+  - `PYTHONPATH=/tmp/xlrd-check python3 ...`로 Excel row 수와 `가격 <= 10000` 분포 계산
+- 메모
+  - `bsshInfo.json`는 `bsshSn`가 필요하지만 Excel에는 `bsshSn`가 없다. 따라서 `상세 메뉴/이미지/공식 좌표`까지 쓰려면 목록 HTML에서 `goInfo('...')`와 `articleObject2`를 추가로 모아 join해야 한다.
+  - 1차 import는 `Excel 일괄 다운로드 -> 가격 1만원 이하 필터 -> 지역/업종 균형 샘플 1천건 선별 -> 주소 geocoding 또는 목록 좌표 보강 -> 앱용 seed 생성` 순서가 가장 안전하다. 상세 메뉴/이미지는 2차 enrichment로 분리하는 편이 요청 수와 복잡도를 줄인다.
 
 ### 2026-04-02 08:31 KST: 로컬 dev/build/e2e 산출물 분리로 페이지 전환 멈춤과 cache 손상 방지
 - 완료 내용

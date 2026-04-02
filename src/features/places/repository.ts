@@ -27,7 +27,7 @@ import {
   priceReports,
   users,
 } from "@/db/schema";
-import { mockPlaces } from "@/features/places/mock-data";
+import { mockPlaces } from "@/features/places/catalog-data";
 import {
   normalizePriceLabel,
   slugifyPlaceName,

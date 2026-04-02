@@ -22,13 +22,14 @@
   - 좋아요 랭킹
 
 ## 현재 우선순위
-1. 관리자 visit/activity telemetry 2차: 방문 수, 고유 방문자, DAU/WAU, 재방문율을 적재하고 관리자 대시보드에 연결
-2. 인증 정리와 출시 준비: 실제 로그인 경로, 로그인/회원가입 진입면과 소셜 온보딩, 반복 가능한 검증 절차, Cloudflare 배포 체크리스트
-3. 공개 UI polish: 헤더 간소화, 개발 문구 제거, 버튼/칩 줄바꿈 방지, 지도/상세 밀도 정리
-4. 운영 품질 후속 정리: rate limit 수치 조정, 관리자 UX polish, 캐시/재검증 보강
-5. 확장 기능 1차: 플레이스 좋아요/싫어요 반응 모델과 UI 우선 도입
-6. 확장 기능 2차: 공유/사진 업로드 범위와 우선순위 재결정
-7. repo-local 개발 워크플로우 유지: `.agents` skills/reviewers, `.githooks`, `verify` 스크립트
+1. 관리자 앱 분리 1차: public/admin build 경로를 분리하고, 별도 `apps/admin` 빌드와 외부 관리자 앱 전환 경로를 정리
+2. 관리자 visit/activity telemetry 2차: 방문 수, 고유 방문자, DAU/WAU, 재방문율을 적재하고 관리자 대시보드에 연결
+3. 인증 정리와 출시 준비: 실제 로그인 경로, 로그인/회원가입 진입면과 소셜 온보딩, 반복 가능한 검증 절차, Cloudflare 배포 체크리스트
+4. 공개 UI polish: 헤더 간소화, 개발 문구 제거, 버튼/칩 줄바꿈 방지, 지도/상세 밀도 정리
+5. 운영 품질 후속 정리: rate limit 수치 조정, 관리자 UX polish, 캐시/재검증 보강
+6. 확장 기능 1차: 플레이스 좋아요/싫어요 반응 모델과 UI 우선 도입
+7. 확장 기능 2차: 공유/사진 업로드 범위와 우선순위 재결정
+8. repo-local 개발 워크플로우 유지: `.agents` skills/reviewers, `.githooks`, `verify` 스크립트
 
 ## 현재 제품 상태
 
@@ -64,6 +65,8 @@
   - 검색어/검색 범위는 반영되지만 지도 중심/줌 상태까지는 아직 URL에 싣지 않음
 - 출시 준비
   - robots, sitemap, canonical, `smoke:local`, `deploy:check`, Playwright E2E 기본 흐름, credentials 로그인/가입/북마크/신고/관리자 승인/관리자 가격 검토 E2E, GitHub Actions CI, Cloudflare Builds 기준 배포 체크 문서는 정리 중이고, 현재 E2E는 세 그룹 실행 기준으로 반복 가능하다. Cloudflare 무료 플랜 기준 번들 경량화와 실제 `workers.dev` 배포까지는 통과했다. 실제 OAuth와 실제 운영 도메인 기준 end-to-end 점검은 남아 있다
+- 관리자 분리
+  - 관리자 실제 구현은 `src/features/admin/pages`, `src/features/admin/api`에 있고, public 앱의 `/admin`, `/api/admin`은 `entrypoints`를 통해 embedded/external 모드를 바꿀 수 있다. 별도 `apps/admin` Next 앱 빌드는 가능하지만, 실제 `altteulmap-admin` 배포와 `ADMIN_APP_URL` 기준 cutover는 아직 남아 있다
 - 인증
   - 로그인/회원가입 진입면과 로컬 credentials, 카카오/네이버 OAuth scaffolding은 준비돼 있고, 현재는 credentials 회원가입까지 동작한다. `.env.local` 기준으로 네이버는 활성화 가능 상태이고, 카카오는 client secret 누락 시 비활성화된다. 실제 provider credential과 callback URL로 끝까지 검증한 외부 로그인 경로는 아직 없다
 - 반응 기능
@@ -80,6 +83,17 @@
 - 핫딜 `deal`
 
 ## Active Plan
+
+### Cycle 9: 외부 착한가격업소 데이터 적재 (완료)
+| 작업명 | 담당 에이전트 | 우선순위 | 상태 | 완료기준(DoD) | 의존성 |
+|---|---|---|---|---|---|
+| 행정안전부 `착한가격업소` 사이트의 목록/엑셀/상세 구조를 분석해 1차 수집 경로와 필터 기준을 확정한다 | Codex | P1 | `done` | `/bssh/bsshList.do`, `/bssh/bsshPageExcel.do`, `/bssh/bsshInfo.json`의 역할, 좌표/상세/가격 데이터 차이, robots/rate limit 고려사항, `1만원 이하 1천건` 선별 기준과 적재 전략이 `PROGRESS.md`에 정리된다 | `PLAN.md`, `PROGRESS.md`, 외부 사이트 구조 |
+| `착한가격업소` 실제 데이터를 더미 데이터 대신 넣을 수 있도록 수집 스크립트, 정규화 매핑, 좌표 확보 전략, import seed 경로를 구현한다 | Codex | P1 | `done` | 공식 다운로드 또는 페이지 수집으로 원천 데이터가 로컬 파일/테이블에 저장되고, `1만원 이하` 기준과 업종/지역 매핑이 정규화되며, 좌표는 목록 페이지 좌표 또는 별도 geocoding으로 채워지고, 최소 1천건이 앱에서 조회 가능하며, 검증 로그가 `PROGRESS.md`에 남는다 | 수집 설계 확정, `src/db/**`, import script, geocoding 경로, 검증 |
+
+### Cycle 10: 관리자 앱 분리 1차
+| 작업명 | 담당 에이전트 | 우선순위 | 상태 | 완료기준(DoD) | 의존성 |
+|---|---|---|---|---|---|
+| 관리자 페이지/API의 실제 구현을 공유 모듈로 고정하고, public 앱과 별도 `apps/admin` 앱이 같은 구현을 재사용하도록 정리한다 | Codex | P1 | `in_progress` | `src/features/admin/pages`, `src/features/admin/api`가 관리자 실제 구현의 기준이 되고, public 앱의 `/admin`, `/api/admin`은 `entrypoints`를 통해 embedded/external 모드를 스위치할 수 있으며, `apps/admin`이 별도 Next 앱으로 빌드되고, `ADMIN_APP_URL` 기준 외부 관리자 앱 전환 경로와 검증 결과가 문서에 남는다 | `src/app/admin/**`, `src/app/api/admin/**`, `src/features/admin/**`, `src/lib/admin-app.ts`, `apps/admin/**`, `package.json`, Cloudflare 배포 문서 |
 
 ### Cycle 7: repo-local AI workflow setup (완료)
 | 작업명 | 담당 에이전트 | 우선순위 | 상태 | 완료기준(DoD) | 의존성 |

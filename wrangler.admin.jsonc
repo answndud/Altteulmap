@@ -1,0 +1,25 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"main": "apps/admin/.open-next/worker.js",
+	"name": "altteulmap-admin",
+	"keep_vars": true,
+	"compatibility_date": "2026-03-29",
+	"compatibility_flags": [
+		"nodejs_compat",
+		"global_fetch_strictly_public"
+	],
+	"build": {
+		"command": "test -f apps/admin/.open-next/worker.js || npm run cf:build:admin"
+	},
+	"assets": {
+		"directory": "apps/admin/.open-next/assets",
+		"binding": "ASSETS"
+	},
+	"services": [
+		{
+			"binding": "WORKER_SELF_REFERENCE",
+			"service": "altteulmap-admin",
+			"environment": "production"
+		}
+	]
+}
