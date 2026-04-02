@@ -14,7 +14,7 @@ import {
   authAccountHints,
   type AppUserRole,
 } from "@/features/auth/constants";
-import { mockPlaces } from "@/features/places/mock-data";
+import { mockPlaces } from "@/features/places/catalog-data";
 import { mockReports } from "@/features/reports/mock-data";
 
 type DataSource = "mock" | "database";

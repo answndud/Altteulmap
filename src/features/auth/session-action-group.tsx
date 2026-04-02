@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { appUserRoleLabelMap } from "@/features/auth/constants";
 import { SignOutButton } from "@/features/auth/sign-out-button";
+import { getAdminAppHref } from "@/lib/admin-app";
 import {
   getSessionUserLabel,
   type SessionUser,
@@ -57,7 +58,7 @@ export function SessionActionGroup({
       </span>
       {user.role === "admin" ? (
         <Link
-          href="/admin"
+          href={getAdminAppHref("/admin")}
           data-testid="session-admin-link"
           className={linkClassName}
         >

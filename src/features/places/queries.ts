@@ -1,5 +1,5 @@
 import { getCategoryBySlug } from "@/features/categories/catalog";
-import { mockPlaces } from "@/features/places/mock-data";
+import { mockPlaces } from "@/features/places/catalog-data";
 import type {
   PlaceQueryBounds,
   PlaceRecord,

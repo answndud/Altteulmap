@@ -21,6 +21,14 @@ const serverEnvSchema = z.object({
     const normalized = value.trim();
     return normalized.length > 0 ? normalized : undefined;
   }, z.string().url().optional()),
+  ADMIN_APP_URL: z.preprocess((value) => {
+    if (typeof value !== "string") {
+      return value;
+    }
+
+    const normalized = value.trim();
+    return normalized.length > 0 ? normalized : undefined;
+  }, z.string().url().optional()),
   AUTH_DEMO_PASSWORD: z.string().min(1).default("demo1234"),
   AUTH_ADMIN_PASSWORD: z.string().min(1).default("admin1234"),
   AUTH_KAKAO_CLIENT_ID: optionalNonEmptyString,
@@ -34,6 +42,7 @@ const serverEnv = serverEnvSchema.parse({
   USE_MOCK_DATA: process.env.USE_MOCK_DATA,
   AUTH_SECRET: process.env.AUTH_SECRET,
   NEXTAUTH_URL: process.env.NEXTAUTH_URL,
+  ADMIN_APP_URL: process.env.ADMIN_APP_URL,
   AUTH_DEMO_PASSWORD: process.env.AUTH_DEMO_PASSWORD,
   AUTH_ADMIN_PASSWORD: process.env.AUTH_ADMIN_PASSWORD,
   AUTH_KAKAO_CLIENT_ID: process.env.AUTH_KAKAO_CLIENT_ID,
