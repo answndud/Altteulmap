@@ -1,6 +1,6 @@
 # PROGRESS.md
 
-기준일: 2026-04-01
+기준일: 2026-04-02
 
 ## 진행 현황 요약
 - Cycle 10: 관리자 실제 구현을 `src/features/admin/**`로 모으고, public 앱 `entrypoints`와 별도 `apps/admin` 빌드를 추가해 관리자 분리 1차 스캐폴딩 완료. `deploy:admin`과 `deploy:public` 경로도 분리했고, 실제 admin deploy와 `ADMIN_APP_URL` cutover는 마지막 운영 적용만 남아 있음
@@ -16,10 +16,36 @@
 - Cycle 7: repo-local AI workflow 설정 완료 (`.agents`, `.githooks`, `verify`, local commit rules)
 - Cycle 8: 로컬 dev/runtime 안정화 완료 (`.next-dev` 분리, `webpack` dev 고정, build/e2e와 출력 경로 분리)
 - Cycle 9: 행정안전부 `착한가격업소` 실제 데이터 1000건 import 완료. 기본 selection은 `서울 500 + 비서울 500`, `음식점 70%`, `대표 가격 1만원 이하`로 고정했고, 메뉴 라벨 dedupe까지 반영해 DB seed/API 검증을 다시 통과함
-- Cycle 5 지도 성능 후속: 지도 전용 preview payload와 마커/목록 렌더 상한, viewport 첫 진입의 1000건 SSR 제거, map API/server preview 응답 `count + capped items` 구조, `places` 비정규화, viewport/zoom 기반 cluster marker 계층까지 반영함
+- Cycle 5 지도 성능 후속: 지도 전용 preview payload와 마커/목록 렌더 상한, viewport 첫 진입의 1000건 SSR 제거, map API/server preview 응답 `count + capped items` 구조, `places` 비정규화, viewport/zoom 기반 cluster marker 계층, `items + mapMarkers` 분리와 서버 tile summary까지 반영함
 - 다음 우선순위: 관리자 visit/activity telemetry 2차, 이후 실제 외부 로그인 E2E와 운영 도메인 점검
 
 ## 실행 로그
+
+### 2026-04-02 10:21 KST: map API `items + mapMarkers` 분리와 서버 tile summary로 marker payload 추가 축소
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/places/types.ts`에 지도 전용 `PlaceMapMarkerRecord` 타입을 추가해 개별 place marker와 cluster marker를 같은 계약으로 다루도록 정리했다.
+  - `/Users/alex/project/altteulmap/src/features/places/repository.ts`의 `listMapPlaces()`는 이제 목록 패널용 `items`와 지도용 `mapMarkers`를 분리해 반환한다. 목록은 최대 `120`건까지만 유지하고, 넓은 viewport에서는 bounds/zoom 기준 tile bucket으로 묶은 cluster summary만 지도에 내려준다.
+  - `/Users/alex/project/altteulmap/src/app/api/places/map/route.ts`는 `zoom`을 받아 `mapMarkers`, `mapMarkerCount`, `returnedCount`, `truncated`를 함께 내려주도록 바꿨다.
+  - `/Users/alex/project/altteulmap/src/features/map/map-page.tsx`, `/Users/alex/project/altteulmap/src/features/places/map-explorer.tsx`, `/Users/alex/project/altteulmap/src/features/map/naver-map-panel.tsx`는 새 계약에 맞춰 목록/상세는 `items`, 지도 렌더는 `mapMarkers`만 쓰도록 정리했다. 넓은 화면에서는 서버가 내려준 cluster summary를 그대로 쓰고, 개별 place 선택/상세 진입은 place marker만 이어받는다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npx tsc --noEmit` 통과
+  - `npm run verify` 통과
+    - build 중 `sitemap.xml` 단계에서 production DB에 `places` 테이블이 없을 때 mock fallback 로그는 기존과 동일하게 남지만, 빌드 자체는 성공
+  - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap PORT=3114 USE_MOCK_DATA=false NEXTAUTH_URL=http://127.0.0.1:3114 npm run start` 후 수동 확인
+  - `curl -s 'http://127.0.0.1:3114/api/places/map?minLat=33&maxLat=39&minLng=124&maxLng=132&zoom=13'` 결과
+    - `count: 1000`
+    - `returnedCount: 120`
+    - `mapMarkerCount: 15`
+    - `truncated: true`
+  - Playwright headless runtime script 결과
+    - `/` 진입 후 preview overlay 기준 `previewMarkerCount: 11`
+    - 그중 `clusterMarkerCount: 10`
+    - cluster 라벨 예시 `138, 35, 87, 69, 64, 48, 28, 27`
+    - 같은 시점 목록 DOM은 `listItems: 120`
+    - summary 안내문 `현재 조건에 맞는 장소는 총 507곳이고, 성능을 위해 120곳만 먼저 불러왔습니다` 노출 확인
+- 메모
+  - 이번 단계로 넓은 viewport에서는 목록 패널과 지도 marker가 더 이상 같은 preview 배열을 공유하지 않는다. API 응답은 목록용 `120`건과 지도용 cluster summary `15`건으로 분리됐고, 다음 최적화 후보는 SQL 단계에서 geotile 집계나 tile cache를 더 직접 도입하는 방향이다.
 
 ### 2026-04-02 10:11 KST: 북마크 목록 조회 구조 단순화와 토글 회귀 테스트 보강
 - 완료 내용
