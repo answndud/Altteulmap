@@ -18,7 +18,9 @@ export function formatKrw(amount: number) {
   return new Intl.NumberFormat("ko-KR").format(amount);
 }
 
-export function sortPlaceRecords(items: PlaceRecord[], sort: PlaceSort) {
+export function sortPlaceRecords<
+  TPlace extends Pick<PlaceRecord, "representativePriceAmount" | "lastPriceUpdatedAt">,
+>(items: TPlace[], sort: PlaceSort) {
   return [...items].sort((left, right) => {
     if (sort === "recent") {
       return (

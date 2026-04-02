@@ -1,16 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { BrandMark } from "@/components/brand-mark";
 import { listBookmarks } from "@/features/bookmarks/repository";
-import { SessionActionGroup } from "@/features/auth/session-action-group";
 import {
   categoryGroups,
   getCategoryBySlug,
 } from "@/features/categories/catalog";
 import { MapExplorer } from "@/features/places/map-explorer";
-import { listPlaces } from "@/features/places/repository";
-import type { PlaceSearchScope } from "@/features/places/types";
+import { listMapPlaces } from "@/features/places/repository";
+import type {
+  PlaceBounds,
+  PlaceSearchScope,
+} from "@/features/places/types";
 import { createLoginHref, getSessionUser } from "@/lib/session";
 
 type MapPageProps = {
@@ -44,6 +45,12 @@ const mobileScopeChipClass =
   "altteulmap-chip altteulmap-scope-chip inline-flex whitespace-nowrap px-3 py-2 text-xs transition";
 const desktopScopeChipClass =
   "altteulmap-chip altteulmap-scope-chip inline-flex whitespace-nowrap px-4 py-2 text-sm transition";
+const SEOUL_BOOTSTRAP_BOUNDS: PlaceBounds = {
+  minLat: 37.4133,
+  maxLat: 37.7151,
+  minLng: 126.7341,
+  maxLng: 127.2693,
+};
 
 function getFirstValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -86,13 +93,22 @@ export default async function MapPage({ searchParams }: MapPageProps) {
       ? "global"
       : "viewport";
   const user = await getSessionUser();
+  const shouldPrefetchPlaces = activeSearchScope === "global";
 
   const [result, bookmarkResult] = await Promise.all([
-    listPlaces({
-      category: activeCategory,
-      maxPrice: activeMaxPrice,
-      query: activeQuery,
-    }),
+    shouldPrefetchPlaces
+      ? listMapPlaces({
+          category: activeCategory,
+          maxPrice: activeMaxPrice,
+          query: activeQuery,
+        })
+      : Promise.resolve({
+          items: [],
+          mapMarkers: [],
+          bounds: SEOUL_BOOTSTRAP_BOUNDS,
+          count: 0,
+          source: "database" as const,
+        }),
     listBookmarks(user),
   ]);
   const currentMapHref = createHref({
@@ -101,9 +117,7 @@ export default async function MapPage({ searchParams }: MapPageProps) {
     query: activeQuery,
     searchScope: activeSearchScope,
   });
-  const loginHref = createLoginHref(currentMapHref);
   const bookmarkLoginHref = createLoginHref(currentMapHref);
-  const submitHref = "/submit";
   const places = result.items;
   const bookmarkedIds = new Set(
     bookmarkResult.items.map((bookmark) => bookmark.placeId),
@@ -119,33 +133,31 @@ export default async function MapPage({ searchParams }: MapPageProps) {
   ].filter((item): item is string => Boolean(item));
 
   return (
-    <main className="bg-stone-50 px-4 py-8 sm:px-6">
-      <div className="mx-auto max-w-7xl">
-        <section className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm sm:p-8">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <BrandMark href="/" variant="compact" className="max-w-[18rem]" />
-            <div className="flex flex-wrap gap-3">
-              <Link
-                href={submitHref}
-                className="altteulmap-accent-solid altteulmap-button whitespace-nowrap px-5 py-3 text-sm font-medium transition"
-              >
-                장소 등록하기
-              </Link>
-              <Link
-                href={bookmarkResult.authenticated ? "/bookmarks" : bookmarkLoginHref}
-                className="altteulmap-button whitespace-nowrap border border-stone-300 bg-white px-5 py-3 text-sm font-medium text-stone-900 transition hover:bg-stone-100"
-              >
-                북마크
-              </Link>
-              <SessionActionGroup
-                user={user}
-                loginHref={loginHref}
-                signOutCallbackUrl={currentMapHref}
-              />
+    <main className="bg-stone-50 px-3 py-6 sm:px-4 lg:px-5 xl:px-6">
+      <div className="mx-auto max-w-[96rem]">
+        <section className="rounded-[2rem] border border-stone-200 bg-white p-4 shadow-sm sm:p-6 xl:p-7">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-orange-600">
+                지도 탐색
+              </p>
+              <h1 className="mt-2 text-2xl font-semibold tracking-tight text-stone-900 sm:text-3xl">
+                동네 알뜰 장소를 한 번에 보기
+              </h1>
+            </div>
+            <div className="hidden flex-wrap gap-2 lg:flex">
+              {mobileSummaryItems.map((item) => (
+                <span
+                  key={item}
+                  className="altteulmap-badge whitespace-nowrap px-3 py-1.5 text-xs text-stone-600"
+                >
+                  {item}
+                </span>
+              ))}
             </div>
           </div>
 
-          <section className="mt-8 lg:hidden">
+          <section className="mt-6 lg:hidden">
             <form
               action="/"
               className="grid gap-3 rounded-[1.75rem] border border-stone-200 bg-stone-50 p-4"
@@ -481,10 +493,13 @@ export default async function MapPage({ searchParams }: MapPageProps) {
             category={activeCategory}
             currentMapHref={currentMapHref}
             initialBounds={result.bounds}
-            maxPrice={activeMaxPrice}
-            places={places}
-            query={activeQuery}
-            searchScope={activeSearchScope}
+            initialCount={result.count}
+          maxPrice={activeMaxPrice}
+          prefetchedOnServer={shouldPrefetchPlaces}
+          mapMarkers={result.mapMarkers}
+          places={places}
+          query={activeQuery}
+          searchScope={activeSearchScope}
             selectedCategoryLabel={selectedCategory?.name ?? null}
           />
         </section>

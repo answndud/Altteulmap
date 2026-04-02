@@ -136,8 +136,11 @@ async function main() {
         latitude: place.latitude,
         longitude: place.longitude,
         status: "active",
+        primaryCategorySlug: place.categorySlug,
         representativePriceAmount: place.representativePriceAmount,
         representativePriceLabel: place.representativePriceLabel,
+        likeCount: place.likeCount,
+        dislikeCount: place.dislikeCount,
         verifiedPriceItemCount: place.priceItems.filter(
           (item) => item.verificationStatus === "verified",
         ).length,

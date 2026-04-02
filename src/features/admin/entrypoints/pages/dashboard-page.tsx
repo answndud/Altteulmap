@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 
 import { AccessDeniedPanel } from "@/components/access-denied-panel";
 import { getAdminOverview } from "@/features/admin/repository";
-import { SessionActionGroup } from "@/features/auth/session-action-group";
 import {
   listPendingPlaces,
   listPendingPriceReports,
@@ -53,20 +52,17 @@ export default async function AdminPage() {
   return (
     <main className="bg-stone-50 px-4 py-8 sm:px-6">
       <section className="mx-auto max-w-7xl rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm sm:p-8">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-orange-600">
-              운영
-            </p>
-            <h1 className="mt-3 text-3xl font-semibold tracking-tight text-stone-900 sm:text-5xl">
-              운영 대시보드
-            </h1>
-            <p className="mt-4 max-w-3xl text-base leading-7 text-stone-600">
-              승인 대기 목록, 신고 큐, 사용자 현황을 한 화면에서 보고 바로
-              운영 액션으로 넘어갈 수 있게 정리했습니다.
-            </p>
-          </div>
-          <SessionActionGroup user={user} signOutCallbackUrl="/" />
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-orange-600">
+            운영
+          </p>
+          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-stone-900 sm:text-5xl">
+            운영 대시보드
+          </h1>
+          <p className="mt-4 max-w-3xl text-base leading-7 text-stone-600">
+            승인 대기 목록, 신고 큐, 사용자 현황을 한 화면에서 보고 바로
+            운영 액션으로 넘어갈 수 있게 정리했습니다.
+          </p>
         </div>
 
         <div className="mt-6 flex flex-wrap gap-2">

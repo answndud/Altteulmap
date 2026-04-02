@@ -2,7 +2,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AccessDeniedPanel } from "@/components/access-denied-panel";
-import { SessionActionGroup } from "@/features/auth/session-action-group";
 import { getCategoryBySlug } from "@/features/categories/catalog";
 import { AdminPlaceReviewForm } from "@/features/places/admin-place-review-form";
 import { formatKrw } from "@/features/places/queries";
@@ -74,7 +73,6 @@ export default async function AdminPlacesPage() {
             >
               가격 제보 큐
             </Link>
-            <SessionActionGroup user={user} signOutCallbackUrl="/" compact />
           </div>
         </div>
 

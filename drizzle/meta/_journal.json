@@ -50,6 +50,13 @@
       "when": 1775052090538,
       "tag": "0006_boring_titania",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1775091519251,
+      "tag": "0007_true_carmella_unuscione",
+      "breakpoints": true
     }
   ]
 }

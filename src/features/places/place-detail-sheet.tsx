@@ -13,7 +13,10 @@ import {
 import { PlaceShareButton } from "@/features/places/place-share-button";
 import { PlacePriceReportForm } from "@/features/places/place-price-report-form";
 import { formatKrw } from "@/features/places/queries";
-import type { PlaceRecord } from "@/features/places/types";
+import type {
+  PlacePreviewRecord,
+  PlaceRecord,
+} from "@/features/places/types";
 
 type PlaceDetailResponse = {
   item: PlaceRecord;
@@ -25,7 +28,7 @@ type PlaceDetailSheetProps = {
   bookmarkedPlaceIds: string[];
   currentMapHref: string;
   placeId: string | null;
-  previewPlace: PlaceRecord | null;
+  previewPlace: PlacePreviewRecord | null;
   onClose: () => void;
   onPlaceReactionChange?: (nextState: PlaceReactionUpdate) => void;
 };
@@ -158,6 +161,8 @@ export function PlaceDetailSheet({
     ? `/report?placeId=${place.id}&placeName=${encodeURIComponent(place.name)}`
     : null;
   const reportHref = reportPath;
+  const placePriceItems = place?.priceItems ?? [];
+  const placeComments = place?.comments ?? [];
 
   const handleReactionUpdate = (nextState: PlaceReactionUpdate) => {
     setDetailState((current) => {
@@ -199,7 +204,7 @@ export function PlaceDetailSheet({
         role="dialog"
         aria-modal="true"
         data-testid="place-detail-sheet"
-        className="pointer-events-auto absolute inset-x-2 bottom-2 top-2 flex w-auto flex-col overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-2xl xl:inset-x-auto xl:inset-y-0 xl:right-0 xl:top-0 xl:w-full xl:max-h-none xl:max-w-[28rem] xl:rounded-l-[2rem] xl:rounded-r-none xl:border-l xl:border-r-0"
+        className="pointer-events-auto absolute inset-x-2 bottom-2 top-2 flex w-auto flex-col overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-2xl xl:inset-x-auto xl:inset-y-0 xl:right-0 xl:top-0 xl:w-full xl:max-h-none xl:max-w-[25.5rem] 2xl:max-w-[26.5rem] xl:rounded-l-[2rem] xl:rounded-r-none xl:border-l xl:border-r-0"
       >
         <div className="sticky top-0 z-10 border-b border-stone-200 bg-white/95 px-4 pb-4 pt-2 backdrop-blur sm:px-5">
           <div className="flex items-center justify-center pb-3 xl:hidden">
@@ -292,6 +297,7 @@ export function PlaceDetailSheet({
                 </div>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <BookmarkToggleButton
+                    key={`${place.id}:${isBookmarked ? "on" : "off"}`}
                     placeId={place.id}
                     initialBookmarked={isBookmarked}
                     loginHref={bookmarkLoginHref}
@@ -357,21 +363,21 @@ export function PlaceDetailSheet({
 
               <section className="rounded-[1.5rem] border border-stone-200 bg-white p-5">
                 <h4 className="text-sm font-semibold text-stone-900">가격 항목</h4>
-                {place.priceItems.length > 0 ? (
+                {placePriceItems.length > 0 ? (
                   <div className="mt-4 space-y-3">
-                    {place.priceItems.map((item) => (
+                    {placePriceItems.map((item) => (
                       <div
                         key={item.id}
                         className="rounded-[1.15rem] bg-stone-50 px-4 py-4"
                       >
-                        <div className="flex items-center justify-between gap-3">
-                          <div>
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="min-w-0">
                             <p className="font-medium text-stone-900">{item.label}</p>
                             <p className="mt-1 text-xs text-stone-500">
                               마지막 제보 {item.reportedAt}
                             </p>
                           </div>
-                          <div className="text-right">
+                          <div className="shrink-0 text-left sm:text-right">
                             <p className="font-semibold text-stone-900">
                               {formatKrw(item.amount)}원
                               {item.unitLabel ? ` / ${item.unitLabel}` : ""}
@@ -390,13 +396,13 @@ export function PlaceDetailSheet({
               <PlacePriceReportForm
                 key={`${place.id}-price-form`}
                 placeId={place.id}
-                suggestedItems={place.priceItems}
+                suggestedItems={placePriceItems}
               />
 
               <PlaceCommentsSection
                 key={`${place.id}-comments`}
                 placeId={place.id}
-                initialComments={place.comments}
+                initialComments={placeComments}
               />
             </div>
           ) : null}

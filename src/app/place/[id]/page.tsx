@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { SessionActionGroup } from "@/features/auth/session-action-group";
 import { BookmarkToggleButton } from "@/features/bookmarks/bookmark-toggle-button";
 import { listBookmarks } from "@/features/bookmarks/repository";
 import { getCategoryBySlug } from "@/features/categories/catalog";
@@ -88,27 +87,20 @@ export default async function PlacePage({ params }: PlacePageProps) {
   const isBookmarked = bookmarkResult.items.some(
     (bookmark) => bookmark.placeId === place.id,
   );
-  const placePath = `/place/${place.id}`;
   const bookmarkLoginHref = createLoginHref(`/place/${place.id}`);
-  const loginHref = createLoginHref(placePath);
   const reportPath = `/report?placeId=${place.id}&placeName=${encodeURIComponent(place.name)}`;
   const reportHref = reportPath;
 
   return (
     <main className="bg-stone-50 px-4 py-8 sm:px-6">
       <div className="mx-auto max-w-6xl">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Link
             href="/"
             className="altteulmap-button inline-flex whitespace-nowrap border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
           >
             목록으로 돌아가기
           </Link>
-          <SessionActionGroup
-            user={user}
-            loginHref={loginHref}
-            signOutCallbackUrl={placePath}
-          />
         </div>
         <section className="mt-6 rounded-[2rem] border border-stone-200 bg-white p-8 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -162,6 +154,7 @@ export default async function PlacePage({ params }: PlacePageProps) {
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <BookmarkToggleButton
+                  key={`${place.id}:${isBookmarked ? "on" : "off"}`}
                   placeId={place.id}
                   initialBookmarked={isBookmarked}
                   loginHref={bookmarkLoginHref}
@@ -194,15 +187,15 @@ export default async function PlacePage({ params }: PlacePageProps) {
                 {place.priceItems.map((item) => (
                   <div
                     key={item.id}
-                    className="flex items-center justify-between rounded-2xl border border-stone-200 bg-stone-50 px-4 py-4"
+                    className="flex flex-col gap-2 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
                   >
-                    <div>
+                    <div className="min-w-0">
                       <p className="font-medium text-stone-900">{item.label}</p>
                       <p className="mt-1 text-sm text-stone-500">
                         마지막 제보 {item.reportedAt}
                       </p>
                     </div>
-                    <div className="text-right">
+                    <div className="shrink-0 text-left sm:text-right">
                       <p className="font-semibold text-stone-900">
                         {formatKrw(item.amount)}원
                         {item.unitLabel ? ` / ${item.unitLabel}` : ""}

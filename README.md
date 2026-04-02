@@ -17,10 +17,10 @@ npm run dev
 
 로컬 개발 서버는 `webpack` 기반으로 실행되고 산출물을 `.next-dev`에 저장합니다. 반대로 `build`, `start`, Playwright E2E, Cloudflare 빌드는 계속 `.next` 또는 `.open-next`를 사용하므로, dev 서버를 띄운 채 빌드/검증을 돌려도 예전처럼 같은 `.next`를 공유하며 깨지지 않습니다.
 
-페이지 전환이 멈추거나 dev cache가 이상하면 아래처럼 dev 산출물만 비우고 다시 올리면 됩니다.
+페이지 전환이 멈추거나 dev cache가 이상하면 실행 중인 dev 서버를 먼저 내린 뒤, dev 산출물만 비우고 다시 올리면 됩니다.
 
 ```bash
-rm -rf .next-dev
+npm run dev:clean
 npm run dev
 ```
 
@@ -48,6 +48,7 @@ npm run preview
 ```
 
 - `dev`: Next.js 로컬 개발 서버 (`webpack`, `.next-dev`)
+- `dev:clean`: 로컬 dev 산출물 `.next-dev`만 수동 정리
 - `lint`: ESLint 검사
 - `build`: Next.js 프로덕션 빌드 (`.next`)
 - `verify`: 현재 프로젝트 기준 전체 기본 검증(`lint + build`)
@@ -62,10 +63,10 @@ npm run preview
 - `db:up`: 로컬 Postgres 컨테이너 시작
 - `db:generate`: Drizzle 마이그레이션 SQL 생성
 - `db:push`: 로컬/개발 DB에 스키마 반영
-- `db:seed`: 로컬 DB에 시드 데이터 입력 (`imported-goodprice.json`이 있으면 실제 착한가격업소 1000건 우선 사용)
-- `data:goodprice`: 행정안전부 `착한가격업소` 사이트에서 `1만원 이하` 실제 업소를 수집해 `src/features/places/imported-goodprice.json`과 `data/goodprice/import-meta.json` 생성
+- `db:seed`: 로컬 DB에 시드 데이터 입력 (`imported-goodprice.json`이 있으면 실제 착한가격업소 1000건을 우선 사용)
+- `data:goodprice`: 행정안전부 `착한가격업소` 사이트에서 `1만원 이하` 실제 업소를 수집해 `src/features/places/imported-goodprice.json`과 `data/goodprice/import-meta.json` 생성. 기본 quota는 `서울 500 + 비서울 500`, `음식점 70%`다
 - `db:down`: 로컬 Postgres 컨테이너 중지
-- `cf:clean`: Cloudflare 빌드 전 `.next`, `.next-dev`, `.open-next` 정리
+- `cf:clean`: Cloudflare 빌드 전 `.next`, `.open-next` 정리
 - `cf:build`: Cloudflare 배포용 clean build
 - `preview`: OpenNext로 Cloudflare Workers 런타임 미리보기
 - `preview:public`: 관리자 route를 제외한 public 앱 preview
@@ -117,7 +118,9 @@ npm run data:goodprice -- --delay-ms=50 --timeout-ms=10000
 npm run db:seed
 ```
 
-생성된 `src/features/places/imported-goodprice.json`은 mock fallback과 DB seed 양쪽에서 공통으로 우선 사용합니다. 수집 메타와 원본 업소 id/지역 분포는 `data/goodprice/import-meta.json`에 남습니다.
+기본 수집값은 `대표 가격 1만원 이하`, `서울 500 + 비서울 500`, `음식점 70%`입니다. 다른 분포가 필요하면 `--limit`, `--seoul-limit`, `--food-ratio`, `--max-price`를 함께 넘기면 됩니다.
+
+생성된 `src/features/places/imported-goodprice.json`은 mock fallback과 DB seed 양쪽에서 공통으로 우선 사용합니다. 수집 메타와 원본 업소 id, quota 결과, 지역/업종 분포는 `data/goodprice/import-meta.json`에 남습니다.
 
 기본 예시는 `.env.example`에 들어 있고, 로컬 `.env`도 같은 값으로 맞춰두었습니다.
 

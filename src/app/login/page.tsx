@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-import { BrandMark } from "@/components/brand-mark";
 import { listSocialAuthProviders } from "@/features/auth/repository";
 import { LoginForm } from "@/features/auth/login-form";
 import {
@@ -39,8 +38,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
   return (
     <main className="min-h-screen bg-stone-50 px-4 py-10 sm:px-6">
-      <section className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-[32rem] flex-col justify-center gap-6">
-        <BrandMark href="/" variant="compact" className="max-w-[12rem]" />
+      <section className="mx-auto flex min-h-[calc(100vh-8rem)] max-w-[32rem] flex-col justify-center gap-6">
         <LoginForm
           callbackUrl={callbackUrl}
           initialError={error}

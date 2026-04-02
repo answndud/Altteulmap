@@ -5,6 +5,8 @@ import path from "node:path";
 type CliOptions = {
   limit: number;
   maxPrice: number;
+  seoulLimit: number;
+  foodRatio: number;
   delayMs: number;
   timeoutMs: number;
   includeDetail: boolean;
@@ -87,9 +89,26 @@ type PlaceRecord = {
   }>;
 };
 
+type BucketKey =
+  | "seoulFood"
+  | "seoulNonFood"
+  | "nonSeoulFood"
+  | "nonSeoulNonFood";
+
+type QuotaTargets = Record<BucketKey, number>;
+type BucketCollections = Record<BucketKey, GoodpriceListItem[]>;
+
 const GOODPRICE_BASE_URL = "https://goodprice.go.kr";
 const LIST_PATH = "/bssh/bsshList.do";
 const DETAIL_PATH = "/bssh/bsshInfo.json";
+const FOOD_CATEGORY_NAMES = new Set([
+  "한식",
+  "일식",
+  "양식",
+  "중식",
+  "베이커리",
+  "기타요식업",
+]);
 
 function getKstDateStamp() {
   return new Intl.DateTimeFormat("sv-SE", {
@@ -103,6 +122,8 @@ function parseArgs(argv: string[]): CliOptions {
   const options: CliOptions = {
     limit: 1000,
     maxPrice: 10000,
+    seoulLimit: -1,
+    foodRatio: 0.7,
     delayMs: 120,
     timeoutMs: 15000,
     includeDetail: true,
@@ -117,19 +138,38 @@ function parseArgs(argv: string[]): CliOptions {
 
     const [flag, rawValue] = arg.slice(2).split("=", 2);
     const value = rawValue ?? "";
+    const numericValue = Number(value);
 
     switch (flag) {
       case "limit":
-        options.limit = Number(value) || options.limit;
+        if (Number.isFinite(numericValue) && numericValue > 0) {
+          options.limit = numericValue;
+        }
         break;
       case "max-price":
-        options.maxPrice = Number(value) || options.maxPrice;
+        if (Number.isFinite(numericValue) && numericValue > 0) {
+          options.maxPrice = numericValue;
+        }
+        break;
+      case "seoul-limit":
+        if (Number.isFinite(numericValue) && numericValue >= 0) {
+          options.seoulLimit = numericValue;
+        }
+        break;
+      case "food-ratio":
+        if (Number.isFinite(numericValue)) {
+          options.foodRatio = numericValue;
+        }
         break;
       case "delay-ms":
-        options.delayMs = Number(value) || options.delayMs;
+        if (Number.isFinite(numericValue) && numericValue >= 0) {
+          options.delayMs = numericValue;
+        }
         break;
       case "timeout-ms":
-        options.timeoutMs = Number(value) || options.timeoutMs;
+        if (Number.isFinite(numericValue) && numericValue > 0) {
+          options.timeoutMs = numericValue;
+        }
         break;
       case "include-detail":
         options.includeDetail = value !== "false";
@@ -143,6 +183,10 @@ function parseArgs(argv: string[]): CliOptions {
       default:
         break;
     }
+  }
+
+  if (options.seoulLimit < 0) {
+    options.seoulLimit = Math.min(500, Math.floor(options.limit / 2));
   }
 
   return options;
@@ -176,6 +220,10 @@ function cleanText(value: string | undefined) {
     .trim();
 }
 
+function normalizePriceLabel(label: string) {
+  return label.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
 function parsePrice(value: string) {
   const digits = value.replace(/[^\d]/g, "");
   return digits.length > 0 ? Number(digits) : Number.NaN;
@@ -192,6 +240,10 @@ function createStableId(...parts: string[]) {
 function getDistrict(address: string) {
   const tokens = address.split(/\s+/).filter(Boolean);
   return tokens.slice(0, 2).join(" ");
+}
+
+function isFoodCategory(categoryName: string) {
+  return FOOD_CATEGORY_NAMES.has(categoryName);
 }
 
 function mapCategorySlug(categoryName: string) {
@@ -455,34 +507,73 @@ function buildPriceItems(
           },
         ];
 
-  const deduped = new Map<string, PlacePriceItem>();
+  const deduped = new Map<
+    string,
+    PlacePriceItem & {
+      isDesignated: boolean;
+      matchesRepresentativeMenu: boolean;
+      matchesRepresentativeAmount: boolean;
+    }
+  >();
 
   for (const menu of sourceMenus) {
-    const key = `${menu.label}-${menu.amount}`;
-
-    if (deduped.has(key)) {
-      continue;
-    }
-
-    deduped.set(key, {
+    const normalizedLabel = normalizePriceLabel(menu.label);
+    const nextItem = {
       id: createStableId(item.bsshSn, menu.label, String(menu.amount)),
       label: menu.label,
       amount: menu.amount,
       verificationStatus: "verified",
       reportedAt: IMPORTED_AT,
-    });
+      isDesignated: menu.isDesignated,
+      matchesRepresentativeMenu: menu.label === item.representativeMenu,
+      matchesRepresentativeAmount:
+        menu.label === item.representativeMenu && menu.amount === item.price,
+    } satisfies PlacePriceItem & {
+      isDesignated: boolean;
+      matchesRepresentativeMenu: boolean;
+      matchesRepresentativeAmount: boolean;
+    };
+    const currentItem = deduped.get(normalizedLabel);
+
+    if (!currentItem) {
+      deduped.set(normalizedLabel, nextItem);
+      continue;
+    }
+
+    const shouldReplace =
+      (!currentItem.isDesignated && nextItem.isDesignated) ||
+      (!currentItem.matchesRepresentativeAmount &&
+        nextItem.matchesRepresentativeAmount) ||
+      (!currentItem.matchesRepresentativeMenu &&
+        nextItem.matchesRepresentativeMenu) ||
+      (currentItem.amount > nextItem.amount &&
+        currentItem.isDesignated === nextItem.isDesignated &&
+        currentItem.matchesRepresentativeAmount ===
+          nextItem.matchesRepresentativeAmount &&
+        currentItem.matchesRepresentativeMenu ===
+          nextItem.matchesRepresentativeMenu);
+
+    if (shouldReplace) {
+      deduped.set(normalizedLabel, nextItem);
+    }
   }
 
-  return Array.from(deduped.values());
+  return Array.from(deduped.values()).map((item) => ({
+    id: item.id,
+    label: item.label,
+    amount: item.amount,
+    verificationStatus: item.verificationStatus,
+    reportedAt: item.reportedAt,
+  }));
 }
 
-function toPlaceRecord(
+function findRepresentativePrice(
   item: GoodpriceListItem,
   detail: GoodpriceDetail,
+  priceItems: PlacePriceItem[],
   maxPrice: number,
-): PlaceRecord {
-  const priceItems = buildPriceItems(item, detail, maxPrice);
-  const representativePrice =
+) {
+  const representativeCandidate =
     detail.menus.find(
       (menu) => menu.isDesignated && menu.amount <= maxPrice,
     ) ??
@@ -494,6 +585,33 @@ function toPlaceRecord(
       amount: item.price,
       isDesignated: true,
     };
+  const normalizedRepresentativeLabel = normalizePriceLabel(
+    representativeCandidate.label,
+  );
+
+  return (
+    priceItems.find(
+      (priceItem) =>
+        normalizePriceLabel(priceItem.label) === normalizedRepresentativeLabel,
+    ) ?? {
+      label: representativeCandidate.label,
+      amount: representativeCandidate.amount,
+    }
+  );
+}
+
+function toPlaceRecord(
+  item: GoodpriceListItem,
+  detail: GoodpriceDetail,
+  maxPrice: number,
+): PlaceRecord {
+  const priceItems = buildPriceItems(item, detail, maxPrice);
+  const representativePrice = findRepresentativePrice(
+    item,
+    detail,
+    priceItems,
+    maxPrice,
+  );
 
   return {
     id: createSlug(item.bsshSn),
@@ -525,70 +643,220 @@ function toPlaceRecord(
   };
 }
 
+function buildQuotaTargets(options: CliOptions): QuotaTargets {
+  if (options.limit <= 0) {
+    throw new Error("`limit` must be greater than 0.");
+  }
+
+  if (options.seoulLimit < 0 || options.seoulLimit > options.limit) {
+    throw new Error("`seoul-limit` must be between 0 and `limit`.");
+  }
+
+  if (options.foodRatio < 0 || options.foodRatio > 1) {
+    throw new Error("`food-ratio` must be between 0 and 1.");
+  }
+
+  const nonSeoulLimit = options.limit - options.seoulLimit;
+  const seoulFood = Math.round(options.seoulLimit * options.foodRatio);
+  const nonSeoulFood = Math.round(nonSeoulLimit * options.foodRatio);
+
+  return {
+    seoulFood,
+    seoulNonFood: options.seoulLimit - seoulFood,
+    nonSeoulFood,
+    nonSeoulNonFood: nonSeoulLimit - nonSeoulFood,
+  };
+}
+
+function createBucketCollections(): BucketCollections {
+  return {
+    seoulFood: [],
+    seoulNonFood: [],
+    nonSeoulFood: [],
+    nonSeoulNonFood: [],
+  };
+}
+
+function getBucketCounts(collections: BucketCollections) {
+  return {
+    seoulFood: collections.seoulFood.length,
+    seoulNonFood: collections.seoulNonFood.length,
+    nonSeoulFood: collections.nonSeoulFood.length,
+    nonSeoulNonFood: collections.nonSeoulNonFood.length,
+  };
+}
+
+function getTotalCollected(collections: BucketCollections) {
+  return Object.values(collections).reduce((sum, items) => sum + items.length, 0);
+}
+
+function isQuotaSatisfied(
+  collections: BucketCollections,
+  targets: QuotaTargets,
+  bucket: BucketKey,
+) {
+  return collections[bucket].length >= targets[bucket];
+}
+
+function areAllQuotasSatisfied(
+  collections: BucketCollections,
+  targets: QuotaTargets,
+) {
+  return (Object.keys(targets) as BucketKey[]).every((bucket) =>
+    isQuotaSatisfied(collections, targets, bucket),
+  );
+}
+
+function getBucketKey(item: GoodpriceListItem) {
+  const isSeoul = item.regionName.includes("서울");
+  const isFood = isFoodCategory(item.categoryName);
+
+  if (isSeoul) {
+    return isFood ? "seoulFood" : "seoulNonFood";
+  }
+
+  return isFood ? "nonSeoulFood" : "nonSeoulNonFood";
+}
+
+function formatBucketProgress(
+  collections: BucketCollections,
+  targets: QuotaTargets,
+) {
+  const counts = getBucketCounts(collections);
+
+  return [
+    `서울 음식 ${counts.seoulFood}/${targets.seoulFood}`,
+    `서울 비음식 ${counts.seoulNonFood}/${targets.seoulNonFood}`,
+    `비서울 음식 ${counts.nonSeoulFood}/${targets.nonSeoulFood}`,
+    `비서울 비음식 ${counts.nonSeoulNonFood}/${targets.nonSeoulNonFood}`,
+  ].join(", ");
+}
+
+function buildSelectedItems(collections: BucketCollections) {
+  const buckets = [
+    collections.seoulFood,
+    collections.seoulNonFood,
+    collections.nonSeoulFood,
+    collections.nonSeoulNonFood,
+  ];
+  const selected: GoodpriceListItem[] = [];
+  let remaining = true;
+  let index = 0;
+
+  while (remaining) {
+    remaining = false;
+
+    for (const bucket of buckets) {
+      if (index < bucket.length) {
+        selected.push(bucket[index]);
+        remaining = true;
+      }
+    }
+
+    index += 1;
+  }
+
+  return selected;
+}
+
 async function main() {
   const options = parseArgs(process.argv.slice(2));
+  const quotaTargets = buildQuotaTargets(options);
   const firstPageHtml = (await fetchText(LIST_PATH, {
     pageIndex: "1",
     menuId: "MN-0103",
   }, options.timeoutMs)) as string;
 
   const regions = extractRegionOptions(firstPageHtml);
+  const seoulRegion = regions.find((region) => region.name.includes("서울"));
+
+  if (!seoulRegion) {
+    throw new Error("Failed to find the Seoul region option.");
+  }
+
+  const nonSeoulRegions = regions.filter((region) => region.code !== seoulRegion.code);
   const seenAddresses = new Set<string>();
-  const collected: GoodpriceListItem[] = [];
+  const collected = createBucketCollections();
   const pageState = new Map(
     regions.map((region) => [region.code, { nextPage: 1, done: false }]),
   );
+  let nonSeoulCursor = 0;
 
-  while (collected.length < options.limit) {
+  const collectFromRegion = async (region: RegionOption) => {
+    const state = pageState.get(region.code);
+
+    if (!state || state.done) {
+      return false;
+    }
+
+    const html =
+      ((await fetchText(LIST_PATH, {
+        pageIndex: String(state.nextPage),
+        menuId: "MN-0103",
+        srchCtpvCd: region.code,
+      }, options.timeoutMs)) as string);
+
+    const pageItems = parseListPage(html, state.nextPage, region);
+    state.nextPage += 1;
+
+    if (pageItems.length === 0) {
+      state.done = true;
+      return true;
+    }
+
+    const affordableItems = pageItems.filter(
+      (item) =>
+        item.price <= options.maxPrice &&
+        !seenAddresses.has(`${item.name}@@${item.address}`),
+    );
+
+    for (const item of affordableItems) {
+      const bucket = getBucketKey(item);
+
+      if (isQuotaSatisfied(collected, quotaTargets, bucket)) {
+        continue;
+      }
+
+      collected[bucket].push(item);
+      seenAddresses.add(`${item.name}@@${item.address}`);
+
+      const totalCollected = getTotalCollected(collected);
+
+      if (totalCollected > 0 && totalCollected % 100 === 0) {
+        console.log(
+          `Collected ${totalCollected}/${options.limit} places... (${formatBucketProgress(collected, quotaTargets)})`,
+        );
+      }
+    }
+
+    await sleep(options.delayMs);
+    return true;
+  };
+
+  while (!areAllQuotasSatisfied(collected, quotaTargets)) {
     let progressed = false;
 
-    for (const region of regions) {
-      if (collected.length >= options.limit) {
+    if (collected.seoulFood.length < quotaTargets.seoulFood || collected.seoulNonFood.length < quotaTargets.seoulNonFood) {
+      progressed = (await collectFromRegion(seoulRegion)) || progressed;
+    }
+
+    if (collected.nonSeoulFood.length < quotaTargets.nonSeoulFood || collected.nonSeoulNonFood.length < quotaTargets.nonSeoulNonFood) {
+      let attempts = 0;
+
+      while (attempts < nonSeoulRegions.length) {
+        const region = nonSeoulRegions[nonSeoulCursor % nonSeoulRegions.length];
+        nonSeoulCursor += 1;
+        attempts += 1;
+
+        const state = pageState.get(region.code);
+
+        if (!state || state.done) {
+          continue;
+        }
+
+        progressed = (await collectFromRegion(region)) || progressed;
         break;
       }
-
-      const state = pageState.get(region.code);
-
-      if (!state || state.done) {
-        continue;
-      }
-
-      const html =
-        ((await fetchText(LIST_PATH, {
-          pageIndex: String(state.nextPage),
-          menuId: "MN-0103",
-          srchCtpvCd: region.code,
-        }, options.timeoutMs)) as string);
-
-      const pageItems = parseListPage(html, state.nextPage, region);
-      state.nextPage += 1;
-      progressed = true;
-
-      if (pageItems.length === 0) {
-        state.done = true;
-        continue;
-      }
-
-      const affordableItems = pageItems.filter(
-        (item) =>
-          item.price <= options.maxPrice &&
-          !seenAddresses.has(`${item.name}@@${item.address}`),
-      );
-
-      for (const item of affordableItems) {
-        collected.push(item);
-        seenAddresses.add(`${item.name}@@${item.address}`);
-
-        if (collected.length >= options.limit) {
-          break;
-        }
-      }
-
-      if (collected.length > 0 && collected.length % 100 === 0) {
-        console.log(`Collected ${collected.length}/${options.limit} places...`);
-      }
-
-      await sleep(options.delayMs);
     }
 
     if (!progressed) {
@@ -596,7 +864,13 @@ async function main() {
     }
   }
 
-  const selected = collected.slice(0, options.limit);
+  if (!areAllQuotasSatisfied(collected, quotaTargets)) {
+    throw new Error(
+      `Failed to satisfy quota targets. ${formatBucketProgress(collected, quotaTargets)}`,
+    );
+  }
+
+  const selected = buildSelectedItems(collected);
   const detailMap = new Map<string, GoodpriceDetail>();
 
   if (options.includeDetail) {
@@ -630,6 +904,13 @@ async function main() {
     importedAt: new Date().toISOString(),
     options,
     selectedCount: selected.length,
+    quotas: {
+      seoulLimit: options.seoulLimit,
+      nonSeoulLimit: options.limit - options.seoulLimit,
+      foodRatio: options.foodRatio,
+      targets: quotaTargets,
+      actual: getBucketCounts(collected),
+    },
     regions: Array.from(
       selected.reduce((map, item) => {
         map.set(item.regionName, (map.get(item.regionName) ?? 0) + 1);

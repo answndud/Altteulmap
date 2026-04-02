@@ -5,6 +5,7 @@
   "scripts": {
     "build": "npm run admin:sync && rm -rf .next .next-dev && next build --webpack",
     "dev": "ALTTEULMAP_ADMIN_MODE=embedded npm run admin:sync && rm -rf .next-dev && next dev --webpack",
+    "dev:clean": "rm -rf .next-dev",
     "admin:sync": "node scripts/sync-admin-entrypoints.mjs",
     "admin:build": "npm_config_workspaces=false npm --prefix apps/admin run build",
     "admin:dev": "npm_config_workspaces=false npm --prefix apps/admin run dev",

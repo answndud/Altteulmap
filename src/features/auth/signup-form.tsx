@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { type SocialAuthProviderAvailability } from "@/features/auth/constants";
@@ -26,7 +25,6 @@ export function SignupForm({
   socialProviders,
   credentialsSignupEnabled,
 }: SignupFormProps) {
-  const router = useRouter();
   const [nickname, setNickname] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -85,8 +83,7 @@ export function SignupForm({
             return;
           }
 
-          router.replace(callbackUrl);
-          router.refresh();
+          window.location.assign(loginResult.url ?? callbackUrl);
         });
       }}
       data-testid="signup-form"

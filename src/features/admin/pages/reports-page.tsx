@@ -2,7 +2,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AccessDeniedPanel } from "@/components/access-denied-panel";
-import { SessionActionGroup } from "@/features/auth/session-action-group";
 import { AdminReportStatusForm } from "@/features/reports/admin-report-status-form";
 import { listReports } from "@/features/reports/repository";
 import {
@@ -89,7 +88,6 @@ export default async function AdminReportsPage() {
             >
               응답 보기
             </Link>
-            <SessionActionGroup user={user} signOutCallbackUrl="/" compact />
           </div>
         </div>
 
