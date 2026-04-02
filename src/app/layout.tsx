@@ -15,28 +15,6 @@ export const metadata: Metadata = {
     template: `%s | ${siteName}`,
   },
   description: siteDescription,
-  applicationName: siteName,
-  keywords: [
-    "알뜰맵",
-    "가성비 지도",
-    "저렴한 식당",
-    "생활비 절약",
-    "학생 식당",
-    "문구 프린트",
-  ],
-  openGraph: {
-    type: "website",
-    locale: "ko_KR",
-    siteName,
-    title: siteName,
-    description: siteDescription,
-    url: "/",
-  },
-  twitter: {
-    card: "summary",
-    title: siteName,
-    description: siteDescription,
-  },
 };
 
 export default function RootLayout({

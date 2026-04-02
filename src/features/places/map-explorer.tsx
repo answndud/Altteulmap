@@ -18,7 +18,6 @@ import type {
   PlaceBounds,
   PlaceRecord,
   PlaceSearchScope,
-  PlaceSort,
 } from "@/features/places/types";
 
 type MapExplorerProps = {
@@ -32,7 +31,6 @@ type MapExplorerProps = {
   query: string | null;
   searchScope: PlaceSearchScope;
   selectedCategoryLabel: string | null;
-  sort: PlaceSort;
 };
 
 type MapPlacesResponse = {
@@ -44,7 +42,6 @@ type MapPlacesResponse = {
     maxPrice: number | null;
     query: string | null;
     searchScope: PlaceSearchScope;
-    sort: PlaceSort;
   };
   items: PlaceRecord[];
 };
@@ -214,7 +211,6 @@ function buildMapQuery(params: {
   maxPrice: number | null;
   query: string | null;
   searchScope: PlaceSearchScope;
-  sort: PlaceSort;
 }) {
   const search = new URLSearchParams();
 
@@ -236,10 +232,6 @@ function buildMapQuery(params: {
 
   if (params.maxPrice) {
     search.set("maxPrice", String(params.maxPrice));
-  }
-
-  if (params.sort !== "price") {
-    search.set("sort", params.sort);
   }
 
   return search.toString();
@@ -269,7 +261,6 @@ export function MapExplorer({
   query,
   searchScope,
   selectedCategoryLabel,
-  sort,
 }: MapExplorerProps) {
   const [visiblePlaces, setVisiblePlaces] = useState(places);
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
@@ -317,7 +308,6 @@ export function MapExplorer({
       maxPrice,
       query,
       searchScope,
-      sort,
     });
 
     fetch(`/api/places/map?${search}`, {
@@ -353,7 +343,7 @@ export function MapExplorer({
     return () => {
       controller.abort();
     };
-  }, [activeBounds, boundsKey, category, maxPrice, query, searchScope, sort]);
+  }, [activeBounds, boundsKey, category, maxPrice, query, searchScope]);
 
   const handlePlaceSelect = (placeId: string) => {
     setSelectedPlaceId(placeId);
@@ -395,7 +385,7 @@ export function MapExplorer({
             activePlaceId={resolvedSelectedPlaceId}
             focusPlacesKey={
               query && searchScope === "global"
-                ? `${query}:${category ?? "all"}:${maxPrice ?? "all"}:${sort}`
+                ? `${query}:${category ?? "all"}:${maxPrice ?? "all"}`
                 : null
             }
             onSelectPlace={handlePlaceSelect}

@@ -56,20 +56,3 @@ test("지도 검색, 상세 시트, 비회원 좋아요, 공유, 닫기 흐름",
   await expect(detailSheet).toBeHidden();
   await expect(page.getByTestId("map-panel-shell")).toBeVisible();
 });
-
-test("좋아요순 정렬에서 목록 좋아요 수가 내림차순이다", async ({ page }) => {
-  await page.goto("/");
-
-  await page.getByTestId("sort-option-likes").click();
-  await expect(page).toHaveURL(/sort=likes/);
-  await expect(page.getByTestId("place-list")).toBeVisible();
-
-  const counts = await page
-    .locator("[data-testid^='place-list-like-count-']")
-    .allTextContents();
-  const numericCounts = counts.map((value) => parseCount(value));
-  const sortedCounts = [...numericCounts].sort((left, right) => right - left);
-
-  expect(numericCounts.length).toBeGreaterThan(1);
-  expect(numericCounts).toEqual(sortedCounts);
-});

@@ -1,6 +1,4 @@
 import { revalidatePath } from "next/cache";
-import { NextResponse } from "next/server";
-
 import { setPlaceReaction } from "@/features/places/repository";
 import { placeReactionSchema } from "@/features/places/reaction-schema";
 import { consumeRateLimit } from "@/lib/rate-limit";
@@ -30,7 +28,7 @@ export async function PUT(request: Request, context: RouteContext) {
   });
 
   if (!rateLimit.ok) {
-    const response = NextResponse.json(
+    const response = Response.json(
       {
         ok: false,
         message: "반응 요청이 너무 빠릅니다. 잠시 후 다시 시도해주세요.",
@@ -50,7 +48,7 @@ export async function PUT(request: Request, context: RouteContext) {
   const parsed = placeReactionSchema.safeParse(body);
 
   if (!parsed.success) {
-    const response = NextResponse.json(
+    const response = Response.json(
       {
         ok: false,
         message: "반응 입력값 검증에 실패했습니다.",
@@ -88,7 +86,7 @@ export async function PUT(request: Request, context: RouteContext) {
     revalidatePath("/api/places/map");
   }
 
-  const response = NextResponse.json(result, { status: result.ok ? 200 : 404 });
+  const response = Response.json(result, { status: result.ok ? 200 : 404 });
 
   if (!user && visitorId) {
     setVisitorIdCookie(response, visitorId, request.url);

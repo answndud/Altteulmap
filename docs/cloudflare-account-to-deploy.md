@@ -15,6 +15,7 @@
 - 배포 명령은 이미 준비되어 있다.
   - `npm run preview`
   - `npm run deploy`
+  - 필요 시 `npm run deploy:public`, `npm run deploy:admin`
 - 현재 앱은 Cloudflare D1이 아니라 외부 PostgreSQL 연결 문자열 `DATABASE_URL`을 사용한다.
 - 현재 앱은 Hyperdrive binding을 쓰지 않는다.
   - 첫 배포는 `DATABASE_URL` 직접 연결로 진행하고, Hyperdrive는 나중에 별도 작업으로 붙이는 편이 안전하다.
@@ -102,6 +103,10 @@ npx wrangler login
 
 현재 저장소는 `npm run deploy` 시 로컬에서 OpenNext build를 만든 뒤 Cloudflare로 업로드한다.
 
+현재 배포 경로는 Cloudflare Workers Free 한도 기준으로 `next build --webpack`과 clean build를 전제로 맞춰져 있다.
+- `npm run deploy`는 내부적으로 `cf:clean -> opennextjs-cloudflare build -> opennextjs-cloudflare deploy` 순서로 실행된다.
+- 직접 배포할 때는 `.next`, `.open-next`를 남긴 채 재사용하지 않는 것이 안전하다.
+
 즉 환경 변수는 두 군데가 모두 중요하다.
 
 ### A. 로컬 빌드 환경 변수
@@ -132,6 +137,7 @@ npx wrangler login
 DATABASE_URL=
 AUTH_SECRET=
 NEXTAUTH_URL=
+ADMIN_APP_URL=
 NEXT_PUBLIC_NAVER_MAP_KEY_ID=
 AUTH_KAKAO_CLIENT_ID=
 AUTH_KAKAO_CLIENT_SECRET=
@@ -161,6 +167,7 @@ RESEND_API_KEY=
   - `AUTH_KAKAO_CLIENT_ID`
   - `AUTH_NAVER_CLIENT_ID`
   - `NEXTAUTH_URL`
+  - `ADMIN_APP_URL`
 
 ## 7. `NEXTAUTH_URL`을 어떻게 잡을지
 
@@ -230,6 +237,17 @@ npm run deploy
 2. Cloudflare Worker deploy
 
 를 순서대로 수행한다.
+
+관리자 앱을 public 앱과 분리해서 운영할 계획이면 아래 순서를 쓴다.
+
+```bash
+npm run deploy:admin
+# altteulmap-admin workers.dev 주소 확인
+# ADMIN_APP_URL에 위 주소 반영
+npm run deploy:public
+```
+
+이때 `deploy:public`은 `ADMIN_APP_URL`이 비어 있으면 실패한다. public 번들에서 `/admin`, `/api/admin`을 제거하는 대신 관리자 링크를 외부 관리자 앱으로 보내기 때문이다.
 
 공식 문서:
 - [Cloudflare Next.js guide](https://developers.cloudflare.com/workers/framework-guides/web-apps/nextjs/)

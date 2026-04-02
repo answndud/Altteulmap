@@ -2,9 +2,6 @@ import { z } from "zod";
 
 import { normalizePriceLabel } from "@/features/places/normalization";
 
-export const placeSubmissionCoordinateRequirementMessage =
-  "주소 위치를 확인해 좌표를 지정해주세요.";
-
 function normalizeCoordinateInput(value: unknown) {
   if (value === "" || value === null || value === undefined) {
     return undefined;
@@ -16,32 +13,6 @@ function normalizeCoordinateInput(value: unknown) {
 
   return value;
 }
-
-const requiredLatitudeSchema = z.preprocess(
-  normalizeCoordinateInput,
-  z
-    .number({
-      error: (issue) =>
-        issue.input === undefined
-          ? placeSubmissionCoordinateRequirementMessage
-          : "위도 범위가 올바르지 않습니다.",
-    })
-    .min(-90, "위도 범위가 올바르지 않습니다.")
-    .max(90, "위도 범위가 올바르지 않습니다."),
-);
-
-const requiredLongitudeSchema = z.preprocess(
-  normalizeCoordinateInput,
-  z
-    .number({
-      error: (issue) =>
-        issue.input === undefined
-          ? placeSubmissionCoordinateRequirementMessage
-          : "경도 범위가 올바르지 않습니다.",
-    })
-    .min(-180, "경도 범위가 올바르지 않습니다.")
-    .max(180, "경도 범위가 올바르지 않습니다."),
-);
 
 const optionalLatitudeSchema = z.preprocess(
   normalizeCoordinateInput,
@@ -107,8 +78,6 @@ const placeSubmissionBaseSchema = z.object({
     .trim()
     .min(1, "지역 구분을 입력해주세요.")
     .max(80, "지역 구분은 80자 이하로 입력해주세요."),
-  latitude: optionalLatitudeSchema,
-  longitude: optionalLongitudeSchema,
   note: z
     .string()
     .trim()
@@ -142,56 +111,17 @@ function refinePlaceSubmissionLabels(
   });
 }
 
-function refineOptionalCoordinatePair(
-  value: z.infer<typeof placeSubmissionBaseSchema>,
-  context: z.RefinementCtx,
-) {
-  const hasLatitude = typeof value.latitude === "number";
-  const hasLongitude = typeof value.longitude === "number";
-
-  if (hasLatitude !== hasLongitude) {
-    context.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "위도와 경도는 함께 입력해주세요.",
-      path: [hasLatitude ? "longitude" : "latitude"],
-    });
-  }
-}
-
 export const placeSubmissionFormSchema = placeSubmissionBaseSchema.superRefine(
-  (value, context) => {
-    refinePlaceSubmissionLabels(value, context);
-    refineOptionalCoordinatePair(value, context);
-  },
+  refinePlaceSubmissionLabels,
 );
 
-export const placeSubmissionSchema = placeSubmissionBaseSchema
-  .extend({
-    latitude: requiredLatitudeSchema,
-    longitude: requiredLongitudeSchema,
-  })
-  .superRefine((value, context) => {
-    refinePlaceSubmissionLabels(value, context);
-
-    if (
-      typeof value.latitude !== "number" ||
-      typeof value.longitude !== "number"
-    ) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "주소 위치를 확인해 좌표를 지정해주세요.",
-        path: [
-          typeof value.latitude !== "number" ? "latitude" : "longitude",
-        ],
-      });
-    }
-  });
+export const placeSubmissionSchema = placeSubmissionFormSchema;
 
 export const placeModerationSchema = z
   .object({
     decision: z.enum(["approve", "reject"]),
-    latitude: z.coerce.number().min(-90).max(90).optional(),
-    longitude: z.coerce.number().min(-180).max(180).optional(),
+    latitude: optionalLatitudeSchema,
+    longitude: optionalLongitudeSchema,
   })
   .superRefine((value, context) => {
     if (value.decision === "approve") {

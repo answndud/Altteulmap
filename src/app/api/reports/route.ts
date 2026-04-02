@@ -1,5 +1,3 @@
-import { NextResponse } from "next/server";
-
 import { createReportSubmission } from "@/features/reports/repository";
 import { reportSubmissionSchema } from "@/features/reports/schema";
 import {
@@ -19,7 +17,7 @@ export async function POST(request: Request) {
   });
 
   if (!rateLimit.ok) {
-    const response = NextResponse.json(
+    const response = Response.json(
       {
         ok: false,
         message: "신고 요청이 너무 빠릅니다. 잠시 후 다시 시도해주세요.",
@@ -37,7 +35,7 @@ export async function POST(request: Request) {
   const parsed = reportSubmissionSchema.safeParse(body);
 
   if (!parsed.success) {
-    const response = NextResponse.json(
+    const response = Response.json(
       {
         ok: false,
         message: "신고 입력값 검증에 실패했습니다.",
@@ -51,7 +49,7 @@ export async function POST(request: Request) {
     return response;
   }
 
-  const response = NextResponse.json(
+  const response = Response.json(
     await createReportSubmission(parsed.data, actor.user?.id ?? null),
   );
   setPublicWriteActorCookie(response, actor, request);

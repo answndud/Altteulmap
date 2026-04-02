@@ -1,0 +1,9 @@
+{
+  "name": "altteulmap-admin",
+  "private": true,
+  "scripts": {
+    "build": "rm -rf .next .next-dev && node ../../node_modules/next/dist/bin/next build --webpack",
+    "dev": "rm -rf .next-dev && node ../../node_modules/next/dist/bin/next dev --webpack -p 3001",
+    "start": "node ../../node_modules/next/dist/bin/next start -p 3001"
+  }
+}

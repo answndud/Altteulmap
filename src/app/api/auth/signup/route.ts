@@ -1,5 +1,3 @@
-import { NextResponse } from "next/server";
-
 import { createCredentialsUser } from "@/features/auth/repository";
 import { credentialsSignupSchema } from "@/features/auth/schema";
 import { consumeRateLimit } from "@/lib/rate-limit";
@@ -18,7 +16,7 @@ export async function POST(request: Request) {
   });
 
   if (!rateLimit.ok) {
-    return NextResponse.json(
+    return Response.json(
       {
         ok: false,
         message: "회원가입 요청이 너무 빠릅니다. 잠시 후 다시 시도해주세요.",
@@ -33,7 +31,7 @@ export async function POST(request: Request) {
   const parsed = credentialsSignupSchema.safeParse(body);
 
   if (!parsed.success) {
-    return NextResponse.json(
+    return Response.json(
       {
         ok: false,
         message: "회원가입 입력값 검증에 실패했습니다.",
@@ -49,9 +47,9 @@ export async function POST(request: Request) {
     ? 201
     : result.message.includes("이미 가입된 이메일")
       ? 409
-      : result.message.includes("DB 연결")
+      : result.message.includes("데이터 연결")
         ? 503
         : 500;
 
-  return NextResponse.json(result, { status });
+  return Response.json(result, { status });
 }

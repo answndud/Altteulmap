@@ -17,6 +17,10 @@
 
 # next.js
 /.next/
+/.next-dev/
+/apps/admin/.next/
+/apps/admin/.next-dev/
+/apps/admin/.open-next/
 /out/
 
 # production
@@ -45,6 +49,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+/apps/admin/next-env.d.ts
 
 # OpenNext
 .open-next
