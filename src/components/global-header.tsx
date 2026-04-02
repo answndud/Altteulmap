@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 import { BrandMark } from "@/components/brand-mark";
 import { SignOutButton } from "@/features/auth/sign-out-button";
@@ -44,10 +44,7 @@ export function GlobalHeader({
   user,
 }: GlobalHeaderProps) {
   const pathname = usePathname() ?? "/";
-  const searchParams = useSearchParams();
-  const query = searchParams.toString();
-  const currentHref = query ? `${pathname}?${query}` : pathname;
-  const loginHref = createLoginHref(currentHref);
+  const loginHref = createLoginHref(pathname);
   const bookmarksHref = user ? "/bookmarks" : createLoginHref("/bookmarks");
   const submitHref = "/submit";
 
@@ -67,7 +64,7 @@ export function GlobalHeader({
             운영자 관리
           </Link>
           {user ? (
-            <SignOutButton callbackUrl={currentHref} compact />
+            <SignOutButton callbackUrl={pathname} compact />
           ) : (
             <Link href={loginHref} className={getNavClassName(pathname === "/login")}>
               로그인
