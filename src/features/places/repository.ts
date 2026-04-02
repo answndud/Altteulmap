@@ -697,14 +697,14 @@ async function loadDatabaseMapPlaceRows(params: {
   limit?: number;
 }) {
   const db = getDb();
-  let queryBuilder = db
+  const queryBuilder = db
     .select(mapPlaceSelectFields)
     .from(places)
     .where(params.whereClause)
     .orderBy(...getDatabaseMapPlaceOrder(params.sort));
 
   if (typeof params.limit === "number") {
-    queryBuilder = queryBuilder.limit(params.limit);
+    return queryBuilder.limit(params.limit);
   }
 
   return queryBuilder;
@@ -1218,79 +1218,59 @@ async function listDatabaseMapPlaces({
   query,
   zoom = null,
 }: PlaceQuery = {}): Promise<PlacePreviewListResult> {
-  const db = getDb();
-  const conditions = [
-    eq(places.status, "active"),
-    isNotNull(places.latitude),
-    isNotNull(places.longitude),
-  ];
   const normalizedQuery = query?.trim();
-
-  if (maxPrice) {
-    conditions.push(lte(places.representativePriceAmount, maxPrice));
-  }
-
-  if (category) {
-    conditions.push(eq(places.primaryCategorySlug, category));
-  }
-
-  if (normalizedQuery) {
-    const queryPattern = `%${normalizedQuery}%`;
-
-    conditions.push(
-      or(
-        ilike(places.name, queryPattern),
-        ilike(places.businessName, queryPattern),
-        ilike(places.roadAddress, queryPattern),
-        ilike(places.district, queryPattern),
-        ilike(places.representativePriceLabel, queryPattern),
-        ilike(places.description, queryPattern),
-        ilike(places.note, queryPattern),
-      )!,
-    );
-  }
-
-  if (bounds) {
-    conditions.push(gte(places.latitude, bounds.minLat));
-    conditions.push(lte(places.latitude, bounds.maxLat));
-    conditions.push(gte(places.longitude, bounds.minLng));
-    conditions.push(lte(places.longitude, bounds.maxLng));
-  }
-
-  const rows = await db
+  const whereClause = getDatabaseMapPlaceWhereClause({
+    category,
+    maxPrice,
+    bounds,
+    normalizedQuery,
+  });
+  const db = getDb();
+  const [countRow] = await db
     .select({
-      internalId: places.id,
-      slug: places.slug,
-      name: places.name,
-      businessName: places.businessName,
-      description: places.description,
-      note: places.note,
-      roadAddress: places.roadAddress,
-      district: places.district,
-      latitude: places.latitude,
-      longitude: places.longitude,
-      primaryCategorySlug: places.primaryCategorySlug,
-      representativePriceAmount: places.representativePriceAmount,
-      representativePriceLabel: places.representativePriceLabel,
-      likeCount: places.likeCount,
-      dislikeCount: places.dislikeCount,
-      verifiedPriceItemCount: places.verifiedPriceItemCount,
-      lastPriceUpdatedAt: places.lastPriceUpdatedAt,
+      count: sql<number>`count(*)::int`,
     })
     .from(places)
-    .where(and(...conditions))
-    .orderBy(
-      ...(sort === "recent"
-        ? [desc(places.lastPriceUpdatedAt), desc(places.updatedAt)]
-        : [asc(places.representativePriceAmount), desc(places.updatedAt)]),
-    );
+    .where(whereClause);
+  const count = countRow?.count ?? 0;
 
-  const mapped = sortPlaceRecords(
-    rows
-      .map((row) => toPlacePreviewRecord(row, row.primaryCategorySlug))
-      .filter((place) => (category ? place.categorySlug === category : true)),
+  if (bounds && !normalizedQuery) {
+    const itemRows = await loadDatabaseMapPlaceRows({
+      whereClause,
+      sort,
+      limit: MAP_LIST_RESPONSE_LIMIT,
+    });
+    const items = toPlacePreviewRecords(itemRows);
+    const markerLimit = getMapMarkerLimit(zoom, null);
+    const mapMarkers =
+      count <= markerLimit
+        ? toPlacePreviewRecords(
+            await loadDatabaseMapPlaceRows({
+              whereClause,
+              sort,
+              limit: markerLimit,
+            }),
+          ).map((place) => toMapPlaceMarkerRecord(place))
+        : await loadDatabaseMapTileMarkers({
+            whereClause,
+            bounds,
+            zoom,
+          });
+
+    return {
+      items,
+      mapMarkers,
+      bounds,
+      count,
+      source: "database",
+    };
+  }
+
+  const rows = await loadDatabaseMapPlaceRows({
+    whereClause,
     sort,
-  );
+  });
+  const mapped = sortPlaceRecords(toPlacePreviewRecords(rows), sort);
   const boundsForResult =
     mapped.length > 0 ? getBoundsFromPlaces(mapped) : bounds ?? getMapBounds();
   const items = getCappedMapListItems(mapped);
@@ -1305,7 +1285,7 @@ async function listDatabaseMapPlaces({
     items,
     mapMarkers,
     bounds: boundsForResult,
-    count: mapped.length,
+    count,
     source: "database",
   };
 }
