@@ -24,6 +24,22 @@
 
 ## 실행 로그
 
+### 2026-04-03 16:42 KST: 공개 UI 밀도 정리 커밋 푸시와 public Cloudflare 배포
+- 완료 내용
+  - 공개 UI 밀도 정리 변경은 `feat(ui): tighten public layout density` (`7a898e1`)로 커밋해 `codex/ui-polish-batch` 브랜치에 push했다.
+  - 첫 deploy 시 clean build에서 `/Users/alex/project/altteulmap/src/features/map/map-page.tsx`가 import하는 `/Users/alex/project/altteulmap/src/features/map/route-reset-details.tsx`가 커밋에서 빠져 있어 public worker build가 실패했다.
+  - 누락 파일을 복원해 `fix(build): restore route reset details` (`82c8b88`)로 추가 커밋한 뒤 같은 브랜치에 다시 push했고, 그 커밋 기준으로 public worker를 재배포했다.
+- 검증 결과
+  - `git push origin codex/ui-polish-batch` 통과
+  - `npm run deploy:check` 통과
+  - `npm run deploy:public` 통과
+  - `curl -I --max-time 20 https://altteulmap.altteul-lab.workers.dev/` 결과 `200`
+  - 배포 URL: `https://altteulmap.altteul-lab.workers.dev`
+  - Cloudflare version id: `0d99da66-1b53-464b-837f-5f90093ae4fb`
+- 메모
+  - 실제 live runtime은 `82c8b88` 기준이다.
+  - deploy 직전에는 `git stash push --keep-index -u -m 'codex-temp-ui-ship-20260403'`로 unrelated 미커밋 변경을 잠시 분리해 clean commit 기준으로 build/deploy를 수행했다.
+
 ### 2026-04-03 16:35 KST: 공개 UI 후속으로 헤더 1줄화, 홈 map-first 재배치, auth/등록 화면 감량
 - 완료 내용
   - `/Users/alex/project/altteulmap/src/components/global-header.tsx`, `/Users/alex/project/altteulmap/src/components/brand-mark.tsx`에서 모바일 헤더를 줄바꿈 없는 단일 행 구조로 바꿨다. 액션 버튼은 모바일에서 짧은 라벨과 가로 스크롤 행으로 정리했고, 인증 화면에서는 중복되는 `로그인` 버튼을 헤더에서 숨기도록 조정했다.
