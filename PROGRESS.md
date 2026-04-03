@@ -24,6 +24,18 @@
 
 ## 실행 로그
 
+### 2026-04-03 13:18 KST: 모바일 지도 UX 후속 커밋 푸시와 public Cloudflare 배포
+- 완료 내용
+  - 모바일 지도 시트 후속 수정은 `fa1d3aa` (`feat(ui): refine mobile map sheets`) 커밋으로 정리해 `codex/ui-polish-batch` 브랜치에 push했다.
+  - public worker는 커밋 상태만 배포되도록 나머지 미커밋 변경을 임시로 분리한 뒤 `npm run deploy:check`, `npm run deploy:public` 순서로 배포했다.
+- 검증 결과
+  - `npm run deploy:check` 통과
+  - `npm run deploy:public` 통과
+  - 배포 URL: `https://altteulmap.altteul-lab.workers.dev`
+  - Cloudflare version id: `aa70be6e-ceb3-4d6a-aace-90015b38d53c`
+- 메모
+  - 배포 후 원래 워크트리의 미커밋 변경은 다시 복원했다. 현재 public 배포본은 `fa1d3aa` 기준이고, 그 외 로컬 미커밋 변경은 아직 push/deploy 범위에 포함되지 않는다.
+
 ### 2026-04-03 13:10 KST: 모바일 지도 시트 레이어, bottom-sheet 비율, 저줌 마커 정책 후속 정리
 - 완료 내용
   - `/Users/alex/project/altteulmap/src/app/globals.css`에 모바일 시트 공용 safe-area 규칙을 추가해 목록/상세 시트를 `top-2/bottom-2` 전체 오버레이가 아니라 bottom-sheet 최대 높이 기준으로 다루도록 바꿨다.
