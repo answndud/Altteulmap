@@ -28,11 +28,17 @@
 - 완료 내용
   - `/Users/alex/project/altteulmap/src/features/places/map-explorer.tsx`에 모바일 marker 표시 정책을 다시 넣되, 이전 회귀처럼 광범위하게 숨기지 않도록 임계 zoom을 낮췄다. 이제 모바일 `viewport + 무검색 + 선택된 place 없음 + cluster 존재` 상태에서만 `zoom <= 10.75`일 때 cluster marker만 우선 노출한다.
   - 따라서 initial/zoom-out overview에서는 개별 place marker가 화면에 과도하게 남지 않고 cluster 중심 개요로 돌아가며, `zoom > 10.75` 구간에서는 서버가 내려준 place marker를 그대로 보여 줘서 확대 후에도 다시 숫자만 남던 이전 회귀를 피한다.
+  - 수정은 `fix(map): re-cluster mobile markers on zoom out` (`25971e1`) 커밋으로 정리해 `codex/ui-polish-batch` 브랜치에 push했고, public worker를 다시 배포했다.
 - 검증 결과
   - `npm run verify:quick` 통과
   - `npm run verify` 통과
     - build 중 `sitemap.xml` 단계에서 production DB에 `places` 테이블이 없을 때 mock fallback 로그는 기존과 동일하게 남지만, 빌드 자체는 성공
   - `USE_MOCK_DATA=true npx playwright test tests/e2e/map.mobile.spec.ts --project mobile-chromium` 통과
+  - `npm run deploy:check` 통과
+  - `npm run deploy:public` 통과
+  - `curl -I https://altteulmap.altteul-lab.workers.dev/` 결과 `200`
+  - 배포 URL: `https://altteulmap.altteul-lab.workers.dev`
+  - Cloudflare version id: `9c902b78-24ff-428a-b9b0-904142594238`
 - 메모
   - 이번 수정은 clean HEAD 기준으로 커밋/배포한 뒤, 원래 워크트리 변경을 다시 복원하는 방식으로 처리한다.
 
