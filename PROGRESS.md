@@ -24,6 +24,30 @@
 
 ## 실행 로그
 
+### 2026-04-03 18:59 KST: public worker wide viewport map API와 middleware manifest runtime hotfix 복구
+- 완료 내용
+  - `/tmp/altteulmap-public-map-fix/scripts/patch-next-cloudflare-runtime.mjs`를 추가해 Cloudflare build 직전 `node_modules/next/dist/server/next-server.js`, `node_modules/next/dist/esm/server/next-server.js`의 `getMiddlewareManifest()`를 패치하도록 정리했다.
+  - manifest 파일이 worker 런타임의 `/.next/server/middleware-manifest.json` 경로에 없을 때는 `null`로 안전하게 빠지도록 바꿔, public worker preview/live가 모든 요청에서 500으로 죽던 회귀를 막았다.
+  - `/tmp/altteulmap-public-map-fix/scripts/build-public-worker.mjs`, `/tmp/altteulmap-public-map-fix/scripts/build-admin-worker.mjs`, `/tmp/altteulmap-public-map-fix/package.json`에 공통 patch step을 연결해 이후 OpenNext public/admin/common build에서도 같은 런타임 회귀가 다시 생기지 않게 했다.
+  - 이미 브랜치에 올라가 있던 `/tmp/altteulmap-public-map-fix/src/features/places/repository.ts`의 wide viewport marker hotfix(`071e639`)와 함께 public worker를 재배포했다. 이 조합으로 wide viewport `/api/places/map`의 Workers `1101` 응답이 실제 live에서 해소됐다.
+- 검증 결과
+  - `npm run cf:patch-next-runtime` 통과
+  - `AUTH_SECRET=altteulmap-build-secret-change-me NEXTAUTH_URL=https://altteulmap.altteul-lab.workers.dev SITE_URL=https://altteulmap.altteul-lab.workers.dev ADMIN_APP_URL=https://altteulmap-admin.altteul-lab.workers.dev USE_MOCK_DATA=true npm run preview:public` 후
+    - `curl http://127.0.0.1:8787/` 결과 `200`
+    - `curl 'http://127.0.0.1:8787/api/places/map?minLat=37.4133&maxLat=37.7151&minLng=126.7341&maxLng=127.2693&zoom=12'` 결과 `200` JSON
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+  - `AUTH_SECRET=altteulmap-build-secret-change-me NEXTAUTH_URL=https://altteulmap.altteul-lab.workers.dev SITE_URL=https://altteulmap.altteul-lab.workers.dev ADMIN_APP_URL=https://altteulmap-admin.altteul-lab.workers.dev npm run deploy:public` 통과
+  - live 검증
+    - `curl -I https://altteulmap.altteul-lab.workers.dev/` 결과 `200`
+    - `curl -I 'https://altteulmap.altteul-lab.workers.dev/api/places/map?minLat=37.4133&maxLat=37.7151&minLng=126.7341&maxLng=127.2693&zoom=12'` 결과 `200`
+    - 같은 JSON 응답 기준 `count=500`, `returnedCount=120`, `mapMarkerCount=24`, `cluster=21`, `place=3`
+  - 배포 URL: `https://altteulmap.altteul-lab.workers.dev`
+  - Cloudflare version id: `bf9a3b0e-1067-40ce-a7f7-abe4f92105f5`
+- 메모
+  - 로컬 `deploy:check`는 현재 shell에 운영용 `DATABASE_URL`, OAuth, 네이버 지도 key가 없어 실패했지만, actual deploy/runtime env는 Cloudflare에 저장된 값을 사용하므로 public deploy 자체는 정상 수행됐다.
+  - 이번 hotfix 범위는 `wide viewport map API 1101`과 `middleware-manifest` 런타임 500 복구다. 모바일 브라우저에서 실제 마커 표시 체감은 live bundle 새로고침 후 다시 확인하면 된다.
+
 ### 2026-04-03 16:42 KST: 공개 UI 밀도 정리 커밋 푸시와 public Cloudflare 배포
 - 완료 내용
   - 공개 UI 밀도 정리 변경은 `feat(ui): tighten public layout density` (`7a898e1`)로 커밋해 `codex/ui-polish-batch` 브랜치에 push했다.
