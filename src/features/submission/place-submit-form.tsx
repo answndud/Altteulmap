@@ -91,18 +91,18 @@ export function PlaceSubmitForm() {
     <div
       className={
         submitResult
-          ? "grid gap-6 lg:grid-cols-[1.2fr_0.8fr]"
+          ? "grid gap-5 lg:grid-cols-[1.15fr_0.85fr]"
           : "grid gap-6"
       }
     >
       <form
         onSubmit={onSubmit}
         data-testid="place-submit-form"
-        className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm sm:p-8"
+        className="rounded-[1.8rem] border border-stone-200 bg-white p-5 shadow-sm sm:p-7"
       >
-        <div className="grid gap-6">
+        <div className="grid gap-5">
           <section>
-            <h2 className="text-lg font-semibold text-stone-900">기본 정보</h2>
+            <h2 className="text-base font-semibold text-stone-900">기본 정보</h2>
             <div className="mt-4 grid gap-4">
               <label className="grid min-w-0 gap-2 text-sm text-stone-700">
                 업장/장소 이름
@@ -159,7 +159,7 @@ export function PlaceSubmitForm() {
                 ) : null}
               </label>
             </div>
-            <div className="mt-4 rounded-[1.5rem] border border-stone-200 bg-stone-50 p-4">
+            <div className="mt-4 grid gap-2">
               <label className="grid gap-2 text-sm text-stone-700">
                 업장 주소
                 <input
@@ -170,16 +170,16 @@ export function PlaceSubmitForm() {
                 />
               </label>
               {errors.roadAddress ? (
-                <p className="mt-2 text-xs text-rose-600">
+                <p className="text-xs text-rose-600">
                   {errors.roadAddress.message}
                 </p>
               ) : null}
             </div>
           </section>
 
-          <section>
+          <section className="border-t border-stone-200 pt-5">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="text-lg font-semibold text-stone-900">가격 항목</h2>
+              <h2 className="text-base font-semibold text-stone-900">가격 항목</h2>
               <button
                 type="button"
                 onClick={() =>
@@ -198,7 +198,7 @@ export function PlaceSubmitForm() {
               {fields.map((field, index) => (
                 <div
                   key={field.id}
-                  className="rounded-3xl border border-stone-200 bg-stone-50 p-4"
+                  className="rounded-[1.35rem] border border-stone-200 bg-white p-3.5"
                 >
                   <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.85fr)_minmax(0,0.75fr)_auto] lg:items-end">
                     <label className="grid min-w-0 gap-2 text-sm text-stone-700">
@@ -260,8 +260,8 @@ export function PlaceSubmitForm() {
             </div>
           </section>
 
-          <section>
-            <h2 className="text-lg font-semibold text-stone-900">메모</h2>
+          <section className="border-t border-stone-200 pt-5">
+            <h2 className="text-base font-semibold text-stone-900">메모</h2>
             <label className="mt-4 grid gap-2 text-sm text-stone-700">
               추가 메모
               <textarea
@@ -292,8 +292,8 @@ export function PlaceSubmitForm() {
 
       {submitResult ? (
         <aside data-testid="submit-result">
-          <section className="rounded-[2rem] border border-stone-200 bg-stone-50 p-6">
-            <h2 className="text-xl font-semibold text-stone-900">접수 내용</h2>
+          <section className="rounded-[1.8rem] border border-stone-200 bg-stone-50/80 p-5">
+            <h2 className="text-lg font-semibold text-stone-900">접수 내용</h2>
             <div className="mt-4 space-y-4">
               <div
                 data-testid="submit-result-message"
@@ -306,7 +306,7 @@ export function PlaceSubmitForm() {
                 {submitResult.message}
               </div>
               {submitResult.preview ? (
-                <div className="rounded-3xl border border-stone-200 bg-white p-5">
+                <div className="rounded-[1.35rem] border border-stone-200 bg-white p-4">
                   <p className="text-sm text-stone-500">장소 이름</p>
                   <p
                     data-testid="submit-result-name"
@@ -323,7 +323,7 @@ export function PlaceSubmitForm() {
                     {submitResult.preview.priceItems.map((item) => (
                       <div
                         key={`${item.label}-${item.amount}`}
-                        className="rounded-2xl bg-stone-50 px-4 py-3 text-sm text-stone-700"
+                        className="rounded-[1rem] border border-stone-200 bg-stone-50/70 px-4 py-3 text-sm text-stone-700"
                       >
                         {item.label} · {item.amount.toLocaleString("ko-KR")}원
                         {item.unitLabel ? ` / ${item.unitLabel}` : ""}

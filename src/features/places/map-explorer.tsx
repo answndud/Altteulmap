@@ -32,7 +32,6 @@ type MapExplorerProps = {
   currentMapHref: string;
   initialBounds: PlaceBounds;
   initialCount: number;
-  maxPrice: number | null;
   mapMarkers: PlaceMapMarkerRecord[];
   prefetchedOnServer: boolean;
   places: PlacePreviewRecord[];
@@ -47,7 +46,6 @@ type MapPlacesResponse = {
   filters: {
     bounds: PlaceBounds | null;
     category: string | null;
-    maxPrice: number | null;
     query: string | null;
     searchScope: PlaceSearchScope;
   };
@@ -236,7 +234,6 @@ function PlaceList({
 function buildMapQuery(params: {
   bounds: PlaceBounds | null;
   category: string | null;
-  maxPrice: number | null;
   query: string | null;
   searchScope: PlaceSearchScope;
   zoom?: number | null;
@@ -257,10 +254,6 @@ function buildMapQuery(params: {
   if (params.query) {
     search.set("query", params.query);
     search.set("scope", params.searchScope);
-  }
-
-  if (params.maxPrice) {
-    search.set("maxPrice", String(params.maxPrice));
   }
 
   if (params.zoom !== null && params.zoom !== undefined) {
@@ -290,7 +283,6 @@ export function MapExplorer({
   currentMapHref,
   initialBounds,
   initialCount,
-  maxPrice,
   mapMarkers,
   prefetchedOnServer,
   places,
@@ -320,7 +312,6 @@ export function MapExplorer({
   const requestSearch = buildMapQuery({
     bounds: activeBounds,
     category,
-    maxPrice,
     query,
     searchScope,
     zoom: searchScope === "viewport" ? viewport?.zoom ?? null : null,
@@ -494,7 +485,7 @@ export function MapExplorer({
   };
 
   return (
-    <div className="relative mt-8">
+    <div className="relative mt-5">
       <div className="grid gap-4 xl:grid-cols-[minmax(0,2.2fr)_15rem] 2xl:grid-cols-[minmax(0,2.35fr)_15.5rem]">
         <div className="relative">
           <NaverMapPanel
@@ -506,7 +497,7 @@ export function MapExplorer({
             activePlaceId={resolvedSelectedPlaceId}
             focusPlacesKey={
               query && searchScope === "global"
-                ? `${query}:${category ?? "all"}:${maxPrice ?? "all"}`
+                ? `${query}:${category ?? "all"}`
                 : null
             }
             onSelectPlace={handleMapPlaceSelect}
