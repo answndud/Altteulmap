@@ -3,6 +3,7 @@
 import {
   startTransition,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -22,6 +23,7 @@ import type {
 } from "@/features/places/types";
 
 const PLACE_LIST_RENDER_LIMIT = 120;
+const MOBILE_CLUSTER_OVERVIEW_MAX_ZOOM = 10.75;
 
 type MapExplorerProps = {
   bookmarkedPlaceIds: string[];
@@ -308,6 +310,7 @@ export function MapExplorer({
   );
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [isMobileListOpen, setIsMobileListOpen] = useState(false);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
   const shouldSkipInitialFetchRef = useRef(prefetchedOnServer);
   const activeBounds =
     searchScope === "viewport"
@@ -326,6 +329,29 @@ export function MapExplorer({
   const displayPlaces = visiblePlaces.slice(0, PLACE_LIST_RENDER_LIMIT);
   const isServerTrimmed = visiblePlaces.length < totalPlaceCount;
   const isListTrimmed = displayPlaces.length < visiblePlaces.length;
+  const displayMapMarkers = useMemo(() => {
+    const clusterMarkers = visibleMapMarkers.filter(
+      (marker): marker is Extract<PlaceMapMarkerRecord, { kind: "cluster" }> =>
+        marker.kind === "cluster",
+    );
+    const shouldPreferOverviewClusters =
+      isMobileViewport &&
+      searchScope === "viewport" &&
+      !query &&
+      resolvedSelectedPlaceId === null &&
+      clusterMarkers.length > 0 &&
+      (viewport?.zoom ?? Number.POSITIVE_INFINITY) <=
+        MOBILE_CLUSTER_OVERVIEW_MAX_ZOOM;
+
+    return shouldPreferOverviewClusters ? clusterMarkers : visibleMapMarkers;
+  }, [
+    isMobileViewport,
+    query,
+    resolvedSelectedPlaceId,
+    searchScope,
+    viewport?.zoom,
+    visibleMapMarkers,
+  ]);
   const selectedPlace =
     (selectedPlacePreview?.id === resolvedSelectedPlaceId
       ? selectedPlacePreview
@@ -341,6 +367,20 @@ export function MapExplorer({
     searchScope,
     viewport,
   });
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 1279px)");
+    const syncMobileViewport = () => {
+      setIsMobileViewport(mediaQuery.matches);
+    };
+
+    syncMobileViewport();
+    mediaQuery.addEventListener("change", syncMobileViewport);
+
+    return () => {
+      mediaQuery.removeEventListener("change", syncMobileViewport);
+    };
+  }, []);
 
   useEffect(() => {
     if (searchScope === "viewport" && !hasViewportBounds) {
@@ -460,7 +500,7 @@ export function MapExplorer({
           <NaverMapPanel
             initialBounds={initialBounds}
             isLoading={isFetchingPlaces && visiblePlaces.length === 0}
-            mapMarkers={visibleMapMarkers}
+            mapMarkers={displayMapMarkers}
             placeCount={totalPlaceCount}
             selectedCategoryLabel={selectedCategoryLabel}
             activePlaceId={resolvedSelectedPlaceId}
