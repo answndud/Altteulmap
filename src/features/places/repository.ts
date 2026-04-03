@@ -94,32 +94,6 @@ type DatabasePlaceRow = {
   lastPriceUpdatedAt: Date | null;
 };
 
-type MapTileAggregateRow = {
-  rowIndex: number;
-  columnIndex: number;
-  placeCount: number;
-  latitude: number;
-  longitude: number;
-  minLat: number;
-  maxLat: number;
-  minLng: number;
-  maxLng: number;
-  slug: string | null;
-  name: string | null;
-  businessName: string | null;
-  description: string | null;
-  note: string | null;
-  roadAddress: string | null;
-  district: string | null;
-  primaryCategorySlug: string | null;
-  representativePriceAmount: number | null;
-  representativePriceLabel: string | null;
-  likeCount: number | null;
-  dislikeCount: number | null;
-  verifiedPriceItemCount: number | null;
-  lastPriceUpdatedAt: Date | null;
-};
-
 export type PlaceListResult = {
   items: PlaceRecord[];
   bounds: PlaceBounds;
@@ -135,6 +109,7 @@ export type PlacePreviewListResult = {
 };
 
 const MAP_LIST_RESPONSE_LIMIT = 120;
+const MAP_MARKER_SUMMARY_ROW_LIMIT = 2_000;
 
 const mapPlaceSelectFields = {
   internalId: places.id,
@@ -710,149 +685,45 @@ async function loadDatabaseMapPlaceRows(params: {
   return queryBuilder;
 }
 
+async function loadDatabaseMapMarkerRows(params: {
+  whereClause: ReturnType<typeof and>;
+  limit: number;
+}) {
+  const db = getDb();
+
+  return db
+    .select(mapPlaceSelectFields)
+    .from(places)
+    .where(params.whereClause)
+    .orderBy(asc(places.latitude), asc(places.longitude), asc(places.id))
+    .limit(params.limit);
+}
+
 function toPlacePreviewRecords(rows: DatabasePlaceRow[]) {
   return rows
     .map((row) => toPlacePreviewRecord(row, row.primaryCategorySlug))
     .filter((place) => place.latitude && place.longitude);
 }
 
-function toDatabaseRowFromTileAggregate(
-  row: MapTileAggregateRow,
-): DatabasePlaceRow | null {
-  if (
-    !row.slug ||
-    !row.name ||
-    !row.roadAddress ||
-    !row.district ||
-    row.representativePriceAmount === null ||
-    row.representativePriceLabel === null ||
-    row.likeCount === null ||
-    row.dislikeCount === null ||
-    row.verifiedPriceItemCount === null
-  ) {
-    return null;
-  }
-
-  return {
-    internalId: row.slug,
-    slug: row.slug,
-    name: row.name,
-    businessName: row.businessName,
-    description: row.description,
-    note: row.note,
-    roadAddress: row.roadAddress,
-    district: row.district,
-    latitude: row.latitude,
-    longitude: row.longitude,
-    primaryCategorySlug: row.primaryCategorySlug,
-    representativePriceAmount: row.representativePriceAmount,
-    representativePriceLabel: row.representativePriceLabel,
-    likeCount: row.likeCount,
-    dislikeCount: row.dislikeCount,
-    verifiedPriceItemCount: row.verifiedPriceItemCount,
-    lastPriceUpdatedAt: row.lastPriceUpdatedAt,
-  };
-}
-
 async function loadDatabaseMapTileMarkers(params: {
   whereClause: ReturnType<typeof and>;
   bounds: PlaceBounds;
   zoom: number | null;
+  count: number;
 }) {
-  const markerLimit = getMapMarkerLimit(params.zoom, null);
-  const { latSpan, lngSpan, rowCount, columnCount } = getMapTileGrid(
+  // The SQL bucket aggregate path can hang under the Workers runtime for
+  // broad viewport requests, so summarize a bounded row sample in memory.
+  const markerRows = await loadDatabaseMapMarkerRows({
+    whereClause: params.whereClause,
+    limit: Math.min(params.count, MAP_MARKER_SUMMARY_ROW_LIMIT),
+  });
+
+  return getTileSummarizedMapMarkers(
+    toPlacePreviewRecords(markerRows),
     params.bounds,
-    markerLimit,
+    null,
+    params.zoom,
   );
-  const rowIndexExpression = sql<number>`
-    least(
-      ${rowCount - 1},
-      greatest(
-        0,
-        floor(((${places.latitude} - ${params.bounds.minLat}) / ${latSpan}) * ${rowCount})::int
-      )
-    )
-  `;
-  const columnIndexExpression = sql<number>`
-    least(
-      ${columnCount - 1},
-      greatest(
-        0,
-        floor(((${places.longitude} - ${params.bounds.minLng}) / ${lngSpan}) * ${columnCount})::int
-      )
-    )
-  `;
-  const db = getDb();
-  const rows = await db
-    .select({
-      rowIndex: rowIndexExpression,
-      columnIndex: columnIndexExpression,
-      placeCount: sql<number>`count(*)::int`,
-      latitude: sql<number>`avg(${places.latitude})::float8`,
-      longitude: sql<number>`avg(${places.longitude})::float8`,
-      minLat: sql<number>`min(${places.latitude})::float8`,
-      maxLat: sql<number>`max(${places.latitude})::float8`,
-      minLng: sql<number>`min(${places.longitude})::float8`,
-      maxLng: sql<number>`max(${places.longitude})::float8`,
-      slug: sql<string | null>`min(${places.slug})`,
-      name: sql<string | null>`min(${places.name})`,
-      businessName: sql<string | null>`min(${places.businessName})`,
-      description: sql<string | null>`min(${places.description})`,
-      note: sql<string | null>`min(${places.note})`,
-      roadAddress: sql<string | null>`min(${places.roadAddress})`,
-      district: sql<string | null>`min(${places.district})`,
-      primaryCategorySlug: sql<string | null>`min(${places.primaryCategorySlug})`,
-      representativePriceAmount: sql<number | null>`min(${places.representativePriceAmount})::int`,
-      representativePriceLabel: sql<string | null>`min(${places.representativePriceLabel})`,
-      likeCount: sql<number | null>`min(${places.likeCount})::int`,
-      dislikeCount: sql<number | null>`min(${places.dislikeCount})::int`,
-      verifiedPriceItemCount: sql<number | null>`min(${places.verifiedPriceItemCount})::int`,
-      lastPriceUpdatedAt: sql<Date | null>`max(${places.lastPriceUpdatedAt})`,
-    })
-    .from(places)
-    .where(params.whereClause)
-    .groupBy(rowIndexExpression, columnIndexExpression)
-    .orderBy(asc(rowIndexExpression), asc(columnIndexExpression));
-
-  return rows.map((row) => {
-    if (row.placeCount === 1) {
-      const singletonRow = toDatabaseRowFromTileAggregate(row);
-
-      if (!singletonRow) {
-        return {
-          kind: "cluster",
-          id: `cluster:${row.rowIndex}:${row.columnIndex}:${row.placeCount}`,
-          latitude: row.latitude,
-          longitude: row.longitude,
-          bounds: {
-            minLat: row.minLat,
-            maxLat: row.maxLat,
-            minLng: row.minLng,
-            maxLng: row.maxLng,
-          },
-          placeCount: row.placeCount,
-        } satisfies PlaceMapClusterMarkerRecord;
-      }
-
-      return toMapPlaceMarkerRecord(
-        toPlacePreviewRecord(singletonRow, singletonRow.primaryCategorySlug),
-      );
-    }
-
-    return {
-      kind: "cluster",
-      id: `cluster:${row.rowIndex}:${row.columnIndex}:${row.placeCount}`,
-      latitude: row.latitude,
-      longitude: row.longitude,
-      bounds: {
-        minLat: row.minLat,
-        maxLat: row.maxLat,
-        minLng: row.minLng,
-        maxLng: row.maxLng,
-      },
-      placeCount: row.placeCount,
-    } satisfies PlaceMapClusterMarkerRecord;
-  }) as PlaceMapMarkerRecord[];
 }
 
 function getTileSummarizedMapMarkers(
@@ -869,14 +740,10 @@ function getTileSummarizedMapMarkers(
       .map((place) => toMapPlaceMarkerRecord(place)) as PlaceMapMarkerRecord[];
   }
 
-  const latSpan = Math.max(bounds.maxLat - bounds.minLat, 0.0001);
-  const lngSpan = Math.max(bounds.maxLng - bounds.minLng, 0.0001);
-  const aspectRatio = Math.max(lngSpan / latSpan, 0.65);
-  const columnCount = Math.max(
-    1,
-    Math.round(Math.sqrt(markerLimit * aspectRatio)),
+  const { latSpan, lngSpan, rowCount, columnCount } = getMapTileGrid(
+    bounds,
+    markerLimit,
   );
-  const rowCount = Math.max(1, Math.ceil(markerLimit / columnCount));
   const cells = new Map<string, PlacePreviewRecord[]>();
 
   for (const place of items) {
@@ -1255,6 +1122,7 @@ async function listDatabaseMapPlaces({
             whereClause,
             bounds,
             zoom,
+            count,
           });
 
     return {
