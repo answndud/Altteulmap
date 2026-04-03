@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { loadEnvFilesWithShellPrecedence } from "./lib/load-env-files.mjs";
+import { patchNextCloudflareRuntime } from "./patch-next-cloudflare-runtime.mjs";
 
 const projectRoot = process.cwd();
 const backupRoot = mkdtempSync(path.join(tmpdir(), "altteulmap-public-build-"));
@@ -61,6 +62,7 @@ if (!process.env.ADMIN_APP_URL) {
 
 try {
   backupAndRemove(adminEntrypointsPath);
+  patchNextCloudflareRuntime({ projectRoot });
 
   execFileSync("node", [syncScriptPath], {
     cwd: projectRoot,
