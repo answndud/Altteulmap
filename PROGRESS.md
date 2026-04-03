@@ -29,11 +29,18 @@
   - `/Users/alex/project/altteulmap/src/features/places/map-explorer.tsx`에서 모바일 viewport 전용 `cluster-only` 분기를 제거했다. 이제 서버가 확대된 bounds/zoom 기준으로 place marker를 함께 반환하면 모바일에서도 그대로 지도에 전달된다.
   - 문제 원인은 같은 파일의 `mobileOverviewMarkers`였다. `isMobileViewport + viewport search + 무검색 + selectedPlace 없음 + cluster 존재 + zoom <= 13.25` 조건이면 서버 응답에 place marker가 섞여 있어도 클라이언트가 다시 cluster만 남기고 있었고, 이 때문에 모바일에서 숫자 마커만 계속 보일 수 있었다.
   - 로컬 API probe로 bootstrap bounds(`37.4133~37.7151`, `126.7341~127.2693`) 기준 응답을 다시 확인했다. 서버는 이미 `zoom 12`부터 `cluster 21 + place 3`, `zoom 15`에서 `cluster 47 + place 7`처럼 개별 place marker를 내려주고 있어, 이번 회귀의 직접 원인이 서버가 아니라 클라이언트 suppression임을 확인했다.
+  - 수정은 `fix(map): restore mobile place markers` (`8686fbc`)로 커밋해 `codex/ui-polish-batch` 브랜치에 push했고, public worker를 다시 배포했다.
 - 검증 결과
   - `npm run verify:quick` 통과
+  - clean worktree 기준 `npm run verify` 통과
   - `USE_MOCK_DATA=true npx playwright test tests/e2e/map.mobile.spec.ts --project mobile-chromium` 통과
+  - `npm run deploy:check` 통과
+  - `npm run deploy:public` 통과
+  - `curl -I https://altteulmap.altteul-lab.workers.dev/` 결과 `200`
+  - 배포 URL: `https://altteulmap.altteul-lab.workers.dev`
+  - Cloudflare version id: `e2eebb66-92bc-442e-88ca-31b6da5a9875`
 - 메모
-  - 현재 워크트리에는 이번 범위 밖의 대규모 미커밋 변경이 같이 남아 있어, clean 상태 기준 `npm run verify`와 public 배포는 별도 분리 후 이어서 진행한다.
+  - clean verify/deploy를 위해 커밋 후 나머지 미커밋 변경을 `git stash push -u -m 'codex-temp-mobile-map-fix-20260403'`로 잠시 분리했다. 이 stash는 배포 직후 다시 원복할 예정이다.
 
 ### 2026-04-03 13:20 KST: 가격 필터 모바일 회귀와 `127.0.0.1` dev 접근 문제 정리
 - 완료 내용
