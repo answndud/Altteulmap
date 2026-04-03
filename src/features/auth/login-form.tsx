@@ -31,6 +31,7 @@ export function LoginForm({
   signupHref,
   socialProviders,
 }: LoginFormProps) {
+  const hasEnabledSocialProviders = socialProviders.some((provider) => provider.enabled);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState(
@@ -38,9 +39,10 @@ export function LoginForm({
   );
   const [pendingAction, setPendingAction] = useState<"credentials" | null>(null);
   const [isPending, startTransition] = useTransition();
+  const canSubmit = email.trim().length > 0 && password.length > 0;
 
   return (
-    <div className="w-full max-w-[32rem]">
+    <div className="w-full max-w-[28rem]">
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -74,43 +76,16 @@ export function LoginForm({
           });
         }}
         data-testid="login-form"
-        className="rounded-[2.15rem] border border-stone-200/80 bg-white/92 p-6 shadow-[0_24px_60px_-42px_rgba(32,24,18,0.38)] backdrop-blur sm:p-8"
+        className="rounded-[1.8rem] border border-stone-200 bg-white p-5 shadow-sm sm:p-7"
       >
-        <div className="grid gap-6">
-          <section className="flex items-center justify-between gap-3 border-b border-stone-200 pb-5">
-            <h1 className="text-3xl font-semibold tracking-[-0.06em] text-stone-950">
+        <div className="grid gap-5">
+          <section>
+            <h1 className="text-[1.85rem] font-semibold tracking-[-0.06em] text-stone-950">
               로그인
             </h1>
-            <Link
-              href={signupHref}
-              className="text-sm font-medium text-stone-500 transition hover:text-stone-950"
-            >
-              회원가입
-            </Link>
           </section>
-
-          <section className="grid gap-3">
-            <p className="text-sm font-medium text-stone-700">소셜 로그인</p>
-            <SocialAuthButtons
-              callbackUrl={callbackUrl}
-              providers={socialProviders}
-              intent="login"
-              onStart={() => {
-                setMessage("");
-                setPendingAction(null);
-              }}
-            />
-          </section>
-
-          <div className="flex items-center gap-3 text-xs uppercase tracking-[0.18em] text-stone-400">
-            <span className="h-px flex-1 bg-stone-200" />
-            또는
-            <span className="h-px flex-1 bg-stone-200" />
-          </div>
 
           <section className="grid gap-4">
-            <p className="text-sm font-medium text-stone-700">이메일 로그인</p>
-
             <label className="grid gap-2 text-sm text-stone-700">
               이메일
               <input
@@ -146,14 +121,45 @@ export function LoginForm({
 
           <button
             type="submit"
-            disabled={isPending}
+            disabled={isPending || !canSubmit}
             data-testid="login-submit"
             className="altteulmap-accent-solid altteulmap-button whitespace-nowrap px-5 py-3.5 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {pendingAction === "credentials"
-              ? "로그인 중..."
-              : "이메일로 로그인"}
+            {pendingAction === "credentials" ? "로그인 중..." : "로그인"}
           </button>
+
+          {hasEnabledSocialProviders ? (
+            <>
+              <div className="flex items-center gap-3 text-xs uppercase tracking-[0.18em] text-stone-400">
+                <span className="h-px flex-1 bg-stone-200" />
+                또는
+                <span className="h-px flex-1 bg-stone-200" />
+              </div>
+
+              <section className="grid gap-3">
+                <p className="text-sm font-medium text-stone-700">소셜 로그인</p>
+                <SocialAuthButtons
+                  callbackUrl={callbackUrl}
+                  providers={socialProviders}
+                  intent="login"
+                  onStart={() => {
+                    setMessage("");
+                    setPendingAction(null);
+                  }}
+                />
+              </section>
+            </>
+          ) : null}
+
+          <div className="flex items-center justify-between border-t border-stone-200 pt-4 text-sm text-stone-500">
+            <span>계정이 없나요?</span>
+            <Link
+              href={signupHref}
+              className="font-medium text-stone-700 transition hover:text-stone-950"
+            >
+              회원가입
+            </Link>
+          </div>
         </div>
       </form>
     </div>

@@ -16,13 +16,56 @@
 - Cycle 7: repo-local AI workflow 설정 완료 (`.agents`, `.githooks`, `verify`, local commit rules)
 - Cycle 8: 로컬 dev/runtime 안정화 완료 (`.next-dev` 분리, `webpack` dev 고정, build/e2e와 출력 경로 분리)
 - Cycle 9: 행정안전부 `착한가격업소` 실제 데이터 1000건 import 완료. 기본 selection은 `서울 500 + 비서울 500`, `음식점 70%`, `대표 가격 1만원 이하`로 고정했고, 메뉴 라벨 dedupe까지 반영해 DB seed/API 검증을 다시 통과함
-- Cycle 5 지도 성능 후속: 지도 전용 preview payload와 마커/목록 렌더 상한, viewport 첫 진입의 1000건 SSR 제거, map API/server preview 응답 `count + capped items` 구조, `places` 비정규화, viewport/zoom 기반 cluster marker 계층, `items + mapMarkers` 분리, 서버 tile summary, viewport 무검색 SQL bucket aggregate, bounds 기반 short-lived 서버 캐시와 쓰기 후 invalidation, preview fallback/bootstrap fetch 회귀 수정, 모바일 가격 필터 reset, `127.0.0.1` dev origin 허용까지 반영함
+- Cycle 5 지도 성능 후속: 지도 전용 preview payload와 마커/목록 렌더 상한, viewport 첫 진입의 1000건 SSR 제거, map API/server preview 응답 `count + capped items` 구조, `places` 비정규화, viewport/zoom 기반 cluster marker 계층, `items + mapMarkers` 분리, 서버 tile summary, viewport 무검색 SQL bucket aggregate, bounds 기반 short-lived 서버 캐시와 쓰기 후 invalidation, preview fallback/bootstrap fetch 회귀 수정, 공개 가격 필터 제거, `127.0.0.1` dev origin 허용까지 반영함
 - Cycle 5 운영 지표 후속: `visit_activity` 적재, public/admin layout tracker, `/api/telemetry/visit`, 관리자 overview 방문 카드, 로컬 admin 링크 fallback, 로그인 상태 header test id 복구까지 완료
 - Cycle 5 인증/UI 후속: `/login`, `/signup`은 설정성 패널 없이 액션 중심으로 다시 단순화했고, 지도 필터/검색 칩은 가로 레일로 정리했으며, login/signup E2E로 회귀를 유지함
 - Cycle 5 배포 후속: `deploy:check`와 public split build가 이제 쉘/CI env를 로컬 `.env*`보다 우선 사용하므로, 운영 URL과 split worker 값이 로컬 파일에 덮이지 않게 정리됨
 - 다음 우선순위: live 운영 도메인 기준 실제 배포 적용, 운영 품질 후속 정리, 공개 UI/모바일 polish 잔여 정리
 
 ## 실행 로그
+
+### 2026-04-03 16:35 KST: 공개 UI 후속으로 헤더 1줄화, 홈 map-first 재배치, auth/등록 화면 감량
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/components/global-header.tsx`, `/Users/alex/project/altteulmap/src/components/brand-mark.tsx`에서 모바일 헤더를 줄바꿈 없는 단일 행 구조로 바꿨다. 액션 버튼은 모바일에서 짧은 라벨과 가로 스크롤 행으로 정리했고, 인증 화면에서는 중복되는 `로그인` 버튼을 헤더에서 숨기도록 조정했다.
+  - `/Users/alex/project/altteulmap/src/features/map/map-page.tsx`, `/Users/alex/project/altteulmap/src/features/places/map-explorer.tsx`에서 홈 상단 hero와 필터 박스의 높이/패딩/간격을 줄이고, 모바일 검색/필터 영역을 더 얕은 형태로 다시 묶었다. 지도 영역 자체의 시작 위치도 위로 당겼다.
+  - `/Users/alex/project/altteulmap/src/app/login/page.tsx`, `/Users/alex/project/altteulmap/src/app/signup/page.tsx`, `/Users/alex/project/altteulmap/src/features/auth/login-form.tsx`, `/Users/alex/project/altteulmap/src/features/auth/signup-form.tsx`에서 인증 화면을 더 작은 단일 카드 구조로 정리했다. 상단 설명 문구와 중복 전환 링크를 제거하고, 하단 한 줄 링크만 남겼다.
+  - `/Users/alex/project/altteulmap/src/app/submit/page.tsx`, `/Users/alex/project/altteulmap/src/features/submission/place-submit-form.tsx`에서 등록 화면의 바깥 카드와 폼 안의 중첩 surface를 줄였다. 가격 항목 카드, 주소 블록, 결과 패널도 더 평평한 계층으로 맞췄다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+    - build 중 `sitemap.xml` 단계에서 production DB에 `places` 테이블이 없을 때 mock fallback 로그는 기존과 동일하게 남지만, 빌드 자체는 성공
+  - `AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3109 USE_MOCK_DATA=true npx next start -p 3109`로 production server를 띄운 뒤 Playwright probe로 `/`, `/login`, `/signup`, `/submit`의 desktop/mobile viewport를 재측정했다
+  - 핵심 측정값 변화
+    - 모바일 header height: `153px -> 58.19px`
+    - 홈 mobile map shell top: `516.5px -> 327.69px`
+    - 홈 desktop map shell top: `638.66px -> 544.89px`
+    - 로그인 mobile form top: `147.48px`
+    - 회원가입 mobile form top: `82.19px`
+    - 등록 mobile form top: `150.19px`
+    - 샘플 페이지 horizontal overflow: 모두 `0`
+- 메모
+  - production server 점검 후 `pkill -f "next start -p 3109"`로 서버를 내렸다.
+  - 홈 데스크톱 첫 화면은 이전보다 가벼워졌지만, 더 과감한 `map-first`를 원하면 다음 단계에서 데스크톱 검색/카테고리 박스를 지도 옆으로 재배치하는 방향도 가능하다.
+
+### 2026-04-03 15:58 KST: 공개 페이지 브라우저/모바일 디자인 전면 리뷰
+- 완료 내용
+  - 배포본 `https://altteulmap.altteul-lab.workers.dev` 기준으로 `/`, `/login`, `/signup`, `/submit`를 데스크톱/모바일 viewport에서 다시 점검했다.
+  - `/Users/alex/project/altteulmap/src/components/global-header.tsx`, `/Users/alex/project/altteulmap/src/components/brand-mark.tsx`, `/Users/alex/project/altteulmap/src/features/map/map-page.tsx`, `/Users/alex/project/altteulmap/src/app/login/page.tsx`, `/Users/alex/project/altteulmap/src/app/signup/page.tsx`, `/Users/alex/project/altteulmap/src/features/auth/login-form.tsx`, `/Users/alex/project/altteulmap/src/features/auth/signup-form.tsx`, `/Users/alex/project/altteulmap/src/app/submit/page.tsx`, `/Users/alex/project/altteulmap/src/features/submission/place-submit-form.tsx`를 기준으로 레이아웃 밀도와 CTA 집중도를 코드 리뷰했다.
+  - 주요 리스크는 모바일 전역 헤더 높이 과다, 홈에서 지도 시작 위치가 너무 아래로 밀리는 구조, 인증 화면의 전역 이동과 폼 내부 이동 중복, 등록 폼의 카드 레이어 과다로 정리했다.
+- 검증 결과
+  - `node <<'EOF'` 기반 Playwright probe로 배포본 `/`, `/login`, `/signup`, `/submit`의 desktop/mobile bounding box, header height, map/form start position, overflowX를 수집했다.
+  - 수집 기준 viewport
+    - desktop: `1440x960`
+    - mobile: `390x664`
+  - 핵심 측정값
+    - 홈 mobile header height: `153px`
+    - 홈 mobile map shell top: `516.5px`
+    - 홈 desktop map shell top: `638.66px`
+    - 로그인/회원가입/등록 mobile header height: 모두 `153px`
+    - 샘플 페이지 horizontal overflow: 모두 `0`
+- 메모
+  - 이번 턴은 리뷰만 수행했고 코드 변경은 하지 않았다.
+  - 다음 수정 우선순위는 `모바일 header 1줄화`, `홈 첫 화면 map-first 재배치`, `auth 페이지 전역 nav 축소`, `등록 폼 표면 레이어 감량` 순서로 보는 것이 타당하다.
 
 ### 2026-04-03 15:05 KST: 모바일 지도 zoom-out 시 overview cluster 복귀 정책 추가
 - 완료 내용
@@ -41,6 +84,19 @@
   - Cloudflare version id: `9c902b78-24ff-428a-b9b0-904142594238`
 - 메모
   - 이번 수정은 clean HEAD 기준으로 커밋/배포한 뒤, 원래 워크트리 변경을 다시 복원하는 방식으로 처리한다.
+
+### 2026-04-03 14:10 KST: 공개 지도 가격 필터 제거
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/map/map-page.tsx`에서 모바일/데스크톱 가격 필터 UI, `maxPrice` hidden input, 가격 파라미터 URL 조합을 제거했다. 공개 지도 탐색 조건은 이제 카테고리와 검색 범위만 남는다.
+  - `/Users/alex/project/altteulmap/src/features/places/map-explorer.tsx`, `/Users/alex/project/altteulmap/src/app/api/places/map/route.ts`, `/Users/alex/project/altteulmap/src/features/places/repository.ts`, `/Users/alex/project/altteulmap/src/features/places/queries.ts`에서 `maxPrice` prop, query string, API filter payload, repository/mock filtering 경로를 함께 제거했다.
+  - `/Users/alex/project/altteulmap/tests/e2e/map-price-filter.spec.ts`, `/Users/alex/project/altteulmap/tests/e2e/map-price-filter.mobile.spec.ts`는 가격 필터 동작 검증 대신 가격 옵션 비노출과 카테고리 탐색 유지 회귀를 검증하도록 바꿨다.
+  - `/Users/alex/project/altteulmap/PLAN.md`, `/Users/alex/project/altteulmap/prd.md`, `/Users/alex/project/altteulmap/trd.md`를 현재 제품 계약에 맞춰 갱신했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+  - `AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3107 USE_MOCK_DATA=true npx playwright test tests/e2e/map-price-filter.spec.ts tests/e2e/map-price-filter.mobile.spec.ts` 통과
+- 메모
+  - 2026-04-03의 가격 필터 회귀 수정 로그는 현재 제품 계약에서는 역사 기록으로만 남고, 실제 서비스 기능은 이번 턴에서 제거됐다.
 
 ### 2026-04-03 13:25 KST: 모바일 지도에서 cluster만 남던 client-side suppression 회귀 수정
 - 완료 내용

@@ -37,8 +37,8 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   }
 
   return (
-    <main className="min-h-screen bg-stone-50 px-4 py-10 sm:px-6">
-      <section className="mx-auto flex min-h-[calc(100vh-8rem)] max-w-[32rem] flex-col justify-center gap-6">
+    <main className="bg-stone-50 px-4 py-6 sm:px-6 sm:py-8">
+      <section className="mx-auto flex min-h-[calc(100dvh-8rem)] max-w-[28rem] flex-col justify-center">
         <LoginForm
           callbackUrl={callbackUrl}
           initialError={error}

@@ -6,6 +6,7 @@ import {
   categoryGroups,
   getCategoryBySlug,
 } from "@/features/categories/catalog";
+import { RouteResetDetails } from "@/features/map/route-reset-details";
 import { MapExplorer } from "@/features/places/map-explorer";
 import { listMapPlaces } from "@/features/places/repository";
 import type {
@@ -28,17 +29,10 @@ export const metadata: Metadata = {
   },
 };
 
-const priceOptions = [
-  { label: "전체 가격", value: null },
-  { label: "5,000원 이하", value: 5000 },
-  { label: "10,000원 이하", value: 10000 },
-  { label: "20,000원 이하", value: 20000 },
-];
-
-const mobileFilterChipClass =
-  "altteulmap-chip whitespace-nowrap border px-3 py-2 text-xs transition";
-const desktopFilterChipClass =
-  "altteulmap-chip whitespace-nowrap border px-4 py-2 text-sm transition";
+const mobileCategoryChipClass =
+  "altteulmap-chip inline-flex w-full min-w-0 items-center justify-center border px-3 py-2 text-center text-xs leading-tight break-keep transition";
+const desktopCategoryChipClass =
+  "altteulmap-chip inline-flex w-full min-w-0 items-center justify-center border px-4 py-2 text-center text-sm leading-tight break-keep transition";
 const inactiveFilterChipClass =
   "border-stone-300 bg-white text-stone-700 hover:bg-stone-100";
 const mobileScopeChipClass =
@@ -58,7 +52,6 @@ function getFirstValue(value: string | string[] | undefined) {
 
 function createHref(params: {
   category?: string | null;
-  maxPrice?: number | null;
   query?: string | null;
   searchScope?: PlaceSearchScope;
 }) {
@@ -74,10 +67,6 @@ function createHref(params: {
     search.set("category", params.category);
   }
 
-  if (params.maxPrice) {
-    search.set("maxPrice", String(params.maxPrice));
-  }
-
   const query = search.toString();
 
   return query ? `/?${query}` : "/";
@@ -86,7 +75,6 @@ function createHref(params: {
 export default async function MapPage({ searchParams }: MapPageProps) {
   const params = await searchParams;
   const activeCategory = getFirstValue(params.category) ?? null;
-  const activeMaxPrice = Number(getFirstValue(params.maxPrice) ?? "") || null;
   const activeQuery = getFirstValue(params.q)?.trim() || null;
   const activeSearchScope: PlaceSearchScope =
     activeQuery && getFirstValue(params.scope) === "global"
@@ -99,7 +87,6 @@ export default async function MapPage({ searchParams }: MapPageProps) {
     shouldPrefetchPlaces
       ? listMapPlaces({
           category: activeCategory,
-          maxPrice: activeMaxPrice,
           query: activeQuery,
         })
       : Promise.resolve({
@@ -113,7 +100,6 @@ export default async function MapPage({ searchParams }: MapPageProps) {
   ]);
   const currentMapHref = createHref({
     category: activeCategory,
-    maxPrice: activeMaxPrice,
     query: activeQuery,
     searchScope: activeSearchScope,
   });
@@ -123,29 +109,31 @@ export default async function MapPage({ searchParams }: MapPageProps) {
     bookmarkResult.items.map((bookmark) => bookmark.placeId),
   );
   const selectedCategory = getCategoryBySlug(activeCategory);
-  const activePriceLabel =
-    priceOptions.find((option) => option.value === activeMaxPrice)?.label ?? null;
+  const mobileFilterRouteKey = [
+    activeCategory ?? "all",
+    activeQuery ?? "all",
+    activeSearchScope,
+  ].join(":");
   const mobileSummaryItems = [
     activeQuery ? `검색 ${activeQuery}` : null,
     selectedCategory?.name ?? null,
-    activePriceLabel,
     activeSearchScope === "global" ? "전체 검색" : "현재 지도",
   ].filter((item): item is string => Boolean(item));
 
   return (
-    <main className="bg-stone-50 px-3 py-6 sm:px-4 lg:px-5 xl:px-6">
+    <main className="bg-stone-50 px-3 py-4 sm:px-4 sm:py-5 lg:px-5 xl:px-6">
       <div className="mx-auto max-w-[96rem]">
-        <section className="rounded-[2rem] border border-stone-200 bg-white p-4 shadow-sm sm:p-6 xl:p-7">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
+        <section className="rounded-[1.85rem] border border-stone-200 bg-white p-3.5 shadow-sm sm:p-5 xl:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-orange-600">
                 지도 탐색
               </p>
-              <h1 className="mt-2 text-2xl font-semibold tracking-tight text-stone-900 sm:text-3xl">
-                동네 알뜰 장소를 한 번에 보기
+              <h1 className="mt-1 text-xl font-semibold tracking-tight text-stone-900 sm:text-2xl">
+                동네 알뜰 장소
               </h1>
             </div>
-            <div className="hidden flex-wrap gap-2 lg:flex">
+            <div className="hidden max-w-full flex-wrap gap-2 lg:flex">
               {mobileSummaryItems.map((item) => (
                 <span
                   key={item}
@@ -157,18 +145,31 @@ export default async function MapPage({ searchParams }: MapPageProps) {
             </div>
           </div>
 
-          <section className="mt-6 lg:hidden">
+          <section className="mt-4 lg:hidden">
             <form
               action="/"
-              className="grid gap-3 rounded-[1.75rem] border border-stone-200 bg-stone-50 p-4"
+              className="grid gap-2.5 rounded-[1.4rem] border border-stone-200 bg-stone-50/80 p-3"
             >
               <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-medium text-stone-700">검색</p>
+                <div className="flex min-w-0 items-center gap-2">
+                  <p className="text-sm font-medium text-stone-700">검색</p>
+                  {mobileSummaryItems.length > 0 ? (
+                    <div className="altteulmap-scroll-row min-w-0 pb-0">
+                      {mobileSummaryItems.map((item) => (
+                        <span
+                          key={item}
+                          className="altteulmap-badge whitespace-nowrap px-2.5 py-1 text-[11px] text-stone-600"
+                        >
+                          {item}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
                 {activeQuery ? (
                   <Link
                     href={createHref({
                       category: activeCategory,
-                      maxPrice: activeMaxPrice,
                     })}
                     className="text-xs font-medium text-stone-500 transition hover:text-stone-900"
                   >
@@ -183,171 +184,128 @@ export default async function MapPage({ searchParams }: MapPageProps) {
                   name="q"
                   defaultValue={activeQuery ?? ""}
                   placeholder="김밥, 세탁소, 프린트"
-                  className="h-11 min-w-0 flex-1 rounded-[1.1rem] border border-stone-300 bg-white px-4 text-sm text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
+                  className="h-10 min-w-0 flex-1 rounded-[1rem] border border-stone-300 bg-white px-4 text-sm text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
                 />
                 <button
                   type="submit"
-                  className="altteulmap-accent-solid altteulmap-button inline-flex h-11 shrink-0 items-center justify-center px-4 text-sm font-medium transition"
+                  className="altteulmap-accent-solid altteulmap-button inline-flex h-10 shrink-0 items-center justify-center px-4 text-sm font-medium transition"
                 >
                   검색
                 </button>
               </div>
 
-              <div className="flex flex-wrap gap-2">
-                {mobileSummaryItems.map((item) => (
-                  <span
-                    key={item}
-                    className="altteulmap-badge whitespace-nowrap px-3 py-1.5 text-[11px] text-stone-600"
-                  >
-                    {item}
-                  </span>
-                ))}
-              </div>
+              <RouteResetDetails
+                key={mobileFilterRouteKey}
+                className="group rounded-[1.15rem] border border-stone-200 bg-white"
+                summaryClassName="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-2.5 text-sm font-medium text-stone-700 [&::-webkit-details-marker]:hidden"
+                summary={
+                  <>
+                    <span>필터와 범위</span>
+                    <span className="text-xs text-stone-500 group-open:hidden">
+                      열기
+                    </span>
+                    <span className="hidden text-xs text-stone-500 group-open:inline">
+                      접기
+                    </span>
+                  </>
+                }
+                bodyClassName="grid gap-5 border-t border-stone-200 p-4"
+              >
+                <section>
+                  <p className="text-xs font-medium uppercase tracking-[0.18em] text-stone-500">
+                    검색 범위
+                  </p>
+                  <div className="altteulmap-scroll-row mt-3 pb-1">
+                    <label className="cursor-pointer">
+                      <input
+                        type="radio"
+                        name="scope"
+                        value="viewport"
+                        defaultChecked={activeSearchScope === "viewport"}
+                        className="altteulmap-scope-input sr-only"
+                      />
+                      <span className={mobileScopeChipClass}>
+                        현재 지도에서 찾기
+                      </span>
+                    </label>
+                    <label className="cursor-pointer">
+                      <input
+                        type="radio"
+                        name="scope"
+                        value="global"
+                        defaultChecked={activeSearchScope === "global"}
+                        className="altteulmap-scope-input sr-only"
+                      />
+                      <span className={mobileScopeChipClass}>
+                        전체에서 찾기
+                      </span>
+                    </label>
+                  </div>
+                </section>
 
-              <details className="group rounded-[1.25rem] border border-stone-200 bg-white">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-medium text-stone-700 [&::-webkit-details-marker]:hidden">
-                  <span>탐색 조건</span>
-                  <span className="text-xs text-stone-500 group-open:hidden">
-                    열기
-                  </span>
-                  <span className="hidden text-xs text-stone-500 group-open:inline">
-                    접기
-                  </span>
-                </summary>
-
-                <div className="grid gap-5 border-t border-stone-200 p-4">
-                  <section>
-                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-stone-500">
-                      검색 범위
-                    </p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <label className="cursor-pointer">
-                        <input
-                          type="radio"
-                          name="scope"
-                          value="viewport"
-                          defaultChecked={activeSearchScope === "viewport"}
-                          className="altteulmap-scope-input sr-only"
-                        />
-                        <span className={mobileScopeChipClass}>
-                          현재 지도에서 찾기
-                        </span>
-                      </label>
-                      <label className="cursor-pointer">
-                        <input
-                          type="radio"
-                          name="scope"
-                          value="global"
-                          defaultChecked={activeSearchScope === "global"}
-                          className="altteulmap-scope-input sr-only"
-                        />
-                        <span className={mobileScopeChipClass}>
-                          전체에서 찾기
-                        </span>
-                      </label>
-                    </div>
-                  </section>
-
-                  <section>
-                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-stone-500">
-                      가격 필터
-                    </p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {priceOptions.map((option) => {
-                        const isActive = activeMaxPrice === option.value;
+                <section className="min-w-0">
+                  <p className="text-xs font-medium uppercase tracking-[0.18em] text-stone-500">
+                    카테고리
+                  </p>
+                  <div className="altteulmap-chip-grid mt-3">
+                    <Link
+                      href={createHref({
+                        category: null,
+                        query: activeQuery,
+                        searchScope: activeSearchScope,
+                      })}
+                      className={`${mobileCategoryChipClass} ${
+                        !activeCategory
+                          ? "altteulmap-accent-chip"
+                          : inactiveFilterChipClass
+                      }`}
+                    >
+                      전체
+                    </Link>
+                    {categoryGroups.flatMap((group) =>
+                      group.children.map((category) => {
+                        const isActive = activeCategory === category.slug;
 
                         return (
                           <Link
-                            key={option.label}
+                            key={category.slug}
                             href={createHref({
-                              category: activeCategory,
-                              maxPrice: option.value,
+                              category: category.slug,
                               query: activeQuery,
                               searchScope: activeSearchScope,
                             })}
-                            className={`${mobileFilterChipClass} ${
+                            className={`${mobileCategoryChipClass} ${
                               isActive
                                 ? "altteulmap-accent-chip"
                                 : inactiveFilterChipClass
                             }`}
                           >
-                            {option.label}
+                            {category.name}
                           </Link>
                         );
-                      })}
-                    </div>
-                  </section>
-
-                  <section>
-                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-stone-500">
-                      카테고리
-                    </p>
-                    <div className="mt-3 flex max-h-[12.5rem] flex-wrap gap-2 overflow-y-auto pr-1">
-                      <Link
-                        href={createHref({
-                          category: null,
-                          maxPrice: activeMaxPrice,
-                          query: activeQuery,
-                          searchScope: activeSearchScope,
-                        })}
-                        className={`${mobileFilterChipClass} ${
-                          !activeCategory
-                            ? "altteulmap-accent-chip"
-                            : inactiveFilterChipClass
-                        }`}
-                      >
-                        전체
-                      </Link>
-                      {categoryGroups.flatMap((group) =>
-                        group.children.map((category) => {
-                          const isActive = activeCategory === category.slug;
-
-                          return (
-                            <Link
-                              key={category.slug}
-                                href={createHref({
-                                  category: category.slug,
-                                  maxPrice: activeMaxPrice,
-                                  query: activeQuery,
-                                  searchScope: activeSearchScope,
-                                })}
-                              className={`${mobileFilterChipClass} ${
-                                isActive
-                                  ? "altteulmap-accent-chip"
-                                  : inactiveFilterChipClass
-                              }`}
-                            >
-                              {category.name}
-                            </Link>
-                          );
-                        }),
-                      )}
-                    </div>
-                  </section>
-                </div>
-              </details>
+                      }),
+                    )}
+                  </div>
+                </section>
+              </RouteResetDetails>
 
               {activeCategory ? (
                 <input type="hidden" name="category" value={activeCategory} />
               ) : null}
-              {activeMaxPrice ? (
-                <input type="hidden" name="maxPrice" value={activeMaxPrice} />
-              ) : null}
             </form>
           </section>
 
-          <div className="mt-8 hidden gap-4 rounded-3xl border border-stone-200 bg-stone-50 p-5 lg:grid">
-            <section>
+          <div className="mt-5 hidden gap-4 rounded-[1.6rem] border border-stone-200 bg-stone-50/80 p-4 lg:grid">
+            <section className="min-w-0">
               <p className="text-sm font-medium text-stone-700">카테고리</p>
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className="altteulmap-chip-grid mt-3">
                 <Link
                   href={createHref({
                     category: null,
-                    maxPrice: activeMaxPrice,
                     query: activeQuery,
                     searchScope: activeSearchScope,
                   })}
-                  className={`${desktopFilterChipClass} ${
+                  className={`${desktopCategoryChipClass} ${
                     !activeCategory
                       ? "altteulmap-accent-chip"
                       : inactiveFilterChipClass
@@ -364,11 +322,10 @@ export default async function MapPage({ searchParams }: MapPageProps) {
                         key={category.slug}
                         href={createHref({
                           category: category.slug,
-                          maxPrice: activeMaxPrice,
                           query: activeQuery,
                           searchScope: activeSearchScope,
                         })}
-                        className={`${desktopFilterChipClass} ${
+                        className={`${desktopCategoryChipClass} ${
                           isActive
                             ? "altteulmap-accent-chip"
                             : inactiveFilterChipClass
@@ -383,43 +340,12 @@ export default async function MapPage({ searchParams }: MapPageProps) {
             </section>
 
             <section>
-              <div>
-                <p className="text-sm font-medium text-stone-700">가격 필터</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {priceOptions.map((option) => {
-                    const isActive = activeMaxPrice === option.value;
-
-                    return (
-                      <Link
-                        key={option.label}
-                        href={createHref({
-                          category: activeCategory,
-                          maxPrice: option.value,
-                          query: activeQuery,
-                          searchScope: activeSearchScope,
-                        })}
-                        className={`${desktopFilterChipClass} ${
-                          isActive
-                            ? "altteulmap-accent-chip"
-                            : inactiveFilterChipClass
-                        }`}
-                      >
-                        {option.label}
-                      </Link>
-                    );
-                  })}
-                </div>
-              </div>
-            </section>
-
-            <section>
               <div className="flex items-center justify-between gap-3">
                 <p className="text-sm font-medium text-stone-700">검색</p>
                 {activeQuery ? (
                   <Link
                     href={createHref({
                       category: activeCategory,
-                      maxPrice: activeMaxPrice,
                     })}
                     className="altteulmap-button whitespace-nowrap border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
                   >
@@ -447,7 +373,7 @@ export default async function MapPage({ searchParams }: MapPageProps) {
                   </button>
                 </div>
 
-                <div className="flex flex-wrap gap-2">
+                <div className="altteulmap-scroll-row pb-1">
                   <label className="cursor-pointer">
                     <input
                       type="radio"
@@ -479,27 +405,23 @@ export default async function MapPage({ searchParams }: MapPageProps) {
                 {activeCategory ? (
                   <input type="hidden" name="category" value={activeCategory} />
                 ) : null}
-                {activeMaxPrice ? (
-                  <input type="hidden" name="maxPrice" value={activeMaxPrice} />
-                ) : null}
               </form>
             </section>
           </div>
 
           <MapExplorer
-            key={`${activeCategory ?? "all"}:${activeMaxPrice ?? "all"}:${activeQuery ?? "all"}:${activeSearchScope}`}
+            key={`${activeCategory ?? "all"}:${activeQuery ?? "all"}:${activeSearchScope}`}
             bookmarkedPlaceIds={Array.from(bookmarkedIds)}
             bookmarkLoginHref={bookmarkLoginHref}
             category={activeCategory}
             currentMapHref={currentMapHref}
             initialBounds={result.bounds}
             initialCount={result.count}
-          maxPrice={activeMaxPrice}
-          prefetchedOnServer={shouldPrefetchPlaces}
-          mapMarkers={result.mapMarkers}
-          places={places}
-          query={activeQuery}
-          searchScope={activeSearchScope}
+            prefetchedOnServer={shouldPrefetchPlaces}
+            mapMarkers={result.mapMarkers}
+            places={places}
+            query={activeQuery}
+            searchScope={activeSearchScope}
             selectedCategoryLabel={selectedCategory?.name ?? null}
           />
         </section>
