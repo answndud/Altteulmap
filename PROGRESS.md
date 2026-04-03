@@ -16,13 +16,40 @@
 - Cycle 7: repo-local AI workflow 설정 완료 (`.agents`, `.githooks`, `verify`, local commit rules)
 - Cycle 8: 로컬 dev/runtime 안정화 완료 (`.next-dev` 분리, `webpack` dev 고정, build/e2e와 출력 경로 분리)
 - Cycle 9: 행정안전부 `착한가격업소` 실제 데이터 1000건 import 완료. 기본 selection은 `서울 500 + 비서울 500`, `음식점 70%`, `대표 가격 1만원 이하`로 고정했고, 메뉴 라벨 dedupe까지 반영해 DB seed/API 검증을 다시 통과함
-- Cycle 5 지도 성능 후속: 지도 전용 preview payload와 마커/목록 렌더 상한, viewport 첫 진입의 1000건 SSR 제거, map API/server preview 응답 `count + capped items` 구조, `places` 비정규화, viewport/zoom 기반 cluster marker 계층, `items + mapMarkers` 분리, 서버 tile summary, viewport 무검색 SQL bucket aggregate, bounds 기반 short-lived 서버 캐시와 쓰기 후 invalidation, preview fallback/bootstrap fetch 회귀 수정까지 반영함
+- Cycle 5 지도 성능 후속: 지도 전용 preview payload와 마커/목록 렌더 상한, viewport 첫 진입의 1000건 SSR 제거, map API/server preview 응답 `count + capped items` 구조, `places` 비정규화, viewport/zoom 기반 cluster marker 계층, `items + mapMarkers` 분리, 서버 tile summary, viewport 무검색 SQL bucket aggregate, bounds 기반 short-lived 서버 캐시와 쓰기 후 invalidation, preview fallback/bootstrap fetch 회귀 수정, 모바일 가격 필터 reset, `127.0.0.1` dev origin 허용까지 반영함
 - Cycle 5 운영 지표 후속: `visit_activity` 적재, public/admin layout tracker, `/api/telemetry/visit`, 관리자 overview 방문 카드, 로컬 admin 링크 fallback, 로그인 상태 header test id 복구까지 완료
 - Cycle 5 인증/UI 후속: `/login`, `/signup`은 설정성 패널 없이 액션 중심으로 다시 단순화했고, 지도 필터/검색 칩은 가로 레일로 정리했으며, login/signup E2E로 회귀를 유지함
 - Cycle 5 배포 후속: `deploy:check`와 public split build가 이제 쉘/CI env를 로컬 `.env*`보다 우선 사용하므로, 운영 URL과 split worker 값이 로컬 파일에 덮이지 않게 정리됨
 - 다음 우선순위: live 운영 도메인 기준 실제 배포 적용, 운영 품질 후속 정리, 공개 UI/모바일 polish 잔여 정리
 
 ## 실행 로그
+
+### 2026-04-03 13:25 KST: 모바일 지도에서 cluster만 남던 client-side suppression 회귀 수정
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/places/map-explorer.tsx`에서 모바일 viewport 전용 `cluster-only` 분기를 제거했다. 이제 서버가 확대된 bounds/zoom 기준으로 place marker를 함께 반환하면 모바일에서도 그대로 지도에 전달된다.
+  - 문제 원인은 같은 파일의 `mobileOverviewMarkers`였다. `isMobileViewport + viewport search + 무검색 + selectedPlace 없음 + cluster 존재 + zoom <= 13.25` 조건이면 서버 응답에 place marker가 섞여 있어도 클라이언트가 다시 cluster만 남기고 있었고, 이 때문에 모바일에서 숫자 마커만 계속 보일 수 있었다.
+  - 로컬 API probe로 bootstrap bounds(`37.4133~37.7151`, `126.7341~127.2693`) 기준 응답을 다시 확인했다. 서버는 이미 `zoom 12`부터 `cluster 21 + place 3`, `zoom 15`에서 `cluster 47 + place 7`처럼 개별 place marker를 내려주고 있어, 이번 회귀의 직접 원인이 서버가 아니라 클라이언트 suppression임을 확인했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `USE_MOCK_DATA=true npx playwright test tests/e2e/map.mobile.spec.ts --project mobile-chromium` 통과
+- 메모
+  - 현재 워크트리에는 이번 범위 밖의 대규모 미커밋 변경이 같이 남아 있어, clean 상태 기준 `npm run verify`와 public 배포는 별도 분리 후 이어서 진행한다.
+
+### 2026-04-03 13:20 KST: 가격 필터 모바일 회귀와 `127.0.0.1` dev 접근 문제 정리
+- 완료 내용
+  - `/Users/alex/project/altteulmap/next.config.ts`에 `allowedDevOrigins: ["127.0.0.1"]`를 추가했다. 이제 로컬 dev 서버를 `localhost:3000`으로 띄워도 브라우저를 `http://127.0.0.1:3000`으로 열 때 Next 16 dev origin 제한 때문에 hydration과 `/api/places/map` fetch가 막히지 않는다.
+  - `/Users/alex/project/altteulmap/src/features/map/route-reset-details.tsx`를 추가해 모바일 `탐색 조건` 박스를 client wrapper로 감쌌다. route key가 바뀌면 wrapper 자체가 remount되어 `open` 상태가 닫힌 상태로 초기화된다.
+  - `/Users/alex/project/altteulmap/src/features/map/map-page.tsx`의 모바일 가격/카테고리/검색 범위 패널은 위 wrapper를 쓰도록 바꿨다. 그래서 `5,000원 이하`를 누른 뒤 다시 `탐색 조건`을 열면 `전체 가격`, `10,000원 이하`, `20,000원 이하`를 다시 바로 고를 수 있다.
+  - `/Users/alex/project/altteulmap/tests/e2e/map-price-filter.mobile.spec.ts`를 추가해 모바일에서 `5,000원 이하 -> 탐색 조건 다시 열기 -> 10,000원 이하` 흐름을 회귀로 고정했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3107 USE_MOCK_DATA=true npm run verify` 통과
+  - `AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3107 USE_MOCK_DATA=true npx playwright test tests/e2e/map-price-filter.spec.ts tests/e2e/map-price-filter.mobile.spec.ts` 통과
+  - 수동 dev 확인
+    - `PORT=3000 USE_MOCK_DATA=true AUTH_SECRET=testsecret NEXTAUTH_URL=http://127.0.0.1:3000 npm run dev` 후 `http://127.0.0.1:3000/`에서 badge `507곳`, 목록 `120`, `/api/places/map` 응답 확인
+    - 모바일 viewport에서 `5,000원 이하` 선택 후 `탐색 조건`을 다시 열면 `전체 가격`, `10,000원 이하`가 다시 보이고 `?maxPrice=10000`까지 이동 확인
+- 메모
+  - 이번 사용자 보고 증상은 두 갈래였다. 정상 origin(`localhost`)에서는 가격 필터 자체는 동작했지만 모바일에서는 `<details>` open 상태가 route 전환 뒤 남아 다시 탭했을 때 닫혀 버렸고, `127.0.0.1` 접근에서는 Next dev origin 제한 때문에 hydration과 지도 fetch가 불안정했다.
 
 ### 2026-04-03 13:18 KST: 모바일 지도 UX 후속 커밋 푸시와 public Cloudflare 배포
 - 완료 내용
