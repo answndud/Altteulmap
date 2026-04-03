@@ -3,6 +3,7 @@
 import {
   startTransition,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -308,9 +309,12 @@ export function MapExplorer({
   );
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [isMobileListOpen, setIsMobileListOpen] = useState(false);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
   const shouldSkipInitialFetchRef = useRef(prefetchedOnServer);
   const activeBounds =
-    searchScope === "viewport" ? roundBounds(viewport?.bounds ?? null) : null;
+    searchScope === "viewport"
+      ? roundBounds(viewport?.bounds ?? initialBounds)
+      : null;
   const hasViewportBounds = activeBounds !== null;
   const requestSearch = buildMapQuery({
     bounds: activeBounds,
@@ -324,6 +328,28 @@ export function MapExplorer({
   const displayPlaces = visiblePlaces.slice(0, PLACE_LIST_RENDER_LIMIT);
   const isServerTrimmed = visiblePlaces.length < totalPlaceCount;
   const isListTrimmed = displayPlaces.length < visiblePlaces.length;
+  const mobileOverviewMarkers = useMemo(() => {
+    const clusterMarkers = visibleMapMarkers.filter(
+      (marker): marker is Extract<PlaceMapMarkerRecord, { kind: "cluster" }> =>
+        marker.kind === "cluster",
+    );
+    const shouldPreferClusters =
+      isMobileViewport &&
+      searchScope === "viewport" &&
+      !query &&
+      resolvedSelectedPlaceId === null &&
+      clusterMarkers.length > 0 &&
+      (viewport?.zoom ?? 13) <= 13.25;
+
+    return shouldPreferClusters ? clusterMarkers : visibleMapMarkers;
+  }, [
+    isMobileViewport,
+    query,
+    resolvedSelectedPlaceId,
+    searchScope,
+    viewport?.zoom,
+    visibleMapMarkers,
+  ]);
   const selectedPlace =
     (selectedPlacePreview?.id === resolvedSelectedPlaceId
       ? selectedPlacePreview
@@ -339,6 +365,20 @@ export function MapExplorer({
     searchScope,
     viewport,
   });
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 1279px)");
+    const syncMobileViewport = () => {
+      setIsMobileViewport(mediaQuery.matches);
+    };
+
+    syncMobileViewport();
+    mediaQuery.addEventListener("change", syncMobileViewport);
+
+    return () => {
+      mediaQuery.removeEventListener("change", syncMobileViewport);
+    };
+  }, []);
 
   useEffect(() => {
     if (searchScope === "viewport" && !hasViewportBounds) {
@@ -392,7 +432,7 @@ export function MapExplorer({
       window.clearTimeout(fetchTimeoutId);
       controller.abort();
     };
-  }, [hasViewportBounds, requestSearch, searchScope]);
+  }, [hasViewportBounds, prefetchedOnServer, requestSearch, searchScope]);
 
   const handlePlaceSelect = (placeId: string) => {
     setSelectedPlaceId(placeId);
@@ -458,7 +498,7 @@ export function MapExplorer({
           <NaverMapPanel
             initialBounds={initialBounds}
             isLoading={isFetchingPlaces && visiblePlaces.length === 0}
-            mapMarkers={visibleMapMarkers}
+            mapMarkers={mobileOverviewMarkers}
             placeCount={totalPlaceCount}
             selectedCategoryLabel={selectedCategoryLabel}
             activePlaceId={resolvedSelectedPlaceId}
@@ -536,7 +576,7 @@ export function MapExplorer({
       </div>
 
       {isMobileListOpen ? (
-        <div className="fixed inset-0 z-40 xl:hidden">
+        <div className="fixed inset-0 z-[85] xl:hidden">
           <button
             type="button"
             aria-label="목록 닫기"
@@ -547,7 +587,7 @@ export function MapExplorer({
             role="dialog"
             aria-modal="true"
             data-testid="mobile-place-list-sheet"
-            className="absolute inset-x-2 bottom-2 top-2 flex flex-col overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-2xl"
+            className="altteulmap-mobile-sheet altteulmap-mobile-sheet-list absolute flex flex-col overflow-hidden rounded-[1.75rem] border border-stone-200 bg-white shadow-2xl"
           >
             <div className="sticky top-0 z-10 border-b border-stone-200 bg-white/95 px-4 pb-3 pt-2 backdrop-blur">
               <div className="flex items-center justify-center pb-2">
@@ -573,7 +613,7 @@ export function MapExplorer({
                 </div>
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto p-2.5">
+            <div className="altteulmap-mobile-sheet-scroll flex-1 overflow-y-auto p-2.5">
               {fetchError ? (
                 <div className="mb-2.5 rounded-[1.15rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                   {fetchError}
