@@ -192,7 +192,7 @@ export function PlaceDetailSheet({
   };
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-50 xl:absolute xl:inset-0">
+    <div className="pointer-events-none fixed inset-0 z-[90] xl:absolute xl:inset-0 xl:z-30">
       <button
         type="button"
         aria-label="상세 패널 닫기"
@@ -204,20 +204,25 @@ export function PlaceDetailSheet({
         role="dialog"
         aria-modal="true"
         data-testid="place-detail-sheet"
-        className="pointer-events-auto absolute inset-x-2 bottom-2 top-2 flex w-auto flex-col overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-2xl xl:inset-x-auto xl:inset-y-0 xl:right-0 xl:top-0 xl:w-full xl:max-h-none xl:max-w-[25.5rem] 2xl:max-w-[26.5rem] xl:rounded-l-[2rem] xl:rounded-r-none xl:border-l xl:border-r-0"
+        className="altteulmap-mobile-sheet altteulmap-mobile-sheet-detail pointer-events-auto absolute flex w-auto flex-col overflow-hidden rounded-[1.75rem] border border-stone-200 bg-white shadow-2xl xl:inset-x-auto xl:inset-y-0 xl:right-0 xl:top-0 xl:w-full xl:max-h-none xl:max-w-[25.5rem] 2xl:max-w-[26.5rem] xl:rounded-l-[2rem] xl:rounded-r-none xl:border-l xl:border-r-0"
       >
-        <div className="sticky top-0 z-10 border-b border-stone-200 bg-white/95 px-4 pb-4 pt-2 backdrop-blur sm:px-5">
+        <div className="sticky top-0 z-10 border-b border-stone-200 bg-white/95 px-4 pb-3 pt-2 backdrop-blur sm:px-5">
           <div className="flex items-center justify-center pb-3 xl:hidden">
             <span className="h-1.5 w-12 rounded-full bg-stone-300" />
           </div>
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-orange-600">
-                상세 정보
+                {category?.parentName ?? "장소 상세"}
               </p>
-              <h2 className="mt-1 text-lg font-semibold tracking-tight text-stone-900 sm:text-xl">
-                장소를 자세히 보기
+              <h2 className="mt-1 truncate text-base font-semibold tracking-tight text-stone-900 sm:text-lg">
+                {place?.name ?? "장소 정보"}
               </h2>
+              {place?.address ? (
+                <p className="mt-1 truncate text-xs text-stone-500">
+                  {place.address}
+                </p>
+              ) : null}
             </div>
             <button
               type="button"
@@ -232,7 +237,7 @@ export function PlaceDetailSheet({
 
         <div
           ref={scrollContainerRef}
-          className="flex-1 overflow-y-auto px-4 py-5 sm:px-5"
+          className="altteulmap-mobile-sheet-scroll flex-1 overflow-y-auto px-4 py-5 sm:px-5"
         >
           {isLoading && !previewPlace ? <LoadingState /> : null}
 

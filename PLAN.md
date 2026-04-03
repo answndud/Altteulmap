@@ -22,14 +22,12 @@
   - 좋아요 랭킹
 
 ## 현재 우선순위
-1. 관리자 앱 분리 1차: public/admin build 경로를 분리하고, 별도 `apps/admin` 빌드와 외부 관리자 앱 전환 경로를 정리
-2. 관리자 visit/activity telemetry 2차: 방문 수, 고유 방문자, DAU/WAU, 재방문율을 적재하고 관리자 대시보드에 연결
-3. 인증 정리와 출시 준비: 실제 로그인 경로, 로그인/회원가입 진입면과 소셜 온보딩, 반복 가능한 검증 절차, Cloudflare 배포 체크리스트
-4. 공개 UI polish: 헤더 간소화, 개발 문구 제거, 버튼/칩 줄바꿈 방지, 지도/상세 밀도 정리
-5. 운영 품질 후속 정리: rate limit 수치 조정, 관리자 UX polish, 캐시/재검증 보강
-6. 확장 기능 1차: 플레이스 좋아요/싫어요 반응 모델과 UI 우선 도입
-7. 확장 기능 2차: 공유/사진 업로드 범위와 우선순위 재결정
-8. repo-local 개발 워크플로우 유지: `.agents` skills/reviewers, `.githooks`, `verify` 스크립트
+1. 운영 도메인 기준 출시 준비: credentials 로그인/회원가입 경로, 반복 가능한 검증 절차, canonical/robots/sitemap, Cloudflare 배포 체크리스트
+2. 운영 품질 후속 정리: rate limit 수치 조정, 관리자 UX polish, 캐시/재검증 보강
+3. 공개 UI polish: 헤더 간소화, 개발 문구 제거, 버튼/칩 줄바꿈 방지, 지도/상세 밀도 정리
+4. 확장 기능 1차: 플레이스 좋아요/싫어요 반응 모델과 UI 우선 도입
+5. 확장 기능 2차: 공유/사진 업로드 범위와 우선순위 재결정
+6. repo-local 개발 워크플로우 유지: `.agents` skills/reviewers, `.githooks`, `verify` 스크립트
 
 ## 현재 제품 상태
 
@@ -49,6 +47,7 @@
 - 기존 장소 가격 제보
 - 관리자 가격 제보 검토 큐
 - 관리자 가격 직접 수정/대표 지정/숨김
+- 관리자 visit/activity telemetry와 방문 지표 overview
 - 플레이스 좋아요/싫어요 반응
 - 비로그인 visitor cookie 기반 좋아요/싫어요
 - 지도 목록 좋아요 노출
@@ -64,11 +63,11 @@
 - 검색 URL 상태
   - 검색어/검색 범위는 반영되지만 지도 중심/줌 상태까지는 아직 URL에 싣지 않음
 - 출시 준비
-  - robots, sitemap, canonical, `smoke:local`, `deploy:check`, Playwright E2E 기본 흐름, credentials 로그인/가입/북마크/신고/관리자 승인/관리자 가격 검토 E2E, GitHub Actions CI, Cloudflare Builds 기준 배포 체크 문서는 정리 중이고, 현재 E2E는 세 그룹 실행 기준으로 반복 가능하다. Cloudflare 무료 플랜 기준 번들 경량화와 실제 `workers.dev` 배포까지는 통과했다. 실제 OAuth와 실제 운영 도메인 기준 end-to-end 점검은 남아 있다
+  - robots, sitemap, canonical, `smoke:local`, `deploy:check`, Playwright E2E 기본 흐름, credentials 로그인/가입/북마크/신고/관리자 승인/관리자 가격 검토 E2E, GitHub Actions CI, Cloudflare Builds 기준 배포 체크 문서는 정리 중이고, 현재 E2E는 세 그룹 실행 기준으로 반복 가능하다. Cloudflare 무료 플랜 기준 번들 경량화와 실제 `workers.dev` 배포까지는 통과했다. shell/CI env 우선 배포 체크와 split worker 빌드도 정리됐고, 남은 일은 live 운영 도메인 값으로 실제 배포를 끝내는 마지막 적용 단계다
 - 관리자 분리
-  - 관리자 실제 구현은 `src/features/admin/pages`, `src/features/admin/api`에 있고, public 앱의 `/admin`, `/api/admin`은 `entrypoints`를 통해 embedded/external 모드를 바꿀 수 있다. 별도 `apps/admin` Next 앱 빌드는 가능하지만, 실제 `altteulmap-admin` 배포와 `ADMIN_APP_URL` 기준 cutover는 아직 남아 있다
+  - 관리자 실제 구현은 `src/features/admin/pages`, `src/features/admin/api`에 있고, public 앱의 `/admin`, `/api/admin`은 `entrypoints`를 통해 embedded/external 모드를 바꿀 수 있다. `cf:build:public`은 이제 관리자 route를 제거하지 않고 external redirect/API stub 모드로 빌드되며, `apps/admin` 별도 Next/OpenNext 빌드와 `deploy:check:public`, `deploy:check:admin` 경로도 정리됐다. 남은 일은 실제 `workers.dev` 또는 custom domain에 운영 적용하는 마지막 배포 단계다
 - 인증
-  - 로그인/회원가입 진입면과 로컬 credentials, 카카오/네이버 OAuth scaffolding은 준비돼 있고, 현재는 credentials 회원가입까지 동작한다. `.env.local` 기준으로 네이버는 활성화 가능 상태이고, 카카오는 client secret 누락 시 비활성화된다. 실제 provider credential과 callback URL로 끝까지 검증한 외부 로그인 경로는 아직 없다
+  - 로그인/회원가입 진입면과 로컬 credentials는 운영 가능한 수준으로 정리됐고, 현재는 credentials 회원가입까지 동작한다. 카카오/네이버 OAuth scaffolding은 선택적으로 남겨 두되, 제품 필수 인증 경로와 검증은 credentials 기준으로 유지한다
 - 반응 기능
   - 상세/상세 시트/지도 마커/지도 목록 반영까지 들어갔다. 별도 랭킹 화면은 아직 없다
 - 공유 기능
@@ -78,7 +77,7 @@
 - 좋아요 랭킹
 - 사진 업로드
 - 테스트 체계
-  - 지도/상세/비회원 좋아요/공유, 모바일 목록 시트/상세 시트, credentials 로그인/회원가입, 익명 댓글, 익명 장소 등록, 북마크, 익명 신고 제출/관리자 상태 변경, 익명 가격 제보/관리자 반려, 관리자 장소 승인 기준 Playwright E2E는 들어갔다. 현재는 DB 기반 `signup/bookmarks/map`, mock runtime의 `map.mobile`, DB 기반 `comments/price-review/report-admin/submission-admin` 세 그룹으로 반복 실행한다. 실제 소셜 로그인 E2E와 더 깊은 모바일 제스처 검증은 더 필요하다
+  - 지도/상세/비회원 좋아요/공유, 모바일 목록 시트/상세 시트, credentials 로그인/회원가입, 익명 댓글, 익명 장소 등록, 북마크, 익명 신고 제출/관리자 상태 변경, 익명 가격 제보/관리자 반려, 관리자 장소 승인 기준 Playwright E2E는 들어갔다. 현재는 DB 기반 `signup/bookmarks/map`, mock runtime의 `map.mobile`, DB 기반 `comments/price-review/report-admin/submission-admin` 세 그룹으로 반복 실행한다. 운영 도메인 기준 smoke와 더 깊은 모바일 제스처 검증은 더 필요하다
 - 커뮤니티 `bang`
 - 핫딜 `deal`
 
@@ -91,10 +90,10 @@
 | `착한가격업소` 실제 데이터를 더미 데이터 대신 넣을 수 있도록 수집 스크립트, 정규화 매핑, 좌표 확보 전략, import seed 경로를 구현한다 | Codex | P1 | `done` | 공식 다운로드 또는 페이지 수집으로 원천 데이터가 로컬 파일/테이블에 저장되고, `1만원 이하` 기준과 업종/지역 매핑이 정규화되며, 좌표는 목록 페이지 좌표 또는 별도 geocoding으로 채워지고, 최소 1천건이 앱에서 조회 가능하며, 검증 로그가 `PROGRESS.md`에 남는다 | 수집 설계 확정, `src/db/**`, import script, geocoding 경로, 검증 |
 | importer의 선별 quota를 `서울 500 + 비서울 500`, `음식점 70%` 기준으로 재조정한다 | Codex | P1 | `done` | 기본 `data:goodprice` 실행 결과가 `대표 가격 1만원 이하`, `서울 500`, `비서울 500`, `음식점 700`, `비음식 300`을 동시에 만족하고, bucket 집계와 검증 결과가 `PROGRESS.md`/`README.md`에 남는다 | `scripts/import-goodprice.ts`, `src/features/places/imported-goodprice.json`, `data/goodprice/import-meta.json`, 문서 |
 
-### Cycle 10: 관리자 앱 분리 1차
+### Cycle 10: 관리자 앱 분리 1차 (완료)
 | 작업명 | 담당 에이전트 | 우선순위 | 상태 | 완료기준(DoD) | 의존성 |
 |---|---|---|---|---|---|
-| 관리자 페이지/API의 실제 구현을 공유 모듈로 고정하고, public 앱과 별도 `apps/admin` 앱이 같은 구현을 재사용하도록 정리한다 | Codex | P1 | `in_progress` | `src/features/admin/pages`, `src/features/admin/api`가 관리자 실제 구현의 기준이 되고, public 앱의 `/admin`, `/api/admin`은 `entrypoints`를 통해 embedded/external 모드를 스위치할 수 있으며, `apps/admin`이 별도 Next 앱으로 빌드되고, `ADMIN_APP_URL` 기준 외부 관리자 앱 전환 경로와 검증 결과가 문서에 남는다 | `src/app/admin/**`, `src/app/api/admin/**`, `src/features/admin/**`, `src/lib/admin-app.ts`, `apps/admin/**`, `package.json`, Cloudflare 배포 문서 |
+| 관리자 페이지/API의 실제 구현을 공유 모듈로 고정하고, public 앱과 별도 `apps/admin` 앱이 같은 구현을 재사용하도록 정리한다 | Codex | P1 | `done` | `src/features/admin/pages`, `src/features/admin/api`가 관리자 실제 구현의 기준이 되고, public 앱의 `/admin`, `/api/admin`은 `entrypoints`를 통해 embedded/external 모드를 스위치할 수 있으며, `apps/admin`이 별도 Next 앱으로 빌드되고, `ADMIN_APP_URL` 기준 외부 관리자 앱 전환 경로와 검증 결과가 문서에 남는다 | `src/app/admin/**`, `src/app/api/admin/**`, `src/features/admin/**`, `src/lib/admin-app.ts`, `apps/admin/**`, `package.json`, Cloudflare 배포 문서 |
 
 ### Cycle 7: repo-local AI workflow setup (완료)
 | 작업명 | 담당 에이전트 | 우선순위 | 상태 | 완료기준(DoD) | 의존성 |
@@ -126,16 +125,21 @@
 |---|---|---|---|---|---|
 | 로그인 상태 액션과 운영자 대시보드를 운영 가능한 수준으로 확장한다 | Codex | P1 | `done` | 로그인 사용자는 주요 화면 상단에서 계정 라벨과 로그아웃 버튼을 볼 수 있고, 운영자 사용자는 관리자 진입 링크와 `/admin` overview에서 장소 등록/가격 제보/신고 큐, 사용자 수, 현재 세션 수 같은 즉시 계산 가능한 지표를 확인할 수 있으며, 방문 수/활성 사용자 수는 별도 방문 이벤트 적재 기준으로 정의된 2차 작업 계획이 같이 남는다 | `src/app/**`, `src/features/auth/**`, `src/features/**/repository.ts`, `src/db/schema.ts`, `PLAN.md`, `PROGRESS.md`, `prd.md`, `trd.md`, 테스트 |
 | public/admin 공통 헤더에 브랜드 로고와 핵심 이동 액션을 올려 모든 페이지에서 홈 복귀와 주요 이동을 일관되게 제공한다 | Codex | P1 | `done` | public 앱과 별도 admin 앱의 공통 레이아웃에 `알뜰맵` 로고, `장소 등록하기`, `북마크`, `로그인/로그아웃`, `운영자 관리` 액션이 공통 헤더로 제공되고, 기존 페이지별 중복 액션 블록은 제거되며, 현재 경로 기준 로그인/로그아웃 callback과 admin 진입 링크가 유지되고 검증 결과가 `PROGRESS.md`에 남는다 | `src/app/layout.tsx`, `apps/admin/src/app/layout.tsx`, `src/components/**`, `src/features/map/map-page.tsx`, `src/app/**`, `src/features/admin/pages/**`, `PROGRESS.md` |
-| visit/activity 이벤트 적재를 추가해 관리자 대시보드에 방문 수와 DAU/WAU를 노출한다 | Codex | P1 | `pending` | 방문 이벤트가 visitor/session 기준으로 저장되고, `/admin` overview에서 오늘/7일 방문 수, 고유 방문자 수, DAU/WAU, 재방문율 같은 활동 지표를 확인할 수 있으며, dedupe/rate limit/보존 정책과 검증 로그가 문서에 남는다 | `src/db/schema.ts`, migration, `src/app/**` 또는 middleware, `src/features/admin/**`, `PLAN.md`, `PROGRESS.md`, `trd.md`, 테스트 |
-| 로컬 credentials 중심 인증을 실제 로그인/회원가입 경로로 확장하고, 핵심 사용자 흐름 테스트/SEO/배포 체크리스트를 정리한다 | Codex | P2 | `in_progress` | 로컬 credentials 로그인/회원가입과 소셜 가입 진입면, 지도 탐색/모바일 시트/익명 장소 등록/북마크/신고/관리자 승인/관리자 가격 검토 E2E가 반복 가능하게 정리되고, 이후 실제 OAuth 1개 이상이 end-to-end로 확인되며, sitemap/canonical/metadata와 Cloudflare 배포 체크리스트가 최신 상태가 된다 | `src/auth.ts`, `src/app/login/page.tsx`, `src/app/signup/page.tsx`, 테스트 코드, `README.md`, `trd.md` |
+| visit/activity 이벤트 적재를 추가해 관리자 대시보드에 방문 수와 DAU/WAU를 노출한다 | Codex | P1 | `done` | 방문 이벤트가 visitor/session 기준으로 저장되고, `/admin` overview에서 오늘/7일 방문 수, 고유 방문자 수, DAU/WAU, 재방문율 같은 활동 지표를 확인할 수 있으며, dedupe/rate limit/보존 정책과 검증 로그가 문서에 남는다 | `src/db/schema.ts`, migration, `src/app/**` 또는 middleware, `src/features/admin/**`, `PLAN.md`, `PROGRESS.md`, `trd.md`, 테스트 |
+| 배포/점검 스크립트가 쉘·CI env를 로컬 `.env*`보다 우선 사용해 운영 URL과 split 배포 값이 덮어쓰이지 않게 정리한다 | Codex | P1 | `done` | `deploy:check`와 public/admin build 스크립트는 `.env`, `.env.production`, `.env.local`, `.env.production.local`을 읽더라도 이미 주입된 쉘/CI env를 덮어쓰지 않고, split 배포용 `NEXTAUTH_URL`/`ADMIN_APP_URL`/`SITE_URL` 점검 결과와 문서 로그가 `PROGRESS.md`에 남는다 | `scripts/check-cloudflare-deploy.mjs`, `scripts/build-public-worker.mjs`, env loading helper, `README.md`, 배포 문서 |
+| 공개 지도 preview fallback에서도 bootstrap bounds 기준 첫 fetch와 가격 필터가 유지되도록 회귀를 정리한다 | Codex | P1 | `done` | 네이버 지도 SDK가 없거나 늦게 떠도 `/` 첫 진입과 가격 필터 전환 시 bootstrap bounds 기준 `/api/places/map` fetch가 실행되고, 목록/미리보기 마커가 0건에 고정되지 않으며, 관련 회귀 검증과 로그가 `PROGRESS.md`에 남는다 | `src/features/places/map-explorer.tsx`, `src/features/map/map-page.tsx`, `tests/e2e/**`, `PROGRESS.md` |
+| 로컬 credentials 중심 인증을 실제 로그인/회원가입 경로로 확장하고, 핵심 사용자 흐름 테스트/SEO/배포 체크리스트를 정리한다 | Codex | P2 | `in_progress` | 로컬 credentials 로그인/회원가입과 선택적 소셜 가입 진입면, 지도 탐색/모바일 시트/익명 장소 등록/북마크/신고/관리자 승인/관리자 가격 검토 E2E가 반복 가능하게 정리되고, sitemap/canonical/metadata와 Cloudflare 배포 체크리스트가 최신 상태가 된다 | `src/auth.ts`, `src/app/login/page.tsx`, `src/app/signup/page.tsx`, 테스트 코드, `README.md`, `trd.md` |
+| 공개 UI polish 2차로 인증 진입면은 액션 중심으로 다시 단순화하고, 지도 필터/검색 칩은 줄바꿈 대신 가로 레일로 정리한다 | Codex | P1 | `done` | `/login`, `/signup`은 설정성 패널 없이 로그인/가입 액션에만 집중하고, 지도 화면의 모바일/데스크톱 필터 칩과 검색 범위 칩은 과도한 줄바꿈 없이 가로 스크롤 또는 compact 배치로 정리되며, 관련 검증과 문서 로그가 `PROGRESS.md`에 남는다 | `src/app/login/page.tsx`, `src/app/signup/page.tsx`, `src/features/auth/**`, `src/features/map/map-page.tsx`, `src/app/globals.css`, E2E/verify |
 | 모바일 공개 지도 UX와 인증 진입면을 모바일 우선 기준으로 다시 정리한다 | Codex | P1 | `done` | 모바일에서 검색 외 필터는 접기 가능하고, 목록/상세 시트가 더 위로 올라오며, 로그인/회원가입이 기능 집중형 단일 카드 구조로 정리되고 관련 검증 로그가 `PROGRESS.md`에 남는다 | `src/app/map/page.tsx`, `src/features/places/map-explorer.tsx`, `src/features/places/place-detail-sheet.tsx`, `src/app/login/page.tsx`, `src/app/signup/page.tsx` |
+| 모바일 지도 UX 후속 정리로 전역 헤더와 시트 레이어 충돌을 없애고, 모바일 시트를 safe-area 기준 bottom sheet로 줄이며, 저줌 개요에서는 cluster/place 혼재를 줄인다 | Codex | P1 | `done` | 모바일 목록/상세 시트는 헤더 위에서 안정적으로 열리고, 닫기 액션이 항상 보이며, 시트는 화면을 과도하게 덮지 않고 safe-area를 고려하며, 모바일 개요 지도에서는 cluster와 place가 동시에 난잡하게 섞여 보이지 않도록 marker 정책 또는 스타일이 분리되고, 관련 검증과 로그가 `PROGRESS.md`에 남는다 | `src/components/global-header.tsx`, `src/features/places/map-explorer.tsx`, `src/features/places/place-detail-sheet.tsx`, `src/features/map/naver-map-panel.tsx`, `src/features/places/repository.ts`, 모바일 E2E |
 | 공개 지도의 초기 payload와 렌더 밀도를 줄여 실데이터 1000건에서도 첫 진입/이동이 버벅이지 않게 만든다 | Codex | P1 | `done` | 지도 첫 화면과 `/api/places/map`는 상세용 배열 없이 가벼운 preview payload만 사용하고, 클라이언트는 마커/목록 렌더 개수를 제한해도 전체 개수와 상세 진입 흐름은 유지하며, 관련 검증/측정 결과가 `PROGRESS.md`에 남는다 | `src/features/places/types.ts`, `src/features/places/repository.ts`, `src/features/map/map-page.tsx`, `src/app/api/places/map/route.ts`, `src/features/places/map-explorer.tsx`, `src/features/map/naver-map-panel.tsx`, `src/features/places/place-detail-sheet.tsx`, 테스트/문서 |
 | 공개 지도 첫 진입에서 viewport 결과 1000건을 SSR하지 않고, 초기 bootstrap bounds만 렌더한 뒤 client fetch로 전환한다 | Codex | P1 | `done` | viewport 모드의 `/` 첫 렌더는 지도 bootstrap bounds와 빈 preview 목록만 내려주고, 실제 장소 목록은 map idle 이후 `/api/places/map`로 채워지며, 글로벌 검색 SSR과 상세 진입 흐름은 유지되고 검증 로그가 `PROGRESS.md`에 남는다 | `src/features/map/map-page.tsx`, `src/features/places/map-explorer.tsx`, `src/features/map/naver-map-panel.tsx`, `src/app/api/places/map/route.ts`, 문서/검증 |
 | 공개 지도 map API와 글로벌 검색 preview 응답에 서버 cap과 total count를 도입해 네트워크 payload를 줄인다 | Codex | P1 | `done` | `listMapPlaces()`와 `/api/places/map`는 전체 매칭 수와 실제 반환 수를 분리해 전달하고, viewport/global 결과는 서버 상한 이내의 preview만 보내며, 지도/목록 UI는 전체 개수와 축약 안내를 유지하고 검증 로그가 `PROGRESS.md`에 남는다 | `src/features/places/repository.ts`, `src/app/api/places/map/route.ts`, `src/features/map/map-page.tsx`, `src/features/places/map-explorer.tsx`, 문서/검증 |
 | 공개 지도 읽기에서 쓰는 카테고리/반응 요약을 `places`에 비정규화해 map query의 join과 집계를 줄인다 | Codex | P1 | `done` | `places`는 `primaryCategorySlug`, `likeCount`, `dislikeCount`를 유지하고, 지도/global preview 및 상세 읽기는 이 필드를 우선 사용하며, 카테고리/반응 쓰기 경로와 seed/migration/backfill이 함께 갱신되고 검증 로그가 `PROGRESS.md`에 남는다 | `src/db/schema.ts`, `drizzle/**`, `src/features/places/repository.ts`, `src/db/seed.ts`, 문서/검증 |
 | 공개 지도의 마커 샘플링을 viewport/zoom 기반 클러스터 계층으로 바꿔 넓은 영역에서도 실제 마커 수를 낮춘다 | Codex | P1 | `done` | 지도는 서버 cap으로 받은 preview를 그대로 유지하되, 실제 렌더는 viewport/zoom 기준 cluster marker를 사용하고, 넓은 viewport에서도 초기/이동 마커 수가 크게 줄며, preview fallback과 실지도 모두 같은 클러스터 규칙을 쓰고 검증 로그가 `PROGRESS.md`에 남는다 | `src/features/places/map-explorer.tsx`, `src/features/map/naver-map-panel.tsx`, `src/features/map/naver-map-sdk.ts`, 문서/검증 |
 | 공개 지도 map API를 목록용 `items`와 지도용 `mapMarkers`로 분리하고, 넓은 viewport는 서버 tile summary를 내려 네트워크 payload를 더 줄인다 | Codex | P1 | `done` | `/api/places/map`와 `listMapPlaces()`는 목록 패널에 필요한 preview와 지도 marker용 요약을 분리해 반환하고, 넓은 viewport에서는 개별 place 대신 tile/cluster summary가 내려오며, 클라이언트는 전체 개수/목록 UX를 유지한 채 marker payload를 더 적게 받고, 검증 로그가 `PROGRESS.md`에 남는다 | `src/features/places/repository.ts`, `src/app/api/places/map/route.ts`, `src/features/places/map-explorer.tsx`, `src/features/map/naver-map-panel.tsx`, 타입/문서/검증 |
-| 공개 지도 viewport 무검색 경로의 cluster/tile 집계를 SQL 단계로 내려 넓은 영역 탐색 시 전체 place row 스캔과 메모리 후처리를 줄인다 | Codex | P1 | `in_progress` | `viewport + query 없음` 경로에서 `count`, 목록용 `items`, 지도용 `mapMarkers`가 분리된 쿼리로 계산되고, 넓은 viewport에서는 SQL bucket aggregate가 cluster summary를 바로 내려주며, 기존 목록/상세 UX와 검증 로그가 유지된다 | `src/features/places/repository.ts`, `src/app/api/places/map/route.ts`, `PROGRESS.md`, 런타임 검증 |
+| 공개 지도 viewport 무검색 경로의 cluster/tile 집계를 SQL 단계로 내려 넓은 영역 탐색 시 전체 place row 스캔과 메모리 후처리를 줄인다 | Codex | P1 | `done` | `viewport + query 없음` 경로에서 `count`, 목록용 `items`, 지도용 `mapMarkers`가 분리된 쿼리로 계산되고, 넓은 viewport에서는 SQL bucket aggregate가 cluster summary를 바로 내려주며, 기존 목록/상세 UX와 검증 로그가 유지된다 | `src/features/places/repository.ts`, `src/app/api/places/map/route.ts`, `PROGRESS.md`, 런타임 검증 |
+| 공개 지도 bounds 기반 재조회에 짧은 서버 캐시를 넣고, 공개 데이터 쓰기 이후에는 즉시 비워 같은 viewport 연속 조회 비용을 줄인다 | Codex | P1 | `done` | `bounds`가 있는 `/api/places/map` 조회는 짧은 TTL 메모리 캐시를 재사용하고, 반응/가격 대표값/승인 같은 공개 지도 데이터 변경 후에는 캐시가 즉시 비워지며, 검증 로그가 `PROGRESS.md`에 남는다 | `src/features/places/repository.ts`, `src/app/api/places/map/route.ts`, 공개 쓰기 경로, `PROGRESS.md`, 런타임 검증 |
 | 공개 지도의 플레이스 정렬 기능을 제거하고 검색/필터만 남긴다 | Codex | P1 | `done` | 지도 화면에서 정렬 UI와 `sort` query/API 계약이 제거되고, 공개 플레이스 목록은 고정 순서로 노출되며, 관련 테스트/문서/검증 로그가 같이 갱신된다 | `src/app/map/page.tsx`, `src/features/places/map-explorer.tsx`, `src/app/api/places/map/route.ts`, `src/features/places/**`, `tests/e2e/map.spec.ts`, 문서 |
 | 공개 장소 등록을 텍스트 입력 중심으로 단순화하고, 운영자 승인 단계에서 위치를 확정한다 | Codex | P1 | `done` | 공개 등록 폼은 상호명/주소/가격 등 텍스트 입력만 받고, 공개 제출 API는 좌표 없이 접수되며, 위치/지도/링크 처리는 운영자 승인 단계에서 수행하도록 화면/API/문서/검증 로그가 같은 규칙으로 정리된다 | `src/features/submission/**`, `src/features/places/admin-place-review-form.tsx`, `src/app/api/places/route.ts`, `src/app/api/admin/places/[id]/route.ts`, `tests/e2e/submission-admin.spec.ts`, `prd.md`, `trd.md` |
 | 장소 등록 진입/제출을 로그인 없이도 허용하고, 공개 CTA 문구를 `장소 등록` 기준으로 맞춘다 | Codex | P1 | `done` | 비로그인 사용자가 `/submit`에 바로 진입해 장소 등록 요청을 제출할 수 있고, 등록 API가 익명 제출을 허용하며, 공개 화면 CTA와 검증 로그가 `장소 등록` 기준으로 정리된다 | `src/app/submit/page.tsx`, `src/app/api/places/route.ts`, `src/app/map/page.tsx`, 테스트 코드 |
@@ -151,4 +155,4 @@
 - 벤치마크 사이트에서 영감을 받은 기능은 확장 후보로 유지하되, core loop를 약하게 만들 정도로 범위를 넓히지 않는다.
 - 현재 익명 허용 범위는 `좋아요/싫어요`, `장소 등록`, `댓글`, `가격 제보`, `신고`까지다.
 - 공개 쓰기 중 로그인 유지 기능은 현재 `북마크`만 남긴다. 운영자 기능은 기존처럼 별도 인증/권한 검사를 유지한다.
-- 운영자 대시보드의 `총 사용자 수`, `현재 세션 수`, `승인/신고/가격 검토 큐`는 현행 DB로 바로 계산할 수 있지만, `방문 수`, `DAU/WAU` 같은 활동 지표는 현재 저장되지 않는다. 이 값들은 별도 `visit/activity` 이벤트 적재를 붙인 뒤 2차로 노출한다.
+- 운영자 대시보드의 활동 지표는 `visit_activity` 테이블에 30분 bucket dedupe 기준으로 적재하고, 현재 `/admin` overview에서 오늘/7일 방문 수, 고유 방문자 수, DAU/WAU, 7일 재방문율을 노출한다.
