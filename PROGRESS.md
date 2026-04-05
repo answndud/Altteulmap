@@ -26,6 +26,7 @@
 - Cycle 5 모바일 시트 후속: 목록 시트에 `peek/expanded` 스냅과 drag-close를 추가했고, 상세 시트도 상단 핸들 drag-close를 지원하도록 정리했으며, 모바일/데스크톱 지도 회귀를 다시 통과시킴
 - Cycle 5 지도 탐색 UX 후속: 공개 지도 상단에 `이 지역 검색` 수동 재조회 버튼을 추가했고, `내 위치` 버튼은 `현재 위치`로 명확하게 바꿨다. viewport 흐름은 그대로 유지하면서도 사용자가 현재 지도 위치 기준으로 place/cluster를 다시 불러올 수 있게 했고, 데스크톱/모바일 지도 회귀에 버튼 노출과 수동 재조회 호출을 고정했다
 - Cycle 5 지도 마커 디자인 후속: place marker는 음식/생활서비스/장보기/건강/업무학습 상위 카테고리 기준 색 핀으로 다시 설계했고, 숫자 cluster는 중립 원형 계층으로 바꿔 같은 지도 화면에서 타입 구분과 시각 밀도를 함께 정리했다
+- Cycle 5 지도 마커 대비 후속: basemap과 섞이던 컬러 핀을 더 선명한 카테고리 팔레트와 강한 white halo, 중심 링 구조로 바꿨고, cluster도 slate 중심 원형 배지로 다시 정리해 확대/축소 상태 모두에서 배경 대비를 높였다
 - Cycle 5 공개 재검증 후속: 댓글/가격 제보/반응/북마크/장소 등록/신고 제출 route의 revalidation 경로를 공용 helper로 모아 홈/지도/상세/admin queue 반영 범위를 액션별로 정리했고, admin helper도 같은 place read 경로 정의를 재사용하도록 맞췄다
 - Cycle 5 운영 smoke 후속: `smoke:remote`와 `smoke:local`을 현재 UI/SEO 계약에 맞게 read-only smoke로 정리했고, Workers runtime에서 guest visitor cookie 조회가 public place read/write를 hang시키던 경로는 request cookie header 파싱과 DB read timeout fallback으로 완화했다. public worker를 다시 배포한 뒤 live `workers.dev` 기준 `smoke:remote`까지 통과했고, public `/api/admin/places` external stub는 다시 `200 + 안내 JSON` 계약으로 맞췄다
 - Cycle 5 rate limit UX 후속: 공개 쓰기와 회원가입 화면이 `429` 응답의 `Retry-After`/`X-RateLimit-Reset`을 읽어 남은 대기 시간을 같은 형식으로 보여주도록 정리했고, 댓글 E2E로 회귀를 붙였다
@@ -38,6 +39,18 @@
 - 다음 우선순위: 공유 유입을 추천 로직이나 운영 지표에 더 활용할지 판단하고, 출시 준비/운영 품질 잔여 범위를 정리한다
 
 ## 실행 로그
+
+### 2026-04-05 12:39 KST: 공개 지도 marker 대비 강화
+- 완료 내용
+  - `/Users/alex/project/altteulmap/PLAN.md`에 marker 대비 후속 작업을 추가한 뒤 완료 상태로 닫았다.
+  - `/Users/alex/project/altteulmap/src/features/map/naver-map-panel.tsx`에서 place marker 팔레트를 기존 earthy 톤보다 더 선명한 카테고리색으로 바꾸고, 각 핀에 공통 white halo와 중심 ring/dot를 넣어 basemap 위에서 먼저 보이도록 조정했다.
+  - 같은 파일에서 cluster marker도 아이보리/베이지 중심 구조에서 white shell + slate core로 바꿔 개요 상태에서 지도 바탕과 덜 섞이게 했다.
+  - preview fallback도 같은 helper를 쓰므로 실제 NAVER map marker와 같은 대비 규칙으로 같이 맞춰졌다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+- 메모
+  - `npm run verify` 중 local production DB에 `places` 테이블이 없어 mock fallback 로그는 남았지만, lint/build는 정상 통과했다.
 
 ### 2026-04-05 12:36 KST: 공개 지도 카테고리 마커 리디자인 push 및 public Cloudflare 배포
 - 완료 내용

@@ -174,84 +174,70 @@ type PlaceMarkerGroupKey =
 type PlaceMarkerTheme = {
   fill: string;
   activeFill: string;
-  inner: string;
-  ring: string;
-  activeRing: string;
-  shadow: string;
-  activeShadow: string;
-  outline: string;
+  stroke: string;
+  activeStroke: string;
+  coreRing: string;
+  coreDot: string;
 };
 
 const PLACE_MARKER_THEMES: Record<PlaceMarkerGroupKey, PlaceMarkerTheme> = {
   food: {
-    fill: "#c97949",
-    activeFill: "#b4683c",
-    inner: "#fff8f1",
-    ring: "rgba(201, 121, 73, 0.18)",
-    activeRing: "rgba(180, 104, 60, 0.24)",
-    shadow: "rgba(120, 76, 52, 0.18)",
-    activeShadow: "rgba(104, 64, 42, 0.24)",
-    outline: "rgba(255, 250, 245, 0.96)",
+    fill: "#dc603e",
+    activeFill: "#c44d2d",
+    stroke: "rgba(126, 47, 25, 0.24)",
+    activeStroke: "rgba(112, 38, 19, 0.32)",
+    coreRing: "#8e3821",
+    coreDot: "#dc603e",
   },
   "life-services": {
-    fill: "#7d8ea1",
-    activeFill: "#687b90",
-    inner: "#f7fafc",
-    ring: "rgba(125, 142, 161, 0.18)",
-    activeRing: "rgba(104, 123, 144, 0.24)",
-    shadow: "rgba(86, 101, 119, 0.2)",
-    activeShadow: "rgba(72, 86, 102, 0.25)",
-    outline: "rgba(248, 250, 252, 0.96)",
+    fill: "#4f78bf",
+    activeFill: "#3e61a6",
+    stroke: "rgba(40, 65, 109, 0.22)",
+    activeStroke: "rgba(31, 53, 92, 0.3)",
+    coreRing: "#35558f",
+    coreDot: "#4f78bf",
   },
   shopping: {
-    fill: "#94895b",
-    activeFill: "#7f7547",
-    inner: "#fbf9ee",
-    ring: "rgba(148, 137, 91, 0.18)",
-    activeRing: "rgba(127, 117, 71, 0.24)",
-    shadow: "rgba(105, 96, 61, 0.2)",
-    activeShadow: "rgba(88, 79, 49, 0.24)",
-    outline: "rgba(251, 249, 240, 0.96)",
+    fill: "#b25a72",
+    activeFill: "#95445a",
+    stroke: "rgba(106, 47, 64, 0.22)",
+    activeStroke: "rgba(88, 35, 50, 0.3)",
+    coreRing: "#7a3849",
+    coreDot: "#b25a72",
   },
   health: {
-    fill: "#6f9a7f",
-    activeFill: "#5c846c",
-    inner: "#f4fbf6",
-    ring: "rgba(111, 154, 127, 0.18)",
-    activeRing: "rgba(92, 132, 108, 0.24)",
-    shadow: "rgba(79, 112, 91, 0.18)",
-    activeShadow: "rgba(64, 91, 74, 0.24)",
-    outline: "rgba(247, 251, 248, 0.96)",
+    fill: "#2f8d69",
+    activeFill: "#1f7454",
+    stroke: "rgba(24, 87, 63, 0.22)",
+    activeStroke: "rgba(17, 71, 50, 0.3)",
+    coreRing: "#195a41",
+    coreDot: "#2f8d69",
   },
   "study-work": {
-    fill: "#667b97",
-    activeFill: "#546783",
-    inner: "#f5f8fc",
-    ring: "rgba(102, 123, 151, 0.18)",
-    activeRing: "rgba(84, 103, 131, 0.24)",
-    shadow: "rgba(73, 87, 112, 0.19)",
-    activeShadow: "rgba(60, 72, 94, 0.25)",
-    outline: "rgba(247, 249, 252, 0.96)",
+    fill: "#4f647d",
+    activeFill: "#3b5067",
+    stroke: "rgba(43, 58, 74, 0.22)",
+    activeStroke: "rgba(34, 46, 60, 0.3)",
+    coreRing: "#314457",
+    coreDot: "#4f647d",
   },
   fallback: {
-    fill: "#9a826f",
-    activeFill: "#866d5c",
-    inner: "#fbf7f3",
-    ring: "rgba(154, 130, 111, 0.18)",
-    activeRing: "rgba(134, 109, 92, 0.24)",
-    shadow: "rgba(101, 82, 69, 0.18)",
-    activeShadow: "rgba(86, 69, 57, 0.24)",
-    outline: "rgba(251, 247, 243, 0.96)",
+    fill: "#9a613f",
+    activeFill: "#7d4a2b",
+    stroke: "rgba(95, 56, 34, 0.22)",
+    activeStroke: "rgba(79, 44, 24, 0.3)",
+    coreRing: "#693b21",
+    coreDot: "#9a613f",
   },
 };
 
 const CLUSTER_MARKER_THEME = {
-  outerBackground: "rgba(255, 251, 247, 0.96)",
-  outerBorder: "rgba(214, 196, 181, 0.9)",
-  innerBackground: "#dcc7b5",
-  innerBorder: "rgba(182, 154, 131, 0.68)",
-  text: "#5e4739",
-  shadow: "0 14px 28px rgba(112, 88, 69, 0.16)",
+  shellBackground: "rgba(255, 255, 255, 0.96)",
+  shellBorder: "rgba(53, 65, 81, 0.16)",
+  coreBackground: "#536273",
+  coreBorder: "rgba(40, 48, 59, 0.26)",
+  text: "#ffffff",
+  shadow: "0 16px 32px rgba(15, 23, 42, 0.2)",
 } as const;
 
 function getPlaceMarkerGroupKey(
@@ -278,41 +264,44 @@ function getPlaceMarkerVisual(
   const theme = PLACE_MARKER_THEMES[getPlaceMarkerGroupKey(categorySlug)];
 
   return {
-    canvasWidth: isActive ? 44 : 40,
-    canvasHeight: isActive ? 54 : 50,
-    pinSize: isActive ? 30 : 26,
-    dotSize: isActive ? 10 : 8,
+    canvasWidth: isActive ? 48 : 44,
+    canvasHeight: isActive ? 58 : 54,
+    pinSize: isActive ? 34 : 30,
+    coreSize: isActive ? 16 : 14,
+    dotSize: isActive ? 6 : 5,
     fill: isActive ? theme.activeFill : theme.fill,
-    inner: theme.inner,
-    outline: theme.outline,
-    shadow: `0 0 0 4px ${isActive ? theme.activeRing : theme.ring}, 0 ${
-      isActive ? 16 : 12
-    }px ${isActive ? 30 : 24}px ${
-      isActive ? theme.activeShadow : theme.shadow
-    }`,
+    stroke: isActive ? theme.activeStroke : theme.stroke,
+    coreRing: theme.coreRing,
+    coreDot: theme.coreDot,
+    outline: "rgba(255, 255, 255, 0.98)",
+    shadow: `0 0 0 3px rgba(255,255,255,0.94), 0 0 0 4.5px ${
+      isActive ? theme.activeStroke : theme.stroke
+    }, 0 ${isActive ? 18 : 14}px ${isActive ? 32 : 26}px rgba(15,23,42,${
+      isActive ? "0.26" : "0.2"
+    })`,
   };
 }
 
 function getClusterMarkerVisual(placeCount: number) {
   if (placeCount >= 100) {
     return {
-      outerSize: 68,
-      innerSize: 52,
+      outerSize: 70,
+      innerSize: 54,
       fontSize: 16,
     };
   }
 
   if (placeCount >= 20) {
     return {
-      outerSize: 60,
-      innerSize: 46,
+      outerSize: 62,
+      innerSize: 48,
       fontSize: 15,
     };
   }
 
   return {
-    outerSize: 52,
-    innerSize: 38,
+    outerSize: 54,
+    innerSize: 40,
     fontSize: 14,
   };
 }
@@ -326,7 +315,9 @@ function createPlaceMarkerIconHtml(
   return `
     <div style="width:${visual.canvasWidth}px;height:${visual.canvasHeight}px;display:flex;align-items:flex-end;justify-content:center;">
       <span style="position:relative;display:block;width:${visual.pinSize}px;height:${visual.pinSize}px;border-radius:${visual.pinSize}px ${visual.pinSize}px ${visual.pinSize}px 0;background:${visual.fill};border:2px solid ${visual.outline};box-shadow:${visual.shadow};transform:rotate(-45deg);">
-        <span style="position:absolute;left:50%;top:50%;width:${visual.dotSize}px;height:${visual.dotSize}px;border-radius:999px;background:${visual.inner};transform:translate(-50%,-50%) rotate(45deg);"></span>
+        <span style="position:absolute;left:50%;top:50%;width:${visual.coreSize}px;height:${visual.coreSize}px;border-radius:999px;background:#ffffff;border:2px solid ${visual.coreRing};transform:translate(-50%,-50%) rotate(45deg);">
+          <span style="position:absolute;left:50%;top:50%;width:${visual.dotSize}px;height:${visual.dotSize}px;border-radius:999px;background:${visual.coreDot};transform:translate(-50%,-50%);"></span>
+        </span>
       </span>
     </div>
   `;
@@ -358,8 +349,8 @@ function createClusterIconHtml(placeCount: number) {
 
   return `
     <div style="width:${visual.outerSize}px;height:${visual.outerSize}px;display:flex;align-items:center;justify-content:center;">
-      <span style="display:flex;align-items:center;justify-content:center;width:${visual.outerSize}px;height:${visual.outerSize}px;border-radius:999px;background:${CLUSTER_MARKER_THEME.outerBackground};border:1px solid ${CLUSTER_MARKER_THEME.outerBorder};box-shadow:${CLUSTER_MARKER_THEME.shadow};">
-        <span style="display:flex;align-items:center;justify-content:center;width:${visual.innerSize}px;height:${visual.innerSize}px;border-radius:999px;background:${CLUSTER_MARKER_THEME.innerBackground};border:1px solid ${CLUSTER_MARKER_THEME.innerBorder};color:${CLUSTER_MARKER_THEME.text};font-size:${visual.fontSize}px;font-weight:800;line-height:1;letter-spacing:-0.02em;">
+      <span style="display:flex;align-items:center;justify-content:center;width:${visual.outerSize}px;height:${visual.outerSize}px;border-radius:999px;background:${CLUSTER_MARKER_THEME.shellBackground};border:1px solid ${CLUSTER_MARKER_THEME.shellBorder};box-shadow:${CLUSTER_MARKER_THEME.shadow};">
+        <span style="display:flex;align-items:center;justify-content:center;width:${visual.innerSize}px;height:${visual.innerSize}px;border-radius:999px;background:${CLUSTER_MARKER_THEME.coreBackground};border:1px solid ${CLUSTER_MARKER_THEME.coreBorder};color:${CLUSTER_MARKER_THEME.text};font-size:${visual.fontSize}px;font-weight:800;line-height:1;letter-spacing:-0.02em;">
           ${formatLikeCount(placeCount)}
         </span>
       </span>
@@ -433,8 +424,8 @@ function PreviewMap({
                 style={{
                   width: `${clusterVisual.outerSize}px`,
                   height: `${clusterVisual.outerSize}px`,
-                  background: CLUSTER_MARKER_THEME.outerBackground,
-                  border: `1px solid ${CLUSTER_MARKER_THEME.outerBorder}`,
+                  background: CLUSTER_MARKER_THEME.shellBackground,
+                  border: `1px solid ${CLUSTER_MARKER_THEME.shellBorder}`,
                   boxShadow: CLUSTER_MARKER_THEME.shadow,
                 }}
               >
@@ -443,8 +434,8 @@ function PreviewMap({
                   style={{
                     width: `${clusterVisual.innerSize}px`,
                     height: `${clusterVisual.innerSize}px`,
-                    background: CLUSTER_MARKER_THEME.innerBackground,
-                    border: `1px solid ${CLUSTER_MARKER_THEME.innerBorder}`,
+                    background: CLUSTER_MARKER_THEME.coreBackground,
+                    border: `1px solid ${CLUSTER_MARKER_THEME.coreBorder}`,
                     color: CLUSTER_MARKER_THEME.text,
                     fontSize: `${clusterVisual.fontSize}px`,
                     letterSpacing: "-0.02em",
@@ -494,14 +485,24 @@ function PreviewMap({
                 }}
               >
                 <span
-                  className="absolute left-1/2 top-1/2 block rounded-full"
+                  className="absolute left-1/2 top-1/2 block rounded-full bg-white"
                   style={{
-                    width: `${placeVisual.dotSize}px`,
-                    height: `${placeVisual.dotSize}px`,
-                    background: placeVisual.inner,
+                    width: `${placeVisual.coreSize}px`,
+                    height: `${placeVisual.coreSize}px`,
+                    border: `2px solid ${placeVisual.coreRing}`,
                     transform: "translate(-50%, -50%) rotate(45deg)",
                   }}
-                />
+                >
+                  <span
+                    className="absolute left-1/2 top-1/2 block rounded-full"
+                    style={{
+                      width: `${placeVisual.dotSize}px`,
+                      height: `${placeVisual.dotSize}px`,
+                      background: placeVisual.coreDot,
+                      transform: "translate(-50%, -50%)",
+                    }}
+                  />
+                </span>
               </span>
             </span>
           </button>
