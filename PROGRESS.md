@@ -39,6 +39,19 @@
 
 ## 실행 로그
 
+### 2026-04-05 12:36 KST: 공개 지도 카테고리 마커 리디자인 push 및 public Cloudflare 배포
+- 완료 내용
+  - 공개 지도 마커 리디자인 변경을 `feat(map): redesign category markers` (`fcb178e`)로 커밋하고 `codex/ui-polish-batch` 브랜치에 push했다.
+  - place marker는 상위 카테고리 5묶음 기준 색 핀으로, 숫자 cluster는 중립 원형 계층으로 바꾼 상태로 public worker를 다시 배포했다.
+- 검증 결과
+  - `git push origin codex/ui-polish-batch` 통과
+  - `npm run deploy:check` 통과
+  - `npm run deploy:public` 통과
+  - `curl -I --max-time 20 https://altteulmap.altteul-lab.workers.dev/` 결과 `200`
+- 메모
+  - public 배포 URL: `https://altteulmap.altteul-lab.workers.dev`
+  - Cloudflare version id: `049cea66-e4c3-4a60-96de-326576bc39f3`
+
 ### 2026-04-05 12:31 KST: 공개 지도 마커 색 체계와 place/cluster 디자인 재정리
 - 완료 내용
   - `/Users/alex/project/altteulmap/PLAN.md`에 공개 지도 마커 색 체계/디자인 정리 작업을 먼저 추가하고 완료 상태까지 갱신했다.
