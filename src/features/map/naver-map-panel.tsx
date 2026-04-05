@@ -2,6 +2,7 @@
 
 import { Component, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { getCategoryBySlug } from "@/features/categories/catalog";
 import {
   DEFAULT_MAP_CENTER,
   getLoadedNaverMapSdk,
@@ -162,46 +163,177 @@ function formatLikeCount(count: number) {
   return new Intl.NumberFormat("ko-KR").format(count);
 }
 
-const MARKER_PALETTE = {
-  place: {
-    inactive: {
-      background: "#f5e4d8",
-      text: "#7a4f3b",
-      border: "rgba(255,250,245,0.98)",
-      shadow: "0 0 0 3px rgba(255,250,245,0.82), 0 14px 28px rgba(126,86,61,0.18)",
-      badge: "#fff6ef",
-    },
-    active: {
-      background: "#db8258",
-      text: "#fffaf5",
-      border: "rgba(255,249,243,0.98)",
-      shadow: "0 0 0 3px rgba(255,249,243,0.86), 0 16px 30px rgba(128,76,46,0.26)",
-      badge: "rgba(255,255,255,0.22)",
-    },
+type PlaceMarkerGroupKey =
+  | "food"
+  | "life-services"
+  | "shopping"
+  | "health"
+  | "study-work"
+  | "fallback";
+
+type PlaceMarkerTheme = {
+  fill: string;
+  activeFill: string;
+  inner: string;
+  ring: string;
+  activeRing: string;
+  shadow: string;
+  activeShadow: string;
+  outline: string;
+};
+
+const PLACE_MARKER_THEMES: Record<PlaceMarkerGroupKey, PlaceMarkerTheme> = {
+  food: {
+    fill: "#c97949",
+    activeFill: "#b4683c",
+    inner: "#fff8f1",
+    ring: "rgba(201, 121, 73, 0.18)",
+    activeRing: "rgba(180, 104, 60, 0.24)",
+    shadow: "rgba(120, 76, 52, 0.18)",
+    activeShadow: "rgba(104, 64, 42, 0.24)",
+    outline: "rgba(255, 250, 245, 0.96)",
   },
-  cluster: {
-    background: "#d4936d",
-    text: "#fffaf6",
-    border: "rgba(255,249,243,0.98)",
-    shadow: "0 0 0 3px rgba(255,249,243,0.84), 0 16px 32px rgba(126,84,59,0.22)",
+  "life-services": {
+    fill: "#7d8ea1",
+    activeFill: "#687b90",
+    inner: "#f7fafc",
+    ring: "rgba(125, 142, 161, 0.18)",
+    activeRing: "rgba(104, 123, 144, 0.24)",
+    shadow: "rgba(86, 101, 119, 0.2)",
+    activeShadow: "rgba(72, 86, 102, 0.25)",
+    outline: "rgba(248, 250, 252, 0.96)",
   },
+  shopping: {
+    fill: "#94895b",
+    activeFill: "#7f7547",
+    inner: "#fbf9ee",
+    ring: "rgba(148, 137, 91, 0.18)",
+    activeRing: "rgba(127, 117, 71, 0.24)",
+    shadow: "rgba(105, 96, 61, 0.2)",
+    activeShadow: "rgba(88, 79, 49, 0.24)",
+    outline: "rgba(251, 249, 240, 0.96)",
+  },
+  health: {
+    fill: "#6f9a7f",
+    activeFill: "#5c846c",
+    inner: "#f4fbf6",
+    ring: "rgba(111, 154, 127, 0.18)",
+    activeRing: "rgba(92, 132, 108, 0.24)",
+    shadow: "rgba(79, 112, 91, 0.18)",
+    activeShadow: "rgba(64, 91, 74, 0.24)",
+    outline: "rgba(247, 251, 248, 0.96)",
+  },
+  "study-work": {
+    fill: "#667b97",
+    activeFill: "#546783",
+    inner: "#f5f8fc",
+    ring: "rgba(102, 123, 151, 0.18)",
+    activeRing: "rgba(84, 103, 131, 0.24)",
+    shadow: "rgba(73, 87, 112, 0.19)",
+    activeShadow: "rgba(60, 72, 94, 0.25)",
+    outline: "rgba(247, 249, 252, 0.96)",
+  },
+  fallback: {
+    fill: "#9a826f",
+    activeFill: "#866d5c",
+    inner: "#fbf7f3",
+    ring: "rgba(154, 130, 111, 0.18)",
+    activeRing: "rgba(134, 109, 92, 0.24)",
+    shadow: "rgba(101, 82, 69, 0.18)",
+    activeShadow: "rgba(86, 69, 57, 0.24)",
+    outline: "rgba(251, 247, 243, 0.96)",
+  },
+};
+
+const CLUSTER_MARKER_THEME = {
+  outerBackground: "rgba(255, 251, 247, 0.96)",
+  outerBorder: "rgba(214, 196, 181, 0.9)",
+  innerBackground: "#dcc7b5",
+  innerBorder: "rgba(182, 154, 131, 0.68)",
+  text: "#5e4739",
+  shadow: "0 14px 28px rgba(112, 88, 69, 0.16)",
 } as const;
 
-function createMarkerIconHtml(count: number, isActive: boolean) {
-  const palette = isActive
-    ? MARKER_PALETTE.place.active
-    : MARKER_PALETTE.place.inactive;
+function getPlaceMarkerGroupKey(
+  categorySlug: string | null | undefined,
+): PlaceMarkerGroupKey {
+  const parentSlug = getCategoryBySlug(categorySlug)?.parentSlug;
+
+  switch (parentSlug) {
+    case "food":
+    case "life-services":
+    case "shopping":
+    case "health":
+    case "study-work":
+      return parentSlug;
+    default:
+      return "fallback";
+  }
+}
+
+function getPlaceMarkerVisual(
+  categorySlug: string | null | undefined,
+  isActive: boolean,
+) {
+  const theme = PLACE_MARKER_THEMES[getPlaceMarkerGroupKey(categorySlug)];
+
+  return {
+    canvasWidth: isActive ? 44 : 40,
+    canvasHeight: isActive ? 54 : 50,
+    pinSize: isActive ? 30 : 26,
+    dotSize: isActive ? 10 : 8,
+    fill: isActive ? theme.activeFill : theme.fill,
+    inner: theme.inner,
+    outline: theme.outline,
+    shadow: `0 0 0 4px ${isActive ? theme.activeRing : theme.ring}, 0 ${
+      isActive ? 16 : 12
+    }px ${isActive ? 30 : 24}px ${
+      isActive ? theme.activeShadow : theme.shadow
+    }`,
+  };
+}
+
+function getClusterMarkerVisual(placeCount: number) {
+  if (placeCount >= 100) {
+    return {
+      outerSize: 68,
+      innerSize: 52,
+      fontSize: 16,
+    };
+  }
+
+  if (placeCount >= 20) {
+    return {
+      outerSize: 60,
+      innerSize: 46,
+      fontSize: 15,
+    };
+  }
+
+  return {
+    outerSize: 52,
+    innerSize: 38,
+    fontSize: 14,
+  };
+}
+
+function createPlaceMarkerIconHtml(
+  categorySlug: string | null | undefined,
+  isActive: boolean,
+) {
+  const visual = getPlaceMarkerVisual(categorySlug, isActive);
 
   return `
-    <div style="display:inline-flex;align-items:center;gap:6px;min-width:52px;height:36px;padding:0 12px;border-radius:18px;background:${palette.background};color:${palette.text};border:2px solid ${palette.border};box-shadow:${palette.shadow};font-size:12px;font-weight:800;line-height:1;transform:translate(-50%,-50%) ${isActive ? "scale(1.04)" : ""};letter-spacing:-0.01em;">
-        <span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:10px;background:${palette.badge};font-size:11px;">👍</span>
-        <span>${formatLikeCount(count)}</span>
+    <div style="width:${visual.canvasWidth}px;height:${visual.canvasHeight}px;display:flex;align-items:flex-end;justify-content:center;">
+      <span style="position:relative;display:block;width:${visual.pinSize}px;height:${visual.pinSize}px;border-radius:${visual.pinSize}px ${visual.pinSize}px ${visual.pinSize}px 0;background:${visual.fill};border:2px solid ${visual.outline};box-shadow:${visual.shadow};transform:rotate(-45deg);">
+        <span style="position:absolute;left:50%;top:50%;width:${visual.dotSize}px;height:${visual.dotSize}px;border-radius:999px;background:${visual.inner};transform:translate(-50%,-50%) rotate(45deg);"></span>
+      </span>
     </div>
   `;
 }
 
 function createMapMarkerIcon(
-  count: number,
+  categorySlug: string | null | undefined,
   isActive: boolean,
   naver: ReturnType<typeof getLoadedNaverMapSdk>,
 ) {
@@ -212,17 +344,25 @@ function createMapMarkerIcon(
     return undefined;
   }
 
+  const visual = getPlaceMarkerVisual(categorySlug, isActive);
+
   return {
-    content: createMarkerIconHtml(count, isActive),
-    size: new Size(76, 40),
-    anchor: new Point(38, 20),
+    content: createPlaceMarkerIconHtml(categorySlug, isActive),
+    size: new Size(visual.canvasWidth, visual.canvasHeight),
+    anchor: new Point(visual.canvasWidth / 2, visual.canvasHeight),
   };
 }
 
 function createClusterIconHtml(placeCount: number) {
+  const visual = getClusterMarkerVisual(placeCount);
+
   return `
-    <div style="display:inline-flex;align-items:center;justify-content:center;min-width:46px;height:46px;padding:0 13px;border-radius:23px;background:${MARKER_PALETTE.cluster.background};color:${MARKER_PALETTE.cluster.text};border:2px solid ${MARKER_PALETTE.cluster.border};box-shadow:${MARKER_PALETTE.cluster.shadow};font-size:13px;font-weight:800;line-height:1;transform:translate(-50%,-50%);letter-spacing:-0.01em;">
-      <span>${formatLikeCount(placeCount)}</span>
+    <div style="width:${visual.outerSize}px;height:${visual.outerSize}px;display:flex;align-items:center;justify-content:center;">
+      <span style="display:flex;align-items:center;justify-content:center;width:${visual.outerSize}px;height:${visual.outerSize}px;border-radius:999px;background:${CLUSTER_MARKER_THEME.outerBackground};border:1px solid ${CLUSTER_MARKER_THEME.outerBorder};box-shadow:${CLUSTER_MARKER_THEME.shadow};">
+        <span style="display:flex;align-items:center;justify-content:center;width:${visual.innerSize}px;height:${visual.innerSize}px;border-radius:999px;background:${CLUSTER_MARKER_THEME.innerBackground};border:1px solid ${CLUSTER_MARKER_THEME.innerBorder};color:${CLUSTER_MARKER_THEME.text};font-size:${visual.fontSize}px;font-weight:800;line-height:1;letter-spacing:-0.02em;">
+          ${formatLikeCount(placeCount)}
+        </span>
+      </span>
     </div>
   `;
 }
@@ -238,10 +378,12 @@ function createClusterMarkerIcon(
     return undefined;
   }
 
+  const visual = getClusterMarkerVisual(placeCount);
+
   return {
     content: createClusterIconHtml(placeCount),
-    size: new Size(72, 50),
-    anchor: new Point(36, 25),
+    size: new Size(visual.outerSize, visual.outerSize),
+    anchor: new Point(visual.outerSize / 2, visual.outerSize / 2),
   };
 }
 
@@ -272,24 +414,53 @@ function PreviewMap({
         const left = ((marker.longitude - bounds.minLng) / lngRange) * 72 + 8;
 
         if (marker.kind === "cluster") {
+          const clusterVisual = getClusterMarkerVisual(marker.placeCount);
+
           return (
             <button
               key={marker.id}
               type="button"
               data-testid={`map-preview-marker-${marker.id}`}
               onClick={() => onActivateCluster?.(marker)}
-              className="absolute"
+              className="absolute -translate-x-1/2 -translate-y-1/2 transition-transform hover:scale-[1.03]"
               style={{
                 top: `${top}%`,
                 left: `${left}%`,
               }}
             >
-              <span className="flex min-w-[3.15rem] items-center justify-center rounded-[1.45rem] border-2 border-white bg-[#d4936d] px-3 py-2 text-xs font-extrabold text-[#fffaf6] shadow-[0_0_0_3px_rgba(255,249,243,0.8),0_16px_30px_rgba(126,84,59,0.2)] transition">
-                {formatLikeCount(marker.placeCount)}
+              <span
+                className="flex items-center justify-center rounded-full"
+                style={{
+                  width: `${clusterVisual.outerSize}px`,
+                  height: `${clusterVisual.outerSize}px`,
+                  background: CLUSTER_MARKER_THEME.outerBackground,
+                  border: `1px solid ${CLUSTER_MARKER_THEME.outerBorder}`,
+                  boxShadow: CLUSTER_MARKER_THEME.shadow,
+                }}
+              >
+                <span
+                  className="flex items-center justify-center rounded-full font-extrabold"
+                  style={{
+                    width: `${clusterVisual.innerSize}px`,
+                    height: `${clusterVisual.innerSize}px`,
+                    background: CLUSTER_MARKER_THEME.innerBackground,
+                    border: `1px solid ${CLUSTER_MARKER_THEME.innerBorder}`,
+                    color: CLUSTER_MARKER_THEME.text,
+                    fontSize: `${clusterVisual.fontSize}px`,
+                    letterSpacing: "-0.02em",
+                  }}
+                >
+                  {formatLikeCount(marker.placeCount)}
+                </span>
               </span>
             </button>
           );
         }
+
+        const placeVisual = getPlaceMarkerVisual(
+          marker.place.categorySlug,
+          marker.isActive,
+        );
 
         return (
           <button
@@ -297,23 +468,41 @@ function PreviewMap({
             type="button"
             data-testid={`map-preview-marker-${marker.id}`}
             onClick={() => onSelectPlace(marker.place)}
-            className="absolute"
+            className="absolute -translate-x-1/2 -translate-y-full transition-transform hover:scale-[1.04]"
             style={{
               top: `${top}%`,
               left: `${left}%`,
             }}
           >
-              <span
-              className={`flex min-w-[3.4rem] items-center justify-center gap-1 rounded-2xl border-2 border-white px-3 py-2 text-xs font-semibold shadow-[0_0_0_3px_rgba(255,249,243,0.8),0_14px_28px_rgba(126,84,59,0.18)] transition ${
-                marker.isActive
-                  ? "bg-[#db8258] text-[#fffaf5]"
-                  : "bg-[#f5e4d8] text-[#7a4f3b]"
-              }`}
+            <span
+              className="flex items-end justify-center"
+              style={{
+                width: `${placeVisual.canvasWidth}px`,
+                height: `${placeVisual.canvasHeight}px`,
+              }}
             >
-              <span className="text-[11px] opacity-95">
-                👍
+              <span
+                className="relative block"
+                style={{
+                  width: `${placeVisual.pinSize}px`,
+                  height: `${placeVisual.pinSize}px`,
+                  borderRadius: `${placeVisual.pinSize}px ${placeVisual.pinSize}px ${placeVisual.pinSize}px 0`,
+                  background: placeVisual.fill,
+                  border: `2px solid ${placeVisual.outline}`,
+                  boxShadow: placeVisual.shadow,
+                  transform: "rotate(-45deg)",
+                }}
+              >
+                <span
+                  className="absolute left-1/2 top-1/2 block rounded-full"
+                  style={{
+                    width: `${placeVisual.dotSize}px`,
+                    height: `${placeVisual.dotSize}px`,
+                    background: placeVisual.inner,
+                    transform: "translate(-50%, -50%) rotate(45deg)",
+                  }}
+                />
               </span>
-              <span>{formatLikeCount(marker.place.likeCount)}</span>
             </span>
           </button>
         );
@@ -879,7 +1068,7 @@ function NaverMapPanelContent({
             markerItem.kind === "cluster"
               ? createClusterMarkerIcon(markerItem.placeCount, { maps })
               : createMapMarkerIcon(
-                  markerItem.place.likeCount,
+                  markerItem.place.categorySlug,
                   markerItem.isActive,
                   { maps },
                 ),

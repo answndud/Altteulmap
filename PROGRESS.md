@@ -25,6 +25,7 @@
 - Cycle 5 공개 UI/mobile polish 후속: 모바일 검색 요약은 한 줄 텍스트로 줄이고, 지도 목록 패널의 상태 안내는 하나의 요약 블록으로 합쳤으며, 상세 시트는 헤더/본문 중복 메타를 줄여 가격/액션 중심으로 시작하도록 다시 정리함
 - Cycle 5 모바일 시트 후속: 목록 시트에 `peek/expanded` 스냅과 drag-close를 추가했고, 상세 시트도 상단 핸들 drag-close를 지원하도록 정리했으며, 모바일/데스크톱 지도 회귀를 다시 통과시킴
 - Cycle 5 지도 탐색 UX 후속: 공개 지도 상단에 `이 지역 검색` 수동 재조회 버튼을 추가했고, `내 위치` 버튼은 `현재 위치`로 명확하게 바꿨다. viewport 흐름은 그대로 유지하면서도 사용자가 현재 지도 위치 기준으로 place/cluster를 다시 불러올 수 있게 했고, 데스크톱/모바일 지도 회귀에 버튼 노출과 수동 재조회 호출을 고정했다
+- Cycle 5 지도 마커 디자인 후속: place marker는 음식/생활서비스/장보기/건강/업무학습 상위 카테고리 기준 색 핀으로 다시 설계했고, 숫자 cluster는 중립 원형 계층으로 바꿔 같은 지도 화면에서 타입 구분과 시각 밀도를 함께 정리했다
 - Cycle 5 공개 재검증 후속: 댓글/가격 제보/반응/북마크/장소 등록/신고 제출 route의 revalidation 경로를 공용 helper로 모아 홈/지도/상세/admin queue 반영 범위를 액션별로 정리했고, admin helper도 같은 place read 경로 정의를 재사용하도록 맞췄다
 - Cycle 5 운영 smoke 후속: `smoke:remote`와 `smoke:local`을 현재 UI/SEO 계약에 맞게 read-only smoke로 정리했고, Workers runtime에서 guest visitor cookie 조회가 public place read/write를 hang시키던 경로는 request cookie header 파싱과 DB read timeout fallback으로 완화했다. public worker를 다시 배포한 뒤 live `workers.dev` 기준 `smoke:remote`까지 통과했고, public `/api/admin/places` external stub는 다시 `200 + 안내 JSON` 계약으로 맞췄다
 - Cycle 5 rate limit UX 후속: 공개 쓰기와 회원가입 화면이 `429` 응답의 `Retry-After`/`X-RateLimit-Reset`을 읽어 남은 대기 시간을 같은 형식으로 보여주도록 정리했고, 댓글 E2E로 회귀를 붙였다
@@ -37,6 +38,19 @@
 - 다음 우선순위: 공유 유입을 추천 로직이나 운영 지표에 더 활용할지 판단하고, 출시 준비/운영 품질 잔여 범위를 정리한다
 
 ## 실행 로그
+
+### 2026-04-05 12:31 KST: 공개 지도 마커 색 체계와 place/cluster 디자인 재정리
+- 완료 내용
+  - `/Users/alex/project/altteulmap/PLAN.md`에 공개 지도 마커 색 체계/디자인 정리 작업을 먼저 추가하고 완료 상태까지 갱신했다.
+  - `/Users/alex/project/altteulmap/src/features/map/naver-map-panel.tsx`에서 place marker를 기존 `좋아요 pill` 대신 카테고리 상위 그룹 기준의 컬러 핀으로 다시 설계했다. `food`, `life-services`, `shopping`, `health`, `study-work` 5개 그룹을 기준으로 색을 나눴고, active marker는 같은 색 계열에서 크기와 halo만 강화하도록 정리했다.
+  - 같은 파일에서 숫자 cluster도 기존 주황 캡슐 대신 중립 아이보리/스톤 계열의 원형 이중 레이어로 바꿨고, `placeCount`에 따라 outer/inner size와 font 크기를 조금씩 다르게 주어 overview에서 과하게 튀지 않게 조정했다.
+  - preview fallback과 실제 NAVER map marker가 같은 시각 규칙을 쓰도록 helper를 공용화했다. 그래서 SDK 실패 fallback과 실지도가 서로 다른 마커 언어를 쓰는 문제도 같이 줄였다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+- 메모
+  - `npm run verify` 중 local production DB에 `places` 테이블이 없어 build 단계에서 mock fallback 로그는 남았지만, lint/build 자체는 정상 통과했다.
+  - 이번 단계는 마커 색/형태 재설계에 집중했고, 실제 live 반영은 사용자가 원할 때 push/deploy 단계에서 이어가면 된다.
 
 ### 2026-04-05 12:21 KST: 공개 지도 marker mode 분리 변경 push 및 public Cloudflare 배포
 - 완료 내용
