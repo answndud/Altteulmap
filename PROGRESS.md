@@ -40,6 +40,19 @@
 
 ## 실행 로그
 
+### 2026-04-05 12:46 KST: `착한가격업소` importer selection 로직 포함 push 및 public Cloudflare 배포
+- 완료 내용
+  - importer quota selection 변경과 문서 정리를 `fix(data): refine goodprice quota selection` (`77dd22d`)로 커밋하고 `codex/ui-polish-batch` 브랜치에 push했다.
+  - 변경은 공개 앱 런타임 코드가 아니지만, 사용자가 요청한 현재 브랜치 상태 기준으로 public worker를 다시 배포했다.
+- 검증 결과
+  - `git push origin codex/ui-polish-batch` 통과
+  - `npm run deploy:check` 통과
+  - `npm run deploy:public` 통과
+  - `curl -I --max-time 20 https://altteulmap.altteul-lab.workers.dev/` 결과 `200`
+- 메모
+  - public 배포 URL: `https://altteulmap.altteul-lab.workers.dev`
+  - Cloudflare version id: `6b1e50b4-9876-4767-91b4-89c92ec734f4`
+
 ### 2026-04-05 12:44 KST: `착한가격업소` importer quota 선택 로직 보강과 문서 정리
 - 완료 내용
   - `/Users/alex/project/altteulmap/scripts/import-goodprice.ts`에서 서울/비서울, 음식/비음식 목표가 동시에 걸릴 때 bucket별 상한만으로 바로 고정하지 않고, 수집된 후보 풀 안에서 실제로 가능한 `targets`를 다시 계산한 뒤 그 target에 맞춰 selection 하도록 바꿨다.
