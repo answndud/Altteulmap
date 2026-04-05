@@ -85,7 +85,7 @@
 |---|---|---|---|---|---|
 | 행정안전부 `착한가격업소` 사이트의 목록/엑셀/상세 구조를 분석해 1차 수집 경로와 필터 기준을 확정한다 | Codex | P1 | `done` | `/bssh/bsshList.do`, `/bssh/bsshPageExcel.do`, `/bssh/bsshInfo.json`의 역할, 좌표/상세/가격 데이터 차이, robots/rate limit 고려사항, `8천원 미만 1천건` 선별 기준과 적재 전략이 `PROGRESS.md`에 정리된다 | `PLAN.md`, `PROGRESS.md`, 외부 사이트 구조 |
 | `착한가격업소` 실제 데이터를 더미 데이터 대신 넣을 수 있도록 수집 스크립트, 정규화 매핑, 좌표 확보 전략, import seed 경로를 구현한다 | Codex | P1 | `done` | 공식 다운로드 또는 페이지 수집으로 원천 데이터가 로컬 파일/테이블에 저장되고, `8천원 미만` 기준과 업종/지역 매핑이 정규화되며, 좌표는 목록 페이지 좌표 또는 별도 geocoding으로 채워지고, 최소 1천건이 앱에서 조회 가능하며, 검증 로그가 `PROGRESS.md`에 남는다 | 수집 설계 확정, `src/db/**`, import script, geocoding 경로, 검증 |
-| importer의 선별 quota를 `서울 500 + 비서울 500`, `음식점 70%`, `대표 가격 8천원 미만` 기준으로 재조정한다 | Codex | P1 | `in_progress` | 기본 `data:goodprice` 실행 결과가 `대표 가격 8천원 미만`, `서울 500`, `비서울 500`, `음식점 700`, `비음식 300`을 동시에 만족하고, bucket 집계와 검증 결과가 `PROGRESS.md`/`README.md`에 남는다 | `scripts/import-goodprice.ts`, `src/features/places/imported-goodprice.json`, `data/goodprice/import-meta.json`, 문서 |
+| importer의 선별 quota를 `서울 500 + 비서울 500`, `음식점 70%`, `대표 가격 8천원 미만` 기준으로 재조정한다 | Codex | P1 | `done` | 기본 `data:goodprice` 실행 결과가 `대표 가격 8천원 미만`, `서울 500`, `비서울 500`, `음식점 700`, `비음식 300`을 동시에 만족하고, bucket 집계와 검증 결과가 `PROGRESS.md`/`README.md`에 남는다 | `scripts/import-goodprice.ts`, `src/features/places/imported-goodprice.json`, `data/goodprice/import-meta.json`, 문서 |
 
 ### Cycle 10: 관리자 앱 분리 1차 (완료)
 | 작업명 | 담당 에이전트 | 우선순위 | 상태 | 완료기준(DoD) | 의존성 |

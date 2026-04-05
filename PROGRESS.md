@@ -40,6 +40,26 @@
 
 ## 실행 로그
 
+### 2026-04-05 12:48 KST: `착한가격업소` 기본 데이터셋을 `대표 가격 8천원 미만`으로 재생성
+- 완료 내용
+  - `/Users/alex/project/altteulmap/scripts/import-goodprice.ts`의 기본 `maxPrice`를 `8000`으로 낮추고, 가격 필터를 `이 값 미만` 기준으로 바꿨다. 이제 기본 실행은 `8000원` 항목을 포함하지 않는다.
+  - 같은 importer는 기존처럼 `서울도 음식 70%`, `비서울도 음식 70%`를 각각 강제하지 않고, 최종 선택 단계에서 `서울 500 / 비서울 500 / 음식 700 / 비음식 300`을 만족하는 실제 bucket 조합을 계산하도록 바꿨다. `8천원 미만` 기준에서는 `서울 비음식 150` 고정 quota가 부족해 기존 방식으로는 1000건 selection이 실패했다.
+  - `/Users/alex/project/altteulmap/src/features/places/imported-goodprice.json`과 `/Users/alex/project/altteulmap/data/goodprice/import-meta.json`을 새 기준으로 다시 생성했다. 최종 bucket actual은 `서울 음식 368`, `서울 비음식 132`, `비서울 음식 332`, `비서울 비음식 168`이다.
+  - `/Users/alex/project/altteulmap/README.md`에 기본 수집 기준을 `대표 가격 8천원 미만`으로 맞추고, `--max-price`가 `이 값 미만` 조건이라는 설명을 추가했다.
+  - `/Users/alex/project/altteulmap/PLAN.md`의 Cycle 9 완료 기준도 새 기본값으로 갱신했다.
+- 검증 결과
+  - `npx tsc --noEmit` 통과
+  - `npm run data:goodprice -- --limit=40 --delay-ms=50 --timeout-ms=10000 --include-detail=false --output=/tmp/goodprice-40.json --manifest=/tmp/goodprice-40-manifest.json` 통과
+  - `node` 검사 결과 `/tmp/goodprice-40.json`은 `40건`, `서울 20`, `비서울 20`, `음식 28`, `비음식 12`, `대표 가격 >= 8000` `0건`
+  - `npm run data:goodprice -- --delay-ms=50 --timeout-ms=10000` 통과
+  - `node` 검사 결과 `/Users/alex/project/altteulmap/src/features/places/imported-goodprice.json`은 `1000건`, `서울 500`, `비서울 500`, `음식 700`, `비음식 300`, `대표 가격 >= 8000` `0건`, `priceItems >= 8000` `0건`, `대표 가격 최대 7900`, `priceItems 최대 7900`
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+  - `npm run db:seed` 통과
+- 메모
+  - `npm run verify` 중 static generation 단계에서 production DB의 `places` 테이블 부재로 mock fallback 로그가 남는 현상은 기존과 동일하며, 이번 데이터셋 변경과는 무관하다.
+  - 새 manifest의 `quotas.targets`는 실제 선택에 사용된 bucket 수치다. 기본 분포는 `368/132/332/168`로 기록된다.
+
 ### 2026-04-05 12:46 KST: `착한가격업소` importer selection 로직 포함 push 및 public Cloudflare 배포
 - 완료 내용
   - importer quota selection 변경과 문서 정리를 `fix(data): refine goodprice quota selection` (`77dd22d`)로 커밋하고 `codex/ui-polish-batch` 브랜치에 push했다.
