@@ -26,6 +26,11 @@ type NaverMapPanelProps = {
   isLoading?: boolean;
   mapMarkers: PlaceMapMarkerRecord[];
   placeCount?: number;
+  refreshAction?: {
+    isVisible: boolean;
+    isLoading: boolean;
+    onRefresh: () => void;
+  } | null;
   selectedCategoryLabel: string | null;
   activePlaceId?: string | null;
   focusPlacesKey?: string | null;
@@ -157,18 +162,39 @@ function formatLikeCount(count: number) {
   return new Intl.NumberFormat("ko-KR").format(count);
 }
 
+const MARKER_PALETTE = {
+  place: {
+    inactive: {
+      background: "#f5e4d8",
+      text: "#7a4f3b",
+      border: "rgba(255,250,245,0.98)",
+      shadow: "0 0 0 3px rgba(255,250,245,0.82), 0 14px 28px rgba(126,86,61,0.18)",
+      badge: "#fff6ef",
+    },
+    active: {
+      background: "#db8258",
+      text: "#fffaf5",
+      border: "rgba(255,249,243,0.98)",
+      shadow: "0 0 0 3px rgba(255,249,243,0.86), 0 16px 30px rgba(128,76,46,0.26)",
+      badge: "rgba(255,255,255,0.22)",
+    },
+  },
+  cluster: {
+    background: "#d4936d",
+    text: "#fffaf6",
+    border: "rgba(255,249,243,0.98)",
+    shadow: "0 0 0 3px rgba(255,249,243,0.84), 0 16px 32px rgba(126,84,59,0.22)",
+  },
+} as const;
+
 function createMarkerIconHtml(count: number, isActive: boolean) {
-  const background = isActive ? "#d97f4d" : "#ffffff";
-  const textColor = isActive ? "#ffffff" : "#7c4a2f";
-  const borderColor = isActive ? "#d97f4d" : "#edd3bf";
-  const shadowColor = isActive
-    ? "rgba(169, 95, 53, 0.34)"
-    : "rgba(104, 71, 53, 0.16)";
-  const badgeBackground = isActive ? "rgba(255,255,255,0.18)" : "#fff2e8";
+  const palette = isActive
+    ? MARKER_PALETTE.place.active
+    : MARKER_PALETTE.place.inactive;
 
   return `
-    <div style="display:inline-flex;align-items:center;gap:6px;min-width:50px;height:34px;padding:0 11px;border-radius:16px;background:${background};color:${textColor};border:1px solid ${borderColor};box-shadow:0 10px 22px ${shadowColor};font-size:12px;font-weight:700;line-height:1;transform:translate(-50%,-50%);">
-        <span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:10px;background:${badgeBackground};font-size:11px;">👍</span>
+    <div style="display:inline-flex;align-items:center;gap:6px;min-width:52px;height:36px;padding:0 12px;border-radius:18px;background:${palette.background};color:${palette.text};border:2px solid ${palette.border};box-shadow:${palette.shadow};font-size:12px;font-weight:800;line-height:1;transform:translate(-50%,-50%) ${isActive ? "scale(1.04)" : ""};letter-spacing:-0.01em;">
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:10px;background:${palette.badge};font-size:11px;">👍</span>
         <span>${formatLikeCount(count)}</span>
     </div>
   `;
@@ -188,14 +214,14 @@ function createMapMarkerIcon(
 
   return {
     content: createMarkerIconHtml(count, isActive),
-    size: new Size(68, 34),
-    anchor: new Point(34, 17),
+    size: new Size(76, 40),
+    anchor: new Point(38, 20),
   };
 }
 
 function createClusterIconHtml(placeCount: number) {
   return `
-    <div style="display:inline-flex;align-items:center;justify-content:center;min-width:44px;height:44px;padding:0 12px;border-radius:22px;background:#f3a162;color:#ffffff;border:1px solid #d97f4d;box-shadow:0 12px 24px rgba(169,95,53,0.28);font-size:13px;font-weight:800;line-height:1;transform:translate(-50%,-50%);">
+    <div style="display:inline-flex;align-items:center;justify-content:center;min-width:46px;height:46px;padding:0 13px;border-radius:23px;background:${MARKER_PALETTE.cluster.background};color:${MARKER_PALETTE.cluster.text};border:2px solid ${MARKER_PALETTE.cluster.border};box-shadow:${MARKER_PALETTE.cluster.shadow};font-size:13px;font-weight:800;line-height:1;transform:translate(-50%,-50%);letter-spacing:-0.01em;">
       <span>${formatLikeCount(placeCount)}</span>
     </div>
   `;
@@ -214,8 +240,8 @@ function createClusterMarkerIcon(
 
   return {
     content: createClusterIconHtml(placeCount),
-    size: new Size(64, 44),
-    anchor: new Point(32, 22),
+    size: new Size(72, 50),
+    anchor: new Point(36, 25),
   };
 }
 
@@ -258,7 +284,7 @@ function PreviewMap({
                 left: `${left}%`,
               }}
             >
-              <span className="flex min-w-[3.1rem] items-center justify-center rounded-[1.35rem] border border-[#d97f4d] bg-[#f3a162] px-3 py-2 text-xs font-extrabold text-white shadow-lg transition">
+              <span className="flex min-w-[3.15rem] items-center justify-center rounded-[1.45rem] border-2 border-white bg-[#d4936d] px-3 py-2 text-xs font-extrabold text-[#fffaf6] shadow-[0_0_0_3px_rgba(255,249,243,0.8),0_16px_30px_rgba(126,84,59,0.2)] transition">
                 {formatLikeCount(marker.placeCount)}
               </span>
             </button>
@@ -277,14 +303,14 @@ function PreviewMap({
               left: `${left}%`,
             }}
           >
-            <span
-              className={`flex min-w-[3.35rem] items-center justify-center gap-1 rounded-2xl px-3 py-2 text-xs font-semibold shadow-lg transition ${
+              <span
+              className={`flex min-w-[3.4rem] items-center justify-center gap-1 rounded-2xl border-2 border-white px-3 py-2 text-xs font-semibold shadow-[0_0_0_3px_rgba(255,249,243,0.8),0_14px_28px_rgba(126,84,59,0.18)] transition ${
                 marker.isActive
-                  ? "bg-[#dc8b5e] text-white"
-                  : "border border-[#edd3bf] bg-white text-[#7c4a2f]"
+                  ? "bg-[#db8258] text-[#fffaf5]"
+                  : "bg-[#f5e4d8] text-[#7a4f3b]"
               }`}
             >
-              <span className={`text-[11px] ${marker.isActive ? "" : "opacity-90"}`}>
+              <span className="text-[11px] opacity-95">
                 👍
               </span>
               <span>{formatLikeCount(marker.place.likeCount)}</span>
@@ -324,7 +350,7 @@ function NaverMapFallback({
 
   return (
     <section
-      className="overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-sm"
+      className="relative isolate overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-sm"
       data-testid="map-panel-shell"
     >
       <div className="flex items-center justify-between border-b border-stone-200 px-6 py-4">
@@ -336,7 +362,7 @@ function NaverMapFallback({
         </div>
       </div>
 
-      <div className="relative h-[36rem] lg:h-[44rem]">
+      <div className="relative isolate z-0 h-[36rem] lg:h-[44rem]">
         <PreviewMap
           markers={displayMarkers}
           selectedCategoryLabel={selectedCategoryLabel}
@@ -399,6 +425,7 @@ function NaverMapPanelContent({
   isLoading = false,
   mapMarkers,
   placeCount,
+  refreshAction = null,
   selectedCategoryLabel,
   activePlaceId: controlledActivePlaceId,
   focusPlacesKey,
@@ -987,7 +1014,7 @@ function NaverMapPanelContent({
 
   return (
     <section
-      className="overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-sm"
+      className="relative isolate overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-sm"
       data-testid="map-panel-shell"
     >
       <div className="flex items-center justify-between border-b border-stone-200 px-6 py-4">
@@ -999,11 +1026,11 @@ function NaverMapPanelContent({
         </div>
       </div>
 
-      <div className="relative h-[36rem] lg:h-[44rem]">
+      <div className="relative isolate z-0 h-[36rem] lg:h-[44rem]">
         <div
           ref={mapContainerRef}
           data-testid="map-panel"
-          className="altteulmap-naver-map h-full w-full overflow-hidden bg-stone-100"
+          className="altteulmap-naver-map relative z-0 h-full w-full overflow-hidden bg-stone-100"
         />
 
         {showPreview ? (
@@ -1017,14 +1044,29 @@ function NaverMapPanelContent({
           </div>
         ) : null}
 
+        <div className="absolute left-1/2 top-4 z-10 -translate-x-1/2">
+          {refreshAction?.isVisible ? (
+            <button
+              type="button"
+              onClick={refreshAction.onRefresh}
+              disabled={refreshAction.isLoading}
+              data-testid="map-refresh-button"
+              className="altteulmap-accent-solid altteulmap-button whitespace-nowrap px-4 py-2 text-sm font-medium shadow-lg shadow-orange-200/60 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {refreshAction.isLoading ? "검색 중" : "이 지역 검색"}
+            </button>
+          ) : null}
+        </div>
+
         <div className="absolute right-4 top-4 z-10 flex flex-col items-end gap-2">
           <button
             type="button"
             onClick={locateCurrentPosition}
             disabled={status !== "ready" || isLocating}
+            data-testid="map-current-location-button"
             className="altteulmap-button whitespace-nowrap border border-stone-300 bg-white/95 px-3 py-1.5 text-xs font-semibold text-stone-800 shadow-sm backdrop-blur transition hover:bg-white disabled:cursor-not-allowed disabled:text-stone-400"
           >
-            {isLocating ? "위치 확인 중" : "내 위치"}
+            {isLocating ? "위치 확인 중" : "현재 위치"}
           </button>
 
           {locationMessage ? (

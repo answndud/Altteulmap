@@ -8,7 +8,6 @@ import type {
 
 type PlaceQuery = {
   category?: string | null;
-  maxPrice?: number | null;
   sort?: PlaceSort;
   bounds?: PlaceQueryBounds | null;
   query?: string | null;
@@ -59,7 +58,6 @@ function matchesPlaceQuery(place: PlaceRecord, query: string) {
 
 export function getFilteredPlaces({
   category,
-  maxPrice,
   sort = "price",
   bounds,
   query,
@@ -67,9 +65,6 @@ export function getFilteredPlaces({
   const normalizedQuery = normalizeSearchText(query);
   const filtered = mockPlaces.filter((place) => {
     const categoryMatches = category ? place.categorySlug === category : true;
-    const priceMatches = maxPrice
-      ? place.representativePriceAmount <= maxPrice
-      : true;
     const boundsMatch = bounds
       ? place.latitude >= bounds.minLat &&
         place.latitude <= bounds.maxLat &&
@@ -80,7 +75,7 @@ export function getFilteredPlaces({
       ? matchesPlaceQuery(place, normalizedQuery)
       : true;
 
-    return categoryMatches && priceMatches && boundsMatch && queryMatches;
+    return categoryMatches && boundsMatch && queryMatches;
   });
 
   return sortPlaceRecords(filtered, sort);

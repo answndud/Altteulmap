@@ -9,6 +9,7 @@ import {
   DEMO_PASSWORD,
   loginWithCredentials,
 } from "./helpers/auth";
+import { pickSearchablePlace } from "./helpers/place";
 
 test("신고를 제출하면 운영자 신고 큐에서 처리 완료로 바꿀 수 있다", async ({
   browser,
@@ -22,12 +23,14 @@ test("신고를 제출하면 운영자 신고 큐에서 처리 완료로 바꿀 
   try {
     userContext = await browser.newContext();
     const userPage = await userContext.newPage();
+    const place = await pickSearchablePlace(userPage);
+    const reportPath = `/report?placeId=${place.id}&placeName=${encodeURIComponent(place.name)}`;
 
-    await userPage.goto("/report?placeId=school-gimbap&placeName=school-gimbap");
+    await userPage.goto(reportPath);
 
     if (/\/login\?/.test(userPage.url())) {
       await loginWithCredentials(userPage, {
-        callbackUrl: "/report?placeId=school-gimbap&placeName=school-gimbap",
+        callbackUrl: reportPath,
         email: DEMO_EMAIL,
         password: DEMO_PASSWORD,
       });
@@ -69,6 +72,22 @@ test("신고를 제출하면 운영자 신고 큐에서 처리 완료로 바꿀 
     await expect(reportCard.getByTestId("admin-report-status-badge")).toHaveText(
       "처리 완료",
     );
+
+    await adminPage.goto("/admin/reports?status=resolved");
+    await expect(
+      adminPage.getByTestId("admin-report-filter-resolved"),
+    ).toHaveAttribute("data-active", "true");
+    await expect(
+      adminPage.getByTestId("admin-report-card").filter({ hasText: uniqueDetail }),
+    ).toHaveCount(1);
+
+    await adminPage.goto("/admin/reports?status=open");
+    await expect(
+      adminPage.getByTestId("admin-report-filter-open"),
+    ).toHaveAttribute("data-active", "true");
+    await expect(
+      adminPage.getByTestId("admin-report-card").filter({ hasText: uniqueDetail }),
+    ).toHaveCount(0);
   } finally {
     if (userContext) {
       await userContext.close();

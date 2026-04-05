@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 
+import { getRateLimitFeedbackMessage } from "@/lib/rate-limit-feedback";
 import type { PlacePriceItem } from "@/features/places/types";
 
 type PlacePriceReportFormProps = {
@@ -12,6 +13,7 @@ type PlacePriceReportFormProps = {
 type PriceReportActionResponse = {
   ok: boolean;
   message: string;
+  retryAfterMs?: number;
 };
 
 export function PlacePriceReportForm({
@@ -41,7 +43,14 @@ export function PlacePriceReportForm({
       });
 
       const result = (await response.json()) as PriceReportActionResponse;
-      setMessage(result.message);
+      setMessage(
+        getRateLimitFeedbackMessage({
+          response,
+          message: result.message,
+          retryAfterMs: result.retryAfterMs,
+          defaultMessage: "가격 제보 요청이 너무 빠릅니다.",
+        }),
+      );
 
       if (!response.ok || !result.ok) {
         return;

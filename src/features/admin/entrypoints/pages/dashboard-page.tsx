@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { AccessDeniedPanel } from "@/components/access-denied-panel";
 import { getAdminOverview } from "@/features/admin/repository";
+import { getPlaceShareSourceLabel } from "@/features/places/share";
 import {
   listPendingPlaces,
   listPendingPriceReports,
@@ -76,7 +77,7 @@ export default async function AdminPage() {
             운영 데이터: {overview.source === "database" ? "실데이터" : "목업"}
           </span>
           <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-stone-600">
-            방문 지표: 수집 전
+            방문 지표: {overview.visitMetricsAvailable ? "수집 중" : "미수집"}
           </span>
         </div>
 
@@ -350,21 +351,137 @@ export default async function AdminPage() {
           </div>
         </section>
 
-        <section className="mt-10 rounded-[1.75rem] border border-dashed border-stone-300 bg-stone-50 p-5">
+        <section className="mt-10 rounded-[1.75rem] border border-stone-200 bg-stone-50 p-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <h2 className="text-xl font-semibold text-stone-900">
                 방문/활성 사용자 지표
               </h2>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-stone-600">
-                현재 DB에는 방문 이벤트가 저장되지 않아 방문 수, DAU/WAU,
-                재방문율은 아직 계산하지 않습니다. 다음 단계에서 visit/activity
-                적재를 붙인 뒤 이 섹션에 운영 지표를 추가합니다.
+                30분 bucket 기준 dedupe 방문 이벤트를 적재합니다. 오늘/7일 방문,
+                고유 방문자, DAU/WAU, 7일 재방문율을 한 번에 확인할 수 있습니다.
               </p>
             </div>
             <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-stone-600">
-              2차 작업 예정
+              최근 7일 기준
             </span>
+          </div>
+
+          <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <article
+              data-testid="admin-metric-today-visits"
+              className="rounded-[1.5rem] border border-stone-200 bg-white p-5"
+            >
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-600">
+                Today Visits
+              </p>
+              <h3 className="mt-3 text-3xl font-semibold text-stone-900">
+                {overview.visitMetrics.todayVisits}
+              </h3>
+              <p className="mt-3 text-sm leading-6 text-stone-600">
+                오늘 고유 방문자 {overview.visitMetrics.todayUniqueVisitors}명
+              </p>
+            </article>
+
+            <article
+              data-testid="admin-metric-shared-visits"
+              className="rounded-[1.5rem] border border-stone-200 bg-white p-5"
+            >
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-600">
+                Shared 7d
+              </p>
+              <h3 className="mt-3 text-3xl font-semibold text-stone-900">
+                {overview.visitMetrics.last7DaysSharedVisits}
+              </h3>
+              <p className="mt-3 text-sm leading-6 text-stone-600">
+                오늘 {overview.visitMetrics.todaySharedVisits}회 · 7일 고유 유입{" "}
+                {overview.visitMetrics.last7DaysSharedUniqueVisitors}명
+              </p>
+            </article>
+
+            <article
+              data-testid="admin-metric-weekly-visits"
+              className="rounded-[1.5rem] border border-stone-200 bg-white p-5"
+            >
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-600">
+                7d Visits
+              </p>
+              <h3 className="mt-3 text-3xl font-semibold text-stone-900">
+                {overview.visitMetrics.last7DaysVisits}
+              </h3>
+              <p className="mt-3 text-sm leading-6 text-stone-600">
+                7일 고유 방문자 {overview.visitMetrics.last7DaysUniqueVisitors}명
+              </p>
+            </article>
+
+            <article
+              data-testid="admin-metric-dau-wau"
+              className="rounded-[1.5rem] border border-stone-200 bg-white p-5"
+            >
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-600">
+                DAU / WAU
+              </p>
+              <h3 className="mt-3 text-3xl font-semibold text-stone-900">
+                {overview.visitMetrics.dau} / {overview.visitMetrics.wau}
+              </h3>
+              <p className="mt-3 text-sm leading-6 text-stone-600">
+                일간/주간 활성 방문자
+              </p>
+            </article>
+
+            <article
+              data-testid="admin-metric-returning-rate"
+              className="rounded-[1.5rem] border border-stone-200 bg-white p-5"
+            >
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-600">
+                Returning 7d
+              </p>
+              <h3 className="mt-3 text-3xl font-semibold text-stone-900">
+                {overview.visitMetrics.returningVisitorRate7d}%
+              </h3>
+              <p className="mt-3 text-sm leading-6 text-stone-600">
+                재방문 사용자 {overview.visitMetrics.returningVisitors7d}명
+              </p>
+            </article>
+          </div>
+
+          <div className="mt-6 rounded-[1.5rem] border border-stone-200 bg-white p-5">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <h3 className="text-base font-semibold text-stone-900">
+                  공유 유입 source
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-stone-600">
+                  같은 30분 bucket 안에서는 처음 확인된 공유 유입 source를
+                  유지합니다.
+                </p>
+              </div>
+              <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-stone-600">
+                7일 기준
+              </span>
+            </div>
+
+            <div
+              data-testid="admin-share-source-breakdown"
+              className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4"
+            >
+              {overview.visitMetrics.shareSourceBreakdown7d.map((item) => (
+                <article
+                  key={item.source}
+                  className="rounded-[1.25rem] border border-stone-200 bg-stone-50 p-4"
+                >
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-600">
+                    {getPlaceShareSourceLabel(item.source)}
+                  </p>
+                  <p className="mt-3 text-2xl font-semibold text-stone-900">
+                    {item.visits}
+                  </p>
+                  <p className="mt-2 text-sm text-stone-600">
+                    고유 유입 {item.uniqueVisitors}명
+                  </p>
+                </article>
+              ))}
+            </div>
           </div>
         </section>
       </section>

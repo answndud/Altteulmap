@@ -1,20 +1,22 @@
+import { revalidateAfterReportSubmission } from "@/features/admin/revalidation";
 import { createReportSubmission } from "@/features/reports/repository";
 import { reportSubmissionSchema } from "@/features/reports/schema";
 import {
   getPublicWriteActor,
   setPublicWriteActorCookie,
 } from "@/lib/public-write-actor";
-import { consumeRateLimit } from "@/lib/rate-limit";
+import {
+  applyRateLimitHeaders,
+  consumeRateLimitPolicy,
+} from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   const actor = await getPublicWriteActor(request);
 
-  const rateLimit = consumeRateLimit({
-    scope: "content_report_submission",
-    key: actor.key,
-    limit: 8,
-    windowMs: 30 * 60 * 1000,
-  });
+  const rateLimit = consumeRateLimitPolicy(
+    "contentReportSubmission",
+    actor.key,
+  );
 
   if (!rateLimit.ok) {
     const response = Response.json(
@@ -28,7 +30,7 @@ export async function POST(request: Request) {
 
     setPublicWriteActorCookie(response, actor, request);
 
-    return response;
+    return applyRateLimitHeaders(response, rateLimit);
   }
 
   const body = await request.json();
@@ -46,12 +48,16 @@ export async function POST(request: Request) {
 
     setPublicWriteActorCookie(response, actor, request);
 
-    return response;
+    return applyRateLimitHeaders(response, rateLimit);
   }
 
-  const response = Response.json(
-    await createReportSubmission(parsed.data, actor.user?.id ?? null),
-  );
+  const result = await createReportSubmission(parsed.data, actor.user?.id ?? null);
+
+  if (result.ok) {
+    revalidateAfterReportSubmission();
+  }
+
+  const response = Response.json(result);
   setPublicWriteActorCookie(response, actor, request);
-  return response;
+  return applyRateLimitHeaders(response, rateLimit);
 }

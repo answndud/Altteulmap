@@ -54,6 +54,7 @@ import type {
   PlaceHistoryEntry,
   PlaceMapClusterMarkerRecord,
   PlaceMapMarkerRecord,
+  PlaceMapMarkerMode,
   PlaceMapPlaceMarkerRecord,
   PlacePriceItem,
   PlacePreviewRecord,
@@ -67,7 +68,6 @@ export type DataSource = "mock" | "database";
 
 export type PlaceQuery = {
   category?: string | null;
-  maxPrice?: number | null;
   sort?: PlaceSort;
   bounds?: PlaceQueryBounds | null;
   query?: string | null;
@@ -103,13 +103,28 @@ export type PlaceListResult = {
 export type PlacePreviewListResult = {
   items: PlacePreviewRecord[];
   mapMarkers: PlaceMapMarkerRecord[];
+  markerMode: PlaceMapMarkerMode;
   bounds: PlaceBounds;
   count: number;
+  source: DataSource;
+  cacheStatus?: "hit" | "miss" | "bypass";
+};
+
+export type TrendingPlaceListResult = {
+  items: PlacePreviewRecord[];
   source: DataSource;
 };
 
 const MAP_LIST_RESPONSE_LIMIT = 120;
 const MAP_MARKER_SUMMARY_ROW_LIMIT = 2_000;
+const MAP_PREVIEW_CACHE_TTL_MS = 12_000;
+const MAP_PREVIEW_CACHE_MAX_ENTRIES = 48;
+const DATABASE_READ_TIMEOUT_MS = 1_500;
+
+type MapPreviewCacheEntry = {
+  value: PlacePreviewListResult;
+  expiresAt: number;
+};
 
 const mapPlaceSelectFields = {
   internalId: places.id,
@@ -129,6 +144,10 @@ const mapPlaceSelectFields = {
   dislikeCount: places.dislikeCount,
   verifiedPriceItemCount: places.verifiedPriceItemCount,
   lastPriceUpdatedAt: places.lastPriceUpdatedAt,
+};
+
+const globalForMapPreviewCache = globalThis as {
+  __altteulmapMapPreviewCache?: Map<string, MapPreviewCacheEntry>;
 };
 
 export type PlaceDetailResult = {
@@ -320,8 +339,19 @@ type PlaceReactionSummary = {
   viewerReaction: PlaceReactionType | null;
 };
 
-function formatDate(value: Date | null) {
-  return value ? dateFormatter.format(value) : "";
+function formatDate(value: Date | string | null) {
+  if (!value) {
+    return "";
+  }
+
+  const normalized =
+    value instanceof Date ? value : typeof value === "string" ? new Date(value) : null;
+
+  if (!normalized || Number.isNaN(normalized.getTime())) {
+    return "";
+  }
+
+  return dateFormatter.format(normalized);
 }
 
 function getMockReactionStore() {
@@ -350,6 +380,16 @@ function getReactionActorKey(actor: PlaceReactionActor) {
   return getReactionViewerKey(actor);
 }
 
+function parseStoredReactionPlaceId(storeKey: string) {
+  const separatorIndex = storeKey.lastIndexOf(":");
+
+  if (separatorIndex === -1 || separatorIndex === storeKey.length - 1) {
+    return null;
+  }
+
+  return storeKey.slice(separatorIndex + 1);
+}
+
 function createEmptyReactionSummary(): PlaceReactionSummary {
   return {
     likeCount: 0,
@@ -376,9 +416,9 @@ function getMockReactionSummary(
   const store = getMockReactionStore();
 
   for (const [key, reaction] of store.entries()) {
-    const [, storedPlaceId] = key.split(":");
+    const storedPlaceId = parseStoredReactionPlaceId(key);
 
-    if (storedPlaceId !== placeId) {
+    if (!storedPlaceId || storedPlaceId !== placeId) {
       continue;
     }
 
@@ -460,6 +500,8 @@ async function refreshPlaceReactionSummary(placeId: string) {
       updatedAt: new Date(),
     })
     .where(eq(places.id, placeId));
+
+  invalidateMapPreviewCache();
 
   return summary;
 }
@@ -591,6 +633,30 @@ function getMapMarkerLimit(zoom: number | null, query: string | null) {
   return 24;
 }
 
+function getMapMarkerMode(
+  itemCount: number,
+  zoom: number | null,
+  query: string | null,
+): PlaceMapMarkerMode {
+  if (query?.trim()) {
+    return "place";
+  }
+
+  return itemCount <= getMapMarkerLimit(zoom, query) ? "place" : "cluster";
+}
+
+function getPlaceOnlyMapMarkers(
+  items: PlacePreviewRecord[],
+  zoom: number | null,
+  query: string | null,
+) {
+  const markerLimit = getMapMarkerLimit(zoom, query);
+
+  return items
+    .slice(0, markerLimit)
+    .map((place) => toMapPlaceMarkerRecord(place)) as PlaceMapPlaceMarkerRecord[];
+}
+
 function getMapTileGrid(bounds: PlaceBounds, markerLimit: number) {
   const latSpan = Math.max(bounds.maxLat - bounds.minLat, 0.0001);
   const lngSpan = Math.max(bounds.maxLng - bounds.minLng, 0.0001);
@@ -609,14 +675,119 @@ function getMapTileGrid(bounds: PlaceBounds, markerLimit: number) {
   };
 }
 
+function getMapPreviewCacheStore() {
+  if (!globalForMapPreviewCache.__altteulmapMapPreviewCache) {
+    globalForMapPreviewCache.__altteulmapMapPreviewCache = new Map();
+  }
+
+  return globalForMapPreviewCache.__altteulmapMapPreviewCache;
+}
+
+function buildMapPreviewCacheKey(
+  query: PlaceQuery,
+  normalizedQuery: string | null,
+) {
+  if (!query.bounds) {
+    return null;
+  }
+
+  const markerLimit = getMapMarkerLimit(query.zoom ?? null, normalizedQuery);
+
+  return [
+    "map-preview-v2",
+    query.sort ?? "price",
+    query.category ?? "",
+    normalizedQuery?.toLowerCase() ?? "",
+    markerLimit,
+    query.bounds.minLat.toFixed(4),
+    query.bounds.maxLat.toFixed(4),
+    query.bounds.minLng.toFixed(4),
+    query.bounds.maxLng.toFixed(4),
+  ].join("|");
+}
+
+function getCachedMapPreviewResult(key: string) {
+  const store = getMapPreviewCacheStore();
+  const cached = store.get(key);
+
+  if (!cached) {
+    return null;
+  }
+
+  if (cached.expiresAt <= Date.now()) {
+    store.delete(key);
+    return null;
+  }
+
+  return cached.value;
+}
+
+function setCachedMapPreviewResult(
+  key: string,
+  value: PlacePreviewListResult,
+) {
+  const store = getMapPreviewCacheStore();
+  store.delete(key);
+  store.set(key, {
+    value,
+    expiresAt: Date.now() + MAP_PREVIEW_CACHE_TTL_MS,
+  });
+
+  while (store.size > MAP_PREVIEW_CACHE_MAX_ENTRIES) {
+    const oldestKey = store.keys().next().value;
+
+    if (!oldestKey) {
+      break;
+    }
+
+    store.delete(oldestKey);
+  }
+}
+
+async function withDatabaseReadTimeout<T>(
+  label: string,
+  load: () => Promise<T>,
+): Promise<T> {
+  let timedOut = false;
+  let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
+  const operation = load();
+
+  void operation.catch((error) => {
+    if (timedOut) {
+      console.error(`${label} rejected after the read timeout elapsed.`, error);
+    }
+  });
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutHandle = setTimeout(() => {
+      timedOut = true;
+      reject(
+        new Error(
+          `${label} exceeded the ${DATABASE_READ_TIMEOUT_MS}ms database read timeout.`,
+        ),
+      );
+    }, DATABASE_READ_TIMEOUT_MS);
+  });
+
+  try {
+    return await Promise.race([operation, timeoutPromise]);
+  } finally {
+    if (timeoutHandle) {
+      clearTimeout(timeoutHandle);
+    }
+  }
+}
+
+function invalidateMapPreviewCache() {
+  getMapPreviewCacheStore().clear();
+}
+
 function getDatabaseMapPlaceWhereClause({
   category,
-  maxPrice,
   bounds,
   normalizedQuery,
 }: {
   category?: string | null;
-  maxPrice?: number | null;
   bounds?: PlaceQueryBounds | null;
   normalizedQuery?: string | null;
 }) {
@@ -625,10 +796,6 @@ function getDatabaseMapPlaceWhereClause({
     isNotNull(places.latitude),
     isNotNull(places.longitude),
   ];
-
-  if (maxPrice) {
-    conditions.push(lte(places.representativePriceAmount, maxPrice));
-  }
 
   if (category) {
     conditions.push(eq(places.primaryCategorySlug, category));
@@ -702,7 +869,10 @@ async function loadDatabaseMapMarkerRows(params: {
 function toPlacePreviewRecords(rows: DatabasePlaceRow[]) {
   return rows
     .map((row) => toPlacePreviewRecord(row, row.primaryCategorySlug))
-    .filter((place) => place.latitude && place.longitude);
+    .filter(
+      (place) =>
+        Number.isFinite(place.latitude) && Number.isFinite(place.longitude),
+    );
 }
 
 async function loadDatabaseMapTileMarkers(params: {
@@ -710,7 +880,7 @@ async function loadDatabaseMapTileMarkers(params: {
   bounds: PlaceBounds;
   zoom: number | null;
   count: number;
-}) {
+}): Promise<PlaceMapClusterMarkerRecord[]> {
   // The SQL bucket aggregate path can hang under the Workers runtime for
   // broad viewport requests, so summarize a bounded row sample in memory.
   const markerRows = await loadDatabaseMapMarkerRows({
@@ -718,7 +888,7 @@ async function loadDatabaseMapTileMarkers(params: {
     limit: Math.min(params.count, MAP_MARKER_SUMMARY_ROW_LIMIT),
   });
 
-  return getTileSummarizedMapMarkers(
+  return getClusterOnlyMapMarkers(
     toPlacePreviewRecords(markerRows),
     params.bounds,
     null,
@@ -726,20 +896,13 @@ async function loadDatabaseMapTileMarkers(params: {
   );
 }
 
-function getTileSummarizedMapMarkers(
+function getClusterOnlyMapMarkers(
   items: PlacePreviewRecord[],
   bounds: PlaceBounds,
   query: string | null,
   zoom: number | null,
-) {
+): PlaceMapClusterMarkerRecord[] {
   const markerLimit = getMapMarkerLimit(zoom, query);
-
-  if (items.length <= markerLimit || query?.trim()) {
-    return items
-      .slice(0, markerLimit)
-      .map((place) => toMapPlaceMarkerRecord(place)) as PlaceMapMarkerRecord[];
-  }
-
   const { latSpan, lngSpan, rowCount, columnCount } = getMapTileGrid(
     bounds,
     markerLimit,
@@ -762,14 +925,9 @@ function getTileSummarizedMapMarkers(
     cells.set(cellKey, bucket);
   }
 
-  const mapMarkers: PlaceMapMarkerRecord[] = [];
+  const mapMarkers: PlaceMapClusterMarkerRecord[] = [];
 
   for (const [cellKey, bucket] of cells.entries()) {
-    if (bucket.length === 1) {
-      mapMarkers.push(toMapPlaceMarkerRecord(bucket[0]));
-      continue;
-    }
-
     const latitude =
       bucket.reduce((sum, place) => sum + place.latitude, 0) / bucket.length;
     const longitude =
@@ -964,7 +1122,6 @@ async function loadCategoryMap(placeIds: string[]) {
 
 async function listDatabasePlaces({
   category,
-  maxPrice,
   sort = "price",
   bounds,
   query,
@@ -976,10 +1133,6 @@ async function listDatabasePlaces({
     isNotNull(places.longitude),
   ];
   const normalizedQuery = query?.trim();
-
-  if (maxPrice) {
-    conditions.push(lte(places.representativePriceAmount, maxPrice));
-  }
 
   if (category) {
     conditions.push(eq(places.primaryCategorySlug, category));
@@ -1077,18 +1230,106 @@ function toMapPreviewRecord(place: PlaceRecord): PlacePreviewRecord {
   };
 }
 
+function compareTrendingPlaceRecords<
+  TPlace extends Pick<
+    PlacePreviewRecord,
+    | "dislikeCount"
+    | "lastPriceUpdatedAt"
+    | "likeCount"
+    | "name"
+    | "representativePriceAmount"
+    | "verificationStatus"
+  >,
+>(left: TPlace, right: TPlace) {
+  return (
+    right.likeCount - left.likeCount ||
+    Number(right.verificationStatus === "verified") -
+      Number(left.verificationStatus === "verified") ||
+    new Date(right.lastPriceUpdatedAt).getTime() -
+      new Date(left.lastPriceUpdatedAt).getTime() ||
+    left.dislikeCount - right.dislikeCount ||
+    left.representativePriceAmount - right.representativePriceAmount ||
+    left.name.localeCompare(right.name, "ko-KR")
+  );
+}
+
+function listMockTrendingPlaces(
+  limit = 6,
+  category?: string | null,
+): TrendingPlaceListResult {
+  return {
+    items: mockPlaces
+      .filter((place) => (category ? place.categorySlug === category : true))
+      .sort(compareTrendingPlaceRecords)
+      .slice(0, limit)
+      .map(toMapPreviewRecord),
+    source: "mock",
+  };
+}
+
+async function listDatabaseTrendingPlaces(
+  limit = 6,
+  category?: string | null,
+): Promise<TrendingPlaceListResult> {
+  const db = getDb();
+  const conditions = [eq(places.status, "active")];
+
+  if (category) {
+    conditions.push(eq(places.primaryCategorySlug, category));
+  }
+
+  const rows = await db
+    .select(mapPlaceSelectFields)
+    .from(places)
+    .where(and(...conditions))
+    .orderBy(
+      desc(places.likeCount),
+      desc(places.verifiedPriceItemCount),
+      desc(places.lastPriceUpdatedAt),
+      asc(places.dislikeCount),
+      asc(places.representativePriceAmount),
+      asc(places.name),
+    )
+    .limit(limit);
+
+  return {
+    items: toPlacePreviewRecords(rows),
+    source: "database",
+  };
+}
+
 async function listDatabaseMapPlaces({
   category,
-  maxPrice,
   sort = "price",
   bounds,
   query,
   zoom = null,
 }: PlaceQuery = {}): Promise<PlacePreviewListResult> {
   const normalizedQuery = query?.trim();
+  const cacheKey = buildMapPreviewCacheKey(
+    {
+      category,
+      sort,
+      bounds,
+      query: normalizedQuery,
+      zoom,
+    },
+    normalizedQuery ?? null,
+  );
+
+  if (cacheKey) {
+    const cached = getCachedMapPreviewResult(cacheKey);
+
+    if (cached) {
+      return {
+        ...cached,
+        cacheStatus: "hit",
+      };
+    }
+  }
+
   const whereClause = getDatabaseMapPlaceWhereClause({
     category,
-    maxPrice,
     bounds,
     normalizedQuery,
   });
@@ -1108,16 +1349,20 @@ async function listDatabaseMapPlaces({
       limit: MAP_LIST_RESPONSE_LIMIT,
     });
     const items = toPlacePreviewRecords(itemRows);
-    const markerLimit = getMapMarkerLimit(zoom, null);
+    const markerMode = getMapMarkerMode(count, zoom, null);
     const mapMarkers =
-      count <= markerLimit
-        ? toPlacePreviewRecords(
-            await loadDatabaseMapPlaceRows({
-              whereClause,
-              sort,
-              limit: markerLimit,
-            }),
-          ).map((place) => toMapPlaceMarkerRecord(place))
+      markerMode === "place"
+        ? getPlaceOnlyMapMarkers(
+            toPlacePreviewRecords(
+              await loadDatabaseMapPlaceRows({
+                whereClause,
+                sort,
+                limit: getMapMarkerLimit(zoom, null),
+              }),
+            ),
+            zoom,
+            null,
+          )
         : await loadDatabaseMapTileMarkers({
             whereClause,
             bounds,
@@ -1125,12 +1370,22 @@ async function listDatabaseMapPlaces({
             count,
           });
 
-    return {
+    const result: PlacePreviewListResult = {
       items,
       mapMarkers,
+      markerMode,
       bounds,
       count,
       source: "database",
+    };
+
+    if (cacheKey) {
+      setCachedMapPreviewResult(cacheKey, result);
+    }
+
+    return {
+      ...result,
+      cacheStatus: cacheKey ? "miss" : "bypass",
     };
   }
 
@@ -1142,19 +1397,33 @@ async function listDatabaseMapPlaces({
   const boundsForResult =
     mapped.length > 0 ? getBoundsFromPlaces(mapped) : bounds ?? getMapBounds();
   const items = getCappedMapListItems(mapped);
-  const mapMarkers = getTileSummarizedMapMarkers(
-    mapped,
-    boundsForResult,
-    normalizedQuery ?? null,
-    zoom,
-  );
+  const markerMode = getMapMarkerMode(count, zoom, normalizedQuery ?? null);
+  const mapMarkers =
+    markerMode === "place"
+      ? getPlaceOnlyMapMarkers(mapped, zoom, normalizedQuery ?? null)
+      : getClusterOnlyMapMarkers(
+          mapped,
+          boundsForResult,
+          normalizedQuery ?? null,
+          zoom,
+        );
 
-  return {
+  const result: PlacePreviewListResult = {
     items,
     mapMarkers,
+    markerMode,
     bounds: boundsForResult,
     count,
     source: "database",
+  };
+
+  if (cacheKey) {
+    setCachedMapPreviewResult(cacheKey, result);
+  }
+
+  return {
+    ...result,
+    cacheStatus: cacheKey ? "miss" : "bypass",
   };
 }
 
@@ -1499,6 +1768,7 @@ async function refreshPlacePricingSummary(placeId: string, changedAt: Date) {
       })
       .where(eq(places.id, placeId));
 
+    invalidateMapPreviewCache();
     return;
   }
 
@@ -1536,6 +1806,8 @@ async function refreshPlacePricingSummary(placeId: string, changedAt: Date) {
       updatedAt: changedAt,
     })
     .where(eq(places.id, placeId));
+
+  invalidateMapPreviewCache();
 }
 
 async function createDatabasePlaceSubmission(
@@ -2488,6 +2760,8 @@ async function moderateDatabasePlace(
     },
   });
 
+  invalidateMapPreviewCache();
+
   const categoryMap = await loadCategoryMap([existing.id]);
   const priceItemRows = await db
     .select({
@@ -2588,19 +2862,29 @@ function listMockMapPlaces(query: PlaceQuery = {}): PlacePreviewListResult {
       ? getBoundsFromPlaces(allItems)
       : query.bounds ?? getMapBounds();
   const items = getCappedMapListItems(allItems);
-  const mapMarkers = getTileSummarizedMapMarkers(
-    allItems,
-    bounds,
-    query.query ?? null,
+  const markerMode = getMapMarkerMode(
+    allItems.length,
     query.zoom ?? null,
+    query.query ?? null,
   );
+  const mapMarkers =
+    markerMode === "place"
+      ? getPlaceOnlyMapMarkers(allItems, query.zoom ?? null, query.query ?? null)
+      : getClusterOnlyMapMarkers(
+          allItems,
+          bounds,
+          query.query ?? null,
+          query.zoom ?? null,
+        );
 
   return {
     items,
     mapMarkers,
+    markerMode,
     bounds,
     count: allItems.length,
     source: "mock",
+    cacheStatus: "bypass",
   };
 }
 
@@ -2610,7 +2894,9 @@ export async function listPlaces(query: PlaceQuery = {}) {
   }
 
   try {
-    return await listDatabasePlaces(query);
+    return await withDatabaseReadTimeout("listPlaces", () =>
+      listDatabasePlaces(query),
+    );
   } catch (error) {
     console.error("Failed to load places from database. Falling back to mock data.", error);
     return listMockPlaces(query);
@@ -2625,7 +2911,9 @@ export async function listMapPlaces(
   }
 
   try {
-    return await listDatabaseMapPlaces(query);
+    return await withDatabaseReadTimeout("listMapPlaces", () =>
+      listDatabaseMapPlaces(query),
+    );
   } catch (error) {
     console.error(
       "Failed to load map places from database. Falling back to mock data.",
@@ -2635,13 +2923,36 @@ export async function listMapPlaces(
   }
 }
 
+export async function listTrendingPlaces(
+  limit = 6,
+  category?: string | null,
+): Promise<TrendingPlaceListResult> {
+  if (!isDatabaseEnabled()) {
+    return listMockTrendingPlaces(limit, category);
+  }
+
+  try {
+    return await withDatabaseReadTimeout("listTrendingPlaces", () =>
+      listDatabaseTrendingPlaces(limit, category),
+    );
+  } catch (error) {
+    console.error(
+      "Failed to load trending places from database. Falling back to mock data.",
+      error,
+    );
+    return listMockTrendingPlaces(limit, category);
+  }
+}
+
 export async function getPlaceDetail(id: string, viewer: PlaceViewer = null) {
   if (!isDatabaseEnabled()) {
     return getMockPlaceDetail(id, viewer);
   }
 
   try {
-    return await getDatabasePlaceDetail(id, viewer);
+    return await withDatabaseReadTimeout("getPlaceDetail", () =>
+      getDatabasePlaceDetail(id, viewer),
+    );
   } catch (error) {
     console.error("Failed to load place detail from database. Falling back to mock data.", error);
     return getMockPlaceDetail(id, viewer);

@@ -1,43 +1,4 @@
 const baseUrl = process.env.SMOKE_BASE_URL ?? "http://localhost:3000";
-const demoPassword = process.env.AUTH_DEMO_PASSWORD ?? "demo1234";
-const adminPassword = process.env.AUTH_ADMIN_PASSWORD ?? "admin1234";
-
-class CookieJar {
-  constructor() {
-    this.cookies = new Map();
-  }
-
-  addFromResponse(response) {
-    const setCookie =
-      typeof response.headers.getSetCookie === "function"
-        ? response.headers.getSetCookie()
-        : [];
-
-    for (const cookie of setCookie) {
-      const [pair] = cookie.split(";", 1);
-
-      if (!pair) {
-        continue;
-      }
-
-      const separatorIndex = pair.indexOf("=");
-
-      if (separatorIndex <= 0) {
-        continue;
-      }
-
-      const key = pair.slice(0, separatorIndex).trim();
-      const value = pair.slice(separatorIndex + 1).trim();
-      this.cookies.set(key, value);
-    }
-  }
-
-  toHeader() {
-    return Array.from(this.cookies.entries())
-      .map(([key, value]) => `${key}=${value}`)
-      .join("; ");
-  }
-}
 
 function printLine(message) {
   process.stdout.write(`${message}\n`);
@@ -47,26 +8,27 @@ function logStep(label, detail) {
   printLine(`- ${label}: ${detail}`);
 }
 
-async function request(pathname, options = {}, jar) {
-  const headers = new Headers(options.headers ?? {});
+function normalizeComparableUrl(value) {
+  const url = new URL(value);
+  const normalizedPath = url.pathname === "/" ? "/" : url.pathname.replace(/\/+$/, "");
+  return `${url.origin}${normalizedPath}${url.search}`;
+}
 
-  if (jar) {
-    const cookieHeader = jar.toHeader();
+function extractCanonicalHref(html) {
+  const match = html.match(/<link[^>]+rel=["']canonical["'][^>]+href=["']([^"']+)["']/i);
+  return match?.[1] ?? null;
+}
 
-    if (cookieHeader) {
-      headers.set("cookie", cookieHeader);
-    }
-  }
+function extractSitemapLocations(xml) {
+  return Array.from(xml.matchAll(/<loc>([^<]+)<\/loc>/g), (match) => match[1]);
+}
 
+async function request(pathname, options = {}) {
   const response = await fetch(new URL(pathname, baseUrl), {
     ...options,
-    headers,
+    headers: options.headers,
     redirect: "manual",
   });
-
-  if (jar) {
-    jar.addFromResponse(response);
-  }
 
   return response;
 }
@@ -85,55 +47,62 @@ async function expectOk(pathname, matcher) {
   }
 }
 
-async function loginWithCredentials(email, password) {
-  const jar = new CookieJar();
-  const csrfResponse = await request("/api/auth/csrf", {}, jar);
-
-  if (!csrfResponse.ok) {
-    throw new Error(`csrf request failed with ${csrfResponse.status}`);
-  }
-
-  const csrfPayload = await csrfResponse.json();
-  const form = new URLSearchParams({
-    csrfToken: csrfPayload.csrfToken,
-    email,
-    password,
-    callbackUrl: `${baseUrl}/map`,
-  });
-
-  const loginResponse = await request(
-    "/api/auth/callback/credentials",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: form.toString(),
-    },
-    jar,
-  );
-
-  if (loginResponse.status !== 302) {
-    throw new Error(`credentials login failed with ${loginResponse.status}`);
-  }
-
-  const location = loginResponse.headers.get("location") ?? "";
-
-  if (!location.startsWith(baseUrl)) {
-    throw new Error(`credentials login redirected to unexpected URL: ${location}`);
-  }
-
-  return jar;
-}
-
 async function main() {
   printLine(`Running smoke checks against ${baseUrl}`);
+
+  const homeResponse = await request("/");
+  if (!homeResponse.ok) {
+    throw new Error(`/ returned ${homeResponse.status}`);
+  }
+
+  const homeHtml = await homeResponse.text();
+  const homeCanonical = extractCanonicalHref(homeHtml);
+
+  if (!homeCanonical || normalizeComparableUrl(homeCanonical) !== normalizeComparableUrl(`${baseUrl}/`)) {
+    throw new Error("home canonical did not match base URL");
+  }
+
+  logStep("home canonical", homeCanonical);
 
   await expectOk("/robots.txt", (body) => body.includes("Sitemap:"));
   logStep("robots", "ok");
 
-  await expectOk("/sitemap.xml", (body) => body.includes("/map"));
-  logStep("sitemap", "ok");
+  const sitemapResponse = await request("/sitemap.xml");
+  if (!sitemapResponse.ok) {
+    throw new Error(`/sitemap.xml returned ${sitemapResponse.status}`);
+  }
+
+  const sitemapXml = await sitemapResponse.text();
+  const sitemapLocations = extractSitemapLocations(sitemapXml);
+  const samplePlaceUrl = sitemapLocations.find((location) => location.includes("/place/"));
+
+  if (!sitemapLocations.some((location) => normalizeComparableUrl(location) === normalizeComparableUrl(`${baseUrl}/`))) {
+    throw new Error("sitemap did not include home URL");
+  }
+
+  if (!samplePlaceUrl) {
+    throw new Error("sitemap did not include any place detail URL");
+  }
+
+  logStep("sitemap", `${sitemapLocations.length} urls`);
+
+  const samplePlaceResponse = await fetch(samplePlaceUrl, { redirect: "manual" });
+  if (!samplePlaceResponse.ok) {
+    throw new Error(`sample place page returned ${samplePlaceResponse.status}`);
+  }
+
+  const samplePlaceHtml = await samplePlaceResponse.text();
+  const samplePlaceCanonical = extractCanonicalHref(samplePlaceHtml);
+
+  if (
+    !samplePlaceCanonical ||
+    normalizeComparableUrl(samplePlaceCanonical) !==
+      normalizeComparableUrl(samplePlaceUrl)
+  ) {
+    throw new Error("sample place canonical did not match sitemap URL");
+  }
+
+  logStep("sample place canonical", samplePlaceCanonical);
 
   const mapResponse = await request(
     "/api/places/map?scope=global&query=%EA%B9%80%EB%B0%A5",
@@ -146,7 +115,13 @@ async function main() {
 
   logStep("map api", `${mapPayload.items.length} items`);
 
-  const placeResponse = await request("/api/places/school-gimbap");
+  const targetPlaceId = mapPayload.items[0]?.id;
+
+  if (!targetPlaceId) {
+    throw new Error("map API did not return a place id");
+  }
+
+  const placeResponse = await request(`/api/places/${targetPlaceId}`);
   const placePayload = await placeResponse.json();
 
   if (!placeResponse.ok || !placePayload.item?.id) {
@@ -158,7 +133,10 @@ async function main() {
   const loginPageResponse = await request("/login");
   const loginPage = await loginPageResponse.text();
 
-  if (!loginPage.includes("로컬 로그인")) {
+  if (
+    !loginPage.includes('data-testid="login-form"') ||
+    !loginPage.includes(">로그인<")
+  ) {
     throw new Error("login page content did not render");
   }
 
@@ -176,32 +154,6 @@ async function main() {
   ].join(", ");
 
   logStep("social providers", providerSummary);
-
-  const demoJar = await loginWithCredentials(
-    "demo@altteulmap.local",
-    demoPassword,
-  );
-  const bookmarksResponse = await request("/api/bookmarks", {}, demoJar);
-  const bookmarksPayload = await bookmarksResponse.json();
-
-  if (!bookmarksResponse.ok || !Array.isArray(bookmarksPayload.items)) {
-    throw new Error("bookmarks API failed after demo login");
-  }
-
-  logStep("demo login", `${bookmarksPayload.items.length} bookmarks`);
-
-  const adminJar = await loginWithCredentials(
-    "admin@altteulmap.local",
-    adminPassword,
-  );
-  const adminPricesResponse = await request("/api/admin/prices", {}, adminJar);
-  const adminPricesPayload = await adminPricesResponse.json();
-
-  if (!adminPricesResponse.ok || !Array.isArray(adminPricesPayload.items)) {
-    throw new Error("admin prices API failed after admin login");
-  }
-
-  logStep("admin login", `${adminPricesPayload.items.length} pending price reports`);
   printLine("Smoke checks passed.");
 }
 

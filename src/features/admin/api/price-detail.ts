@@ -1,4 +1,4 @@
-import { revalidatePath } from "next/cache";
+import { revalidateAfterPriceModeration } from "@/features/admin/revalidation";
 import { moderatePriceReport } from "@/features/places/repository";
 import { priceReportModerationSchema } from "@/features/places/write-schema";
 import { getSessionUser } from "@/lib/session";
@@ -50,13 +50,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   const result = await moderatePriceReport(id, parsed.data, user.id);
 
   if (result.ok && result.item) {
-    revalidatePath("/admin");
-    revalidatePath("/admin/prices");
-    revalidatePath("/api/admin/prices");
-    revalidatePath(`/place/${result.item.placeId}`);
-    revalidatePath(`/api/places/${result.item.placeId}`);
-    revalidatePath("/");
-    revalidatePath("/api/places/map");
+    revalidateAfterPriceModeration(result.item.placeId);
   }
 
   return Response.json(result, { status: result.ok ? 200 : 404 });

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 
+import { getRateLimitFeedbackMessage } from "@/lib/rate-limit-feedback";
 import type { PlaceComment } from "@/features/places/types";
 
 type PlaceCommentsSectionProps = {
@@ -12,6 +13,7 @@ type PlaceCommentsSectionProps = {
 type CommentActionResponse = {
   ok: boolean;
   message: string;
+  retryAfterMs?: number;
   item?: PlaceComment | null;
   deletedCommentId?: string | null;
 };
@@ -36,7 +38,14 @@ export function PlaceCommentsSection({
       });
 
       const result = (await response.json()) as CommentActionResponse;
-      setMessage(result.message);
+      setMessage(
+        getRateLimitFeedbackMessage({
+          response,
+          message: result.message,
+          retryAfterMs: result.retryAfterMs,
+          defaultMessage: "코멘트 등록 요청이 너무 빠릅니다.",
+        }),
+      );
 
       if (!response.ok || !result.ok || !result.item) {
         return;

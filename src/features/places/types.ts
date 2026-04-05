@@ -77,6 +77,8 @@ export type PlaceMapMarkerRecord =
   | PlaceMapPlaceMarkerRecord
   | PlaceMapClusterMarkerRecord;
 
+export type PlaceMapMarkerMode = "place" | "cluster";
+
 export type PlaceRecord = PlacePreviewRecord & {
   priceItems: PlacePriceItem[];
   history: PlaceHistoryEntry[];

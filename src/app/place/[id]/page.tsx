@@ -11,8 +11,11 @@ import { PlaceShareButton } from "@/features/places/place-share-button";
 import { PlacePriceReportForm } from "@/features/places/place-price-report-form";
 import { formatKrw } from "@/features/places/queries";
 import { getPlaceDetail } from "@/features/places/repository";
+import {
+  createPlaceShareDescription,
+  createPlaceSharePayload,
+} from "@/features/places/share";
 import { createLoginHref, getSessionUser } from "@/lib/session";
-import { getVisitorIdFromCookie } from "@/lib/visitor-id";
 
 type PlacePageProps = {
   params: Promise<{
@@ -22,11 +25,20 @@ type PlacePageProps = {
 
 export const dynamic = "force-dynamic";
 
+function normalizePlaceRouteId(id: string) {
+  try {
+    return decodeURIComponent(id);
+  } catch {
+    return id;
+  }
+}
+
 export async function generateMetadata({
   params,
 }: PlacePageProps): Promise<Metadata> {
   const { id } = await params;
-  const result = await getPlaceDetail(id, null);
+  const placeId = normalizePlaceRouteId(id);
+  const result = await getPlaceDetail(placeId, null);
   const place = result.item;
 
   if (!place) {
@@ -40,15 +52,11 @@ export async function generateMetadata({
   }
 
   const category = getCategoryBySlug(place.categorySlug);
-  const title = `${place.name} ${formatKrw(place.representativePriceAmount)}원`;
-  const description = [
-    place.address,
-    category?.name,
-    `${place.representativePriceLabel} ${formatKrw(place.representativePriceAmount)}원`,
-  ].join(" · ");
+  const sharePayload = createPlaceSharePayload(place, "detail");
+  const description = createPlaceShareDescription(place, category?.name);
 
   return {
-    title,
+    title: sharePayload.title,
     description,
     alternates: {
       canonical: `/place/${place.id}`,
@@ -58,30 +66,24 @@ export async function generateMetadata({
 
 export default async function PlacePage({ params }: PlacePageProps) {
   const { id } = await params;
+  const placeId = normalizePlaceRouteId(id);
   const user = await getSessionUser();
-  const visitorId = user ? null : await getVisitorIdFromCookie();
-  const [result, bookmarkResult] = await Promise.all([
-    getPlaceDetail(
-      id,
-      user
-        ? {
-            userId: user.id,
-            role: user.role,
-          }
-        : visitorId
-          ? {
-              role: "guest",
-              visitorId,
-            }
-          : null,
-    ),
-    listBookmarks(user),
-  ]);
+  const result = await getPlaceDetail(
+    placeId,
+    user
+      ? {
+          userId: user.id,
+          role: user.role,
+        }
+      : null,
+  );
   const place = result.item;
 
   if (!place) {
     notFound();
   }
+
+  const bookmarkResult = await listBookmarks(user);
 
   const category = getCategoryBySlug(place.categorySlug);
   const isBookmarked = bookmarkResult.items.some(
@@ -90,6 +92,7 @@ export default async function PlacePage({ params }: PlacePageProps) {
   const bookmarkLoginHref = createLoginHref(`/place/${place.id}`);
   const reportPath = `/report?placeId=${place.id}&placeName=${encodeURIComponent(place.name)}`;
   const reportHref = reportPath;
+  const sharePayload = createPlaceSharePayload(place, "detail");
 
   return (
     <main className="bg-stone-50 px-4 py-8 sm:px-6">
@@ -160,8 +163,11 @@ export default async function PlacePage({ params }: PlacePageProps) {
                   loginHref={bookmarkLoginHref}
                 />
                 <PlaceShareButton
-                  path={`/place/${place.id}`}
-                  title={place.name}
+                  path={sharePayload.path}
+                  title={sharePayload.title}
+                  text={sharePayload.text}
+                  testId="place-page-share-button"
+                  messageTestId="place-page-share-message"
                 />
                 <Link
                   href={reportHref}

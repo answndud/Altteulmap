@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
+import { getRateLimitFeedbackMessage } from "@/lib/rate-limit-feedback";
 import type { PlaceReactionType } from "@/features/places/types";
 
 export type PlaceReactionUpdate = {
@@ -109,6 +110,7 @@ export function PlaceReactionButtons({
       const result = (await response.json()) as {
         ok: boolean;
         message: string;
+        retryAfterMs?: number;
         likeCount: number;
         dislikeCount: number;
         reaction: PlaceReactionType | null;
@@ -127,7 +129,14 @@ export function PlaceReactionButtons({
         router.refresh();
       }
 
-      setMessage(result.message);
+      setMessage(
+        getRateLimitFeedbackMessage({
+          response,
+          message: result.message,
+          retryAfterMs: result.retryAfterMs,
+          defaultMessage: "반응 요청이 너무 빠릅니다.",
+        }),
+      );
     });
   };
 
