@@ -6,6 +6,7 @@ import { useState, useTransition } from "react";
 
 import { type SocialAuthProviderAvailability } from "@/features/auth/constants";
 import { SocialAuthButtons } from "@/features/auth/social-auth-buttons";
+import { getRateLimitFeedbackMessage } from "@/lib/rate-limit-feedback";
 
 type SignupFormProps = {
   callbackUrl: string;
@@ -17,6 +18,7 @@ type SignupFormProps = {
 type SignupActionResponse = {
   ok: boolean;
   message: string;
+  retryAfterMs?: number;
 };
 
 export function SignupForm({
@@ -72,7 +74,14 @@ export function SignupForm({
           const result = (await response.json()) as SignupActionResponse;
 
           if (!response.ok || !result.ok) {
-            setMessage(result.message);
+            setMessage(
+              getRateLimitFeedbackMessage({
+                response,
+                message: result.message,
+                retryAfterMs: result.retryAfterMs,
+                defaultMessage: "회원가입 요청이 너무 빠릅니다.",
+              }),
+            );
             return;
           }
 

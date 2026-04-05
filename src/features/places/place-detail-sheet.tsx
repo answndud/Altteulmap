@@ -12,7 +12,9 @@ import {
 } from "@/features/places/place-reaction-buttons";
 import { PlaceShareButton } from "@/features/places/place-share-button";
 import { PlacePriceReportForm } from "@/features/places/place-price-report-form";
+import { useMobileSheetGesture } from "@/features/places/use-mobile-sheet-gesture";
 import { formatKrw } from "@/features/places/queries";
+import { createPlaceSharePayload } from "@/features/places/share";
 import type {
   PlacePreviewRecord,
   PlaceRecord,
@@ -37,6 +39,12 @@ type PlaceDetailState = {
   error: string | null;
   item: PlaceDetailResponse | null;
   placeId: string | null;
+};
+
+type PlaceReactionOverride = {
+  dislikeCount: number;
+  likeCount: number;
+  viewerReaction: PlaceReactionUpdate["viewerReaction"];
 };
 
 function createLoginHref(path: string) {
@@ -72,6 +80,13 @@ export function PlaceDetailSheet({
     error: null,
     item: null,
     placeId: null,
+  });
+  const [reactionOverrides, setReactionOverrides] = useState<
+    Record<string, PlaceReactionOverride>
+  >({});
+  const detailSheetGesture = useMobileSheetGesture({
+    enabled: Boolean(placeId),
+    onClose,
   });
 
   useEffect(() => {
@@ -152,7 +167,17 @@ export function PlaceDetailSheet({
   const data = detailState.placeId === placeId ? detailState.item : null;
   const error = detailState.placeId === placeId ? detailState.error : null;
   const isLoading = detailState.placeId !== placeId;
-  const place = data?.item ?? previewPlace;
+  const rawPlace = data?.item ?? previewPlace;
+  const reactionOverride = rawPlace ? reactionOverrides[rawPlace.id] : null;
+  const place = rawPlace
+    ? {
+        ...rawPlace,
+        likeCount: reactionOverride?.likeCount ?? rawPlace.likeCount,
+        dislikeCount: reactionOverride?.dislikeCount ?? rawPlace.dislikeCount,
+        viewerReaction:
+          reactionOverride?.viewerReaction ?? rawPlace.viewerReaction,
+      }
+    : null;
   const category = place ? getCategoryBySlug(place.categorySlug) : null;
   const isBookmarked = place ? bookmarkedPlaceIds.includes(place.id) : false;
   const placePath = place ? `/place/${place.id}` : null;
@@ -161,10 +186,31 @@ export function PlaceDetailSheet({
     ? `/report?placeId=${place.id}&placeName=${encodeURIComponent(place.name)}`
     : null;
   const reportHref = reportPath;
+  const sharePayload = place
+    ? createPlaceSharePayload(place, "detail_sheet")
+    : null;
   const placePriceItems = place?.priceItems ?? [];
   const placeComments = place?.comments ?? [];
+  const businessNameLabel =
+    place?.businessName && place.businessName !== place.name
+      ? place.businessName
+      : null;
+  const placeMetaItems = [
+    category?.name ?? null,
+    place?.district ?? null,
+  ].filter((item): item is string => Boolean(item));
+  const hasDetailTopMeta = placeMetaItems.length > 0 || Boolean(businessNameLabel);
 
   const handleReactionUpdate = (nextState: PlaceReactionUpdate) => {
+    setReactionOverrides((current) => ({
+      ...current,
+      [nextState.placeId]: {
+        dislikeCount: nextState.dislikeCount,
+        likeCount: nextState.likeCount,
+        viewerReaction: nextState.viewerReaction,
+      },
+    }));
+
     setDetailState((current) => {
       if (
         current.placeId !== nextState.placeId ||
@@ -204,11 +250,25 @@ export function PlaceDetailSheet({
         role="dialog"
         aria-modal="true"
         data-testid="place-detail-sheet"
+        data-sheet-dragging={detailSheetGesture.isDragging ? "true" : "false"}
+        data-sheet-mode="default"
+        style={detailSheetGesture.style}
         className="altteulmap-mobile-sheet altteulmap-mobile-sheet-detail pointer-events-auto absolute flex w-auto flex-col overflow-hidden rounded-[1.75rem] border border-stone-200 bg-white shadow-2xl xl:inset-x-auto xl:inset-y-0 xl:right-0 xl:top-0 xl:w-full xl:max-h-none xl:max-w-[25.5rem] 2xl:max-w-[26.5rem] xl:rounded-l-[2rem] xl:rounded-r-none xl:border-l xl:border-r-0"
       >
         <div className="sticky top-0 z-10 border-b border-stone-200 bg-white/95 px-4 pb-3 pt-2 backdrop-blur sm:px-5">
           <div className="flex items-center justify-center pb-3 xl:hidden">
-            <span className="h-1.5 w-12 rounded-full bg-stone-300" />
+            <div
+              role="presentation"
+              data-testid="place-detail-drag-handle"
+              onPointerCancel={detailSheetGesture.handlePointerCancel}
+              onPointerDown={detailSheetGesture.handlePointerDown}
+              onPointerMove={detailSheetGesture.handlePointerMove}
+              onPointerUp={detailSheetGesture.handlePointerUp}
+              className="flex w-full justify-center py-1"
+              style={{ touchAction: "none" }}
+            >
+              <span className="h-1.5 w-12 rounded-full bg-stone-300" />
+            </div>
           </div>
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
@@ -228,7 +288,7 @@ export function PlaceDetailSheet({
               type="button"
               onClick={onClose}
               data-testid="place-detail-close"
-              className="altteulmap-button shrink-0 whitespace-nowrap border border-stone-300 bg-white px-3 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
+              className="altteulmap-button shrink-0 whitespace-nowrap border border-stone-300 bg-white px-2.5 py-1.5 text-xs text-stone-700 transition hover:bg-stone-100 sm:px-3 sm:py-2 sm:text-sm"
             >
               닫기
             </button>
@@ -260,30 +320,29 @@ export function PlaceDetailSheet({
 
           {place ? (
             <div className="space-y-5">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-orange-600">
-                    {category?.parentName ?? "생활비 절감"}
-                  </p>
-                  <h3 className="mt-2 text-2xl font-semibold tracking-tight text-stone-900">
-                    {place.name}
-                  </h3>
-                  {place.businessName && place.businessName !== place.name ? (
-                    <p className="mt-3 text-sm text-stone-500">
-                      {place.businessName}
-                    </p>
-                  ) : null}
-                  <p className="mt-1 text-sm text-stone-500">
-                    {category?.name ?? "기타"}
-                  </p>
-                  <p className="mt-1 text-sm leading-6 text-stone-500">
-                    {place.address}
-                  </p>
-                </div>
-              </div>
-
               <section className="altteulmap-accent-panel rounded-[1.75rem] p-5">
-                <p className="text-sm text-[#a06a48]">대표 가격</p>
+                {placeMetaItems.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {placeMetaItems.map((item) => (
+                      <span
+                        key={item}
+                        className="rounded-full border border-[#ddb596] bg-white/70 px-3 py-1 text-xs font-medium text-[#8f522f]"
+                      >
+                        {item}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+                {businessNameLabel ? (
+                  <p className="mt-3 text-sm text-[#8f522f]">
+                    사업장 이름 {businessNameLabel}
+                  </p>
+                ) : null}
+                <p
+                  className={`${hasDetailTopMeta ? "mt-4 " : ""}text-sm text-[#a06a48]`}
+                >
+                  대표 가격
+                </p>
                 <p className="mt-2 text-3xl font-semibold">
                   {formatKrw(place.representativePriceAmount)}원
                 </p>
@@ -308,9 +367,12 @@ export function PlaceDetailSheet({
                     loginHref={bookmarkLoginHref}
                   />
                   <PlaceShareButton
-                    path={`/place/${place.id}`}
-                    title={place.name}
+                    path={sharePayload?.path ?? `/place/${place.id}`}
+                    title={sharePayload?.title ?? place.name}
+                    text={sharePayload?.text}
                     className="altteulmap-button inline-flex whitespace-nowrap border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
+                    testId="place-detail-share-button"
+                    messageTestId="place-detail-share-message"
                   />
                   {reportHref ? (
                     <Link

@@ -1,13 +1,14 @@
-import { revalidatePath } from "next/cache";
+import { revalidateAfterPlaceReactionMutation } from "@/features/places/revalidation";
 import { setPlaceReaction } from "@/features/places/repository";
 import { placeReactionSchema } from "@/features/places/reaction-schema";
-import { consumeRateLimit } from "@/lib/rate-limit";
-import { getSessionUser } from "@/lib/session";
 import {
-  createVisitorId,
-  getVisitorIdFromCookie,
-  setVisitorIdCookie,
-} from "@/lib/visitor-id";
+  getPublicWriteActor,
+  setPublicWriteActorCookie,
+} from "@/lib/public-write-actor";
+import {
+  applyRateLimitHeaders,
+  consumeRateLimitPolicy,
+} from "@/lib/rate-limit";
 
 type RouteContext = {
   params: Promise<{
@@ -16,16 +17,9 @@ type RouteContext = {
 };
 
 export async function PUT(request: Request, context: RouteContext) {
-  const user = await getSessionUser();
-  const existingVisitorId = await getVisitorIdFromCookie();
-  const visitorId = user ? null : (existingVisitorId ?? createVisitorId());
+  const actor = await getPublicWriteActor(request);
 
-  const rateLimit = consumeRateLimit({
-    scope: "place_reaction",
-    key: user?.id ?? visitorId ?? request.headers.get("x-forwarded-for") ?? "guest",
-    limit: 20,
-    windowMs: 5 * 60 * 1000,
-  });
+  const rateLimit = consumeRateLimitPolicy("placeReaction", actor.key);
 
   if (!rateLimit.ok) {
     const response = Response.json(
@@ -37,11 +31,8 @@ export async function PUT(request: Request, context: RouteContext) {
       { status: 429 },
     );
 
-    if (!user && visitorId) {
-      setVisitorIdCookie(response, visitorId, request.url);
-    }
-
-    return response;
+    setPublicWriteActorCookie(response, actor, request);
+    return applyRateLimitHeaders(response, rateLimit);
   }
 
   const body = await request.json();
@@ -57,40 +48,30 @@ export async function PUT(request: Request, context: RouteContext) {
       { status: 400 },
     );
 
-    if (!user && visitorId) {
-      setVisitorIdCookie(response, visitorId, request.url);
-    }
-
-    return response;
+    setPublicWriteActorCookie(response, actor, request);
+    return applyRateLimitHeaders(response, rateLimit);
   }
 
   const { id } = await context.params;
   const result = await setPlaceReaction(
     id,
     parsed.data.reaction,
-    user
+    actor.user
       ? {
-          userId: user.id,
-          email: user.email,
-          name: user.name,
+          userId: actor.user.id,
+          email: actor.user.email,
+          name: actor.user.name,
         }
       : {
-          visitorId,
+          visitorId: actor.visitorId,
         },
   );
 
   if (result.ok) {
-    revalidatePath("/");
-    revalidatePath(`/place/${id}`);
-    revalidatePath(`/api/places/${id}`);
-    revalidatePath("/api/places/map");
+    revalidateAfterPlaceReactionMutation(id);
   }
 
   const response = Response.json(result, { status: result.ok ? 200 : 404 });
-
-  if (!user && visitorId) {
-    setVisitorIdCookie(response, visitorId, request.url);
-  }
-
-  return response;
+  setPublicWriteActorCookie(response, actor, request);
+  return applyRateLimitHeaders(response, rateLimit);
 }

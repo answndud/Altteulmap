@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useState, useTransition } from "react";
 
+import { getRateLimitFeedbackMessage } from "@/lib/rate-limit-feedback";
 import {
   reportReasonMap,
   reportReasonOptions,
@@ -15,6 +16,7 @@ import {
 type SubmitResult = {
   ok: boolean;
   message: string;
+  retryAfterMs?: number;
   source?: "mock" | "database";
   preview?: {
     id: string;
@@ -68,7 +70,15 @@ export function ReportSubmitForm({
       });
 
       const result = (await response.json()) as SubmitResult;
-      setSubmitResult(result);
+      setSubmitResult({
+        ...result,
+        message: getRateLimitFeedbackMessage({
+          response,
+          message: result.message,
+          retryAfterMs: result.retryAfterMs,
+          defaultMessage: "신고 요청이 너무 빠릅니다.",
+        }),
+      });
     });
   });
 

@@ -1,11 +1,14 @@
-import { revalidatePath } from "next/cache";
+import { revalidateAfterPlaceCommentMutation } from "@/features/places/revalidation";
 import { createPlaceComment } from "@/features/places/repository";
 import { placeCommentSchema } from "@/features/places/write-schema";
 import {
   getPublicWriteActor,
   setPublicWriteActorCookie,
 } from "@/lib/public-write-actor";
-import { consumeRateLimit } from "@/lib/rate-limit";
+import {
+  applyRateLimitHeaders,
+  consumeRateLimitPolicy,
+} from "@/lib/rate-limit";
 
 type RouteContext = {
   params: Promise<{
@@ -16,12 +19,10 @@ type RouteContext = {
 export async function POST(request: Request, context: RouteContext) {
   const actor = await getPublicWriteActor(request);
 
-  const rateLimit = consumeRateLimit({
-    scope: "place_comment_submission",
-    key: actor.key,
-    limit: 10,
-    windowMs: 10 * 60 * 1000,
-  });
+  const rateLimit = consumeRateLimitPolicy(
+    "placeCommentSubmission",
+    actor.key,
+  );
 
   if (!rateLimit.ok) {
     const response = Response.json(
@@ -35,7 +36,7 @@ export async function POST(request: Request, context: RouteContext) {
 
     setPublicWriteActorCookie(response, actor, request);
 
-    return response;
+    return applyRateLimitHeaders(response, rateLimit);
   }
 
   const body = await request.json();
@@ -53,7 +54,7 @@ export async function POST(request: Request, context: RouteContext) {
 
     setPublicWriteActorCookie(response, actor, request);
 
-    return response;
+    return applyRateLimitHeaders(response, rateLimit);
   }
 
   const { id } = await context.params;
@@ -72,11 +73,10 @@ export async function POST(request: Request, context: RouteContext) {
   );
 
   if (result.ok) {
-    revalidatePath(`/place/${id}`);
-    revalidatePath(`/api/places/${id}`);
+    revalidateAfterPlaceCommentMutation(id);
   }
 
   const response = Response.json(result, { status: result.ok ? 200 : 404 });
   setPublicWriteActorCookie(response, actor, request);
-  return response;
+  return applyRateLimitHeaders(response, rateLimit);
 }

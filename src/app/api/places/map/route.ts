@@ -6,16 +6,6 @@ const noStoreHeaders = {
   "Cache-Control": "no-store, max-age=0",
 };
 
-function parsePositiveNumber(value: string | null) {
-  if (!value) {
-    return null;
-  }
-
-  const parsed = Number(value);
-
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-}
-
 function parseFiniteNumber(value: string | null) {
   if (!value) {
     return null;
@@ -32,7 +22,6 @@ export async function GET(request: Request) {
   const query = searchParams.get("query")?.trim() || null;
   const searchScope =
     query && searchParams.get("scope") === "global" ? "global" : "viewport";
-  const maxPrice = parsePositiveNumber(searchParams.get("maxPrice"));
   const minLat = parseFiniteNumber(searchParams.get("minLat"));
   const maxLat = parseFiniteNumber(searchParams.get("maxLat"));
   const minLng = parseFiniteNumber(searchParams.get("minLng"));
@@ -50,7 +39,6 @@ export async function GET(request: Request) {
 
   const result = await listMapPlaces({
     category,
-    maxPrice,
     query,
     bounds: searchScope === "viewport" ? bounds : null,
     zoom: searchScope === "viewport" ? zoom : null,
@@ -60,6 +48,7 @@ export async function GET(request: Request) {
     {
       items: result.items,
       mapMarkers: result.mapMarkers,
+      markerMode: result.markerMode,
       count: result.count,
       returnedCount: result.items.length,
       mapMarkerCount: result.mapMarkers.length,
@@ -67,7 +56,6 @@ export async function GET(request: Request) {
       bounds: result.bounds,
       filters: {
         category,
-        maxPrice,
         query,
         searchScope,
         bounds: searchScope === "viewport" ? bounds : null,
@@ -77,7 +65,10 @@ export async function GET(request: Request) {
       mock: result.source === "mock",
     },
     {
-      headers: noStoreHeaders,
+      headers: {
+        ...noStoreHeaders,
+        "X-Altteulmap-Map-Cache": result.cacheStatus ?? "bypass",
+      },
     },
   );
 }

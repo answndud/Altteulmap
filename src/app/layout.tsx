@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { GlobalHeader } from "@/components/global-header";
+import { VisitTracker } from "@/features/telemetry/visit-tracker";
 import { getAdminAppHref } from "@/lib/admin-app";
 import { getSessionUser } from "@/lib/session";
 import { getSiteOrigin } from "@/lib/site";
@@ -31,6 +32,7 @@ export default async function RootLayout({
     <html lang="ko" suppressHydrationWarning>
       <body className="min-h-screen bg-stone-50 text-stone-900 antialiased">
         <GlobalHeader user={user} adminHref={getAdminAppHref("/admin")} />
+        <VisitTracker scope="public" />
         {children}
       </body>
     </html>

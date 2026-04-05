@@ -1,9 +1,9 @@
-import { revalidatePath } from "next/cache";
 import {
   listPendingPlaces,
   moderatePlaceSubmission,
 } from "@/features/places/repository";
 import { placeModerationSchema } from "@/features/submission/schema";
+import { revalidateAfterPlaceModeration } from "@/features/admin/revalidation";
 import { getSessionUser } from "@/lib/session";
 
 type RouteContext = {
@@ -90,13 +90,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   const result = await moderatePlaceSubmission(id, parsed.data, user.id);
 
   if (result.ok) {
-    revalidatePath("/admin");
-    revalidatePath("/admin/places");
-    revalidatePath("/api/admin/places");
-    revalidatePath("/");
-    revalidatePath("/api/places/map");
-    revalidatePath(`/place/${id}`);
-    revalidatePath(`/api/places/${id}`);
+    revalidateAfterPlaceModeration(id);
   }
 
   return Response.json(result, { status: result.ok ? 200 : 404 });

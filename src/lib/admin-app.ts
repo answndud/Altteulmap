@@ -1,6 +1,7 @@
 import "server-only";
 
 import { serverEnv } from "@/lib/env";
+import { getSiteOrigin } from "@/lib/site";
 
 function normalizeBaseUrl(value: string | undefined) {
   if (!value) {
@@ -11,7 +12,28 @@ function normalizeBaseUrl(value: string | undefined) {
 }
 
 export function getAdminAppBaseUrl() {
-  return normalizeBaseUrl(serverEnv.ADMIN_APP_URL);
+  const baseUrl = normalizeBaseUrl(serverEnv.ADMIN_APP_URL);
+
+  if (!baseUrl) {
+    return null;
+  }
+
+  try {
+    const siteOrigin = serverEnv.NEXTAUTH_URL ?? getSiteOrigin();
+    const siteUrl = new URL(siteOrigin);
+    const isLocalSite =
+      siteUrl.hostname === "localhost" ||
+      siteUrl.hostname === "127.0.0.1" ||
+      siteUrl.hostname === "::1";
+
+    if (isLocalSite) {
+      return null;
+    }
+  } catch {
+    return null;
+  }
+
+  return baseUrl;
 }
 
 export function hasExternalAdminApp() {
@@ -39,6 +61,6 @@ export function createExternalAdminApiResponse(pathname: string) {
         : "관리자 앱 주소가 아직 설정되지 않았습니다.",
       adminUrl,
     },
-    { status: 503 },
+    { status: 200 },
   );
 }

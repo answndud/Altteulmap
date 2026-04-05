@@ -34,7 +34,10 @@ npm run verify
 npm run test:e2e:smoke
 npm run test:e2e
 npm run smoke:local
+npm run smoke:remote
 npm run deploy:check
+npm run deploy:check:public
+npm run deploy:check:admin
 npm run admin:build
 npm run cf:build:admin
 npm run hooks:install
@@ -54,9 +57,14 @@ npm run preview
 - `verify`: 현재 프로젝트 기준 전체 기본 검증(`lint + build`)
 - `test:e2e:smoke`: `main` 푸시 기준의 빠른 Playwright smoke 세트
 - `test:e2e`: Playwright E2E 실행
-- `smoke:local`: 실행 중인 로컬 서버에 대해 SEO/API/credentials 로그인 기본 스모크 체크
+- `smoke:local`: 실행 중인 로컬 서버에 대해 홈 canonical, `robots`, `sitemap`, sample place canonical, map/detail API, 로그인 화면 렌더를 읽기 전용으로 점검
+- `smoke:remote`: 운영 public/admin URL에 대해 `robots`, `sitemap`, canonical, public `/admin` redirect, admin `/login`을 읽기 전용으로 점검
 - `deploy:check`: Cloudflare 배포 전 필수 환경 변수와 URL 설정 점검
+- `deploy:check:public`: public-only worker 기준으로 `ADMIN_APP_URL`까지 포함해 점검
+- `deploy:check:admin`: standalone admin worker 기준으로 `SITE_URL`까지 포함해 점검
 - `admin:sync`: public 앱의 관리자 route entrypoint를 `embedded` 또는 `external` 구현으로 동기화
+- `admin:sync:embedded`: public 앱 관리자 route를 내장 구현으로 강제 동기화
+- `admin:sync:external`: public 앱 관리자 route를 외부 관리자 앱 redirect/API stub 구현으로 강제 동기화
 - `admin:build`: 별도 `apps/admin` 관리자 앱 빌드
 - `cf:build:admin`: 별도 `apps/admin` 관리자 Worker용 OpenNext build
 - `hooks:install`: 이 저장소 전용 git hook 활성화
@@ -69,9 +77,9 @@ npm run preview
 - `cf:clean`: Cloudflare 빌드 전 `.next`, `.open-next` 정리
 - `cf:build`: Cloudflare 배포용 clean build
 - `preview`: OpenNext로 Cloudflare Workers 런타임 미리보기
-- `preview:public`: 관리자 route를 제외한 public 앱 preview
+- `preview:public`: public 앱을 외부 관리자 앱 redirect/API stub 모드로 preview
 - `preview:admin`: 별도 관리자 앱 preview
-- `deploy:public`: 관리자 route를 제외한 public 앱 배포
+- `deploy:public`: public 앱을 외부 관리자 앱 redirect/API stub 모드로 배포
 - `deploy:admin`: 별도 관리자 앱 배포
 
 `deploy`, `deploy:public`, `deploy:admin`, `upload`는 Cloudflare 계정과 Wrangler 인증이 준비된 뒤 사용하면 됩니다.
@@ -80,10 +88,18 @@ npm run preview
 
 관리자 분리 1차가 들어가 있어서, 현재 배포 경로는 두 가지입니다.
 - 기본 `deploy`: 관리자 구현을 포함한 현재 앱 전체 배포
-- `deploy:public`: public 앱만 배포하고 `/admin`, `/api/admin`은 번들에서 제외하는 경로
+- `deploy:public`: public 앱은 유지하되 `/admin`, `/api/admin`을 외부 관리자 앱 redirect/API stub로 전환하는 경로
 - `deploy:admin`: `apps/admin`을 `altteulmap-admin` 같은 별도 Worker로 배포하는 경로
 
 `deploy:public`은 `ADMIN_APP_URL`이 반드시 있어야 합니다. public 앱에서 관리자 링크를 별도 관리자 앱으로 보낼 때 쓰는 값이기 때문입니다.
+
+분리 배포에서는 admin 앱에도 `SITE_URL`을 같이 넣는 편이 안전합니다. 권장값은 아래와 같습니다.
+- public 앱: `NEXTAUTH_URL=https://altteulmap.<subdomain>.workers.dev`
+- public 앱: `ADMIN_APP_URL=https://altteulmap-admin.<subdomain>.workers.dev`
+- admin 앱: `NEXTAUTH_URL=https://altteulmap-admin.<subdomain>.workers.dev`
+- admin 앱: `SITE_URL=https://altteulmap.<subdomain>.workers.dev`
+
+배포/점검 스크립트는 이제 쉘이나 CI에서 주입한 env를 로컬 `.env*`보다 우선 사용합니다. 따라서 운영 배포 시에는 워크플로우나 셸에서 넘긴 `NEXTAUTH_URL`, `ADMIN_APP_URL`, `SITE_URL`이 로컬 파일 값에 덮이지 않습니다.
 
 별도 관리자 앱은 `apps/admin`에서 관리하며, 로컬 검증은 `npm run admin:build`, Worker 번들 검증은 `npm run cf:build:admin`으로 먼저 확인합니다.
 
@@ -128,6 +144,10 @@ npm run db:seed
 
 `NEXTAUTH_URL`은 로그인 callback뿐 아니라 `robots.txt`, `sitemap.xml`, canonical metadata의 기준 URL로도 사용합니다. 배포 시에는 반드시 실제 도메인으로 바꿔야 합니다.
 
+분리 배포에서는 `SITE_URL`도 같이 씁니다.
+- public 앱: `SITE_URL`을 비워 두거나 `NEXTAUTH_URL`과 같은 값 사용
+- admin 앱: `NEXTAUTH_URL`은 관리자 앱 주소, `SITE_URL`은 public 앱 주소 사용
+
 관리자 앱을 분리할 때는 `ADMIN_APP_URL`도 같이 설정합니다. 예를 들면 `https://altteulmap-admin.altteul-lab.workers.dev`처럼 별도 관리자 Worker 주소를 넣고, 그 뒤 public 앱을 `deploy:public`으로 배포합니다.
 
 소셜 로그인을 붙일 때는 지도 키와 분리해서 아래 환경 변수를 사용합니다.
@@ -167,7 +187,17 @@ hook를 설치하면 아래가 자동으로 검사됩니다.
 npm run smoke:local
 ```
 
-기본 대상은 `http://localhost:3000`이고, 다른 포트에서 확인하려면 `SMOKE_BASE_URL=http://localhost:3102 npm run smoke:local`처럼 실행하면 됩니다.
+기본 대상은 `http://localhost:3000`이고, 다른 포트에서 확인하려면 `SMOKE_BASE_URL=http://localhost:3102 npm run smoke:local`처럼 실행하면 됩니다. 이 스크립트는 `/sitemap.xml`에서 sample place URL을 동적으로 골라 canonical까지 확인합니다. canonical과 sitemap은 build 시점 `SITE_URL`을 따르므로, localhost smoke를 돌릴 때는 `build`와 `start` 모두에 같은 localhost `SITE_URL`/`NEXTAUTH_URL`을 넘기는 편이 안전합니다.
+
+배포된 public/admin URL을 읽기 전용으로 확인하려면 아래를 사용합니다.
+
+```bash
+SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev \
+SMOKE_ADMIN_URL=https://altteulmap-admin.altteul-lab.workers.dev \
+npm run smoke:remote
+```
+
+`SMOKE_PUBLIC_URL`을 주지 않으면 `NEXTAUTH_URL`, `SMOKE_ADMIN_URL`을 주지 않으면 `ADMIN_APP_URL`을 기본으로 사용합니다.
 
 Playwright E2E는 아래 명령으로 실행합니다.
 
@@ -185,11 +215,12 @@ npm run test:e2e
 
 현재 기본 E2E는 아래 흐름을 검증합니다.
 - 지도 첫 진입
+- 홈 인기 장소 추천 섹션과 상세 이동
 - 검색과 상세 시트 열기/닫기
 - 모바일 목록 시트 열기/닫기
 - 모바일 목록 -> 상세 시트 -> 지도 복귀
 - 비회원 좋아요/취소
-- 공유 버튼 fallback
+- 목록/상세/추천 공유 버튼 fallback
 - 운영자 로그인 후 관리 진입과 로그아웃
 - credentials 로그인
 - credentials 회원가입

@@ -118,10 +118,14 @@ function getKstDateStamp() {
 
 const IMPORTED_AT = getKstDateStamp();
 
+function isUnderPriceCeiling(amount: number, maxPrice: number) {
+  return amount < maxPrice;
+}
+
 function parseArgs(argv: string[]): CliOptions {
   const options: CliOptions = {
     limit: 1000,
-    maxPrice: 10000,
+    maxPrice: 8000,
     seoulLimit: -1,
     foodRatio: 0.7,
     delayMs: 120,
@@ -495,7 +499,9 @@ function buildPriceItems(
   detail: GoodpriceDetail,
   maxPrice: number,
 ): PlacePriceItem[] {
-  const filteredDetailMenus = detail.menus.filter((menu) => menu.amount <= maxPrice);
+  const filteredDetailMenus = detail.menus.filter((menu) =>
+    isUnderPriceCeiling(menu.amount, maxPrice),
+  );
   const sourceMenus =
     filteredDetailMenus.length > 0
       ? filteredDetailMenus
@@ -575,11 +581,12 @@ function findRepresentativePrice(
 ) {
   const representativeCandidate =
     detail.menus.find(
-      (menu) => menu.isDesignated && menu.amount <= maxPrice,
+      (menu) => menu.isDesignated && isUnderPriceCeiling(menu.amount, maxPrice),
     ) ??
     detail.menus.find(
       (menu) =>
-        menu.label === item.representativeMenu && menu.amount <= maxPrice,
+        menu.label === item.representativeMenu &&
+        isUnderPriceCeiling(menu.amount, maxPrice),
     ) ?? {
       label: item.representativeMenu,
       amount: item.price,
@@ -806,7 +813,7 @@ async function main() {
 
     const affordableItems = pageItems.filter(
       (item) =>
-        item.price <= options.maxPrice &&
+        isUnderPriceCeiling(item.price, options.maxPrice) &&
         !seenAddresses.has(`${item.name}@@${item.address}`),
     );
 

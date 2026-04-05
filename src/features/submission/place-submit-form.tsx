@@ -5,6 +5,7 @@ import { useFieldArray, useForm } from "react-hook-form";
 import { useState, useTransition } from "react";
 
 import { categoryGroups } from "@/features/categories/catalog";
+import { getRateLimitFeedbackMessage } from "@/lib/rate-limit-feedback";
 import {
   type PlaceSubmissionFormInput,
   type PlaceSubmissionFormValues,
@@ -14,6 +15,7 @@ import {
 type SubmitResult = {
   ok: boolean;
   message: string;
+  retryAfterMs?: number;
   source?: "mock" | "database";
   preview?: {
     id: string;
@@ -83,7 +85,15 @@ export function PlaceSubmitForm() {
       });
 
       const result = (await response.json()) as SubmitResult;
-      setSubmitResult(result);
+      setSubmitResult({
+        ...result,
+        message: getRateLimitFeedbackMessage({
+          response,
+          message: result.message,
+          retryAfterMs: result.retryAfterMs,
+          defaultMessage: "장소 등록 요청이 너무 빠릅니다.",
+        }),
+      });
     });
   });
 

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { GlobalHeader } from "@/components/global-header";
+import { VisitTracker } from "@/features/telemetry/visit-tracker";
 import { getSessionUser } from "@/lib/session";
 import { createSiteUrl } from "@/lib/site";
 
@@ -29,6 +30,7 @@ export default async function AdminRootLayout({
           adminHref="/admin"
           homeHref={createSiteUrl("/").toString()}
         />
+        <VisitTracker scope="admin" />
         {children}
       </body>
     </html>

@@ -8,7 +8,11 @@ import {
 } from "@/features/categories/catalog";
 import { RouteResetDetails } from "@/features/map/route-reset-details";
 import { MapExplorer } from "@/features/places/map-explorer";
-import { listMapPlaces } from "@/features/places/repository";
+import {
+  listMapPlaces,
+  listTrendingPlaces,
+} from "@/features/places/repository";
+import { TrendingPlacesSection } from "@/features/places/trending-places-section";
 import type {
   PlaceBounds,
   PlaceSearchScope,
@@ -82,8 +86,9 @@ export default async function MapPage({ searchParams }: MapPageProps) {
       : "viewport";
   const user = await getSessionUser();
   const shouldPrefetchPlaces = activeSearchScope === "global";
+  const shouldShowTrendingPlaces = !activeQuery;
 
-  const [result, bookmarkResult] = await Promise.all([
+  const [result, bookmarkResult, trendingResult] = await Promise.all([
     shouldPrefetchPlaces
       ? listMapPlaces({
           category: activeCategory,
@@ -92,11 +97,18 @@ export default async function MapPage({ searchParams }: MapPageProps) {
       : Promise.resolve({
           items: [],
           mapMarkers: [],
+          markerMode: "place" as const,
           bounds: SEOUL_BOOTSTRAP_BOUNDS,
           count: 0,
           source: "database" as const,
         }),
     listBookmarks(user),
+    shouldShowTrendingPlaces
+      ? listTrendingPlaces(6, activeCategory)
+      : Promise.resolve({
+          items: [],
+          source: "database" as const,
+        }),
   ]);
   const currentMapHref = createHref({
     category: activeCategory,
@@ -119,6 +131,10 @@ export default async function MapPage({ searchParams }: MapPageProps) {
     selectedCategory?.name ?? null,
     activeSearchScope === "global" ? "전체 검색" : "현재 지도",
   ].filter((item): item is string => Boolean(item));
+  const mobileSummaryText =
+    mobileSummaryItems.length > 0
+      ? mobileSummaryItems.join(" · ")
+      : "현재 지도 기준";
 
   return (
     <main className="bg-stone-50 px-3 py-4 sm:px-4 sm:py-5 lg:px-5 xl:px-6">
@@ -151,20 +167,11 @@ export default async function MapPage({ searchParams }: MapPageProps) {
               className="grid gap-2.5 rounded-[1.4rem] border border-stone-200 bg-stone-50/80 p-3"
             >
               <div className="flex items-center justify-between gap-3">
-                <div className="flex min-w-0 items-center gap-2">
+                <div className="min-w-0">
                   <p className="text-sm font-medium text-stone-700">검색</p>
-                  {mobileSummaryItems.length > 0 ? (
-                    <div className="altteulmap-scroll-row min-w-0 pb-0">
-                      {mobileSummaryItems.map((item) => (
-                        <span
-                          key={item}
-                          className="altteulmap-badge whitespace-nowrap px-2.5 py-1 text-[11px] text-stone-600"
-                        >
-                          {item}
-                        </span>
-                      ))}
-                    </div>
-                  ) : null}
+                  <p className="mt-0.5 truncate text-xs text-stone-500">
+                    {mobileSummaryText}
+                  </p>
                 </div>
                 {activeQuery ? (
                   <Link
@@ -417,6 +424,7 @@ export default async function MapPage({ searchParams }: MapPageProps) {
             currentMapHref={currentMapHref}
             initialBounds={result.bounds}
             initialCount={result.count}
+            markerMode={result.markerMode}
             prefetchedOnServer={shouldPrefetchPlaces}
             mapMarkers={result.mapMarkers}
             places={places}
@@ -424,6 +432,13 @@ export default async function MapPage({ searchParams }: MapPageProps) {
             searchScope={activeSearchScope}
             selectedCategoryLabel={selectedCategory?.name ?? null}
           />
+
+          {shouldShowTrendingPlaces ? (
+            <TrendingPlacesSection
+              items={trendingResult.items}
+              selectedCategoryLabel={selectedCategory?.name ?? null}
+            />
+          ) : null}
         </section>
       </div>
     </main>

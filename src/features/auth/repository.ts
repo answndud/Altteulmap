@@ -221,6 +221,7 @@ export function listSocialAuthProviders(): SocialAuthProviderAvailability[] {
   ];
 
   return providers.map((provider) => {
+
     if (!isDatabaseEnabled()) {
       return {
         id: provider.id,

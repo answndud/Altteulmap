@@ -1,4 +1,4 @@
-import { revalidatePath } from "next/cache";
+import { revalidateAfterReportModeration } from "@/features/admin/revalidation";
 import { updateReportStatus } from "@/features/reports/repository";
 import { reportModerationSchema } from "@/features/reports/schema";
 import { getSessionUser } from "@/lib/session";
@@ -50,9 +50,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   const result = await updateReportStatus(id, parsed.data, user.id);
 
   if (result.ok) {
-    revalidatePath("/admin");
-    revalidatePath("/admin/reports");
-    revalidatePath("/api/admin/reports");
+    revalidateAfterReportModeration();
   }
 
   return Response.json(result, { status: result.ok ? 200 : 404 });

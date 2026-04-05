@@ -1,4 +1,4 @@
-import { revalidatePath } from "next/cache";
+import { revalidateAfterPlaceCommentMutation } from "@/features/places/revalidation";
 import { deletePlaceComment } from "@/features/places/repository";
 import { getPublicWriteActor } from "@/lib/public-write-actor";
 
@@ -32,8 +32,7 @@ export async function DELETE(request: Request, context: RouteContext) {
   });
 
   if (result.ok) {
-    revalidatePath(`/place/${id}`);
-    revalidatePath(`/api/places/${id}`);
+    revalidateAfterPlaceCommentMutation(id);
   }
 
   const status =

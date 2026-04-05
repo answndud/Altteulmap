@@ -1,6 +1,6 @@
 import { getPlaceDetail } from "@/features/places/repository";
 import { getSessionUser } from "@/lib/session";
-import { getVisitorIdFromCookie } from "@/lib/visitor-id";
+import { getVisitorIdFromRequest } from "@/lib/visitor-id";
 
 type RouteContext = {
   params: Promise<{
@@ -14,10 +14,10 @@ const noStoreHeaders = {
   "Cache-Control": "no-store, max-age=0",
 };
 
-export async function GET(_: Request, context: RouteContext) {
+export async function GET(request: Request, context: RouteContext) {
   const { id } = await context.params;
   const user = await getSessionUser();
-  const visitorId = user ? null : await getVisitorIdFromCookie();
+  const visitorId = user ? null : getVisitorIdFromRequest(request);
   const result = await getPlaceDetail(
     id,
     user
