@@ -38,6 +38,23 @@
 
 ## 실행 로그
 
+### 2026-04-05 12:21 KST: 공개 지도 marker mode 분리 변경 push 및 public Cloudflare 배포
+- 완료 내용
+  - 누적된 워크트리 변경을 `feat(app): ship latest public and admin updates` (`366ff26`)로 커밋했고, `codex/ui-polish-batch` 브랜치에 push했다.
+  - push 전 원격 `codex/ui-polish-batch`에 `44ceee2`, `e06463e`가 먼저 올라와 있어 rebase로 합쳤다. 충돌은 `package.json`, `scripts/build-public-worker.mjs`, `src/features/places/repository.ts`, `PROGRESS.md`에서만 났고, public worker runtime hotfix와 이번 marker mode 분리 둘 다 유지하는 방향으로 정리했다.
+  - `npm run deploy:public`로 public worker를 다시 배포했다.
+- 검증 결과
+  - `git push origin codex/ui-polish-batch` 통과
+  - `npm run deploy:check` 통과
+  - `npm run deploy:public` 통과
+  - `curl -I --max-time 20 https://altteulmap.altteul-lab.workers.dev/` 결과 `200`
+  - live map API 검증
+    - `https://altteulmap.altteul-lab.workers.dev/api/places/map?minLat=37.4133&maxLat=37.7151&minLng=126.7341&maxLng=127.2693&zoom=9` 결과 `markerMode:"cluster"`, `kinds:["cluster"]`, `count:500`, `mapMarkerCount:19`
+    - `https://altteulmap.altteul-lab.workers.dev/api/places/map?query=김밥&scope=global` 결과 `markerMode:"place"`, `kinds:["place"]`, `count:40`, `mapMarkerCount:40`
+- 메모
+  - public 배포 URL: `https://altteulmap.altteul-lab.workers.dev`
+  - Cloudflare version id: `e1e12228-fc92-4fa6-bdda-76df3d794337`
+
 ### 2026-04-05 12:07 KST: 공개 지도 marker 응답을 `cluster-only`/`place-only`로 분리
 - 완료 내용
   - `/Users/alex/project/altteulmap/PLAN.md`에 공개 지도 marker mode 분리 작업을 먼저 추가한 뒤 구현을 진행했다.
