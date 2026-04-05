@@ -95,8 +95,15 @@ type BucketKey =
   | "nonSeoulFood"
   | "nonSeoulNonFood";
 
-type QuotaTargets = Record<BucketKey, number>;
+type BucketTargets = Record<BucketKey, number>;
 type BucketCollections = Record<BucketKey, GoodpriceListItem[]>;
+type SelectionTargets = {
+  seoulLimit: number;
+  nonSeoulLimit: number;
+  foodTarget: number;
+  nonFoodTarget: number;
+  bucketCaps: BucketTargets;
+};
 
 const GOODPRICE_BASE_URL = "https://goodprice.go.kr";
 const LIST_PATH = "/bssh/bsshList.do";
@@ -650,7 +657,7 @@ function toPlaceRecord(
   };
 }
 
-function buildQuotaTargets(options: CliOptions): QuotaTargets {
+function buildSelectionTargets(options: CliOptions): SelectionTargets {
   if (options.limit <= 0) {
     throw new Error("`limit` must be greater than 0.");
   }
@@ -664,14 +671,20 @@ function buildQuotaTargets(options: CliOptions): QuotaTargets {
   }
 
   const nonSeoulLimit = options.limit - options.seoulLimit;
-  const seoulFood = Math.round(options.seoulLimit * options.foodRatio);
-  const nonSeoulFood = Math.round(nonSeoulLimit * options.foodRatio);
+  const foodTarget = Math.round(options.limit * options.foodRatio);
+  const nonFoodTarget = options.limit - foodTarget;
 
   return {
-    seoulFood,
-    seoulNonFood: options.seoulLimit - seoulFood,
-    nonSeoulFood,
-    nonSeoulNonFood: nonSeoulLimit - nonSeoulFood,
+    seoulLimit: options.seoulLimit,
+    nonSeoulLimit,
+    foodTarget,
+    nonFoodTarget,
+    bucketCaps: {
+      seoulFood: Math.min(options.seoulLimit, foodTarget),
+      seoulNonFood: Math.min(options.seoulLimit, nonFoodTarget),
+      nonSeoulFood: Math.min(nonSeoulLimit, foodTarget),
+      nonSeoulNonFood: Math.min(nonSeoulLimit, nonFoodTarget),
+    },
   };
 }
 
@@ -697,21 +710,48 @@ function getTotalCollected(collections: BucketCollections) {
   return Object.values(collections).reduce((sum, items) => sum + items.length, 0);
 }
 
-function isQuotaSatisfied(
+function resolveBucketTargets(
   collections: BucketCollections,
-  targets: QuotaTargets,
-  bucket: BucketKey,
-) {
-  return collections[bucket].length >= targets[bucket];
-}
-
-function areAllQuotasSatisfied(
-  collections: BucketCollections,
-  targets: QuotaTargets,
-) {
-  return (Object.keys(targets) as BucketKey[]).every((bucket) =>
-    isQuotaSatisfied(collections, targets, bucket),
+  targets: SelectionTargets,
+): BucketTargets | null {
+  const counts = getBucketCounts(collections);
+  const lowerBound = Math.max(
+    0,
+    targets.seoulLimit - counts.seoulNonFood,
+    targets.foodTarget - counts.nonSeoulFood,
+    targets.foodTarget - targets.nonSeoulLimit,
   );
+  const upperBound = Math.min(
+    counts.seoulFood,
+    targets.seoulLimit,
+    targets.foodTarget,
+    counts.nonSeoulNonFood - targets.nonSeoulLimit + targets.foodTarget,
+  );
+
+  if (lowerBound > upperBound) {
+    return null;
+  }
+
+  const seoulFood = upperBound;
+  const seoulNonFood = targets.seoulLimit - seoulFood;
+  const nonSeoulFood = targets.foodTarget - seoulFood;
+  const nonSeoulNonFood = targets.nonSeoulLimit - nonSeoulFood;
+
+  if (
+    seoulFood < 0 ||
+    seoulNonFood < 0 ||
+    nonSeoulFood < 0 ||
+    nonSeoulNonFood < 0
+  ) {
+    return null;
+  }
+
+  return {
+    seoulFood,
+    seoulNonFood,
+    nonSeoulFood,
+    nonSeoulNonFood,
+  };
 }
 
 function getBucketKey(item: GoodpriceListItem) {
@@ -727,7 +767,7 @@ function getBucketKey(item: GoodpriceListItem) {
 
 function formatBucketProgress(
   collections: BucketCollections,
-  targets: QuotaTargets,
+  targets: BucketTargets,
 ) {
   const counts = getBucketCounts(collections);
 
@@ -739,12 +779,15 @@ function formatBucketProgress(
   ].join(", ");
 }
 
-function buildSelectedItems(collections: BucketCollections) {
+function buildSelectedItems(
+  collections: BucketCollections,
+  targets: BucketTargets,
+) {
   const buckets = [
-    collections.seoulFood,
-    collections.seoulNonFood,
-    collections.nonSeoulFood,
-    collections.nonSeoulNonFood,
+    collections.seoulFood.slice(0, targets.seoulFood),
+    collections.seoulNonFood.slice(0, targets.seoulNonFood),
+    collections.nonSeoulFood.slice(0, targets.nonSeoulFood),
+    collections.nonSeoulNonFood.slice(0, targets.nonSeoulNonFood),
   ];
   const selected: GoodpriceListItem[] = [];
   let remaining = true;
@@ -768,7 +811,7 @@ function buildSelectedItems(collections: BucketCollections) {
 
 async function main() {
   const options = parseArgs(process.argv.slice(2));
-  const quotaTargets = buildQuotaTargets(options);
+  const selectionTargets = buildSelectionTargets(options);
   const firstPageHtml = (await fetchText(LIST_PATH, {
     pageIndex: "1",
     menuId: "MN-0103",
@@ -820,7 +863,7 @@ async function main() {
     for (const item of affordableItems) {
       const bucket = getBucketKey(item);
 
-      if (isQuotaSatisfied(collected, quotaTargets, bucket)) {
+      if (collected[bucket].length >= selectionTargets.bucketCaps[bucket]) {
         continue;
       }
 
@@ -831,7 +874,7 @@ async function main() {
 
       if (totalCollected > 0 && totalCollected % 100 === 0) {
         console.log(
-          `Collected ${totalCollected}/${options.limit} places... (${formatBucketProgress(collected, quotaTargets)})`,
+          `Collected ${totalCollected}/${options.limit} places... (${formatBucketProgress(collected, selectionTargets.bucketCaps)})`,
         );
       }
     }
@@ -840,14 +883,21 @@ async function main() {
     return true;
   };
 
-  while (!areAllQuotasSatisfied(collected, quotaTargets)) {
+  while (!resolveBucketTargets(collected, selectionTargets)) {
     let progressed = false;
 
-    if (collected.seoulFood.length < quotaTargets.seoulFood || collected.seoulNonFood.length < quotaTargets.seoulNonFood) {
+    if (
+      collected.seoulFood.length < selectionTargets.bucketCaps.seoulFood ||
+      collected.seoulNonFood.length < selectionTargets.bucketCaps.seoulNonFood
+    ) {
       progressed = (await collectFromRegion(seoulRegion)) || progressed;
     }
 
-    if (collected.nonSeoulFood.length < quotaTargets.nonSeoulFood || collected.nonSeoulNonFood.length < quotaTargets.nonSeoulNonFood) {
+    if (
+      collected.nonSeoulFood.length < selectionTargets.bucketCaps.nonSeoulFood ||
+      collected.nonSeoulNonFood.length <
+        selectionTargets.bucketCaps.nonSeoulNonFood
+    ) {
       let attempts = 0;
 
       while (attempts < nonSeoulRegions.length) {
@@ -871,13 +921,15 @@ async function main() {
     }
   }
 
-  if (!areAllQuotasSatisfied(collected, quotaTargets)) {
+  const resolvedBucketTargets = resolveBucketTargets(collected, selectionTargets);
+
+  if (!resolvedBucketTargets) {
     throw new Error(
-      `Failed to satisfy quota targets. ${formatBucketProgress(collected, quotaTargets)}`,
+      `Failed to satisfy quota targets. available=${formatBucketProgress(collected, getBucketCounts(collected))}, required=서울 ${selectionTargets.seoulLimit}, 비서울 ${selectionTargets.nonSeoulLimit}, 음식 ${selectionTargets.foodTarget}, 비음식 ${selectionTargets.nonFoodTarget}`,
     );
   }
 
-  const selected = buildSelectedItems(collected);
+  const selected = buildSelectedItems(collected, resolvedBucketTargets);
   const detailMap = new Map<string, GoodpriceDetail>();
 
   if (options.includeDetail) {
@@ -913,10 +965,18 @@ async function main() {
     selectedCount: selected.length,
     quotas: {
       seoulLimit: options.seoulLimit,
-      nonSeoulLimit: options.limit - options.seoulLimit,
+      nonSeoulLimit: selectionTargets.nonSeoulLimit,
       foodRatio: options.foodRatio,
-      targets: quotaTargets,
-      actual: getBucketCounts(collected),
+      foodTarget: selectionTargets.foodTarget,
+      nonFoodTarget: selectionTargets.nonFoodTarget,
+      bucketCaps: selectionTargets.bucketCaps,
+      targets: resolvedBucketTargets,
+      actual: getBucketCounts({
+        seoulFood: collected.seoulFood.slice(0, resolvedBucketTargets.seoulFood),
+        seoulNonFood: collected.seoulNonFood.slice(0, resolvedBucketTargets.seoulNonFood),
+        nonSeoulFood: collected.nonSeoulFood.slice(0, resolvedBucketTargets.nonSeoulFood),
+        nonSeoulNonFood: collected.nonSeoulNonFood.slice(0, resolvedBucketTargets.nonSeoulNonFood),
+      }),
     },
     regions: Array.from(
       selected.reduce((map, item) => {

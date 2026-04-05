@@ -15,7 +15,7 @@
 - Cycle 6: 좋아요/싫어요 반응 도입 완료, 비로그인 visitor cookie 반응과 공개 메타 줄 분리까지 반영. 홈 `인기 장소` 추천과 공유 후속은 반영했고, 별도 랭킹 화면은 현재 범위에서 제외함
 - Cycle 7: repo-local AI workflow 설정 완료 (`.agents`, `.githooks`, `verify`, local commit rules)
 - Cycle 8: 로컬 dev/runtime 안정화 완료 (`.next-dev` 분리, `webpack` dev 고정, build/e2e와 출력 경로 분리)
-- Cycle 9: 행정안전부 `착한가격업소` 실제 데이터 1000건 import 완료. 기본 selection은 `서울 500 + 비서울 500`, `음식점 70%`, `대표 가격 1만원 이하`로 고정했고, 메뉴 라벨 dedupe까지 반영해 DB seed/API 검증을 다시 통과함
+- Cycle 9: 행정안전부 `착한가격업소` 실제 데이터 1000건 import 완료. 기본 selection은 `서울 500 + 비서울 500`, `음식점 70%`, `대표 가격 8천원 미만` 기준으로 유지되고 있고, 메뉴 라벨 dedupe까지 반영해 DB seed/API 검증을 다시 통과함
 - Cycle 5 지도 성능 후속: 지도 전용 preview payload와 마커/목록 렌더 상한, viewport 첫 진입의 1000건 SSR 제거, map API/server preview 응답 `count + capped items` 구조, `places` 비정규화, viewport/zoom 기반 cluster marker 계층, `items + mapMarkers` 분리, 서버 tile summary, viewport 무검색 SQL bucket aggregate, bounds 기반 short-lived 서버 캐시와 쓰기 후 invalidation, preview fallback/bootstrap fetch 회귀 수정, 공개 가격 필터 제거, `127.0.0.1` dev origin 허용까지 반영함
 - Cycle 5 운영 지표 후속: `visit_activity` 적재, public/admin layout tracker, `/api/telemetry/visit`, 관리자 overview 방문 카드, 로컬 admin 링크 fallback, 로그인 상태 header test id 복구까지 완료
 - Cycle 5 인증/UI 후속: `/login`, `/signup`은 설정성 패널 없이 액션 중심으로 다시 단순화했고, 지도 필터/검색 칩은 가로 레일로 정리했으며, login/signup E2E로 회귀를 유지함
@@ -39,6 +39,17 @@
 - 다음 우선순위: 공유 유입을 추천 로직이나 운영 지표에 더 활용할지 판단하고, 출시 준비/운영 품질 잔여 범위를 정리한다
 
 ## 실행 로그
+
+### 2026-04-05 12:44 KST: `착한가격업소` importer quota 선택 로직 보강과 문서 정리
+- 완료 내용
+  - `/Users/alex/project/altteulmap/scripts/import-goodprice.ts`에서 서울/비서울, 음식/비음식 목표가 동시에 걸릴 때 bucket별 상한만으로 바로 고정하지 않고, 수집된 후보 풀 안에서 실제로 가능한 `targets`를 다시 계산한 뒤 그 target에 맞춰 selection 하도록 바꿨다.
+  - 같은 스크립트의 manifest는 이제 `foodTarget`, `nonFoodTarget`, `bucketCaps`, 최종 `targets`, 잘린 뒤의 `actual`을 함께 남긴다. 그래서 상한만 채운 중간 수집 상태와 실제 선택 결과를 구분해 볼 수 있다.
+  - `/Users/alex/project/altteulmap/README.md`, `/Users/alex/project/altteulmap/PROGRESS.md` 요약 문구도 현재 기본값인 `대표 가격 8천원 미만` 기준으로 정리했다.
+- 검증 결과
+  - `npm run data:goodprice -- --limit=40 --seoul-limit=20 --food-ratio=0.7 --max-price=8000 --include-detail=false --output=/tmp/altteulmap-goodprice-check/imported-goodprice.sample.json --manifest=/tmp/altteulmap-goodprice-check/import-meta.sample.json` 통과
+  - sample manifest 확인 결과 `selectedCount=40`, `seoulLimit=20`, `nonSeoulLimit=20`, `foodTarget=28`, `nonFoodTarget=12`, `targets=actual={seoulFood:15,seoulNonFood:5,nonSeoulFood:13,nonSeoulNonFood:7}`
+- 메모
+  - 이번 검증은 temp output으로만 실행해서 저장소의 `src/features/places/imported-goodprice.json`, `data/goodprice/import-meta.json`은 건드리지 않았다.
 
 ### 2026-04-05 12:41 KST: 공개 지도 marker 대비 강화 push 및 public Cloudflare 배포
 - 완료 내용

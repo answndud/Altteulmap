@@ -72,7 +72,7 @@ npm run preview
 - `db:generate`: Drizzle 마이그레이션 SQL 생성
 - `db:push`: 로컬/개발 DB에 스키마 반영
 - `db:seed`: 로컬 DB에 시드 데이터 입력 (`imported-goodprice.json`이 있으면 실제 착한가격업소 1000건을 우선 사용)
-- `data:goodprice`: 행정안전부 `착한가격업소` 사이트에서 `1만원 이하` 실제 업소를 수집해 `src/features/places/imported-goodprice.json`과 `data/goodprice/import-meta.json` 생성. 기본 quota는 `서울 500 + 비서울 500`, `음식점 70%`다
+- `data:goodprice`: 행정안전부 `착한가격업소` 사이트에서 `대표 가격 8천원 미만` 실제 업소를 수집해 `src/features/places/imported-goodprice.json`과 `data/goodprice/import-meta.json` 생성. 기본 quota는 `서울 500 + 비서울 500`, `음식점 70%`다
 - `db:down`: 로컬 Postgres 컨테이너 중지
 - `cf:clean`: Cloudflare 빌드 전 `.next`, `.open-next` 정리
 - `cf:build`: Cloudflare 배포용 clean build
@@ -134,7 +134,7 @@ npm run data:goodprice -- --delay-ms=50 --timeout-ms=10000
 npm run db:seed
 ```
 
-기본 수집값은 `대표 가격 1만원 이하`, `서울 500 + 비서울 500`, `음식점 70%`입니다. 다른 분포가 필요하면 `--limit`, `--seoul-limit`, `--food-ratio`, `--max-price`를 함께 넘기면 됩니다.
+기본 수집값은 `대표 가격 8천원 미만`, `서울 500 + 비서울 500`, `음식점 70%`입니다. 다른 분포가 필요하면 `--limit`, `--seoul-limit`, `--food-ratio`, `--max-price`를 함께 넘기면 됩니다.
 
 생성된 `src/features/places/imported-goodprice.json`은 mock fallback과 DB seed 양쪽에서 공통으로 우선 사용합니다. 수집 메타와 원본 업소 id, quota 결과, 지역/업종 분포는 `data/goodprice/import-meta.json`에 남습니다.
 
