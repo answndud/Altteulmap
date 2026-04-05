@@ -60,6 +60,19 @@
   - `npm run verify` 중 static generation 단계에서 production DB의 `places` 테이블 부재로 mock fallback 로그가 남는 현상은 기존과 동일하며, 이번 데이터셋 변경과는 무관하다.
   - 새 manifest의 `quotas.targets`는 실제 선택에 사용된 bucket 수치다. 기본 분포는 `368/132/332/168`로 기록된다.
 
+### 2026-04-05 12:52 KST: `대표 가격 8천원 미만` 데이터셋 변경 push 및 public Cloudflare 재배포
+- 완료 내용
+  - `대표 가격 8천원 미만` 데이터셋/문서 변경을 `fix(data): tighten goodprice price ceiling` (`ab7ae4f`)로 커밋하고 `codex/ui-polish-batch` 브랜치에 push했다.
+  - public worker는 새 imported dataset이 반영된 상태로 다시 배포했다.
+- 검증 결과
+  - `git push origin codex/ui-polish-batch` 통과
+  - `npm run deploy:check:public` 통과
+  - `npm run deploy:public` 통과
+  - `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev SMOKE_ADMIN_URL=https://altteulmap-admin.altteul-lab.workers.dev npm run smoke:remote` 통과
+- 메모
+  - public 배포 URL: `https://altteulmap.altteul-lab.workers.dev`
+  - public worker version id: `080e4915-261b-4d32-b571-7fef31cc3010`
+
 ### 2026-04-05 12:46 KST: `착한가격업소` importer selection 로직 포함 push 및 public Cloudflare 배포
 - 완료 내용
   - importer quota selection 변경과 문서 정리를 `fix(data): refine goodprice quota selection` (`77dd22d`)로 커밋하고 `codex/ui-polish-batch` 브랜치에 push했다.
