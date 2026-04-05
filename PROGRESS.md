@@ -40,6 +40,19 @@
 
 ## 실행 로그
 
+### 2026-04-05 12:41 KST: 공개 지도 marker 대비 강화 push 및 public Cloudflare 배포
+- 완료 내용
+  - 공개 지도 marker 대비 조정 변경을 `fix(map): boost marker contrast` (`0f09c11`)로 커밋하고 `codex/ui-polish-batch` 브랜치에 push했다.
+  - 카테고리별 place marker의 채도와 white halo, 중심 ring 구조를 강화한 상태로 public worker를 다시 배포했다.
+- 검증 결과
+  - `git push origin codex/ui-polish-batch` 통과
+  - `npm run deploy:check` 통과
+  - `npm run deploy:public` 통과
+  - `curl -I --max-time 20 https://altteulmap.altteul-lab.workers.dev/` 결과 `200`
+- 메모
+  - public 배포 URL: `https://altteulmap.altteul-lab.workers.dev`
+  - Cloudflare version id: `3bc93651-9d8f-46b7-b9fc-408a307a9f99`
+
 ### 2026-04-05 12:39 KST: 공개 지도 marker 대비 강화
 - 완료 내용
   - `/Users/alex/project/altteulmap/PLAN.md`에 marker 대비 후속 작업을 추가한 뒤 완료 상태로 닫았다.
