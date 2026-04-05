@@ -136,6 +136,8 @@ npm run db:seed
 
 기본 수집값은 `대표 가격 8천원 미만`, `서울 500 + 비서울 500`, `음식점 70%`입니다. 다른 분포가 필요하면 `--limit`, `--seoul-limit`, `--food-ratio`, `--max-price`를 함께 넘기면 됩니다.
 
+`--max-price`는 `이 값 미만` 기준입니다. 예를 들어 `--max-price=8000`이면 `8000원` 항목은 제외됩니다.
+
 생성된 `src/features/places/imported-goodprice.json`은 mock fallback과 DB seed 양쪽에서 공통으로 우선 사용합니다. 수집 메타와 원본 업소 id, quota 결과, 지역/업종 분포는 `data/goodprice/import-meta.json`에 남습니다.
 
 기본 예시는 `.env.example`에 들어 있고, 로컬 `.env`도 같은 값으로 맞춰두었습니다.
