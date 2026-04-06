@@ -22,11 +22,14 @@ for (const relativePath of [".next", ".next-dev", ".open-next"]) {
 
 patchNextCloudflareRuntime({ projectRoot });
 
+const adminAppUrl = process.env.ADMIN_APP_URL?.trim();
+
 execFileSync(openNextBin, ["build"], {
   cwd: adminAppRoot,
   env: {
     ...process.env,
     npm_config_workspaces: "false",
+    NEXTAUTH_URL: adminAppUrl || process.env.NEXTAUTH_URL,
   },
   stdio: "inherit",
 });
