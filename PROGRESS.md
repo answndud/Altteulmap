@@ -41,6 +41,19 @@
 
 ## 실행 로그
 
+### 2026-04-06 12:15 KST: 공개 지도 숫자 cluster 톤 완화 push 및 public Cloudflare 배포
+- 완료 내용
+  - 숫자 cluster 톤 조정과 문서 업데이트를 `fix(map): soften cluster palette` (`36bcd4b`)로 커밋하고 `codex/ui-polish-batch` 브랜치에 push했다.
+  - 조정된 cluster 팔레트가 반영된 상태로 public worker를 다시 배포했다.
+- 검증 결과
+  - `git push origin codex/ui-polish-batch` 통과
+  - `npm run deploy:check` 통과
+  - `npm run deploy:public` 통과
+  - `curl -I --max-time 20 https://altteulmap.altteul-lab.workers.dev/` 결과 `200`
+- 메모
+  - public 배포 URL: `https://altteulmap.altteul-lab.workers.dev`
+  - Cloudflare version id: `0165f4a9-fef5-4ef0-8191-b0fb697b6927`
+
 ### 2026-04-06 12:12 KST: 공개 지도 숫자 cluster 톤 완화
 - 완료 내용
   - `/Users/alex/project/altteulmap/src/features/map/naver-map-panel.tsx`에서 숫자 cluster의 `shell/core/text/shadow` 팔레트를 더 밝은 크림/샌드 계열로 조정했다.
