@@ -147,7 +147,7 @@ try {
   await captureSubmit(browser);
   await captureAdminLanding(browser);
 
-  console.log(`Saved README screenshots to ${outputDir}`);
+  process.stdout.write(`Saved README screenshots to ${outputDir}\n`);
 } finally {
   await browser.close();
 }
