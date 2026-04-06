@@ -43,6 +43,17 @@
 
 ## 실행 로그
 
+### 2026-04-06 13:34 KST: PR CI mobile E2E 재오픈 회귀 수정
+- 완료 내용
+  - PR #2의 `E2E Full` 실패 로그를 확인한 결과, `tests/e2e/map.mobile.spec.ts`의 `모바일에서 장소 목록 바텀시트를 열고 닫을 수 있다` 케이스만 실패하고 있었다.
+  - 원인은 `/Users/alex/project/altteulmap/src/features/places/map-explorer.tsx`에서 모바일 목록 시트를 drag로 닫은 직후 같은 포인터 이벤트가 아래 `목록 보기` 버튼까지 전달되어 시트가 즉시 다시 열리는 회귀였다.
+  - `lastMobileListCloseAtRef` 기반의 짧은 reopen guard를 추가해 닫힘 직후 250ms 동안 모바일 목록 열기 버튼이 같은 이벤트로 재실행되지 않도록 정리했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run e2e:prepare && npm run build && USE_MOCK_DATA=true npx playwright test tests/e2e/map.mobile.spec.ts --project mobile-chromium` 통과
+- 메모
+  - 실패했던 GitHub Actions run은 `24017929325`였고, 실패 job은 `E2E Full` 하나였다. Cloudflare `Workers Builds` 자체는 public/admin 모두 성공 상태였다.
+
 ### 2026-04-06 13:18 KST: 루트 문서 재배치와 build 산출물 정리
 - 완료 내용
   - 루트의 product 문서를 `docs/product/` 하위로 옮겼다.
