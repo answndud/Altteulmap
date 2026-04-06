@@ -109,6 +109,38 @@
 - 메모
   - 과거 실행 로그 안에 남아 있는 옛 절대경로 표기는 역사 기록으로 유지하고, 현재 작업 규칙과 인덱스/README만 새 위치 기준으로 맞췄다.
 
+### 2026-04-06 14:20 KST: Cloudflare external check 실패 조사
+- 완료 내용
+  - 사용자가 전달한 `https://github.com/answndud/Altteulmap/runs/70045703514`, `https://github.com/answndud/Altteulmap/runs/70045801531`는 GitHub Actions run이 아니라 현재 `main` HEAD(`5b92ac2`)에 붙은 Cloudflare external check run이라는 점을 확인했다.
+  - `gh api repos/answndud/Altteulmap/commits/HEAD/check-runs` 결과 두 check는 각각 `Workers Builds: altteulmap`, `Workers Builds: altteulmap-admin`이며 둘 다 `conclusion: failure`, `details_url`은 Cloudflare dashboard build page를 가리켰다.
+  - 반면 로컬 기준으로는 public/admin deploy contract와 OpenNext build가 모두 통과했다. 즉 현재 저장소 코드보다는 Cloudflare Git integration 또는 Dashboard build 환경 쪽 이슈일 가능성이 높다.
+- 검증 결과
+  - `npm run deploy:check:public` 통과
+  - `npm run deploy:check:admin` 통과
+  - `npm run cf:build:public` 통과
+  - `npm run cf:build:admin` 통과
+  - `gh api repos/answndud/Altteulmap/commits/HEAD/check-runs`로 external check 상태 확인
+- 메모
+  - 두 check는 시작/종료 시각이 거의 동일해 실제 OpenNext build보다 더 앞단, 즉 Cloudflare Builds 연결/trigger/build env 설정 쪽에서 실패했을 가능성이 높다.
+  - 이 시점에는 repo 코드 수정만으로 바로 해결할 근거가 부족하다. Cloudflare Dashboard의 각 Worker `Settings > Builds`에서 repo 연결, production branch, build/deploy command, build-time Variables/Secrets를 다시 확인해야 한다.
+
+### 2026-04-06 14:28 KST: public/admin 수동 재배포
+- 완료 내용
+  - Cloudflare Dashboard build-time env 재설정 전제에서 local deploy 경로로 admin/public worker를 다시 배포했다.
+  - `npm run deploy:admin`으로 `altteulmap-admin`을 먼저 재배포했고, 이어서 `npm run deploy:public`으로 `altteulmap`을 재배포했다.
+  - admin deploy 경고에서 원격 설정이 로컬과 달랐던 점도 확인했다. 당시 admin worker 원격 service binding은 `altteulmap`를 가리키고 있었고, 이번 수동 배포는 로컬 `wrangler.admin.jsonc` 기준 `altteulmap-admin` self-reference 설정으로 덮어썼다.
+  - public deploy 경고에서는 원격 Dashboard vars에 `NEXTAUTH_URL`, `SITE_URL`가 로컬과 일치하지 않는 흔적이 있었지만, 실제 배포는 성공했고 public/admin URL 응답도 정상 확인했다.
+- 검증 결과
+  - `npm run deploy:admin` 통과
+  - `npm run deploy:public` 통과
+  - public version id: `6cb453e2-9ca2-4d17-b0af-40dc7389d449`
+  - admin version id: `04ce1dcd-d116-436c-9525-d5d27e1afbf8`
+  - `curl -I --max-time 20 https://altteulmap.altteul-lab.workers.dev/` 결과 `200`
+  - `curl -I --max-time 20 https://altteulmap-admin.altteul-lab.workers.dev/` 결과 `200`
+  - `curl -I --max-time 20 https://altteulmap-admin.altteul-lab.workers.dev/admin` 결과 `307 -> /login?callbackUrl=%2Fadmin`
+- 메모
+  - 수동 deploy는 정상 동작하므로 현재 문제는 앱 번들 자체보다 Cloudflare Builds가 repo push를 처리하는 환경/설정 쪽일 가능성이 더 높다.
+
 ### 2026-04-06 13:18 KST: 루트 문서 재배치와 build 산출물 정리
 - 완료 내용
   - 루트의 product 문서를 `docs/product/` 하위로 옮겼다.
