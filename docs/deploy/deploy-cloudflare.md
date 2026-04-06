@@ -6,7 +6,7 @@
 - Cloudflare Workers + OpenNext 기준으로 알뜰맵을 배포할 때 빠뜨리기 쉬운 설정을 한 문서에 모은다.
 - 실제 배포 전 `npm run deploy:check`로 환경 변수를 먼저 점검한다.
 - 계정 생성부터 첫 배포까지의 전체 절차는 아래 문서를 함께 본다.
-  - `/Users/alex/project/altteulmap/docs/cloudflare-account-to-deploy.md`
+  - `cloudflare-account-to-deploy.md`
 
 ## 1. 배포 전 필수 확인
 1. `npm run verify`

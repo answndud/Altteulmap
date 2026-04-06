@@ -5,6 +5,7 @@
 ## 진행 현황 요약
 - Cycle 10: 관리자 실제 구현을 `src/features/admin/**`로 모으고, public 앱 `entrypoints`와 별도 `apps/admin` 빌드를 추가해 관리자 분리 1차 완료. public `cf:build:public`은 `/admin`, `/api/admin`을 external redirect/API stub로 유지한 채 빌드하고, `deploy:check:public`, `deploy:check:admin`, `SITE_URL` 기준, `workers.dev` split 배포와 remote smoke까지 정리했다. custom domain 적용은 필요할 때만 마지막 운영 단계로 남아 있다
 - Cycle 10 후속: admin telemetry가 `useSearchParams()` 때문에 standalone admin Cloudflare build를 깨던 경로를 제거했고, admin build는 이제 `ADMIN_APP_URL`을 `NEXTAUTH_URL`로 강제해 shared `.env.production.local`에서도 올바른 callback 기준으로 동작한다. `deploy:check:admin`, `cf:build:admin`, live admin 재배포까지 다시 통과했다
+- 문서/루트 정리 후속: 제품 문서와 배포 문서를 `docs/product`, `docs/deploy`로 재배치했고, `docs/README.md` 인덱스를 추가했다. 루트의 `.next`, `.open-next`, `apps/admin/.next`, `test-results`, `tsconfig.tsbuildinfo` 등 생성 산출물도 `clean:artifacts` 스크립트와 함께 정리했다
 - Cycle 0: 프로젝트 로컬 기반, DB 경로, 지도 탐색, 장소 상세, 등록, 신고, 북마크, 관리자 검토, 로컬 인증, 네이버 지도 연동 완료
 - Cycle 1: 현재 위치 버튼, viewport 재조회, 모바일 목록 바텀시트, 모바일 상세 시트 기초 정리 완료
 - Cycle 2: `PLAN.md`/`PROGRESS.md` 운영 문서 형식 정비, 지역/전역 검색, 검색 URL 상태 반영 완료
@@ -41,6 +42,20 @@
 - 다음 우선순위: custom domain 적용 여부를 결정하고, 운영 도메인 QA와 모바일 제스처 실사용 검증을 더 진행할지 판단한다. 공유 telemetry는 현재 범위에서 동결할지 추가 활용할지 별도 결정이 남아 있다
 
 ## 실행 로그
+
+### 2026-04-06 13:18 KST: 루트 문서 재배치와 build 산출물 정리
+- 완료 내용
+  - 루트의 product 문서를 `docs/product/` 하위로 옮겼다.
+  - 배포 문서는 `docs/deploy/` 하위로 묶었다.
+  - `/Users/alex/project/altteulmap/docs/README.md`를 추가해 product/deploy/project 문서 인덱스를 만들었다.
+  - `/Users/alex/project/altteulmap/AGENTS.md`, `/Users/alex/project/altteulmap/PLAN.md`, `/Users/alex/project/altteulmap/PROGRESS.md`, `/Users/alex/project/altteulmap/README.md`의 문서 경로 참조를 새 위치로 맞췄다.
+  - `/Users/alex/project/altteulmap/package.json`에 `clean:artifacts` 스크립트를 추가하고 실제로 root/app build 산출물을 정리했다.
+  - `/Users/alex/project/altteulmap/README.md` 상단에 이 프로젝트를 만든 배경을 추가했다. `거지맵`에서 받은 영감, 음식점 외 업종 확장, 공공데이터 활용, 고물가/취업난이라는 시대감과의 연결을 짧게 설명하도록 정리했다.
+- 검증 결과
+  - `npm run clean:artifacts` 통과
+  - stale 문서 경로 검색 결과 없음
+- 메모
+  - 운영용 문서인 `PLAN.md`, `PROGRESS.md`는 다음 세션 작업 규칙과 접근성을 위해 루트에 유지했다.
 
 ### 2026-04-06 12:52 KST: README 채용 제출용 압축 polish와 admin Cloudflare build 복구
 - 완료 내용
@@ -320,7 +335,7 @@
   - `/Users/alex/project/altteulmap/PLAN.md`에서 `좋아요 랭킹`을 미구현 핵심/보류 범위에서 제거하고, 확장 기능 2차 우선순위를 `공유 후속 활용 범위` 기준으로 다시 정리했다.
   - 같은 문서의 반응 기능/공유 기능 설명과 결정 메모도 현재 기준에 맞게 수정해, 별도 랭킹 화면은 만들지 않고 홈 `인기 장소` 추천 섹션만 유지한다는 정책을 명시했다.
   - `/Users/alex/project/altteulmap/PROGRESS.md`의 진행 현황 요약과 다음 우선순위도 랭킹 제외 기준으로 갱신했다.
-  - `/Users/alex/project/altteulmap/prd.md`의 출시 후 빠른 후속 권장 항목은 `랭킹/추천 뷰` 대신 `추천 뷰 고도화`로 바꿨다.
+  - `/Users/alex/project/altteulmap/docs/product/prd.md`의 출시 후 빠른 후속 권장 항목은 `랭킹/추천 뷰` 대신 `추천 뷰 고도화`로 바꿨다.
 - 검증 결과
   - 문서 범위 조정 작업이라 별도 코드 검증은 실행하지 않았다.
 - 메모
@@ -364,7 +379,7 @@
 - 완료 내용
   - `/Users/alex/project/altteulmap/PLAN.md`에서 확장 기능 2차 우선순위를 `공유/랭킹` 기준으로 다시 적고, `미구현 핵심`의 사진 업로드 항목을 제거했다.
   - 같은 문서의 Cycle 6 설명도 `공유/사진 업로드` 대신 `공유/랭킹` 재판단으로 바꿨고, 결정 메모에 사진 업로드를 저장 용량과 운영 비용 이유로 현재 범위에서 제외한다는 정책을 남겼다.
-  - `/Users/alex/project/altteulmap/trd.md`의 오픈 기술 이슈도 `이미지 업로드를 MVP에 포함할지 여부`에서 `현재 범위에서 제외 유지`로 정리했다.
+  - `/Users/alex/project/altteulmap/docs/product/trd.md`의 오픈 기술 이슈도 `이미지 업로드를 MVP에 포함할지 여부`에서 `현재 범위에서 제외 유지`로 정리했다.
   - `/Users/alex/project/altteulmap/PROGRESS.md`의 다음 우선순위도 `공유/랭킹` 기준으로 맞췄다.
 - 검증 결과
   - 문서 결정 반영 작업이라 별도 코드 검증은 실행하지 않았다.
@@ -382,7 +397,7 @@
     - 회원가입: 30분 3회
   - 같은 helper가 내려주는 헤더에 `X-RateLimit-Policy`, `X-RateLimit-Window`를 추가했다. 기존 `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`, `Retry-After`와 함께 보면 어떤 bucket이 어떤 창으로 적용되는지 바로 알 수 있다.
   - `/Users/alex/project/altteulmap/tests/e2e/comments.spec.ts`의 rate limit 회귀는 하드코딩된 `10회` 대신 첫 응답의 `x-ratelimit-limit`를 읽어 현재 정책 수치에 따라 동적으로 quota를 채우도록 바꿨다. 같은 테스트에서 `x-ratelimit-policy=place_comment_submission`, `x-ratelimit-window=600`도 같이 검증한다.
-  - `/Users/alex/project/altteulmap/trd.md`에도 현재 운영 기준 정책 수치와 헤더 계약을 반영했다.
+  - `/Users/alex/project/altteulmap/docs/product/trd.md`에도 현재 운영 기준 정책 수치와 헤더 계약을 반영했다.
 - 검증 결과
   - `npm run verify:quick` 통과
   - `npm run verify` 통과
@@ -437,7 +452,7 @@
 ### 2026-04-04 16:20 KST: 운영 smoke 스크립트 정리와 Workers public read hang 완화
 - 완료 내용
   - `/Users/alex/project/altteulmap/scripts/smoke-local.mjs`를 현재 제품 계약에 맞춰 read-only smoke로 다시 정리했다. 이제 홈 canonical, `robots.txt`, `sitemap.xml`, sample place canonical, map API, place detail API, 로그인 화면 렌더만 검증하고, 예전 `credentials -> bookmarks/admin API` 검사는 제거했다.
-  - `/Users/alex/project/altteulmap/scripts/smoke-remote.mjs`를 추가하고, `/Users/alex/project/altteulmap/package.json`, `/Users/alex/project/altteulmap/README.md`, `/Users/alex/project/altteulmap/docs/deploy-cloudflare.md`에 remote smoke 사용법과 점검 범위를 반영했다. 로그인 matcher도 더 이상 `로컬 로그인` 문구를 기대하지 않고 `login-form` 렌더 기준으로 본다.
+  - `/Users/alex/project/altteulmap/scripts/smoke-remote.mjs`를 추가하고, `/Users/alex/project/altteulmap/package.json`, `/Users/alex/project/altteulmap/README.md`, `/Users/alex/project/altteulmap/docs/deploy/deploy-cloudflare.md`에 remote smoke 사용법과 점검 범위를 반영했다. 로그인 matcher도 더 이상 `로컬 로그인` 문구를 기대하지 않고 `login-form` 렌더 기준으로 본다.
   - live smoke 조사 과정에서 public `map/detail`과 guest write 경로가 Cloudflare/OpenNext runtime에서 hang 되는 현상을 확인했고, 원인 후보를 둘로 나눠 정리했다. `next/headers` 기반 visitor cookie 조회는 request-driven API 경로에서 hang을 유발했고, DB read는 응답이 지연되거나 schema가 없을 때 fallback 전에 멈출 수 있었다.
   - `/Users/alex/project/altteulmap/src/lib/visitor-id.ts`는 `next/headers` 의존을 제거하고 raw `cookie` header 파싱 helper로 바꿨다. `/Users/alex/project/altteulmap/src/lib/public-write-actor.ts`와 `/Users/alex/project/altteulmap/src/app/api/places/[id]/route.ts`는 request header 기반 visitor id를 쓰도록 갱신했다.
   - `/Users/alex/project/altteulmap/src/app/place/[id]/page.tsx`는 guest viewer용 visitor cookie를 서버 페이지에서 더 이상 직접 읽지 않게 조정했다. guest는 place page SSR에서 viewer reaction 초기값을 `null`로 시작하지만, worker hang 없이 page 자체는 계속 렌더된다.
@@ -696,7 +711,7 @@
   - `/Users/alex/project/altteulmap/src/features/map/map-page.tsx`에서 모바일/데스크톱 가격 필터 UI, `maxPrice` hidden input, 가격 파라미터 URL 조합을 제거했다. 공개 지도 탐색 조건은 이제 카테고리와 검색 범위만 남는다.
   - `/Users/alex/project/altteulmap/src/features/places/map-explorer.tsx`, `/Users/alex/project/altteulmap/src/app/api/places/map/route.ts`, `/Users/alex/project/altteulmap/src/features/places/repository.ts`, `/Users/alex/project/altteulmap/src/features/places/queries.ts`에서 `maxPrice` prop, query string, API filter payload, repository/mock filtering 경로를 함께 제거했다.
   - `/Users/alex/project/altteulmap/tests/e2e/map-price-filter.spec.ts`, `/Users/alex/project/altteulmap/tests/e2e/map-price-filter.mobile.spec.ts`는 가격 필터 동작 검증 대신 가격 옵션 비노출과 카테고리 탐색 유지 회귀를 검증하도록 바꿨다.
-  - `/Users/alex/project/altteulmap/PLAN.md`, `/Users/alex/project/altteulmap/prd.md`, `/Users/alex/project/altteulmap/trd.md`를 현재 제품 계약에 맞춰 갱신했다.
+  - `/Users/alex/project/altteulmap/PLAN.md`, `/Users/alex/project/altteulmap/docs/product/prd.md`, `/Users/alex/project/altteulmap/docs/product/trd.md`를 현재 제품 계약에 맞춰 갱신했다.
 - 검증 결과
   - `npm run verify:quick` 통과
   - `npm run verify` 통과
@@ -814,7 +829,7 @@
 - 완료 내용
   - `/Users/alex/project/altteulmap/scripts/lib/load-env-files.mjs`를 추가해 `.env`, `.env.production`, `.env.local`, `.env.production.local`을 읽되, 이미 주입된 쉘/CI env는 덮어쓰지 않고 파일끼리만 뒤 순서가 앞 순서를 덮도록 공통 helper를 만들었다.
   - `/Users/alex/project/altteulmap/scripts/check-cloudflare-deploy.mjs`, `/Users/alex/project/altteulmap/scripts/build-public-worker.mjs`는 이제 이 helper를 써서 로컬 파일보다 셸/CI env를 우선한다. 따라서 운영 워크플로우에서 넘긴 `NEXTAUTH_URL`, `ADMIN_APP_URL`, `SITE_URL`이 개발용 `.env*` 값으로 다시 덮이지 않는다.
-  - `/Users/alex/project/altteulmap/README.md`, `/Users/alex/project/altteulmap/docs/deploy-cloudflare.md`, `/Users/alex/project/altteulmap/docs/cloudflare-account-to-deploy.md`, `/Users/alex/project/altteulmap/PLAN.md`에 이 precedence 규칙과 split 배포 기준 문구를 반영했고, 예전 `public 번들에서 /admin 제거` 문장도 현재 external stub 동작 기준으로 고쳤다.
+  - `/Users/alex/project/altteulmap/README.md`, `/Users/alex/project/altteulmap/docs/deploy/deploy-cloudflare.md`, `/Users/alex/project/altteulmap/docs/deploy/cloudflare-account-to-deploy.md`, `/Users/alex/project/altteulmap/PLAN.md`에 이 precedence 규칙과 split 배포 기준 문구를 반영했고, 예전 `public 번들에서 /admin 제거` 문장도 현재 external stub 동작 기준으로 고쳤다.
 - 검증 결과
   - `npm run verify:quick` 통과
   - `NEXTAUTH_URL=https://override-public.example.workers.dev ADMIN_APP_URL=https://override-admin.example.workers.dev npm run deploy:check:public` 통과
@@ -834,7 +849,7 @@
   - `/Users/alex/project/altteulmap/scripts/check-cloudflare-deploy.mjs`는 `--public`, `--admin` 모드를 지원하게 바꿨다. public split은 `ADMIN_APP_URL`, standalone admin worker는 `SITE_URL`까지 확인하고, callback/home link 기준 URL을 같이 출력한다.
   - `/Users/alex/project/altteulmap/src/lib/env.ts`, `/Users/alex/project/altteulmap/src/lib/site.ts`, `/Users/alex/project/altteulmap/.env.example`에 `SITE_URL`을 반영했다. admin 앱은 `NEXTAUTH_URL`을 자기 자신 기준으로 두고도 헤더의 홈 링크는 public 앱으로 보낼 수 있게 됐다.
   - `/Users/alex/project/altteulmap/src/lib/admin-app.ts`는 로컬 보호 로직을 `NEXTAUTH_URL` 기준으로 유지해, `SITE_URL`이 별도로 있어도 localhost 개발/테스트에서는 외부 admin 링크가 자동으로 새지 않게 했다.
-  - `/Users/alex/project/altteulmap/README.md`, `/Users/alex/project/altteulmap/docs/deploy-cloudflare.md`, `/Users/alex/project/altteulmap/docs/cloudflare-account-to-deploy.md`, `/Users/alex/project/altteulmap/PLAN.md`를 업데이트해 split 배포 순서, env 역할, public `/admin` redirect/API stub 동작, admin 앱의 `SITE_URL` 사용 규칙을 남겼다.
+  - `/Users/alex/project/altteulmap/README.md`, `/Users/alex/project/altteulmap/docs/deploy/deploy-cloudflare.md`, `/Users/alex/project/altteulmap/docs/deploy/cloudflare-account-to-deploy.md`, `/Users/alex/project/altteulmap/PLAN.md`를 업데이트해 split 배포 순서, env 역할, public `/admin` redirect/API stub 동작, admin 앱의 `SITE_URL` 사용 규칙을 남겼다.
 - 검증 결과
   - `npm run verify:quick` 통과
   - `npm run verify` 통과
@@ -1260,7 +1275,7 @@
   - `/Users/alex/project/altteulmap/scripts/build-admin-worker.mjs`, `/Users/alex/project/altteulmap/apps/admin/open-next.config.ts`를 추가해 `apps/admin`이 자기 cwd에서 OpenNext build를 만들도록 정리했다.
   - `/Users/alex/project/altteulmap/package.json`의 `cf:build:admin`, `preview:admin`, `deploy:admin`을 별도 관리자 앱 기준으로 바꿨고, `/Users/alex/project/altteulmap/wrangler.admin.jsonc`도 `apps/admin/.open-next/**`를 바라보도록 수정했다.
   - `/Users/alex/project/altteulmap/scripts/build-public-worker.mjs`는 `ADMIN_APP_URL`이 없으면 실패하게 바꿨다. public-only 배포가 `/admin`, `/api/admin`을 제거하므로 외부 관리자 앱 주소 없이 배포되면 링크가 깨지기 때문이다.
-  - `/Users/alex/project/altteulmap/.env.example`, `/Users/alex/project/altteulmap/README.md`, `/Users/alex/project/altteulmap/docs/deploy-cloudflare.md`, `/Users/alex/project/altteulmap/docs/cloudflare-account-to-deploy.md`를 새 배포 순서에 맞게 갱신했다.
+  - `/Users/alex/project/altteulmap/.env.example`, `/Users/alex/project/altteulmap/README.md`, `/Users/alex/project/altteulmap/docs/deploy/deploy-cloudflare.md`, `/Users/alex/project/altteulmap/docs/deploy/cloudflare-account-to-deploy.md`를 새 배포 순서에 맞게 갱신했다.
 - 검증 결과
   - `npm run verify:quick` 통과
   - `npm run cf:build:admin` 통과
@@ -1351,7 +1366,7 @@
   - `/Users/alex/project/altteulmap/src/features/map/map-page.tsx`로 실제 지도 홈 구현을 분리했다.
   - `/Users/alex/project/altteulmap/src/app/page.tsx`는 위 구현을 그대로 재사용하는 최소 re-export로 정리했다.
   - `/Users/alex/project/altteulmap/src/app/map/page.tsx`는 더 이상 전체 지도 화면을 중복 렌더하지 않고, query string을 유지한 채 `/`로 `permanentRedirect` 하도록 바꿨다.
-  - `/Users/alex/project/altteulmap/README.md`, `/Users/alex/project/altteulmap/docs/deploy-cloudflare.md`의 현재 진입 경로 안내도 `/` 기준으로 맞췄다.
+  - `/Users/alex/project/altteulmap/README.md`, `/Users/alex/project/altteulmap/docs/deploy/deploy-cloudflare.md`의 현재 진입 경로 안내도 `/` 기준으로 맞췄다.
 - 검증 결과
   - `npm run verify:quick` 통과
   - `npm run build` 통과 예정 검증과 함께 route output 확인
@@ -1386,7 +1401,7 @@
   - `/Users/alex/project/altteulmap/src/features/admin/repository.ts`를 추가해 관리자 overview 집계를 분리했다. 총 사용자 수, 운영자/일반 사용자 수, 현재 세션 수, 세션 사용자 수, 활성 장소 수, 승인 대기 장소 수, 대기 가격 제보 수, 열린 신고 수와 최근 가입 사용자 목록을 한 번에 조회한다.
   - `/Users/alex/project/altteulmap/src/app/admin/page.tsx`를 overview 대시보드로 다시 구성했다. KPI 카드, 장소/가격/신고 바로가기, 최근 가입 사용자 목록, 최신 장소 등록 목록, 최신 신고 목록을 넣었고 방문 지표는 아직 미계측이라는 안내를 명시했다.
   - `/Users/alex/project/altteulmap/src/app/admin/places/page.tsx`, `/Users/alex/project/altteulmap/src/app/admin/reports/page.tsx`, `/Users/alex/project/altteulmap/src/app/admin/prices/page.tsx`, `/Users/alex/project/altteulmap/src/app/admin/prices/places/[id]/page.tsx`에도 같은 세션 액션을 붙여 관리자 하위 화면에서도 로그아웃이 바로 보이게 했다.
-  - `/Users/alex/project/altteulmap/tests/e2e/admin-dashboard.spec.ts`를 추가했고, `/Users/alex/project/altteulmap/package.json`, `/Users/alex/project/altteulmap/README.md`, `/Users/alex/project/altteulmap/prd.md`, `/Users/alex/project/altteulmap/trd.md`, `/Users/alex/project/altteulmap/PLAN.md`를 새 관리자/인증 동선에 맞게 갱신했다.
+  - `/Users/alex/project/altteulmap/tests/e2e/admin-dashboard.spec.ts`를 추가했고, `/Users/alex/project/altteulmap/package.json`, `/Users/alex/project/altteulmap/README.md`, `/Users/alex/project/altteulmap/docs/product/prd.md`, `/Users/alex/project/altteulmap/docs/product/trd.md`, `/Users/alex/project/altteulmap/PLAN.md`를 새 관리자/인증 동선에 맞게 갱신했다.
 - 검증 결과
   - `npm run verify:quick` 통과
   - `rm -rf .next && npm run verify` 통과
@@ -1447,7 +1462,7 @@
 - 완료 내용
   - `/Users/alex/project/altteulmap/src/app/map/page.tsx`, `/Users/alex/project/altteulmap/src/features/places/map-explorer.tsx`에서 공개 지도 정렬 UI, `sort` URL 파라미터, 모바일 summary/hidden input을 제거했다. 이제 공개 지도는 검색과 카테고리/가격 필터만 유지하고, 목록은 기본 순서로 고정 노출된다.
   - `/Users/alex/project/altteulmap/src/app/api/places/map/route.ts`, `/Users/alex/project/altteulmap/src/features/places/types.ts`, `/Users/alex/project/altteulmap/src/features/places/queries.ts`, `/Users/alex/project/altteulmap/src/features/places/repository.ts`에서 공개 지도용 `sort` API 계약과 `likes` 정렬 분기를 제거했다. 내부적으로는 기존 `price`/`recent` 정렬 타입만 남겨 다른 비공개/운영 경로와 충돌하지 않게 정리했다.
-  - `/Users/alex/project/altteulmap/tests/e2e/map.spec.ts`에서 좋아요순 회귀를 제거했고, `/Users/alex/project/altteulmap/README.md`, `/Users/alex/project/altteulmap/prd.md`, `/Users/alex/project/altteulmap/trd.md`, `/Users/alex/project/altteulmap/PLAN.md`를 새 공개 지도 계약에 맞게 갱신했다.
+  - `/Users/alex/project/altteulmap/tests/e2e/map.spec.ts`에서 좋아요순 회귀를 제거했고, `/Users/alex/project/altteulmap/README.md`, `/Users/alex/project/altteulmap/docs/product/prd.md`, `/Users/alex/project/altteulmap/docs/product/trd.md`, `/Users/alex/project/altteulmap/PLAN.md`를 새 공개 지도 계약에 맞게 갱신했다.
 - 검증 결과
   - `npm run verify:quick` 통과
   - `rm -rf .next && npm run verify` 통과
@@ -1488,7 +1503,7 @@
   - `/Users/alex/project/altteulmap/src/features/submission/place-submit-form.tsx`를 전면 단순화했다. 네이버 geocoding import, `주소로 위치 확인` 버튼, hidden 좌표 필드, 제출 전 내부 위치 확인 로직을 모두 제거했고, 운영자가 승인 단계에서 지도 위치와 네이버 지도 검색 결과를 확인한다는 안내 문구로 교체했다.
   - 공개 제출 흐름에서 더 이상 쓰지 않는 `/Users/alex/project/altteulmap/src/features/submission/place-coordinate-picker.tsx`를 삭제해, 다음 세션에서 공개 등록이 좌표 picker를 쓰는 것으로 오해하지 않게 정리했다.
   - `/Users/alex/project/altteulmap/src/features/places/repository.ts`는 공개 장소 등록을 항상 `latitude: null`, `longitude: null` 상태의 `pending_review`로 저장하도록 바꿨고, 제출 preview에서도 좌표를 더 이상 노출하지 않게 맞췄다.
-  - `/Users/alex/project/altteulmap/src/app/submit/page.tsx`, `/Users/alex/project/altteulmap/src/app/admin/page.tsx`, `/Users/alex/project/altteulmap/src/app/admin/places/page.tsx`, `/Users/alex/project/altteulmap/src/features/places/admin-place-review-form.tsx`, `/Users/alex/project/altteulmap/prd.md`, `/Users/alex/project/altteulmap/trd.md`를 새 정책에 맞게 갱신했다. 공개 제보는 텍스트-only, 운영자는 승인 단계에서 주소와 네이버 지도 검색 결과를 참고해 좌표를 확정하는 흐름으로 설명을 통일했다.
+  - `/Users/alex/project/altteulmap/src/app/submit/page.tsx`, `/Users/alex/project/altteulmap/src/app/admin/page.tsx`, `/Users/alex/project/altteulmap/src/app/admin/places/page.tsx`, `/Users/alex/project/altteulmap/src/features/places/admin-place-review-form.tsx`, `/Users/alex/project/altteulmap/docs/product/prd.md`, `/Users/alex/project/altteulmap/docs/product/trd.md`를 새 정책에 맞게 갱신했다. 공개 제보는 텍스트-only, 운영자는 승인 단계에서 주소와 네이버 지도 검색 결과를 참고해 좌표를 확정하는 흐름으로 설명을 통일했다.
   - `/Users/alex/project/altteulmap/tests/e2e/submission-admin.spec.ts`는 회귀 기준을 바꿨다. 공개 폼에 위치 확인 UI가 노출되지 않는지 확인하고, 텍스트-only 등록 후 운영자가 좌표를 입력해 승인하면 홈 검색에 노출되는 시나리오를 유지했다.
 - 검증 결과
   - `npm run verify:quick` 통과
@@ -1523,7 +1538,7 @@
   - `/Users/alex/project/altteulmap/src/features/submission/place-submit-form.tsx`에서 제출 직전에 좌표가 비어 있으면 주소 기반 geocode를 한 번 더 시도하고, 그래도 좌표가 없으면 제출을 막도록 수정했다. 주소나 지역 구분이 바뀌면 기존 좌표를 비워 다시 확인하게 연결했다.
   - 같은 등록 폼에서 입력 UX도 다시 정리했다. `장소 이름`을 `업장/장소 이름`으로 명확히 바꾸고, `업장 주소` 블록 안에 `위치 확인됨/미확인` 상태와 `주소로 위치 확인` 버튼을 넣어 사용자가 plain text만 쓰고 끝내지 않도록 흐름을 앞단에서 보이게 만들었다.
   - 공개 등록 폼에서는 지도와 위도/경도 숫자 입력 UI를 모두 제거했다. 좌표는 hidden form state로만 유지하고, 사용자에게는 텍스트 주소와 내부 위치 확인 상태만 보이게 바꿨다. 제출 오류 문구도 `좌표 직접 입력`이나 `지도 선택`이 아니라 `주소 재확인` 기준으로 다시 썼다.
-  - `/Users/alex/project/altteulmap/src/app/submit/page.tsx`, `/Users/alex/project/altteulmap/src/app/admin/page.tsx`, `/Users/alex/project/altteulmap/src/app/admin/places/page.tsx`, `/Users/alex/project/altteulmap/prd.md`, `/Users/alex/project/altteulmap/trd.md`를 현재 정책에 맞게 갱신했다. 공개 등록은 `텍스트 주소 + 내부 위치 확인`이 필수이고, 운영자는 제출 좌표를 검수/조정한다는 점이 화면과 문서에 같이 반영된다.
+  - `/Users/alex/project/altteulmap/src/app/submit/page.tsx`, `/Users/alex/project/altteulmap/src/app/admin/page.tsx`, `/Users/alex/project/altteulmap/src/app/admin/places/page.tsx`, `/Users/alex/project/altteulmap/docs/product/prd.md`, `/Users/alex/project/altteulmap/docs/product/trd.md`를 현재 정책에 맞게 갱신했다. 공개 등록은 `텍스트 주소 + 내부 위치 확인`이 필수이고, 운영자는 제출 좌표를 검수/조정한다는 점이 화면과 문서에 같이 반영된다.
   - `/Users/alex/project/altteulmap/tests/e2e/submission-admin.spec.ts`에 주소가 바뀌면 기존 좌표가 비워지고 다시 확인해야 한다는 회귀 테스트를 추가했다.
   - 작업 중 `next dev`와 `next build`/`next start`를 같은 워크트리에서 동시에 돌리며 `.next`를 공유하다가 `ENOENT ... .next/dev/server/pages/_app/build-manifest.json`, `Another write batch or compaction is already active`가 재현됐다. 로컬 `next dev` 프로세스를 종료하고 `/Users/alex/project/altteulmap/.next`를 비운 뒤 다시 기동해 정상 응답을 확인했다.
 - 검증 결과
@@ -1537,7 +1552,7 @@
 
 ### 2026-04-01 23:59 KST: 북마크만 로그인 유지, 공개 쓰기 익명화, 비슷한 장소 제거
 - 완료 내용
-  - `/Users/alex/project/altteulmap/PLAN.md`, `/Users/alex/project/altteulmap/prd.md`, `/Users/alex/project/altteulmap/trd.md`, `/Users/alex/project/altteulmap/README.md`를 현재 정책에 맞게 갱신했다. 공개 쓰기는 `장소 등록`, `댓글`, `가격 제보`, `신고`까지 익명 허용으로 정리했고, 로그인 유지 기능은 `북마크`만 남겼다.
+  - `/Users/alex/project/altteulmap/PLAN.md`, `/Users/alex/project/altteulmap/docs/product/prd.md`, `/Users/alex/project/altteulmap/docs/product/trd.md`, `/Users/alex/project/altteulmap/README.md`를 현재 정책에 맞게 갱신했다. 공개 쓰기는 `장소 등록`, `댓글`, `가격 제보`, `신고`까지 익명 허용으로 정리했고, 로그인 유지 기능은 `북마크`만 남겼다.
   - `/Users/alex/project/altteulmap/src/lib/public-write-actor.ts`를 추가하고 `/Users/alex/project/altteulmap/src/app/api/places/route.ts`, `/Users/alex/project/altteulmap/src/app/api/places/[id]/comments/route.ts`, `/Users/alex/project/altteulmap/src/app/api/places/[id]/comments/[commentId]/route.ts`, `/Users/alex/project/altteulmap/src/app/api/places/[id]/prices/route.ts`, `/Users/alex/project/altteulmap/src/app/api/reports/route.ts`를 visitor cookie 기반 익명 actor 모델로 통일했다. 로그인 사용자는 기존 user id를 계속 쓰고, 비로그인 사용자는 visitor cookie 또는 forwarded IP fallback 기준으로 rate limit과 본인 삭제 권한을 처리한다.
   - `/Users/alex/project/altteulmap/src/db/schema.ts`, `/Users/alex/project/altteulmap/drizzle/0005_far_maginty.sql`, `/Users/alex/project/altteulmap/drizzle/meta/0005_snapshot.json`에 댓글 익명 저장을 위한 `comments.user_id nullable`, `comments.visitor_id` 추가를 반영했다.
   - `/Users/alex/project/altteulmap/src/features/places/repository.ts`, `/Users/alex/project/altteulmap/src/app/api/places/[id]/route.ts`, `/Users/alex/project/altteulmap/src/app/place/[id]/page.tsx`, `/Users/alex/project/altteulmap/src/features/places/place-detail-sheet.tsx`, `/Users/alex/project/altteulmap/src/features/places/map-explorer.tsx`에서 `비슷한 장소` 조회/응답/UI를 제거했다.
@@ -1595,7 +1610,7 @@
   - `/Users/alex/project/altteulmap/src/features/submission/place-submit-form.tsx`에서 공개 등록 폼의 `사업장 이름` 입력을 제거하고, 단일 `장소 이름` 필드만 받도록 단순화했다.
   - 같은 폼에 `간판명이나 사용자가 알아보기 쉬운 이름 하나만 입력하면 됩니다.` 안내 문구를 추가하고, 접수 결과 패널 라벨도 `장소 이름` 기준으로 맞췄다.
   - `/Users/alex/project/altteulmap/src/features/submission/schema.ts`의 검증 메시지를 `장소 이름` 기준으로 정리했다.
-  - `/Users/alex/project/altteulmap/tests/e2e/submission-admin.spec.ts`, `/Users/alex/project/altteulmap/prd.md`, `/Users/alex/project/altteulmap/trd.md`도 현재 UX에 맞게 갱신했다.
+  - `/Users/alex/project/altteulmap/tests/e2e/submission-admin.spec.ts`, `/Users/alex/project/altteulmap/docs/product/prd.md`, `/Users/alex/project/altteulmap/docs/product/trd.md`도 현재 UX에 맞게 갱신했다.
 - 검증 결과
   - `npm run verify:quick` 통과
   - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap USE_MOCK_DATA=false AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3107 AUTH_DEMO_PASSWORD=demo1234 AUTH_ADMIN_PASSWORD=admin1234 npx playwright test tests/e2e/submission-admin.spec.ts` 통과
@@ -1608,7 +1623,7 @@
   - `/Users/alex/project/altteulmap/src/app/signup/page.tsx`를 추가해 소셜 계정으로 바로 시작하는 회원가입 진입면을 만들었다. 현재 인증 구조상 일반 이메일 비밀번호 회원가입은 지원하지 않으므로, 소셜 로그인 시 자동으로 계정이 생성된다는 안내를 함께 넣었다.
   - `/Users/alex/project/altteulmap/src/components/brand-mark.tsx`를 추가하고 `/Users/alex/project/altteulmap/src/app/map/page.tsx`와 인증 화면에 같은 워드마크를 재사용하도록 바꿨다. 홈 상단 로고는 더 이상 장식 박스 없이 typographic lockup 기준으로 통일된다.
   - `/Users/alex/project/altteulmap/src/lib/session.ts`에 `/signup`용 callback helper를 추가하고, `/login`/`/signup` 자체가 callback 대상으로 다시 들어가지 않도록 정규화 규칙을 보강했다.
-  - `/Users/alex/project/altteulmap/src/app/globals.css`, `/Users/alex/project/altteulmap/src/app/robots.ts`, `/Users/alex/project/altteulmap/PLAN.md`, `/Users/alex/project/altteulmap/trd.md`도 새 auth entry 구조에 맞게 같이 갱신했다.
+  - `/Users/alex/project/altteulmap/src/app/globals.css`, `/Users/alex/project/altteulmap/src/app/robots.ts`, `/Users/alex/project/altteulmap/PLAN.md`, `/Users/alex/project/altteulmap/docs/product/trd.md`도 새 auth entry 구조에 맞게 같이 갱신했다.
 - 검증 결과
   - `npm run verify:quick` 통과
   - `npm run verify` 통과
@@ -1619,7 +1634,7 @@
 
 ### 2026-04-01: 익명 장소 등록 허용과 공개 CTA 정리
 - 완료 내용
-  - `/Users/alex/project/altteulmap/PLAN.md`, `/Users/alex/project/altteulmap/prd.md`, `/Users/alex/project/altteulmap/trd.md`를 갱신해 현재 정책을 `비회원 읽기 + 비회원 반응 + 비회원/회원 장소 등록 + 회원 전용 북마크/댓글/신고/가격 제보` 기준으로 재정의했다.
+  - `/Users/alex/project/altteulmap/PLAN.md`, `/Users/alex/project/altteulmap/docs/product/prd.md`, `/Users/alex/project/altteulmap/docs/product/trd.md`를 갱신해 현재 정책을 `비회원 읽기 + 비회원 반응 + 비회원/회원 장소 등록 + 회원 전용 북마크/댓글/신고/가격 제보` 기준으로 재정의했다.
   - `/Users/alex/project/altteulmap/src/app/submit/page.tsx`에서 비로그인 사용자의 `/submit` 리다이렉트를 제거하고, 로그인 상태가 없을 때도 `로그인 없이도 장소를 등록할 수 있습니다.` 안내가 보이도록 바꿨다.
   - `/Users/alex/project/altteulmap/src/app/api/places/route.ts`에서 장소 등록 API의 로그인 필수 조건을 제거하고, 로그인 사용자는 user id 기준, 비로그인 사용자는 visitor cookie 또는 forwarded IP fallback 기준으로 rate limit을 적용한 뒤 익명 등록은 `created_by_user_id = null`로 저장되도록 정리했다.
   - `/Users/alex/project/altteulmap/src/app/map/page.tsx`의 공개 CTA는 항상 `/submit`로 바로 들어가게 바꿔, 로그인 없이도 `장소 등록하기` 흐름으로 진입할 수 있게 했다.
@@ -1740,10 +1755,10 @@
 - 완료 내용
   - `/Users/alex/project/altteulmap/src/features/map/naver-map-panel.tsx`에 네이버 지도 SDK 초기화/마커 렌더링/viewport 이동 구간의 방어 코드를 추가해 `maps.Map`, `maps.LatLng`, `maps.Marker`, `maps.Event`가 비정상 상태일 때 즉시 에러 상태로 전환하도록 보강했다.
   - 같은 파일에 지도 패널 전용 error boundary와 preview fallback UI를 추가해, 네이버 지도 SDK가 런타임에서 예외를 던져도 페이지 전체가 `This page couldn’t load`로 죽지 않고 장소 목록/상세 시트는 계속 사용할 수 있게 만들었다.
-  - `/Users/alex/project/altteulmap/docs/deploy-cloudflare.md`에 네이버 지도 키는 환경 변수만이 아니라 NAVER Cloud Platform 콘솔의 웹 서비스 URL/허용 도메인에도 실제 배포 주소(`workers.dev` 또는 custom domain)를 등록해야 한다는 점을 추가했다.
+  - `/Users/alex/project/altteulmap/docs/deploy/deploy-cloudflare.md`에 네이버 지도 키는 환경 변수만이 아니라 NAVER Cloud Platform 콘솔의 웹 서비스 URL/허용 도메인에도 실제 배포 주소(`workers.dev` 또는 custom domain)를 등록해야 한다는 점을 추가했다.
 - 변경 파일
   - `/Users/alex/project/altteulmap/src/features/map/naver-map-panel.tsx`
-  - `/Users/alex/project/altteulmap/docs/deploy-cloudflare.md`
+  - `/Users/alex/project/altteulmap/docs/deploy/deploy-cloudflare.md`
   - `/Users/alex/project/altteulmap/PROGRESS.md`
 - 검증 결과
   - `npm run verify:quick` 통과
@@ -1764,9 +1779,9 @@
 
 ### 2026-04-01: Cloudflare 계정 생성부터 첫 배포까지 총괄 가이드 문서화
 - 완료 내용
-  - `/Users/alex/project/altteulmap/docs/cloudflare-account-to-deploy.md`를 추가해 Cloudflare 계정 생성, Wrangler 로그인, `workers.dev` 첫 배포, runtime 변수/secret 등록, OAuth callback 연결, 커스텀 도메인 전환까지 전체 흐름을 정리했다.
+  - `/Users/alex/project/altteulmap/docs/deploy/cloudflare-account-to-deploy.md`를 추가해 Cloudflare 계정 생성, Wrangler 로그인, `workers.dev` 첫 배포, runtime 변수/secret 등록, OAuth callback 연결, 커스텀 도메인 전환까지 전체 흐름을 정리했다.
   - 현재 저장소의 실제 배포 방식이 `로컬 OpenNext build -> Wrangler deploy`라는 점을 기준으로, 로컬 build 환경 변수와 Cloudflare runtime 변수 둘 다 필요하다는 운영 메모를 문서에 명시했다.
-  - `/Users/alex/project/altteulmap/docs/deploy-cloudflare.md`, `/Users/alex/project/altteulmap/README.md`에도 새 총괄 가이드 링크를 연결했다.
+  - `/Users/alex/project/altteulmap/docs/deploy/deploy-cloudflare.md`, `/Users/alex/project/altteulmap/README.md`에도 새 총괄 가이드 링크를 연결했다.
 - 검증 결과
   - 문서 작업만 수행했고 별도 테스트는 실행하지 않았다.
 - 메모
@@ -1971,8 +1986,8 @@
   - `/Users/alex/project/altteulmap/src/features/auth/repository.ts`, `/Users/alex/project/altteulmap/src/app/login/page.tsx`, `/Users/alex/project/altteulmap/src/features/auth/login-form.tsx`를 수정해 로그인 화면에서 provider 활성 상태와 미설정 이유를 보여주고, 로컬 credentials 로그인은 그대로 유지했다.
   - 지도용 네이버 키와 로그인용 OAuth 키가 섞이지 않도록 `.env.example`과 `README.md`를 `AUTH_NAVER_*`, `AUTH_KAKAO_*` 기준으로 정리했다.
   - `/Users/alex/project/altteulmap/scripts/smoke-local.mjs`와 `npm run smoke:local`을 추가해 SEO/지도 API/credentials 로그인/관리자 보호 API를 한 번에 확인할 수 있게 했다.
-  - `/Users/alex/project/altteulmap/scripts/check-cloudflare-deploy.mjs`, `/Users/alex/project/altteulmap/docs/deploy-cloudflare.md`, `npm run deploy:check`를 추가해 Cloudflare 배포 전 환경 변수와 도메인 설정을 점검할 수 있게 했다.
-  - `trd.md`의 환경 변수 표기를 현재 코드 기준(`NEXTAUTH_URL`, `AUTH_KAKAO_*`, `AUTH_NAVER_*`, `NEXT_PUBLIC_NAVER_MAP_KEY_ID`)으로 맞췄다.
+  - `/Users/alex/project/altteulmap/scripts/check-cloudflare-deploy.mjs`, `/Users/alex/project/altteulmap/docs/deploy/deploy-cloudflare.md`, `npm run deploy:check`를 추가해 Cloudflare 배포 전 환경 변수와 도메인 설정을 점검할 수 있게 했다.
+  - `docs/product/trd.md`의 환경 변수 표기를 현재 코드 기준(`NEXTAUTH_URL`, `AUTH_KAKAO_*`, `AUTH_NAVER_*`, `NEXT_PUBLIC_NAVER_MAP_KEY_ID`)으로 맞췄다.
 - 변경 파일
   - `/Users/alex/project/altteulmap/src/lib/site.ts`
   - `/Users/alex/project/altteulmap/src/app/layout.tsx`
@@ -1989,14 +2004,14 @@
   - `/Users/alex/project/altteulmap/src/features/auth/constants.ts`
   - `/Users/alex/project/altteulmap/scripts/smoke-local.mjs`
   - `/Users/alex/project/altteulmap/scripts/check-cloudflare-deploy.mjs`
-  - `/Users/alex/project/altteulmap/docs/deploy-cloudflare.md`
+  - `/Users/alex/project/altteulmap/docs/deploy/deploy-cloudflare.md`
   - `/Users/alex/project/altteulmap/package.json`
   - `/Users/alex/project/altteulmap/src/app/robots.ts`
   - `/Users/alex/project/altteulmap/src/app/sitemap.ts`
   - `/Users/alex/project/altteulmap/src/app/manifest.ts`
   - `/Users/alex/project/altteulmap/.env.example`
   - `/Users/alex/project/altteulmap/README.md`
-  - `/Users/alex/project/altteulmap/trd.md`
+  - `/Users/alex/project/altteulmap/docs/product/trd.md`
   - `/Users/alex/project/altteulmap/PLAN.md`
   - `/Users/alex/project/altteulmap/PROGRESS.md`
 - 검증 결과
