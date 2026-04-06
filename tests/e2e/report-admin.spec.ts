@@ -68,6 +68,10 @@ test("신고를 제출하면 운영자 신고 큐에서 처리 완료로 바꿀 
       .first();
 
     await expect(reportCard).toBeVisible();
+    await expect(reportCard.getByTestId("admin-ai-review-panel")).toBeVisible();
+    await expect(reportCard.getByTestId("admin-ai-review-panel")).toContainText(
+      "AI 1차 검수",
+    );
     await reportCard.getByTestId("admin-report-status-resolved").click();
     await expect(reportCard.getByTestId("admin-report-status-badge")).toHaveText(
       "처리 완료",

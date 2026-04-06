@@ -96,6 +96,10 @@ test("장소를 등록하고 운영자가 승인하면 홈 검색에 노출된�
       .first();
 
     await expect(pendingCard).toBeVisible();
+    await expect(pendingCard.getByTestId("admin-ai-review-panel")).toBeVisible();
+    await expect(pendingCard.getByTestId("admin-ai-review-panel")).toContainText(
+      "AI 1차 검수",
+    );
     await pendingCard.getByTestId("admin-latitude").fill(latitude);
     await pendingCard.getByTestId("admin-longitude").fill(longitude);
     await pendingCard.getByTestId("admin-approve-button").click();

@@ -59,7 +59,8 @@ export default async function AdminPricesPage() {
             </h1>
             <p className="mt-4 max-w-3xl text-base leading-7 text-stone-600">
               기존 장소에 추가로 들어온 가격 제보를 검토합니다. 승인하면 현재
-              가격 항목과 대표 가격이 함께 갱신됩니다.
+              가격 항목과 대표 가격이 함께 갱신됩니다. AI 1차 검수는 기존 가격과
+              차이, 메모 유무를 먼저 정리해 운영 판단을 돕습니다.
             </p>
           </div>
           <Link

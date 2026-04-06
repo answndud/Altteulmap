@@ -55,7 +55,8 @@ export default async function AdminPlacesPage() {
             <p className="mt-4 max-w-3xl text-base leading-7 text-stone-600">
               공개 등록 폼으로 들어온 텍스트 기반 장소 제보를 검토합니다.
               운영자가 주소와 네이버 지도 검색 결과를 참고해 좌표를 확정한 뒤
-              승인하면 바로 지도와 상세 페이지에서 확인할 수 있습니다.
+              승인하면 바로 지도와 상세 페이지에서 확인할 수 있습니다. 각 카드의
+              AI 1차 검수는 승인 우선순위와 확인 포인트를 자동으로 요약합니다.
             </p>
           </div>
           <Link

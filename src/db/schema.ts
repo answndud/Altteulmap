@@ -60,6 +60,14 @@ export const contentReportStatusEnum = pgEnum("content_report_status", [
   "resolved",
   "dismissed",
 ]);
+export const moderationSuggestionSubjectTypeEnum = pgEnum(
+  "moderation_suggestion_subject_type",
+  ["place_submission", "price_report", "content_report"],
+);
+export const moderationSuggestionActionEnum = pgEnum(
+  "moderation_suggestion_action",
+  ["approve", "review", "reject"],
+);
 
 export const users = pgTable(
   "users",
@@ -472,6 +480,40 @@ export const visitActivities = pgTable(
     index("visit_activity_visitor_date_idx").on(
       table.visitorId,
       table.visitDate,
+    ),
+  ],
+);
+
+export const moderationSuggestions = pgTable(
+  "moderation_suggestions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    subjectType: moderationSuggestionSubjectTypeEnum("subject_type").notNull(),
+    subjectKey: varchar("subject_key", { length: 160 }).notNull(),
+    provider: varchar("provider", { length: 40 })
+      .default("local_rule_agent")
+      .notNull(),
+    suggestedAction: moderationSuggestionActionEnum("suggested_action").notNull(),
+    confidence: integer("confidence").notNull(),
+    summary: text("summary").notNull(),
+    checks: jsonb("checks")
+      .$type<string[]>()
+      .default(sql`'[]'::jsonb`)
+      .notNull(),
+    flags: jsonb("flags")
+      .$type<string[]>()
+      .default(sql`'[]'::jsonb`)
+      .notNull(),
+    ...withTimestamps(),
+  },
+  (table) => [
+    uniqueIndex("moderation_suggestions_subject_unique").on(
+      table.subjectType,
+      table.subjectKey,
+    ),
+    index("moderation_suggestions_subject_updated_idx").on(
+      table.subjectType,
+      table.updatedAt,
     ),
   ],
 );
