@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 
+import { AdminAiReviewPanel } from "@/features/admin/components/admin-ai-review-panel";
 import { getCategoryBySlug } from "@/features/categories/catalog";
 import { AdminPlaceReviewForm } from "@/features/places/admin-place-review-form";
 import { formatKrw } from "@/features/places/queries";
@@ -133,6 +134,9 @@ export function AdminPendingPlaceCard({
         </div>
 
         <div className="space-y-4">
+          {place.moderationSuggestion ? (
+            <AdminAiReviewPanel suggestion={place.moderationSuggestion} />
+          ) : null}
           <AdminPlaceReviewForm
             placeId={place.id}
             placeName={place.name}

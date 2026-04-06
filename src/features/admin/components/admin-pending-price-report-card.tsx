@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 
+import { AdminAiReviewPanel } from "@/features/admin/components/admin-ai-review-panel";
 import { AdminPriceReportReviewForm } from "@/features/places/admin-price-report-review-form";
 import { formatKrw } from "@/features/places/queries";
 import type { PendingPriceReportRecord } from "@/features/places/repository";
@@ -155,6 +156,9 @@ export function AdminPendingPriceReportCard({
         </div>
 
         <div className="space-y-4">
+          {report.moderationSuggestion ? (
+            <AdminAiReviewPanel suggestion={report.moderationSuggestion} />
+          ) : null}
           <div className="rounded-3xl border border-stone-200 bg-white p-4">
             <p className="text-sm font-semibold text-stone-900">검토 액션</p>
             <p className="mt-2 text-sm leading-6 text-stone-600">

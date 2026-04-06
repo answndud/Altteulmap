@@ -75,6 +75,10 @@ test("가격 제보를 보내면 운영자가 가격 검토 큐에서 반려할 
       .first();
 
     await expect(priceCard).toBeVisible();
+    await expect(priceCard.getByTestId("admin-ai-review-panel")).toBeVisible();
+    await expect(priceCard.getByTestId("admin-ai-review-panel")).toContainText(
+      "AI 1차 검수",
+    );
     await priceCard.getByTestId("admin-price-reject-button").click();
     await expect(
       adminPage.getByTestId("admin-price-report-card").filter({ hasText: uniqueComment }),

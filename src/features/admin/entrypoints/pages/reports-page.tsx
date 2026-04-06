@@ -102,7 +102,8 @@ export default async function AdminReportsPage({
             </h1>
             <p className="mt-4 max-w-3xl text-base leading-7 text-stone-600">
               공개 신고를 확인하고 현재 상태를 즉시 바꿉니다. 열린 신고를 먼저
-              처리하면서 장소 상세와 신고 폼을 같이 열어 재현할 수 있습니다.
+              처리하면서 장소 상세와 신고 폼을 같이 열어 재현할 수 있습니다. AI
+              1차 검수는 처리 완료/검토 중/기각 후보를 먼저 요약합니다.
             </p>
           </div>
           <Link

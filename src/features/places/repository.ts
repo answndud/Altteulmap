@@ -15,6 +15,8 @@ import {
   sql,
 } from "drizzle-orm";
 
+import { ensurePlaceModerationSuggestions, ensurePriceReportModerationSuggestions } from "@/features/admin/moderation-agent";
+import type { ModerationSuggestionRecord } from "@/features/admin/moderation-suggestion";
 import { getDb, isDatabaseEnabled } from "@/db/client";
 import {
   adminActions,
@@ -188,6 +190,7 @@ export type PendingPlaceRecord = {
   latitude?: number;
   longitude?: number;
   priceItems: PlacePriceItem[];
+  moderationSuggestion?: ModerationSuggestionRecord;
 };
 
 export type PendingPlaceListResult = {
@@ -268,6 +271,7 @@ export type PendingPriceReportRecord = {
   existingPriceAmount?: number;
   existingPriceUnitLabel?: string;
   existingPriceVerificationStatus?: "verified" | "unverified";
+  moderationSuggestion?: ModerationSuggestionRecord;
 };
 
 export type PendingPriceReportListResult = {
@@ -2149,22 +2153,41 @@ async function listDatabasePendingPriceReports(): Promise<PendingPriceReportList
     )
     .orderBy(desc(priceReports.createdAt));
 
+  const items = rows.map((row) => ({
+    id: row.id,
+    placeId: row.placeId,
+    placeName: row.placeName,
+    district: row.district,
+    label: row.label,
+    amount: row.amount,
+    unitLabel: row.unitLabel ?? undefined,
+    comment: row.comment ?? undefined,
+    createdAt: formatDate(row.createdAt),
+    existingPriceLabel: row.existingPriceLabel ?? undefined,
+    existingPriceAmount: row.existingPriceAmount ?? undefined,
+    existingPriceUnitLabel: row.existingPriceUnitLabel ?? undefined,
+    existingPriceVerificationStatus:
+      row.existingPriceVerificationStatus ?? undefined,
+  }));
+  const moderationSuggestionMap =
+    await ensurePriceReportModerationSuggestions(
+      items.map((item) => ({
+        subjectKey: item.id,
+        placeName: item.placeName,
+        label: item.label,
+        amount: item.amount,
+        unitLabel: item.unitLabel,
+        comment: item.comment,
+        existingPriceLabel: item.existingPriceLabel,
+        existingPriceAmount: item.existingPriceAmount,
+        existingPriceUnitLabel: item.existingPriceUnitLabel,
+      })),
+    );
+
   return {
-    items: rows.map((row) => ({
-      id: row.id,
-      placeId: row.placeId,
-      placeName: row.placeName,
-      district: row.district,
-      label: row.label,
-      amount: row.amount,
-      unitLabel: row.unitLabel ?? undefined,
-      comment: row.comment ?? undefined,
-      createdAt: formatDate(row.createdAt),
-      existingPriceLabel: row.existingPriceLabel ?? undefined,
-      existingPriceAmount: row.existingPriceAmount ?? undefined,
-      existingPriceUnitLabel: row.existingPriceUnitLabel ?? undefined,
-      existingPriceVerificationStatus:
-        row.existingPriceVerificationStatus ?? undefined,
+    items: items.map((item) => ({
+      ...item,
+      moderationSuggestion: moderationSuggestionMap.get(item.id),
     })),
     source: "database",
   };
@@ -2662,14 +2685,35 @@ async function listDatabasePendingPlaces(): Promise<PendingPlaceListResult> {
     priceItemsByPlaceId.set(item.placeId, items);
   }
 
-  return {
-    items: rows.map((row) =>
-      toPendingPlaceRecord(
-        row,
-        categoryMap.get(row.internalId),
-        priceItemsByPlaceId.get(row.internalId) ?? [],
-      ),
+  const items = rows.map((row) =>
+    toPendingPlaceRecord(
+      row,
+      categoryMap.get(row.internalId),
+      priceItemsByPlaceId.get(row.internalId) ?? [],
     ),
+  );
+  const moderationSuggestionMap = await ensurePlaceModerationSuggestions(
+    items.map((item) => ({
+      subjectKey: item.id,
+      name: item.name,
+      address: item.address,
+      district: item.district,
+      note: item.note,
+      representativePriceAmount: item.representativePriceAmount,
+      representativePriceLabel: item.representativePriceLabel,
+      priceItems: item.priceItems.map((priceItem) => ({
+        label: priceItem.label,
+        amount: priceItem.amount,
+        unitLabel: priceItem.unitLabel,
+      })),
+    })),
+  );
+
+  return {
+    items: items.map((item) => ({
+      ...item,
+      moderationSuggestion: moderationSuggestionMap.get(item.id),
+    })),
     source: "database",
   };
 }

@@ -1,8 +1,9 @@
 # PROGRESS.md
 
-기준일: 2026-04-05
+기준일: 2026-04-06
 
 ## 진행 현황 요약
+- Cycle 11: 장소 등록/가격 제보/신고 관리자 큐에 `AI 1차 검수` 패널을 추가했다. 제안은 로컬 검수 에이전트가 자동 생성·저장하고, 관리자 카드는 권장 액션/신뢰도/근거/플래그를 보여준 뒤 기존 승인/반려/상태 변경 흐름으로 최종 확정한다. 댓글은 현재 관리자 검수 큐가 없어 1차 범위에서 제외했다
 - Cycle 10: 관리자 실제 구현을 `src/features/admin/**`로 모으고, public 앱 `entrypoints`와 별도 `apps/admin` 빌드를 추가해 관리자 분리 1차 완료. public `cf:build:public`은 `/admin`, `/api/admin`을 external redirect/API stub로 유지한 채 빌드하고, `deploy:check:public`, `deploy:check:admin`, `SITE_URL` 기준, `workers.dev` split 배포와 remote smoke까지 정리했다. custom domain 적용은 필요할 때만 마지막 운영 단계로 남아 있다
 - Cycle 10 후속: admin telemetry가 `useSearchParams()` 때문에 standalone admin Cloudflare build를 깨던 경로를 제거했고, admin build는 이제 `ADMIN_APP_URL`을 `NEXTAUTH_URL`로 강제해 shared `.env.production.local`에서도 올바른 callback 기준으로 동작한다. `deploy:check:admin`, `cf:build:admin`, live admin 재배포까지 다시 통과했다
 - 문서/루트 정리 후속: 제품 문서와 배포 문서를 `docs/product`, `docs/deploy`로 재배치했고, 이후 운영 문서도 `docs/project`로 옮겼다. `docs/README.md` 인덱스를 추가했고, 루트의 `.next`, `.open-next`, `apps/admin/.next`, `test-results`, `tsconfig.tsbuildinfo` 등 생성 산출물도 `clean:artifacts` 스크립트와 함께 정리했다
@@ -39,9 +40,52 @@
 - Cycle 6 추천 후속: 홈 기본 화면에 `인기 장소` 섹션을 추가해 상위 6개 추천 장소를 노출하고, mock/desktop 회귀까지 붙였다
 - Cycle 6 공유 후속: 상세 페이지/상세 시트/지도 목록/인기 장소 카드가 같은 공유 payload를 쓰도록 정리했고, 공유 링크에는 `ref=share`, `source=detail|detail_sheet|list|trending`를 붙였다
 - Cycle 6 공유 telemetry 후속: `visit_activity`에 공유 ref/source를 저장하고, 관리자 overview에서 오늘/7일 공유 유입과 source breakdown을 확인할 수 있게 정리했다
-- 다음 우선순위: custom domain 적용 여부를 결정하고, 운영 도메인 QA와 모바일 제스처 실사용 검증을 더 진행할지 판단한다. 공유 telemetry는 현재 범위에서 동결할지 추가 활용할지 별도 결정이 남아 있다
+- 다음 우선순위: `Cycle 12` 기준으로 `AI 검수 live rollout -> 운영 도메인/모바일 QA -> 운영 URL 최종 고정 -> 검색 URL 상태/공유 telemetry 후속 판단` 순서로 진행한다
 
 ## 실행 로그
+
+### 2026-04-06 14:05 KST: README rollout 계획 보강과 후속 실행 순서 정리
+- 완료 내용
+  - `/Users/alex/project/altteulmap/docs/project/PLAN.md`에 `다음 실행 순서`와 `Cycle 12: AI 검수 live 반영과 출시 마감 정리`를 추가해 다음 세션의 시작 순서를 고정했다.
+  - `/Users/alex/project/altteulmap/docs/project/PROGRESS.md`에는 이번 턴이 구현이 아니라 계획 정리 중심이었다는 점과 다음 우선순위를 다시 기록했다.
+  - `/Users/alex/project/altteulmap/README.md`에 `Current Rollout Plan` 섹션을 추가해 `AI moderation rollout`, `Operational QA`, `Launch decision` 3단계가 외부에서 봐도 자연스럽게 이어지도록 정리했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+- 메모
+  - 이번 변경은 문서/README 보강 중심이다. 코드 동작 변경은 포함하지 않는다.
+
+### 2026-04-06 14:02 KST: 후속 개발을 위한 실행 계획만 재정리
+- 완료 내용
+  - `/Users/alex/project/altteulmap/docs/project/PLAN.md`의 현재 우선순위를 `AI 검수 live rollout -> 운영 QA -> 운영 URL 최종 고정 -> 공개 UI/telemetry 후속 판단` 순서로 다시 정리했다.
+  - 같은 문서에 `다음 실행 순서`를 추가해, 다음 세션에서 바로 수행할 배포/검증/결정 단계를 5단계로 고정했다.
+  - `Cycle 12: AI 검수 live 반영과 출시 마감 정리`를 새로 추가해 `live migration/배포`, `모바일·운영 QA`, `운영 URL 전략 확정`, `출시 직전 backlog 정리` 4개 작업을 `pending` 상태로 남겼다.
+- 검증 결과
+  - 계획 정리 전용 세션이라 코드/배포 검증은 실행하지 않았다.
+- 메모
+  - 이번 턴은 구현을 시작하지 않았다. 다음 세션은 `Cycle 12` 첫 작업인 live DB migration 적용과 public/admin 재배포부터 시작하면 된다.
+
+### 2026-04-06 13:53 KST: 관리자 검수 큐에 `AI 1차 검수` 제안 추가
+- 완료 내용
+  - `/Users/alex/project/altteulmap/docs/project/PLAN.md`에 `Cycle 11: AI 검수 보조 1차`를 추가한 뒤 구현을 진행했고, 현재 상태에 맞춰 완료로 닫았다.
+  - `/Users/alex/project/altteulmap/src/db/schema.ts`와 `/Users/alex/project/altteulmap/drizzle/0010_military_wildside.sql`에 `moderation_suggestions` 저장 구조를 추가했다. subject type은 `place_submission`, `price_report`, `content_report` 3종이고, generic `subject_key` 기준으로 suggestion을 upsert한다.
+  - `/Users/alex/project/altteulmap/src/features/admin/moderation-agent.ts`, `/Users/alex/project/altteulmap/src/features/admin/moderation-suggestion.ts`를 추가해 로컬 검수 에이전트가 장소 등록/가격 제보/신고에 대해 `권장 액션/신뢰도/요약/근거/플래그`를 자동 생성·저장하도록 정리했다.
+  - `/Users/alex/project/altteulmap/src/features/places/repository.ts`, `/Users/alex/project/altteulmap/src/features/reports/repository.ts`는 관리자 큐 조회 시 기존 pending/open 항목에 AI suggestion을 함께 붙여 반환하도록 바꿨다.
+  - `/Users/alex/project/altteulmap/src/features/admin/components/admin-ai-review-panel.tsx`를 추가했고, `/Users/alex/project/altteulmap/src/features/admin/components/admin-pending-place-card.tsx`, `/Users/alex/project/altteulmap/src/features/admin/components/admin-pending-price-report-card.tsx`, `/Users/alex/project/altteulmap/src/features/admin/components/admin-report-card.tsx`에 공통 패널을 연결했다.
+  - `/Users/alex/project/altteulmap/src/features/admin/pages/places-page.tsx`, `/Users/alex/project/altteulmap/src/features/admin/pages/prices-page.tsx`, `/Users/alex/project/altteulmap/src/features/admin/pages/reports-page.tsx`의 소개 문구도 `AI 1차 검수` 기준으로 정리했다.
+  - `/Users/alex/project/altteulmap/tests/e2e/submission-admin.spec.ts`, `/Users/alex/project/altteulmap/tests/e2e/price-review.spec.ts`, `/Users/alex/project/altteulmap/tests/e2e/report-admin.spec.ts`에는 각 관리자 카드에서 AI 패널이 보이는지 확인하는 회귀를 추가했다.
+  - `/Users/alex/project/altteulmap/README.md`, `/Users/alex/project/altteulmap/docs/product/prd.md`, `/Users/alex/project/altteulmap/docs/product/trd.md`를 현재 운영 검수 구조에 맞게 갱신했다. README는 `AI 1차 검수 + 운영자 최종 확정`, 제품 문서는 human-in-the-loop 구조와 댓글 제외 범위를 명시한다.
+- 검증 결과
+  - `npx tsc --noEmit` 통과
+  - `npm run db:generate` 통과
+  - `npm run verify:quick` 통과
+  - `npm run db:up` 통과
+  - `npm run db:push` 통과
+  - `npm run verify` 통과
+  - `npm run db:seed` 통과
+  - `AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3107 DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap npx playwright test tests/e2e/submission-admin.spec.ts tests/e2e/price-review.spec.ts tests/e2e/report-admin.spec.ts --project chromium` 통과
+- 메모
+  - 현재 구현은 외부 LLM 호출이 아니라 repo-local `로컬 검수 에이전트` 기반의 자동 suggestion 레이어다. 운영자가 최종 확정한다는 점을 UI/README/제품 문서에 함께 명시했다.
+  - 댓글은 현재 관리자 검수 큐가 없어 AI 제안 범위에서 제외했다.
 
 ### 2026-04-06 13:34 KST: PR CI mobile E2E 재오픈 회귀 수정
 - 완료 내용

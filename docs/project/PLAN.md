@@ -1,6 +1,6 @@
 # PLAN.md
 
-기준일: 2026-04-05  
+기준일: 2026-04-06  
 목표: Altteulmap를 `지도 기반 절약 장소 탐색 + 가격 제보` 서비스 기준에서 MVP 완성도와 출시 준비 수준까지 끌어올린다.
 
 ## 운영 규칙
@@ -21,11 +21,18 @@
   - 핫딜 `deal`
 
 ## 현재 우선순위
-1. 운영 도메인 출시 마감: `workers.dev` 이후 custom domain 적용 여부 확정, canonical/robots/sitemap 최종 점검
-2. 운영 품질/QA 후속 정리: 운영 도메인 smoke 심화, 모바일 제스처 실사용 검증, rate limit·캐시 관측 정리
-3. 공개 UI 잔여 polish: 검색 URL 상태와 소규모 상호작용 polish 정리
-4. 공유 telemetry 후속 활용 범위 판단: 현재 지표를 더 확장할지, 현 범위에서 동결할지 결정
-5. repo-local 개발 워크플로우 유지: `.agents` skills/reviewers, `.githooks`, `verify` 스크립트
+1. AI 검수 1차 live rollout: `moderation_suggestions` migration 적용, public/admin 재배포, live 관리자 큐 확인
+2. 운영 품질/QA 후속 정리: 운영 도메인 smoke 심화, 모바일 제스처 실사용 검증, `현재 위치`/`이 지역 검색`/AI 검수 패널 실기기 확인
+3. 운영 도메인 출시 마감: `workers.dev` 유지 또는 custom domain 적용 여부 확정, canonical/robots/sitemap/auth URL 최종 점검
+4. 공개 UI 잔여 polish: 검색 URL 상태와 소규모 상호작용 polish 정리
+5. 공유 telemetry 후속 활용 범위 판단: 현재 지표를 더 확장할지, 현 범위에서 동결할지 결정
+
+## 다음 실행 순서
+1. live DB에 `moderation_suggestions` migration을 적용하고 admin/public worker를 재배포한다.
+2. live 관리자 큐에서 장소 등록/가격 제보/신고 카드의 `AI 1차 검수` 패널 노출과 기존 승인/반려 동작을 확인한다.
+3. 운영 도메인 기준 read-only smoke와 모바일 실기기 QA로 지도/제스처/현재 위치/AI 패널을 다시 점검한다.
+4. `workers.dev`를 그대로 운영할지, custom domain을 붙일지 결정한 뒤 canonical/auth URL/sitemap을 최종 고정한다.
+5. 위 1~4가 끝난 뒤 검색 URL 상태와 공유 telemetry 확장 여부를 다음 cycle 범위로 재판단한다.
 
 ## 최근 완료 메모
 - README 포트폴리오 랜딩과 live 스크린샷 세트는 완료했다. 현재 GitHub 첫 화면에서는 제품 개요, 실데이터/배포 포인트, 핵심 화면, AI-native workflow를 짧게 확인할 수 있다.
@@ -50,6 +57,7 @@
 - 관리자 가격 제보 검토 큐
 - 관리자 가격 직접 수정/대표 지정/숨김
 - 관리자 visit/activity telemetry와 방문 지표 overview
+- 관리자 큐의 AI 1차 검수 제안
 - 플레이스 좋아요/싫어요 반응
 - 비로그인 visitor cookie 기반 좋아요/싫어요
 - 지도 목록 좋아요 노출
@@ -94,6 +102,19 @@
 | 작업명 | 담당 에이전트 | 우선순위 | 상태 | 완료기준(DoD) | 의존성 |
 |---|---|---|---|---|---|
 | 관리자 페이지/API의 실제 구현을 공유 모듈로 고정하고, public 앱과 별도 `apps/admin` 앱이 같은 구현을 재사용하도록 정리한다 | Codex | P1 | `done` | `src/features/admin/pages`, `src/features/admin/api`가 관리자 실제 구현의 기준이 되고, public 앱의 `/admin`, `/api/admin`은 `entrypoints`를 통해 embedded/external 모드를 스위치할 수 있으며, `apps/admin`이 별도 Next 앱으로 빌드되고, `ADMIN_APP_URL` 기준 외부 관리자 앱 전환 경로와 검증 결과가 문서에 남는다 | `src/app/admin/**`, `src/app/api/admin/**`, `src/features/admin/**`, `src/lib/admin-app.ts`, `apps/admin/**`, `package.json`, Cloudflare 배포 문서 |
+
+### Cycle 11: AI 검수 보조 1차 (완료)
+| 작업명 | 담당 에이전트 | 우선순위 | 상태 | 완료기준(DoD) | 의존성 |
+|---|---|---|---|---|---|
+| 관리자 검수 큐에 `AI 1차 검수` 제안을 추가해 장소 등록/가격 제보/신고의 권장 액션과 근거를 자동 생성·표시하고, 운영자는 최종 승인/반려를 직접 확정하도록 유지한다 | Codex | P1 | `done` | `장소 등록`, `가격 제보`, `신고` 대기 항목에 대해 AI 검수 제안이 생성·저장되고 관리자 카드에서 `권장 액션/신뢰도/근거/플래그/생성 시각`을 볼 수 있으며, 운영자 최종 액션은 기존 승인/반려/상태 변경 흐름을 그대로 유지한다. 댓글은 현재 관리자 검수 큐가 없어 1차 범위에서 제외하고, README/PROGRESS/검증 로그가 현재 범위에 맞게 갱신된다 | `src/features/admin/**`, `src/features/places/**`, `src/features/reports/**`, `src/db/schema.ts`, `drizzle/**`, 관리자 큐 UI, README, 테스트 |
+
+### Cycle 12: AI 검수 live 반영과 출시 마감 정리
+| 작업명 | 담당 에이전트 | 우선순위 | 상태 | 완료기준(DoD) | 의존성 |
+|---|---|---|---|---|---|
+| `AI 1차 검수` 저장 구조와 UI를 live 환경에 반영한다 | Codex | P1 | `pending` | 운영 DB에 `moderation_suggestions` migration이 적용되고, public/admin worker가 현재 코드 기준으로 재배포되며, live 관리자 큐에서 장소 등록/가격 제보/신고 카드의 AI 패널이 모두 보이고 remote smoke 결과가 `PROGRESS.md`에 남는다 | `src/db/schema.ts`, `drizzle/0010_military_wildside.sql`, `src/features/admin/**`, 배포 스크립트, 운영 DB 접근 |
+| 모바일/운영 QA를 실사용 기준으로 다시 점검한다 | Codex | P1 | `pending` | iPhone Safari와 Android Chrome 기준으로 `현재 위치`, `이 지역 검색`, 목록/상세 시트 drag, cluster 확대/축소, 익명 쓰기 핵심 흐름, 관리자 AI 패널 확인 결과가 체크리스트 형태로 `PROGRESS.md`에 남고, 발견된 이슈는 별도 후속 작업으로 분리된다 | live public/admin URL, 모바일 실기기 또는 동등한 실사용 검증 환경, `tests/e2e/**` |
+| 운영 URL 전략을 최종 고정한다 | Codex | P1 | `pending` | `workers.dev` 유지 또는 custom domain 적용 중 하나로 운영 URL 전략이 확정되고, `NEXTAUTH_URL`, `SITE_URL`, `ADMIN_APP_URL`, canonical, robots, sitemap, admin redirect 기준이 문서/배포 설정/검증 로그에 같은 값으로 정리된다 | `docs/deploy/**`, `src/lib/site.ts`, `src/lib/env.ts`, Wrangler/Cloudflare 설정 |
+| 출시 직전 backlog를 정리해 다음 cycle 범위를 고정한다 | Codex | P2 | `pending` | 검색 URL 상태와 공유 telemetry 후속 활용에 대해 `지금 개발 / 보류 / 동결` 중 하나로 결정하고, 다음 cycle의 범위와 제외 항목이 `PLAN.md`/`PROGRESS.md`에 명시된다 | `src/features/map/**`, `src/features/telemetry/**`, `docs/project/PLAN.md`, `docs/project/PROGRESS.md` |
 
 ### Cycle 7: repo-local AI workflow setup (완료)
 | 작업명 | 담당 에이전트 | 우선순위 | 상태 | 완료기준(DoD) | 의존성 |
@@ -182,5 +203,7 @@
 - 현재 익명 허용 범위는 `좋아요/싫어요`, `장소 등록`, `댓글`, `가격 제보`, `신고`까지다.
 - 공개 쓰기 중 로그인 유지 기능은 현재 `북마크`만 남긴다. 운영자 기능은 기존처럼 별도 인증/권한 검사를 유지한다.
 - 운영자 대시보드의 활동 지표는 `visit_activity` 테이블에 30분 bucket dedupe 기준으로 적재하고, 현재 `/admin` overview에서 오늘/7일 방문 수, 고유 방문자 수, DAU/WAU, 7일 재방문율, 공유 유입과 source breakdown을 노출한다.
+- 운영 검수 자동화는 1차에서 `장소 등록`, `가격 제보`, `신고` 큐에만 적용하고, `AI 1차 검수 -> 운영자 최종 확정`의 human-in-the-loop 구조를 유지한다.
+- 댓글은 현재 관리자 검수 큐가 없어 AI 검수 1차 범위에서 제외한다.
 - 사진 업로드는 저장 용량과 운영 비용 대비 초기 효용이 낮다고 판단해 현재 범위에서 제외한다.
 - 별도 좋아요 랭킹 화면은 현재 범위에서 제외하고, 홈의 `인기 장소` 추천 섹션만 유지한다.

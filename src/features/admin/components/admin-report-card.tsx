@@ -3,23 +3,13 @@
 import Link from "next/link";
 import { useState } from "react";
 
+import { AdminAiReviewPanel } from "@/features/admin/components/admin-ai-review-panel";
+import type { AdminReportRecord } from "@/features/reports/repository";
 import { AdminReportStatusForm } from "@/features/reports/admin-report-status-form";
-import {
-  reportReasonMap,
-  reportStatusMap,
-  type ReportModerationInput,
-} from "@/features/reports/schema";
+import { reportReasonMap, reportStatusMap } from "@/features/reports/schema";
 
 type AdminReportCardProps = {
-  report: {
-    id: string;
-    placeId: string;
-    placeName: string;
-    reasonType: keyof typeof reportReasonMap;
-    detail: string;
-    status: ReportModerationInput["status"];
-    createdAt: string;
-  };
+  report: AdminReportRecord;
   disabled?: boolean;
 };
 
@@ -64,29 +54,34 @@ export function AdminReportCard({
         </span>
       </div>
       <p className="mt-4 text-sm leading-6 text-stone-700">{report.detail}</p>
-      <div className="mt-4 grid gap-4 lg:grid-cols-[auto_1fr] lg:items-start">
-        <div className="flex flex-wrap gap-3">
-          <Link
-            href={`/place/${report.placeId}`}
-            className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
-          >
-            장소 보기
-          </Link>
-          <Link
-            href={`/report?placeId=${report.placeId}&placeName=${encodeURIComponent(report.placeName)}`}
-            className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
-          >
-            신고 재현
-          </Link>
+      <div className="mt-4 grid gap-4">
+        {report.moderationSuggestion ? (
+          <AdminAiReviewPanel suggestion={report.moderationSuggestion} />
+        ) : null}
+        <div className="grid gap-4 lg:grid-cols-[auto_1fr] lg:items-start">
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href={`/place/${report.placeId}`}
+              className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
+            >
+              장소 보기
+            </Link>
+            <Link
+              href={`/report?placeId=${report.placeId}&placeName=${encodeURIComponent(report.placeName)}`}
+              className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
+            >
+              신고 재현
+            </Link>
+          </div>
+          <AdminReportStatusForm
+            reportId={report.id}
+            currentStatus={status}
+            disabled={disabled}
+            onSuccess={(nextStatus) => {
+              setStatus(nextStatus);
+            }}
+          />
         </div>
-        <AdminReportStatusForm
-          reportId={report.id}
-          currentStatus={status}
-          disabled={disabled}
-          onSuccess={(nextStatus) => {
-            setStatus(nextStatus);
-          }}
-        />
       </div>
     </article>
   );

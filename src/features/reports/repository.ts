@@ -2,6 +2,8 @@ import "server-only";
 
 import { desc, eq } from "drizzle-orm";
 
+import { ensureContentReportModerationSuggestions } from "@/features/admin/moderation-agent";
+import type { ModerationSuggestionRecord } from "@/features/admin/moderation-suggestion";
 import { getDb, isDatabaseEnabled } from "@/db/client";
 import { adminActions, contentReports, places } from "@/db/schema";
 import { mockReports, type MockReportRecord } from "@/features/reports/mock-data";
@@ -12,8 +14,12 @@ import type {
 
 type DataSource = "mock" | "database";
 
+export type AdminReportRecord = MockReportRecord & {
+  moderationSuggestion?: ModerationSuggestionRecord;
+};
+
 export type ReportListResult = {
-  items: MockReportRecord[];
+  items: AdminReportRecord[];
   source: DataSource;
 };
 
@@ -35,7 +41,7 @@ export type ReportModerationResult = {
   ok: boolean;
   message: string;
   source: DataSource;
-  item: MockReportRecord | null;
+  item: AdminReportRecord | null;
 };
 
 const dateFormatter = new Intl.DateTimeFormat("sv-SE", {
@@ -56,6 +62,44 @@ function toMockPreview(input: ReportSubmissionInput) {
   };
 }
 
+function listMockReports(): ReportListResult {
+  const generatedAt = formatDate(new Date());
+
+  return {
+    items: mockReports.map((item) => ({
+      ...item,
+      moderationSuggestion: {
+        subjectType: "content_report",
+        subjectKey: item.id,
+        provider: "local_rule_agent",
+        suggestedAction:
+          item.reasonType === "other"
+            ? "review"
+            : item.detail.length < 8
+              ? "reject"
+              : "approve",
+        confidence:
+          item.reasonType === "price_error" || item.reasonType === "promotional_content"
+            ? 74
+            : item.reasonType === "other"
+              ? 58
+              : 66,
+        summary:
+          item.reasonType === "other"
+            ? `${item.placeName} 신고는 운영자가 상세 페이지 문맥을 직접 확인하는 편이 안전합니다.`
+            : `${item.placeName} 신고는 설명상 처리 방향을 먼저 잡아볼 수 있는 초안입니다.`,
+        checks: ["목업 데이터 기준 자동 생성된 AI 검수 초안입니다."],
+        flags:
+          item.reasonType === "other"
+            ? ["실데이터와 달리 실제 저장 결과와 연결되지는 않습니다."]
+            : [],
+        generatedAt,
+      },
+    })),
+    source: "mock",
+  };
+}
+
 async function listDatabaseReports(): Promise<ReportListResult> {
   const db = getDb();
   const rows = await db
@@ -73,15 +117,30 @@ async function listDatabaseReports(): Promise<ReportListResult> {
     .where(eq(contentReports.targetType, "place"))
     .orderBy(desc(contentReports.createdAt));
 
+  const items: AdminReportRecord[] = rows.map((row) => ({
+    id: row.id,
+    placeId: row.placeId ?? "unknown-place",
+    placeName: row.placeName ?? "알 수 없는 장소",
+    reasonType: row.reasonType as MockReportRecord["reasonType"],
+    detail: row.detail ?? "",
+    status: row.status,
+    createdAt: formatDate(row.createdAt),
+  }));
+  const moderationSuggestionMap =
+    await ensureContentReportModerationSuggestions(
+      items.map((item) => ({
+        subjectKey: item.id,
+        placeName: item.placeName,
+        reasonType: item.reasonType,
+        detail: item.detail,
+        status: item.status,
+      })),
+    );
+
   return {
-    items: rows.map((row) => ({
-      id: row.id,
-      placeId: row.placeId ?? "unknown-place",
-      placeName: row.placeName ?? "알 수 없는 장소",
-      reasonType: row.reasonType as MockReportRecord["reasonType"],
-      detail: row.detail ?? "",
-      status: row.status,
-      createdAt: formatDate(row.createdAt),
+    items: items.map((item) => ({
+      ...item,
+      moderationSuggestion: moderationSuggestionMap.get(item.id),
     })),
     source: "database",
   };
@@ -207,10 +266,7 @@ async function updateDatabaseReportStatus(
 
 export async function listReports() {
   if (!isDatabaseEnabled()) {
-    return {
-      items: mockReports,
-      source: "mock" as const,
-    };
+    return listMockReports();
   }
 
   try {
@@ -218,10 +274,7 @@ export async function listReports() {
   } catch (error) {
     console.error("Failed to load reports from database. Falling back to mock data.", error);
 
-    return {
-      items: mockReports,
-      source: "mock" as const,
-    };
+    return listMockReports();
   }
 }
 
