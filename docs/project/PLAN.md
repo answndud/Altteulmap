@@ -4,13 +4,13 @@
 목표: Altteulmap를 `지도 기반 절약 장소 탐색 + 가격 제보` 서비스 기준에서 MVP 완성도와 출시 준비 수준까지 끌어올린다.
 
 ## 운영 규칙
-- 세션 시작: `PLAN.md` -> `PROGRESS.md` -> `docs/product/prd.md` -> `docs/product/trd.md` 순서로 먼저 확인
+- 세션 시작: `docs/project/PLAN.md` -> `docs/project/PROGRESS.md` -> `docs/product/prd.md` -> `docs/product/trd.md` 순서로 먼저 확인
 - 작업 시작: 대상 cycle 또는 작업 상태를 `in_progress`로 바꾼 뒤 구현 시작
-- 작업 종료: `PROGRESS.md`에 결과/검증/블로커 기록 후 `PLAN.md` 상태 갱신
+- 작업 종료: `docs/project/PROGRESS.md`에 결과/검증/블로커 기록 후 `docs/project/PLAN.md` 상태 갱신
 - cycle 내 모든 작업이 끝나면 제목에 `(완료)` 표시
 - 블로커 발생 시 두 문서를 즉시 같이 수정
-  - `PLAN.md`: 계획/우선순위/의존성 수정
-  - `PROGRESS.md`: 실제 이슈와 우회 경로 기록
+  - `docs/project/PLAN.md`: 계획/우선순위/의존성 수정
+  - `docs/project/PROGRESS.md`: 실제 이슈와 우회 경로 기록
 
 ## 범위 원칙
 - 우선순위: `지도 Read MVP -> 쓰기 데이터 축적 -> 운영 품질 -> 인증/출시 -> 확장 기능`
@@ -29,7 +29,7 @@
 
 ## 최근 완료 메모
 - README 포트폴리오 랜딩과 live 스크린샷 세트는 완료했다. 현재 GitHub 첫 화면에서는 제품 개요, 실데이터/배포 포인트, 핵심 화면, AI-native workflow를 짧게 확인할 수 있다.
-- 루트 구조 정리도 완료했다. `docs/product`, `docs/deploy`, `docs/README.md`로 제품/배포 문서를 묶었고, 루트에는 운영 문서와 주요 설정 파일만 남기도록 build/test 산출물을 함께 정리했다.
+- 루트 구조 정리도 완료했다. `docs/product`, `docs/deploy`, `docs/project`, `docs/README.md`로 문서를 역할별로 묶었고, 루트에는 README와 주요 설정 파일 중심으로 보이도록 build/test 산출물을 함께 정리했다.
 
 ## 현재 제품 상태
 

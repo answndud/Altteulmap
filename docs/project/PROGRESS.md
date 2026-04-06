@@ -5,7 +5,7 @@
 ## 진행 현황 요약
 - Cycle 10: 관리자 실제 구현을 `src/features/admin/**`로 모으고, public 앱 `entrypoints`와 별도 `apps/admin` 빌드를 추가해 관리자 분리 1차 완료. public `cf:build:public`은 `/admin`, `/api/admin`을 external redirect/API stub로 유지한 채 빌드하고, `deploy:check:public`, `deploy:check:admin`, `SITE_URL` 기준, `workers.dev` split 배포와 remote smoke까지 정리했다. custom domain 적용은 필요할 때만 마지막 운영 단계로 남아 있다
 - Cycle 10 후속: admin telemetry가 `useSearchParams()` 때문에 standalone admin Cloudflare build를 깨던 경로를 제거했고, admin build는 이제 `ADMIN_APP_URL`을 `NEXTAUTH_URL`로 강제해 shared `.env.production.local`에서도 올바른 callback 기준으로 동작한다. `deploy:check:admin`, `cf:build:admin`, live admin 재배포까지 다시 통과했다
-- 문서/루트 정리 후속: 제품 문서와 배포 문서를 `docs/product`, `docs/deploy`로 재배치했고, `docs/README.md` 인덱스를 추가했다. 루트의 `.next`, `.open-next`, `apps/admin/.next`, `test-results`, `tsconfig.tsbuildinfo` 등 생성 산출물도 `clean:artifacts` 스크립트와 함께 정리했다
+- 문서/루트 정리 후속: 제품 문서와 배포 문서를 `docs/product`, `docs/deploy`로 재배치했고, 이후 운영 문서도 `docs/project`로 옮겼다. `docs/README.md` 인덱스를 추가했고, 루트의 `.next`, `.open-next`, `apps/admin/.next`, `test-results`, `tsconfig.tsbuildinfo` 등 생성 산출물도 `clean:artifacts` 스크립트와 함께 정리했다
 - Cycle 0: 프로젝트 로컬 기반, DB 경로, 지도 탐색, 장소 상세, 등록, 신고, 북마크, 관리자 검토, 로컬 인증, 네이버 지도 연동 완료
 - Cycle 1: 현재 위치 버튼, viewport 재조회, 모바일 목록 바텀시트, 모바일 상세 시트 기초 정리 완료
 - Cycle 2: `PLAN.md`/`PROGRESS.md` 운영 문서 형식 정비, 지역/전역 검색, 검색 URL 상태 반영 완료
@@ -53,6 +53,17 @@
   - `npm run e2e:prepare && npm run build && USE_MOCK_DATA=true npx playwright test tests/e2e/map.mobile.spec.ts --project mobile-chromium` 통과
 - 메모
   - 실패했던 GitHub Actions run은 `24017929325`였고, 실패 job은 `E2E Full` 하나였다. Cloudflare `Workers Builds` 자체는 public/admin 모두 성공 상태였다.
+
+### 2026-04-06 13:58 KST: 운영 문서를 `docs/project`로 이동해 루트 clutter 축소
+- 완료 내용
+  - 루트의 `/Users/alex/project/altteulmap/PLAN.md`, `/Users/alex/project/altteulmap/PROGRESS.md`를 `/Users/alex/project/altteulmap/docs/project/PLAN.md`, `/Users/alex/project/altteulmap/docs/project/PROGRESS.md`로 이동했다.
+  - `/Users/alex/project/altteulmap/AGENTS.md`, `/Users/alex/project/altteulmap/README.md`, `/Users/alex/project/altteulmap/docs/README.md`, `/Users/alex/project/altteulmap/docs/project/PLAN.md`의 현재 참조 경로를 새 위치 기준으로 정리했다.
+  - `npm run clean:artifacts`로 `.next`, `.next-dev`, `test-results` 같은 로컬 산출물을 함께 정리해 루트에서 보이는 잡음을 줄였다.
+- 검증 결과
+  - `npm run clean:artifacts` 통과
+  - `npm run verify:quick` 통과
+- 메모
+  - 과거 실행 로그 안에 남아 있는 옛 절대경로 표기는 역사 기록으로 유지하고, 현재 작업 규칙과 인덱스/README만 새 위치 기준으로 맞췄다.
 
 ### 2026-04-06 13:18 KST: 루트 문서 재배치와 build 산출물 정리
 - 완료 내용

@@ -5,21 +5,21 @@
 - 목표는 작업이 중간에 끊겨도 다음 세션에서 바로 이어갈 수 있게 만드는 것이다.
 
 ## 필수 규칙
-1. 작업을 시작하기 전에 `PLAN.md`, `PROGRESS.md`, `docs/product/prd.md`, `docs/product/trd.md`를 먼저 확인한다.
-2. 구현 우선순위나 범위가 바뀌면 코드보다 먼저 `PLAN.md`를 갱신한다.
-3. 의미 있는 구현, 수정, 검증이 끝나면 `PROGRESS.md`를 즉시 갱신한다.
+1. 작업을 시작하기 전에 `docs/project/PLAN.md`, `docs/project/PROGRESS.md`, `docs/product/prd.md`, `docs/product/trd.md`를 먼저 확인한다.
+2. 구현 우선순위나 범위가 바뀌면 코드보다 먼저 `docs/project/PLAN.md`를 갱신한다.
+3. 의미 있는 구현, 수정, 검증이 끝나면 `docs/project/PROGRESS.md`를 즉시 갱신한다.
 4. 세션을 마칠 때는 다음 사람이 바로 이어서 작업할 수 있을 정도로 현재 상태를 남긴다.
 5. 코드와 문서가 어긋나면 같은 작업 안에서 함께 수정한다.
-6. 새 기능을 시작할 때는 현재 계획에 없는 기능인지 먼저 확인하고, 없으면 `PLAN.md`에 추가한 뒤 진행한다.
-7. 검증을 했으면 `PROGRESS.md`에 어떤 명령을 돌렸는지 남긴다.
-8. 작업 중단 시점에도 미완료 상태, 남은 이슈, 다음 액션을 `PROGRESS.md`에 적는다.
+6. 새 기능을 시작할 때는 현재 계획에 없는 기능인지 먼저 확인하고, 없으면 `docs/project/PLAN.md`에 추가한 뒤 진행한다.
+7. 검증을 했으면 `docs/project/PROGRESS.md`에 어떤 명령을 돌렸는지 남긴다.
+8. 작업 중단 시점에도 미완료 상태, 남은 이슈, 다음 액션을 `docs/project/PROGRESS.md`에 적는다.
 
 ## 문서 역할
-- `PLAN.md`
+- `docs/project/PLAN.md`
   - 앞으로 무엇을 만들지
   - 무엇이 먼저인지
   - 어떤 범위까지 확장할지
-- `PROGRESS.md`
+- `docs/project/PROGRESS.md`
   - 지금까지 무엇을 했는지
   - 어디까지 검증했는지
   - 다음에 무엇부터 하면 되는지

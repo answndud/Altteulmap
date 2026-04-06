@@ -61,7 +61,7 @@
 
 ## AI-Native Workflow
 
-- `PLAN.md`와 `PROGRESS.md`를 유지하며 계획과 실행 로그를 분리했습니다.
+- `docs/project/PLAN.md`와 `docs/project/PROGRESS.md`를 유지하며 계획과 실행 로그를 분리했습니다.
 - 구현 후에는 `lint`, `build`, `Playwright E2E`, `smoke`를 기준으로 종료했습니다.
 - repo-local hooks와 검증 스크립트로 품질 기준을 저장소 안에 고정했습니다.
 

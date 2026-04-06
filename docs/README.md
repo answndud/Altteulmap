@@ -9,5 +9,5 @@
 - [Cloudflare account to deploy](deploy/cloudflare-account-to-deploy.md)
 
 ## Project Workflow
-- [PLAN](../PLAN.md)
-- [PROGRESS](../PROGRESS.md)
+- [PLAN](project/PLAN.md)
+- [PROGRESS](project/PROGRESS.md)
