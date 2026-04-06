@@ -232,12 +232,12 @@ const PLACE_MARKER_THEMES: Record<PlaceMarkerGroupKey, PlaceMarkerTheme> = {
 };
 
 const CLUSTER_MARKER_THEME = {
-  shellBackground: "rgba(255, 255, 255, 0.96)",
-  shellBorder: "rgba(53, 65, 81, 0.16)",
-  coreBackground: "#536273",
-  coreBorder: "rgba(40, 48, 59, 0.26)",
-  text: "#ffffff",
-  shadow: "0 16px 32px rgba(15, 23, 42, 0.2)",
+  shellBackground: "rgba(255, 252, 248, 0.98)",
+  shellBorder: "rgba(180, 151, 126, 0.22)",
+  coreBackground: "#e7bf9d",
+  coreBorder: "rgba(165, 123, 89, 0.3)",
+  text: "#6f4630",
+  shadow: "0 16px 30px rgba(116, 88, 66, 0.18)",
 } as const;
 
 function getPlaceMarkerGroupKey(
