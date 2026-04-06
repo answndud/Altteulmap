@@ -1,15 +1,15 @@
 # PROGRESS.md
 
-기준일: 2026-04-02
+기준일: 2026-04-05
 
 ## 진행 현황 요약
-- Cycle 10: 관리자 실제 구현을 `src/features/admin/**`로 모으고, public 앱 `entrypoints`와 별도 `apps/admin` 빌드를 추가해 관리자 분리 1차 완료. public `cf:build:public`은 이제 `/admin`, `/api/admin`을 external redirect/API stub로 유지한 채 빌드하고, `deploy:check:public`, `deploy:check:admin`, `SITE_URL` 기준까지 정리했다. 남은 일은 실제 workers.dev/custom domain 운영 적용만 남아 있음
+- Cycle 10: 관리자 실제 구현을 `src/features/admin/**`로 모으고, public 앱 `entrypoints`와 별도 `apps/admin` 빌드를 추가해 관리자 분리 1차 완료. public `cf:build:public`은 `/admin`, `/api/admin`을 external redirect/API stub로 유지한 채 빌드하고, `deploy:check:public`, `deploy:check:admin`, `SITE_URL` 기준, `workers.dev` split 배포와 remote smoke까지 정리했다. custom domain 적용은 필요할 때만 마지막 운영 단계로 남아 있다
 - Cycle 0: 프로젝트 로컬 기반, DB 경로, 지도 탐색, 장소 상세, 등록, 신고, 북마크, 관리자 검토, 로컬 인증, 네이버 지도 연동 완료
 - Cycle 1: 현재 위치 버튼, viewport 재조회, 모바일 목록 바텀시트, 모바일 상세 시트 기초 정리 완료
 - Cycle 2: `PLAN.md`/`PROGRESS.md` 운영 문서 형식 정비, 지역/전역 검색, 검색 URL 상태 반영 완료
 - Cycle 3: 댓글 작성/삭제, 기존 장소 가격 제보, 관리자 가격 검토 큐 완료
 - Cycle 4: 관리자 가격 수정/숨김 UI, 대표 가격 재계산 규칙, 최소 rate limit, DB migration 적용, 실DB 런타임 검증 완료
-- Cycle 5: sitemap/robots/canonical/기본 metadata, OAuth scaffolding, deploy check, Playwright E2E 3차, 공개 UI polish 진행 중. 공개 쓰기는 북마크를 제외하고 익명 허용으로 정리됐고, public/admin 공통 헤더로 주요 이동 액션을 상단에 통합했다. 로그인/회원가입은 credentials 중심 액션 카드로 다시 단순화했고, 운영 도메인 기준 점검과 관리자 외부 앱 cutover는 남아 있음
+- Cycle 5: sitemap/robots/canonical/기본 metadata, OAuth scaffolding, deploy check, Playwright E2E 3차, 공개 UI polish 대부분 완료. 공개 쓰기는 북마크를 제외하고 익명 허용으로 정리됐고, public/admin 공통 헤더로 주요 이동 액션을 상단에 통합했다. 로그인/회원가입은 credentials 중심 액션 카드로 다시 단순화했고, 운영 도메인 기준 `workers.dev` 점검과 관리자 외부 앱 cutover도 정리됐다. 현재 남은 일은 custom domain 여부 결정과 더 깊은 QA다
 - Cycle 5 장소 등록 정책: 공개 폼은 텍스트 정보만 받고, 지도 위치와 네이버 지도 검색 확인은 운영자 승인 단계에서 처리하도록 다시 정리됨
 - Cycle 5 후속: GitHub Actions CI를 `push용 smoke`와 `PR용 full`로 분리하고 Cloudflare Builds와 분리 운영하는 경로 정리 완료
 - Cycle 6: 좋아요/싫어요 반응 도입 완료, 비로그인 visitor cookie 반응과 공개 메타 줄 분리까지 반영. 홈 `인기 장소` 추천과 공유 후속은 반영했고, 별도 랭킹 화면은 현재 범위에서 제외함
@@ -27,6 +27,7 @@
 - Cycle 5 지도 탐색 UX 후속: 공개 지도 상단에 `이 지역 검색` 수동 재조회 버튼을 추가했고, `내 위치` 버튼은 `현재 위치`로 명확하게 바꿨다. viewport 흐름은 그대로 유지하면서도 사용자가 현재 지도 위치 기준으로 place/cluster를 다시 불러올 수 있게 했고, 데스크톱/모바일 지도 회귀에 버튼 노출과 수동 재조회 호출을 고정했다
 - Cycle 5 지도 마커 디자인 후속: place marker는 음식/생활서비스/장보기/건강/업무학습 상위 카테고리 기준 색 핀으로 다시 설계했고, 숫자 cluster는 중립 원형 계층으로 바꿔 같은 지도 화면에서 타입 구분과 시각 밀도를 함께 정리했다
 - Cycle 5 지도 마커 대비 후속: basemap과 섞이던 컬러 핀을 더 선명한 카테고리 팔레트와 강한 white halo, 중심 링 구조로 바꿨고, cluster도 slate 중심 원형 배지로 다시 정리해 확대/축소 상태 모두에서 배경 대비를 높였다
+- Cycle 5 지도 클러스터 톤 후속: 숫자 cluster는 같은 구조를 유지하되 slate 계열을 줄이고 더 밝은 크림/샌드 톤으로 조정해 overview 상태에서 덜 어둡고 답답하게 보이도록 정리했다
 - Cycle 5 공개 재검증 후속: 댓글/가격 제보/반응/북마크/장소 등록/신고 제출 route의 revalidation 경로를 공용 helper로 모아 홈/지도/상세/admin queue 반영 범위를 액션별로 정리했고, admin helper도 같은 place read 경로 정의를 재사용하도록 맞췄다
 - Cycle 5 운영 smoke 후속: `smoke:remote`와 `smoke:local`을 현재 UI/SEO 계약에 맞게 read-only smoke로 정리했고, Workers runtime에서 guest visitor cookie 조회가 public place read/write를 hang시키던 경로는 request cookie header 파싱과 DB read timeout fallback으로 완화했다. public worker를 다시 배포한 뒤 live `workers.dev` 기준 `smoke:remote`까지 통과했고, public `/api/admin/places` external stub는 다시 `200 + 안내 JSON` 계약으로 맞췄다
 - Cycle 5 rate limit UX 후속: 공개 쓰기와 회원가입 화면이 `429` 응답의 `Retry-After`/`X-RateLimit-Reset`을 읽어 남은 대기 시간을 같은 형식으로 보여주도록 정리했고, 댓글 E2E로 회귀를 붙였다
@@ -36,9 +37,30 @@
 - Cycle 6 추천 후속: 홈 기본 화면에 `인기 장소` 섹션을 추가해 상위 6개 추천 장소를 노출하고, mock/desktop 회귀까지 붙였다
 - Cycle 6 공유 후속: 상세 페이지/상세 시트/지도 목록/인기 장소 카드가 같은 공유 payload를 쓰도록 정리했고, 공유 링크에는 `ref=share`, `source=detail|detail_sheet|list|trending`를 붙였다
 - Cycle 6 공유 telemetry 후속: `visit_activity`에 공유 ref/source를 저장하고, 관리자 overview에서 오늘/7일 공유 유입과 source breakdown을 확인할 수 있게 정리했다
-- 다음 우선순위: 공유 유입을 추천 로직이나 운영 지표에 더 활용할지 판단하고, 출시 준비/운영 품질 잔여 범위를 정리한다
+- 다음 우선순위: custom domain 적용 여부를 결정하고, 운영 도메인 QA와 모바일 제스처 실사용 검증을 더 진행할지 판단한다. 공유 telemetry는 현재 범위에서 동결할지 추가 활용할지 별도 결정이 남아 있다
 
 ## 실행 로그
+
+### 2026-04-06 12:12 KST: 공개 지도 숫자 cluster 톤 완화
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/map/naver-map-panel.tsx`에서 숫자 cluster의 `shell/core/text/shadow` 팔레트를 더 밝은 크림/샌드 계열로 조정했다.
+  - 기존의 너무 어두운 slate core는 걷어내고, 밝은 shell과 따뜻한 sand core, 짙은 갈색 텍스트 조합으로 바꿔 cluster가 덜 무겁게 보이도록 정리했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+- 메모
+  - `npm run verify` 중 local production DB에 `places` 테이블이 없어 mock fallback 로그는 남았지만, lint/build는 정상 통과했다.
+
+### 2026-04-05 15:21 KST: `PLAN.md`/`PROGRESS.md` 현재 상태 기준으로 동기화
+- 완료 내용
+  - `/Users/alex/project/altteulmap/PLAN.md`의 현재 우선순위를 실제 남은 일 기준으로 다시 정리했다. 완료된 반응/공유/배포 항목은 우선순위에서 내리고, custom domain 여부, 운영 QA, 검색 URL 상태, 공유 telemetry 후속 판단만 남겨 두었다.
+  - 같은 문서의 `출시 준비`, `관리자 분리`, `테스트 체계` 설명을 현재 기준으로 갱신했다. `workers.dev` split 배포와 remote smoke는 완료 상태로 올리고, custom domain과 더 깊은 실사용 QA만 잔여로 남겼다.
+  - `PLAN.md`의 stale `in_progress` 항목 두 개를 실제 구현 상태에 맞춰 `done`으로 정리했다. 대상은 credentials 기반 인증/배포 체크리스트 정리와 좋아요/싫어요 반응 + 공유 후속 범위 재판단 항목이다.
+  - `/Users/alex/project/altteulmap/PROGRESS.md` 상단 요약과 다음 우선순위도 같은 기준으로 맞췄다.
+- 검증 결과
+  - 문서 정리 작업이라 별도 코드 검증은 실행하지 않았다.
+- 메모
+  - 현재 기준 남은 큰 일은 `custom domain 최종 적용 여부`, `운영 도메인 QA 심화`, `모바일 제스처 실사용 검증`, `공유 telemetry 후속 활용 여부 판단` 정도다.
 
 ### 2026-04-05 12:48 KST: `착한가격업소` 기본 데이터셋을 `대표 가격 8천원 미만`으로 재생성
 - 완료 내용

@@ -1,6 +1,6 @@
 # PLAN.md
 
-기준일: 2026-04-01  
+기준일: 2026-04-05  
 목표: Altteulmap를 `지도 기반 절약 장소 탐색 + 가격 제보` 서비스 기준에서 MVP 완성도와 출시 준비 수준까지 끌어올린다.
 
 ## 운영 규칙
@@ -21,12 +21,11 @@
   - 핫딜 `deal`
 
 ## 현재 우선순위
-1. 운영 도메인 기준 출시 준비: credentials 로그인/회원가입 경로, 반복 가능한 검증 절차, canonical/robots/sitemap, Cloudflare 배포 체크리스트
-2. 운영 품질 후속 정리: rate limit 수치 조정, 관리자 UX polish, 캐시/재검증 보강
-3. 공개 UI polish: 헤더 간소화, 개발 문구 제거, 버튼/칩 줄바꿈 방지, 지도/상세 밀도 정리
-4. 확장 기능 1차: 플레이스 좋아요/싫어요 반응 모델과 UI 우선 도입
-5. 확장 기능 2차: 공유 후속 활용 범위와 우선순위 재정리
-6. repo-local 개발 워크플로우 유지: `.agents` skills/reviewers, `.githooks`, `verify` 스크립트
+1. 운영 도메인 출시 마감: `workers.dev` 이후 custom domain 적용 여부 확정, canonical/robots/sitemap 최종 점검
+2. 운영 품질/QA 후속 정리: 운영 도메인 smoke 심화, 모바일 제스처 실사용 검증, rate limit·캐시 관측 정리
+3. 공개 UI 잔여 polish: 검색 URL 상태와 소규모 상호작용 polish 정리
+4. 공유 telemetry 후속 활용 범위 판단: 현재 지표를 더 확장할지, 현 범위에서 동결할지 결정
+5. repo-local 개발 워크플로우 유지: `.agents` skills/reviewers, `.githooks`, `verify` 스크립트
 
 ## 현재 제품 상태
 
@@ -62,9 +61,9 @@
 - 검색 URL 상태
   - 검색어/검색 범위는 반영되지만 지도 중심/줌 상태까지는 아직 URL에 싣지 않음
 - 출시 준비
-  - robots, sitemap, canonical, `smoke:local`, `deploy:check`, Playwright E2E 기본 흐름, credentials 로그인/가입/북마크/신고/관리자 승인/관리자 가격 검토 E2E, GitHub Actions CI, Cloudflare Builds 기준 배포 체크 문서는 정리 중이고, 현재 E2E는 세 그룹 실행 기준으로 반복 가능하다. Cloudflare 무료 플랜 기준 번들 경량화와 실제 `workers.dev` 배포까지는 통과했다. shell/CI env 우선 배포 체크와 split worker 빌드도 정리됐고, 남은 일은 live 운영 도메인 값으로 실제 배포를 끝내는 마지막 적용 단계다
+  - robots, sitemap, canonical, `smoke:local`, `deploy:check`, Playwright E2E 기본 흐름, credentials 로그인/가입/북마크/신고/관리자 승인/관리자 가격 검토 E2E, GitHub Actions CI, Cloudflare Builds 기준 배포 체크는 정리되어 있다. 현재 E2E는 세 그룹 실행 기준으로 반복 가능하고, Cloudflare 무료 플랜 기준 번들 경량화와 실제 `workers.dev` 배포 및 remote smoke까지 통과했다. custom domain은 필요할 때만 마지막 운영 적용 단계로 남긴다
 - 관리자 분리
-  - 관리자 실제 구현은 `src/features/admin/pages`, `src/features/admin/api`에 있고, public 앱의 `/admin`, `/api/admin`은 `entrypoints`를 통해 embedded/external 모드를 바꿀 수 있다. `cf:build:public`은 이제 관리자 route를 제거하지 않고 external redirect/API stub 모드로 빌드되며, `apps/admin` 별도 Next/OpenNext 빌드와 `deploy:check:public`, `deploy:check:admin` 경로도 정리됐다. 남은 일은 실제 `workers.dev` 또는 custom domain에 운영 적용하는 마지막 배포 단계다
+  - 관리자 실제 구현은 `src/features/admin/pages`, `src/features/admin/api`에 있고, public 앱의 `/admin`, `/api/admin`은 `entrypoints`를 통해 embedded/external 모드를 바꿀 수 있다. `cf:build:public`은 관리자 route를 제거하지 않고 external redirect/API stub 모드로 빌드되며, `apps/admin` 별도 Next/OpenNext 빌드와 `deploy:check:public`, `deploy:check:admin`, `workers.dev` split 배포와 smoke 경로까지 정리됐다. custom domain 운영 적용은 선택적 마지막 단계다
 - 인증
   - 로그인/회원가입 진입면과 로컬 credentials는 운영 가능한 수준으로 정리됐고, 현재는 credentials 회원가입까지 동작한다. 카카오/네이버 OAuth scaffolding은 선택적으로 남겨 두되, 제품 필수 인증 경로와 검증은 credentials 기준으로 유지한다
 - 반응 기능
@@ -74,7 +73,7 @@
 
 ### 미구현 핵심
 - 테스트 체계
-  - 지도/상세/비회원 좋아요/공유, 모바일 목록 시트/상세 시트, credentials 로그인/회원가입, 익명 댓글, 익명 장소 등록, 북마크, 익명 신고 제출/관리자 상태 변경, 익명 가격 제보/관리자 반려, 관리자 장소 승인 기준 Playwright E2E는 들어갔다. 현재는 DB 기반 `signup/bookmarks/map`, mock runtime의 `map.mobile`, DB 기반 `comments/price-review/report-admin/submission-admin` 세 그룹으로 반복 실행한다. 운영 도메인 기준 smoke와 더 깊은 모바일 제스처 검증은 더 필요하다
+  - 지도/상세/비회원 좋아요/공유, 모바일 목록 시트/상세 시트, credentials 로그인/회원가입, 익명 댓글, 익명 장소 등록, 북마크, 익명 신고 제출/관리자 상태 변경, 익명 가격 제보/관리자 반려, 관리자 장소 승인 기준 Playwright E2E는 들어갔다. 현재는 DB 기반 `signup/bookmarks/map`, mock runtime의 `map.mobile`, DB 기반 `comments/price-review/report-admin/submission-admin` 세 그룹으로 반복 실행하고, 운영 도메인 기준 read-only smoke도 붙어 있다. 더 깊은 모바일 제스처 검증과 실사용 QA는 여전히 남아 있다
 - 커뮤니티 `bang`
 - 핫딜 `deal`
 
@@ -137,7 +136,7 @@
 | mock runtime 기준 데스크톱 지도 상세의 비회원 좋아요 회귀를 조사하고 `map.spec.ts`를 다시 안정화한다 | Codex | P2 | `done` | `USE_MOCK_DATA=true` 기준 `tests/e2e/map.spec.ts`가 검색 가능한 장소를 동적으로 잡더라도 비회원 좋아요 count가 즉시 증가하고, preview/detail fetch 경쟁 또는 mock reaction 저장 경로 원인이 제거되며, 관련 검증과 로그가 `PROGRESS.md`에 남는다 | `src/features/places/place-detail-sheet.tsx`, `src/features/places/repository.ts`, `tests/e2e/map.spec.ts`, `PLAN.md`, `PROGRESS.md` |
 | 좋아요 반응 후속으로 홈에 `인기 장소` 추천 섹션을 추가해 반응/최근 갱신 기반의 상위 장소를 노출한다 | Codex | P2 | `done` | 홈 지도 화면에서 상위 6개 추천 장소가 `좋아요 우선 + 최근 갱신` 기준으로 노출되고, 각 카드에서 상세 페이지로 이동할 수 있으며, DB/mock 모두 동작하고 관련 검증과 로그가 `PROGRESS.md`에 남는다 | `src/features/places/repository.ts`, `src/features/map/map-page.tsx`, 새 UI 컴포넌트, 테스트/문서 |
 | 공개 UI polish 후속으로 모바일 헤더를 1줄 기준으로 줄이고, 홈을 map-first 레이아웃으로 다시 정리하며, auth/등록 화면의 상단 chrome과 카드 레이어를 감량한다 | Codex | P1 | `done` | 모바일 전역 헤더는 첫 화면을 과도하게 차지하지 않고, 홈은 모바일/데스크톱 모두 지도 시작 위치가 더 앞당겨지며, 로그인/회원가입/장소 등록 화면은 중복 네비와 설명 없이 입력/액션 중심 레이아웃으로 정리되고, 관련 검증과 로그가 `PROGRESS.md`에 남는다 | `src/components/global-header.tsx`, `src/components/brand-mark.tsx`, `src/features/map/map-page.tsx`, `src/features/auth/**`, `src/app/login/page.tsx`, `src/app/signup/page.tsx`, `src/app/submit/page.tsx`, `src/features/submission/place-submit-form.tsx`, `PROGRESS.md` |
-| 로컬 credentials 중심 인증을 실제 로그인/회원가입 경로로 확장하고, 핵심 사용자 흐름 테스트/SEO/배포 체크리스트를 정리한다 | Codex | P2 | `in_progress` | 로컬 credentials 로그인/회원가입과 선택적 소셜 가입 진입면, 지도 탐색/모바일 시트/익명 장소 등록/북마크/신고/관리자 승인/관리자 가격 검토 E2E가 반복 가능하게 정리되고, sitemap/canonical/metadata와 Cloudflare 배포 체크리스트가 최신 상태가 된다 | `src/auth.ts`, `src/app/login/page.tsx`, `src/app/signup/page.tsx`, 테스트 코드, `README.md`, `trd.md` |
+| 로컬 credentials 중심 인증을 실제 로그인/회원가입 경로로 확장하고, 핵심 사용자 흐름 테스트/SEO/배포 체크리스트를 정리한다 | Codex | P2 | `done` | 로컬 credentials 로그인/회원가입과 선택적 소셜 가입 진입면, 지도 탐색/모바일 시트/익명 장소 등록/북마크/신고/관리자 승인/관리자 가격 검토 E2E가 반복 가능하게 정리되고, sitemap/canonical/metadata와 Cloudflare 배포 체크리스트가 최신 상태가 된다 | `src/auth.ts`, `src/app/login/page.tsx`, `src/app/signup/page.tsx`, 테스트 코드, `README.md`, `trd.md` |
 | 공개 UI polish 2차로 인증 진입면은 액션 중심으로 다시 단순화하고, 지도 필터/검색 칩은 줄바꿈 대신 가로 레일로 정리한다 | Codex | P1 | `done` | `/login`, `/signup`은 설정성 패널 없이 로그인/가입 액션에만 집중하고, 지도 화면의 모바일/데스크톱 필터 칩과 검색 범위 칩은 과도한 줄바꿈 없이 가로 스크롤 또는 compact 배치로 정리되며, 관련 검증과 문서 로그가 `PROGRESS.md`에 남는다 | `src/app/login/page.tsx`, `src/app/signup/page.tsx`, `src/features/auth/**`, `src/features/map/map-page.tsx`, `src/app/globals.css`, E2E/verify |
 | 모바일 공개 지도 UX와 인증 진입면을 모바일 우선 기준으로 다시 정리한다 | Codex | P1 | `done` | 모바일에서 검색 외 필터는 접기 가능하고, 목록/상세 시트가 더 위로 올라오며, 로그인/회원가입이 기능 집중형 단일 카드 구조로 정리되고 관련 검증 로그가 `PROGRESS.md`에 남는다 | `src/app/map/page.tsx`, `src/features/places/map-explorer.tsx`, `src/features/places/place-detail-sheet.tsx`, `src/app/login/page.tsx`, `src/app/signup/page.tsx` |
 | 모바일 지도 UX 후속 정리로 전역 헤더와 시트 레이어 충돌을 없애고, 모바일 시트를 safe-area 기준 bottom sheet로 줄이며, 저줌 개요에서는 cluster/place 혼재를 줄인다 | Codex | P1 | `done` | 모바일 목록/상세 시트는 헤더 위에서 안정적으로 열리고, 닫기 액션이 항상 보이며, 시트는 화면을 과도하게 덮지 않고 safe-area를 고려하며, 모바일 개요 지도에서는 cluster와 place가 동시에 난잡하게 섞여 보이지 않도록 marker 정책 또는 스타일이 분리되고, 관련 검증과 로그가 `PROGRESS.md`에 남는다 | `src/components/global-header.tsx`, `src/features/places/map-explorer.tsx`, `src/features/places/place-detail-sheet.tsx`, `src/features/map/naver-map-panel.tsx`, `src/features/places/repository.ts`, 모바일 E2E |
@@ -169,7 +168,7 @@
 ### Cycle 6: 반복 방문 기능 확장
 | 작업명 | 담당 에이전트 | 우선순위 | 상태 | 완료기준(DoD) | 의존성 |
 |---|---|---|---|---|---|
-| 플레이스별 좋아요/싫어요를 먼저 붙여 공개 카운트와 사용자 반응 저장을 제공하고, 이후 공유 후속 활용 범위를 재판단한다 | Codex | P2 | `in_progress` | 공개 상세와 상세 시트에 좋아요/싫어요 UI가 생기고, visitor cookie 또는 로그인 사용자 기준으로 한 플레이스에 한 반응만 저장되며, 공개 읽기에는 카운트가 노출되고, route/schema/repository/DB migration/검증 결과가 `PROGRESS.md`에 남는다 | 벤치마크 분석 메모, `prd.md`, `trd.md`, `src/db/schema.ts`, `src/features/places/repository.ts`, `src/app/api/places/**` |
+| 플레이스별 좋아요/싫어요를 먼저 붙여 공개 카운트와 사용자 반응 저장을 제공하고, 이후 공유 후속 활용 범위를 재판단한다 | Codex | P2 | `done` | 공개 상세와 상세 시트에 좋아요/싫어요 UI가 생기고, visitor cookie 또는 로그인 사용자 기준으로 한 플레이스에 한 반응만 저장되며, 공개 읽기에는 카운트가 노출되고, route/schema/repository/DB migration/검증 결과가 `PROGRESS.md`에 남는다 | 벤치마크 분석 메모, `prd.md`, `trd.md`, `src/db/schema.ts`, `src/features/places/repository.ts`, `src/app/api/places/**` |
 | 공유 강화 1차로 상세/목록/추천 카드의 링크 payload와 공유 유입 source를 정리한다 | Codex | P2 | `done` | `PlaceShareButton`은 장소명/지역/대표가격 중심 공유 문구와 `ref=share`, `source=detail|detail_sheet|list|trending`가 붙은 URL을 사용하고, 상세 페이지/상세 시트/지도 목록/인기 장소 카드에서 같은 규칙으로 공유할 수 있으며, 관련 회귀와 문서/검증 로그가 `PROGRESS.md`에 남는다 | `src/features/places/place-share-button.tsx`, `src/features/places/map-explorer.tsx`, `src/features/places/trending-places-section.tsx`, `src/app/place/[id]/page.tsx`, `tests/e2e/map.spec.ts`, `PLAN.md`, `PROGRESS.md` |
 | 공유 링크의 `ref=share`, `source`를 visit telemetry에 반영해 관리자 overview에서 공유 유입을 본다 | Codex | P2 | `done` | public visit tracker와 `/api/telemetry/visit`는 공유 유입 query를 정규화해 저장하고, `visit_activity`는 bucket 단위의 공유 ref/source를 보존하며, `/admin` overview에서 오늘/7일 공유 유입과 source breakdown을 볼 수 있고, migration/검증 로그가 `PROGRESS.md`에 남는다 | `src/features/telemetry/**`, `src/app/api/telemetry/visit/route.ts`, `src/db/schema.ts`, `drizzle/**`, `src/features/admin/**`, `tests/e2e/admin-dashboard.spec.ts`, `PLAN.md`, `PROGRESS.md` |
 
