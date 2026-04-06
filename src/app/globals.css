@@ -161,7 +161,97 @@
   background-color: rgba(247, 241, 234, 0.92);
 }
 
+.altteulmap-scroll-row {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.altteulmap-scroll-row::-webkit-scrollbar {
+  display: none;
+}
+
+.altteulmap-chip-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.altteulmap-chip-grid > * {
+  min-width: 0;
+}
+
+@media (max-width: 1279px) {
+  .altteulmap-mobile-sheet {
+    left: 0.5rem;
+    right: 0.5rem;
+    bottom: max(env(safe-area-inset-bottom), 0.5rem);
+    transition:
+      transform 180ms ease,
+      height 180ms ease,
+      max-height 180ms ease,
+      box-shadow 180ms ease;
+    will-change: transform;
+  }
+
+  .altteulmap-mobile-sheet-list {
+    height: min(
+      46dvh,
+      calc(
+        100dvh - max(env(safe-area-inset-top), 5rem) -
+          max(env(safe-area-inset-bottom), 0.75rem)
+      )
+    );
+  }
+
+  .altteulmap-mobile-sheet-list[data-sheet-mode="expanded"] {
+    height: min(
+      72dvh,
+      calc(
+        100dvh - max(env(safe-area-inset-top), 5rem) -
+          max(env(safe-area-inset-bottom), 0.75rem)
+      )
+    );
+  }
+
+  .altteulmap-mobile-sheet-detail {
+    max-height: min(
+      84dvh,
+      calc(
+        100dvh - max(env(safe-area-inset-top), 5rem) -
+          max(env(safe-area-inset-bottom), 0.75rem)
+      )
+    );
+  }
+
+  .altteulmap-mobile-sheet-scroll {
+    padding-bottom: max(env(safe-area-inset-bottom), 0.75rem);
+  }
+
+  .altteulmap-mobile-sheet[data-sheet-dragging="true"] {
+    transition: none;
+  }
+}
+
+@media (min-width: 640px) {
+  .altteulmap-chip-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .altteulmap-chip-grid {
+    grid-template-columns: repeat(auto-fit, minmax(7.75rem, 1fr));
+  }
+}
+
 .altteulmap-input {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   border: 1px solid rgba(186, 173, 161, 0.75);
   border-radius: 1.15rem;
   background-color: rgba(255, 255, 255, 0.92);
@@ -173,6 +263,10 @@
 
 .altteulmap-input:hover {
   border-color: rgba(158, 138, 121, 0.8);
+}
+
+.altteulmap-input::placeholder {
+  color: rgb(168 162 158);
 }
 
 .altteulmap-input:focus {

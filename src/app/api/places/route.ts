@@ -1,20 +1,19 @@
+import { revalidateAfterPlaceSubmission } from "@/features/places/revalidation";
 import { createPlaceSubmission } from "@/features/places/repository";
 import { placeSubmissionSchema } from "@/features/submission/schema";
 import {
   getPublicWriteActor,
   setPublicWriteActorCookie,
 } from "@/lib/public-write-actor";
-import { consumeRateLimit } from "@/lib/rate-limit";
+import {
+  applyRateLimitHeaders,
+  consumeRateLimitPolicy,
+} from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   const actor = await getPublicWriteActor(request);
 
-  const rateLimit = consumeRateLimit({
-    scope: "place_submission",
-    key: actor.key,
-    limit: 5,
-    windowMs: 30 * 60 * 1000,
-  });
+  const rateLimit = consumeRateLimitPolicy("placeSubmission", actor.key);
 
   if (!rateLimit.ok) {
     const response = Response.json(
@@ -28,7 +27,7 @@ export async function POST(request: Request) {
 
     setPublicWriteActorCookie(response, actor, request);
 
-    return response;
+    return applyRateLimitHeaders(response, rateLimit);
   }
 
   const body = await request.json();
@@ -46,13 +45,16 @@ export async function POST(request: Request) {
 
     setPublicWriteActorCookie(response, actor, request);
 
-    return response;
+    return applyRateLimitHeaders(response, rateLimit);
   }
 
   const result = await createPlaceSubmission(parsed.data, actor.user?.id ?? null);
+  if (result.ok) {
+    revalidateAfterPlaceSubmission();
+  }
   const response = Response.json(result);
 
   setPublicWriteActorCookie(response, actor, request);
 
-  return response;
+  return applyRateLimitHeaders(response, rateLimit);
 }

@@ -2,26 +2,30 @@ import { execFileSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import dotenv from "dotenv";
+
+import { loadEnvFilesWithShellPrecedence } from "./lib/load-env-files.mjs";
+import { patchNextCloudflareRuntime } from "./patch-next-cloudflare-runtime.mjs";
 
 const projectRoot = process.cwd();
 const backupRoot = mkdtempSync(path.join(tmpdir(), "altteulmap-public-build-"));
-const adminTargets = [
-  "src/app/admin",
-  "src/app/api/admin",
-];
+const adminEntrypointsPath = "src/features/admin/entrypoints";
+const syncScriptPath = path.join(projectRoot, "scripts", "sync-admin-entrypoints.mjs");
+const openNextBin = path.join(
+  projectRoot,
+  "node_modules",
+  ".bin",
+  "opennextjs-cloudflare",
+);
 
-for (const filename of [
+loadEnvFilesWithShellPrecedence({
+  cwd: projectRoot,
+  filenames: [
   ".env",
   ".env.production",
   ".env.local",
   ".env.production.local",
-]) {
-  dotenv.config({
-    path: path.join(projectRoot, filename),
-    override: true,
-  });
-}
+  ],
+});
 
 function backupAndRemove(relativePath) {
   const sourcePath = path.join(projectRoot, relativePath);
@@ -57,25 +61,28 @@ if (!process.env.ADMIN_APP_URL) {
 }
 
 try {
-  for (const relativePath of adminTargets) {
-    backupAndRemove(relativePath);
-  }
+  backupAndRemove(adminEntrypointsPath);
+  patchNextCloudflareRuntime({ projectRoot });
 
-  execFileSync(
-    "npx",
-    ["opennextjs-cloudflare", "build"],
-    {
-      cwd: projectRoot,
-      env: {
-        ...process.env,
-      },
-      stdio: "inherit",
+  execFileSync("node", [syncScriptPath], {
+    cwd: projectRoot,
+    env: {
+      ...process.env,
+      ALTTEULMAP_ADMIN_MODE: "external",
     },
-  );
+    stdio: "inherit",
+  });
+
+  execFileSync(openNextBin, ["build"], {
+    cwd: projectRoot,
+    env: {
+      ...process.env,
+      ALTTEULMAP_ADMIN_MODE: "external",
+    },
+    stdio: "inherit",
+  });
 } finally {
-  for (const relativePath of adminTargets) {
-    restore(relativePath);
-  }
+  restore(adminEntrypointsPath);
 
   rmSync(backupRoot, { recursive: true, force: true });
 }

@@ -1,6 +1,6 @@
-import { revalidatePath } from "next/cache";
 import { setBookmark } from "@/features/bookmarks/repository";
 import { bookmarkToggleSchema } from "@/features/bookmarks/schema";
+import { revalidateAfterBookmarkToggle } from "@/features/places/revalidation";
 import { getSessionUser } from "@/lib/session";
 
 type RouteContext = {
@@ -41,12 +41,7 @@ export async function PUT(request: Request, context: RouteContext) {
   const result = await setBookmark(id, parsed.data.bookmarked, user);
 
   if (result.ok) {
-    revalidatePath("/bookmarks");
-    revalidatePath("/api/bookmarks");
-    revalidatePath("/");
-    revalidatePath("/api/places/map");
-    revalidatePath(`/place/${id}`);
-    revalidatePath(`/api/places/${id}`);
+    revalidateAfterBookmarkToggle(id);
   }
 
   return Response.json(result, { status: result.ok ? 200 : 404 });

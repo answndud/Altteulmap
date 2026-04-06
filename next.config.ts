@@ -7,6 +7,7 @@ const isDevServer =
 
 const nextConfig: NextConfig = {
   distDir: isDevServer ? ".next-dev" : ".next",
+  allowedDevOrigins: ["127.0.0.1"],
   async redirects() {
     return [
       {

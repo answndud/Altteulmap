@@ -5,6 +5,8 @@ import path from "node:path";
 type CliOptions = {
   limit: number;
   maxPrice: number;
+  seoulLimit: number;
+  foodRatio: number;
   delayMs: number;
   timeoutMs: number;
   includeDetail: boolean;
@@ -87,9 +89,33 @@ type PlaceRecord = {
   }>;
 };
 
+type BucketKey =
+  | "seoulFood"
+  | "seoulNonFood"
+  | "nonSeoulFood"
+  | "nonSeoulNonFood";
+
+type BucketTargets = Record<BucketKey, number>;
+type BucketCollections = Record<BucketKey, GoodpriceListItem[]>;
+type SelectionTargets = {
+  seoulLimit: number;
+  nonSeoulLimit: number;
+  foodTarget: number;
+  nonFoodTarget: number;
+  bucketCaps: BucketTargets;
+};
+
 const GOODPRICE_BASE_URL = "https://goodprice.go.kr";
 const LIST_PATH = "/bssh/bsshList.do";
 const DETAIL_PATH = "/bssh/bsshInfo.json";
+const FOOD_CATEGORY_NAMES = new Set([
+  "한식",
+  "일식",
+  "양식",
+  "중식",
+  "베이커리",
+  "기타요식업",
+]);
 
 function getKstDateStamp() {
   return new Intl.DateTimeFormat("sv-SE", {
@@ -99,10 +125,16 @@ function getKstDateStamp() {
 
 const IMPORTED_AT = getKstDateStamp();
 
+function isUnderPriceCeiling(amount: number, maxPrice: number) {
+  return amount < maxPrice;
+}
+
 function parseArgs(argv: string[]): CliOptions {
   const options: CliOptions = {
     limit: 1000,
-    maxPrice: 10000,
+    maxPrice: 8000,
+    seoulLimit: -1,
+    foodRatio: 0.7,
     delayMs: 120,
     timeoutMs: 15000,
     includeDetail: true,
@@ -117,19 +149,38 @@ function parseArgs(argv: string[]): CliOptions {
 
     const [flag, rawValue] = arg.slice(2).split("=", 2);
     const value = rawValue ?? "";
+    const numericValue = Number(value);
 
     switch (flag) {
       case "limit":
-        options.limit = Number(value) || options.limit;
+        if (Number.isFinite(numericValue) && numericValue > 0) {
+          options.limit = numericValue;
+        }
         break;
       case "max-price":
-        options.maxPrice = Number(value) || options.maxPrice;
+        if (Number.isFinite(numericValue) && numericValue > 0) {
+          options.maxPrice = numericValue;
+        }
+        break;
+      case "seoul-limit":
+        if (Number.isFinite(numericValue) && numericValue >= 0) {
+          options.seoulLimit = numericValue;
+        }
+        break;
+      case "food-ratio":
+        if (Number.isFinite(numericValue)) {
+          options.foodRatio = numericValue;
+        }
         break;
       case "delay-ms":
-        options.delayMs = Number(value) || options.delayMs;
+        if (Number.isFinite(numericValue) && numericValue >= 0) {
+          options.delayMs = numericValue;
+        }
         break;
       case "timeout-ms":
-        options.timeoutMs = Number(value) || options.timeoutMs;
+        if (Number.isFinite(numericValue) && numericValue > 0) {
+          options.timeoutMs = numericValue;
+        }
         break;
       case "include-detail":
         options.includeDetail = value !== "false";
@@ -143,6 +194,10 @@ function parseArgs(argv: string[]): CliOptions {
       default:
         break;
     }
+  }
+
+  if (options.seoulLimit < 0) {
+    options.seoulLimit = Math.min(500, Math.floor(options.limit / 2));
   }
 
   return options;
@@ -176,6 +231,10 @@ function cleanText(value: string | undefined) {
     .trim();
 }
 
+function normalizePriceLabel(label: string) {
+  return label.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
 function parsePrice(value: string) {
   const digits = value.replace(/[^\d]/g, "");
   return digits.length > 0 ? Number(digits) : Number.NaN;
@@ -192,6 +251,10 @@ function createStableId(...parts: string[]) {
 function getDistrict(address: string) {
   const tokens = address.split(/\s+/).filter(Boolean);
   return tokens.slice(0, 2).join(" ");
+}
+
+function isFoodCategory(categoryName: string) {
+  return FOOD_CATEGORY_NAMES.has(categoryName);
 }
 
 function mapCategorySlug(categoryName: string) {
@@ -443,7 +506,9 @@ function buildPriceItems(
   detail: GoodpriceDetail,
   maxPrice: number,
 ): PlacePriceItem[] {
-  const filteredDetailMenus = detail.menus.filter((menu) => menu.amount <= maxPrice);
+  const filteredDetailMenus = detail.menus.filter((menu) =>
+    isUnderPriceCeiling(menu.amount, maxPrice),
+  );
   const sourceMenus =
     filteredDetailMenus.length > 0
       ? filteredDetailMenus
@@ -455,25 +520,98 @@ function buildPriceItems(
           },
         ];
 
-  const deduped = new Map<string, PlacePriceItem>();
+  const deduped = new Map<
+    string,
+    PlacePriceItem & {
+      isDesignated: boolean;
+      matchesRepresentativeMenu: boolean;
+      matchesRepresentativeAmount: boolean;
+    }
+  >();
 
   for (const menu of sourceMenus) {
-    const key = `${menu.label}-${menu.amount}`;
-
-    if (deduped.has(key)) {
-      continue;
-    }
-
-    deduped.set(key, {
+    const normalizedLabel = normalizePriceLabel(menu.label);
+    const nextItem = {
       id: createStableId(item.bsshSn, menu.label, String(menu.amount)),
       label: menu.label,
       amount: menu.amount,
       verificationStatus: "verified",
       reportedAt: IMPORTED_AT,
-    });
+      isDesignated: menu.isDesignated,
+      matchesRepresentativeMenu: menu.label === item.representativeMenu,
+      matchesRepresentativeAmount:
+        menu.label === item.representativeMenu && menu.amount === item.price,
+    } satisfies PlacePriceItem & {
+      isDesignated: boolean;
+      matchesRepresentativeMenu: boolean;
+      matchesRepresentativeAmount: boolean;
+    };
+    const currentItem = deduped.get(normalizedLabel);
+
+    if (!currentItem) {
+      deduped.set(normalizedLabel, nextItem);
+      continue;
+    }
+
+    const shouldReplace =
+      (!currentItem.isDesignated && nextItem.isDesignated) ||
+      (!currentItem.matchesRepresentativeAmount &&
+        nextItem.matchesRepresentativeAmount) ||
+      (!currentItem.matchesRepresentativeMenu &&
+        nextItem.matchesRepresentativeMenu) ||
+      (currentItem.amount > nextItem.amount &&
+        currentItem.isDesignated === nextItem.isDesignated &&
+        currentItem.matchesRepresentativeAmount ===
+          nextItem.matchesRepresentativeAmount &&
+        currentItem.matchesRepresentativeMenu ===
+          nextItem.matchesRepresentativeMenu);
+
+    if (shouldReplace) {
+      deduped.set(normalizedLabel, nextItem);
+    }
   }
 
-  return Array.from(deduped.values());
+  return Array.from(deduped.values()).map((item) => ({
+    id: item.id,
+    label: item.label,
+    amount: item.amount,
+    verificationStatus: item.verificationStatus,
+    reportedAt: item.reportedAt,
+  }));
+}
+
+function findRepresentativePrice(
+  item: GoodpriceListItem,
+  detail: GoodpriceDetail,
+  priceItems: PlacePriceItem[],
+  maxPrice: number,
+) {
+  const representativeCandidate =
+    detail.menus.find(
+      (menu) => menu.isDesignated && isUnderPriceCeiling(menu.amount, maxPrice),
+    ) ??
+    detail.menus.find(
+      (menu) =>
+        menu.label === item.representativeMenu &&
+        isUnderPriceCeiling(menu.amount, maxPrice),
+    ) ?? {
+      label: item.representativeMenu,
+      amount: item.price,
+      isDesignated: true,
+    };
+  const normalizedRepresentativeLabel = normalizePriceLabel(
+    representativeCandidate.label,
+  );
+
+  return (
+    priceItems.find(
+      (priceItem) =>
+        normalizePriceLabel(priceItem.label) === normalizedRepresentativeLabel,
+    ) ?? {
+      label: representativeCandidate.label,
+      amount: representativeCandidate.amount,
+    }
+  );
 }
 
 function toPlaceRecord(
@@ -482,18 +620,12 @@ function toPlaceRecord(
   maxPrice: number,
 ): PlaceRecord {
   const priceItems = buildPriceItems(item, detail, maxPrice);
-  const representativePrice =
-    detail.menus.find(
-      (menu) => menu.isDesignated && menu.amount <= maxPrice,
-    ) ??
-    detail.menus.find(
-      (menu) =>
-        menu.label === item.representativeMenu && menu.amount <= maxPrice,
-    ) ?? {
-      label: item.representativeMenu,
-      amount: item.price,
-      isDesignated: true,
-    };
+  const representativePrice = findRepresentativePrice(
+    item,
+    detail,
+    priceItems,
+    maxPrice,
+  );
 
   return {
     id: createSlug(item.bsshSn),
@@ -525,70 +657,263 @@ function toPlaceRecord(
   };
 }
 
+function buildSelectionTargets(options: CliOptions): SelectionTargets {
+  if (options.limit <= 0) {
+    throw new Error("`limit` must be greater than 0.");
+  }
+
+  if (options.seoulLimit < 0 || options.seoulLimit > options.limit) {
+    throw new Error("`seoul-limit` must be between 0 and `limit`.");
+  }
+
+  if (options.foodRatio < 0 || options.foodRatio > 1) {
+    throw new Error("`food-ratio` must be between 0 and 1.");
+  }
+
+  const nonSeoulLimit = options.limit - options.seoulLimit;
+  const foodTarget = Math.round(options.limit * options.foodRatio);
+  const nonFoodTarget = options.limit - foodTarget;
+
+  return {
+    seoulLimit: options.seoulLimit,
+    nonSeoulLimit,
+    foodTarget,
+    nonFoodTarget,
+    bucketCaps: {
+      seoulFood: Math.min(options.seoulLimit, foodTarget),
+      seoulNonFood: Math.min(options.seoulLimit, nonFoodTarget),
+      nonSeoulFood: Math.min(nonSeoulLimit, foodTarget),
+      nonSeoulNonFood: Math.min(nonSeoulLimit, nonFoodTarget),
+    },
+  };
+}
+
+function createBucketCollections(): BucketCollections {
+  return {
+    seoulFood: [],
+    seoulNonFood: [],
+    nonSeoulFood: [],
+    nonSeoulNonFood: [],
+  };
+}
+
+function getBucketCounts(collections: BucketCollections) {
+  return {
+    seoulFood: collections.seoulFood.length,
+    seoulNonFood: collections.seoulNonFood.length,
+    nonSeoulFood: collections.nonSeoulFood.length,
+    nonSeoulNonFood: collections.nonSeoulNonFood.length,
+  };
+}
+
+function getTotalCollected(collections: BucketCollections) {
+  return Object.values(collections).reduce((sum, items) => sum + items.length, 0);
+}
+
+function resolveBucketTargets(
+  collections: BucketCollections,
+  targets: SelectionTargets,
+): BucketTargets | null {
+  const counts = getBucketCounts(collections);
+  const lowerBound = Math.max(
+    0,
+    targets.seoulLimit - counts.seoulNonFood,
+    targets.foodTarget - counts.nonSeoulFood,
+    targets.foodTarget - targets.nonSeoulLimit,
+  );
+  const upperBound = Math.min(
+    counts.seoulFood,
+    targets.seoulLimit,
+    targets.foodTarget,
+    counts.nonSeoulNonFood - targets.nonSeoulLimit + targets.foodTarget,
+  );
+
+  if (lowerBound > upperBound) {
+    return null;
+  }
+
+  const seoulFood = upperBound;
+  const seoulNonFood = targets.seoulLimit - seoulFood;
+  const nonSeoulFood = targets.foodTarget - seoulFood;
+  const nonSeoulNonFood = targets.nonSeoulLimit - nonSeoulFood;
+
+  if (
+    seoulFood < 0 ||
+    seoulNonFood < 0 ||
+    nonSeoulFood < 0 ||
+    nonSeoulNonFood < 0
+  ) {
+    return null;
+  }
+
+  return {
+    seoulFood,
+    seoulNonFood,
+    nonSeoulFood,
+    nonSeoulNonFood,
+  };
+}
+
+function getBucketKey(item: GoodpriceListItem) {
+  const isSeoul = item.regionName.includes("서울");
+  const isFood = isFoodCategory(item.categoryName);
+
+  if (isSeoul) {
+    return isFood ? "seoulFood" : "seoulNonFood";
+  }
+
+  return isFood ? "nonSeoulFood" : "nonSeoulNonFood";
+}
+
+function formatBucketProgress(
+  collections: BucketCollections,
+  targets: BucketTargets,
+) {
+  const counts = getBucketCounts(collections);
+
+  return [
+    `서울 음식 ${counts.seoulFood}/${targets.seoulFood}`,
+    `서울 비음식 ${counts.seoulNonFood}/${targets.seoulNonFood}`,
+    `비서울 음식 ${counts.nonSeoulFood}/${targets.nonSeoulFood}`,
+    `비서울 비음식 ${counts.nonSeoulNonFood}/${targets.nonSeoulNonFood}`,
+  ].join(", ");
+}
+
+function buildSelectedItems(
+  collections: BucketCollections,
+  targets: BucketTargets,
+) {
+  const buckets = [
+    collections.seoulFood.slice(0, targets.seoulFood),
+    collections.seoulNonFood.slice(0, targets.seoulNonFood),
+    collections.nonSeoulFood.slice(0, targets.nonSeoulFood),
+    collections.nonSeoulNonFood.slice(0, targets.nonSeoulNonFood),
+  ];
+  const selected: GoodpriceListItem[] = [];
+  let remaining = true;
+  let index = 0;
+
+  while (remaining) {
+    remaining = false;
+
+    for (const bucket of buckets) {
+      if (index < bucket.length) {
+        selected.push(bucket[index]);
+        remaining = true;
+      }
+    }
+
+    index += 1;
+  }
+
+  return selected;
+}
+
 async function main() {
   const options = parseArgs(process.argv.slice(2));
+  const selectionTargets = buildSelectionTargets(options);
   const firstPageHtml = (await fetchText(LIST_PATH, {
     pageIndex: "1",
     menuId: "MN-0103",
   }, options.timeoutMs)) as string;
 
   const regions = extractRegionOptions(firstPageHtml);
+  const seoulRegion = regions.find((region) => region.name.includes("서울"));
+
+  if (!seoulRegion) {
+    throw new Error("Failed to find the Seoul region option.");
+  }
+
+  const nonSeoulRegions = regions.filter((region) => region.code !== seoulRegion.code);
   const seenAddresses = new Set<string>();
-  const collected: GoodpriceListItem[] = [];
+  const collected = createBucketCollections();
   const pageState = new Map(
     regions.map((region) => [region.code, { nextPage: 1, done: false }]),
   );
+  let nonSeoulCursor = 0;
 
-  while (collected.length < options.limit) {
+  const collectFromRegion = async (region: RegionOption) => {
+    const state = pageState.get(region.code);
+
+    if (!state || state.done) {
+      return false;
+    }
+
+    const html =
+      ((await fetchText(LIST_PATH, {
+        pageIndex: String(state.nextPage),
+        menuId: "MN-0103",
+        srchCtpvCd: region.code,
+      }, options.timeoutMs)) as string);
+
+    const pageItems = parseListPage(html, state.nextPage, region);
+    state.nextPage += 1;
+
+    if (pageItems.length === 0) {
+      state.done = true;
+      return true;
+    }
+
+    const affordableItems = pageItems.filter(
+      (item) =>
+        isUnderPriceCeiling(item.price, options.maxPrice) &&
+        !seenAddresses.has(`${item.name}@@${item.address}`),
+    );
+
+    for (const item of affordableItems) {
+      const bucket = getBucketKey(item);
+
+      if (collected[bucket].length >= selectionTargets.bucketCaps[bucket]) {
+        continue;
+      }
+
+      collected[bucket].push(item);
+      seenAddresses.add(`${item.name}@@${item.address}`);
+
+      const totalCollected = getTotalCollected(collected);
+
+      if (totalCollected > 0 && totalCollected % 100 === 0) {
+        console.log(
+          `Collected ${totalCollected}/${options.limit} places... (${formatBucketProgress(collected, selectionTargets.bucketCaps)})`,
+        );
+      }
+    }
+
+    await sleep(options.delayMs);
+    return true;
+  };
+
+  while (!resolveBucketTargets(collected, selectionTargets)) {
     let progressed = false;
 
-    for (const region of regions) {
-      if (collected.length >= options.limit) {
+    if (
+      collected.seoulFood.length < selectionTargets.bucketCaps.seoulFood ||
+      collected.seoulNonFood.length < selectionTargets.bucketCaps.seoulNonFood
+    ) {
+      progressed = (await collectFromRegion(seoulRegion)) || progressed;
+    }
+
+    if (
+      collected.nonSeoulFood.length < selectionTargets.bucketCaps.nonSeoulFood ||
+      collected.nonSeoulNonFood.length <
+        selectionTargets.bucketCaps.nonSeoulNonFood
+    ) {
+      let attempts = 0;
+
+      while (attempts < nonSeoulRegions.length) {
+        const region = nonSeoulRegions[nonSeoulCursor % nonSeoulRegions.length];
+        nonSeoulCursor += 1;
+        attempts += 1;
+
+        const state = pageState.get(region.code);
+
+        if (!state || state.done) {
+          continue;
+        }
+
+        progressed = (await collectFromRegion(region)) || progressed;
         break;
       }
-
-      const state = pageState.get(region.code);
-
-      if (!state || state.done) {
-        continue;
-      }
-
-      const html =
-        ((await fetchText(LIST_PATH, {
-          pageIndex: String(state.nextPage),
-          menuId: "MN-0103",
-          srchCtpvCd: region.code,
-        }, options.timeoutMs)) as string);
-
-      const pageItems = parseListPage(html, state.nextPage, region);
-      state.nextPage += 1;
-      progressed = true;
-
-      if (pageItems.length === 0) {
-        state.done = true;
-        continue;
-      }
-
-      const affordableItems = pageItems.filter(
-        (item) =>
-          item.price <= options.maxPrice &&
-          !seenAddresses.has(`${item.name}@@${item.address}`),
-      );
-
-      for (const item of affordableItems) {
-        collected.push(item);
-        seenAddresses.add(`${item.name}@@${item.address}`);
-
-        if (collected.length >= options.limit) {
-          break;
-        }
-      }
-
-      if (collected.length > 0 && collected.length % 100 === 0) {
-        console.log(`Collected ${collected.length}/${options.limit} places...`);
-      }
-
-      await sleep(options.delayMs);
     }
 
     if (!progressed) {
@@ -596,7 +921,15 @@ async function main() {
     }
   }
 
-  const selected = collected.slice(0, options.limit);
+  const resolvedBucketTargets = resolveBucketTargets(collected, selectionTargets);
+
+  if (!resolvedBucketTargets) {
+    throw new Error(
+      `Failed to satisfy quota targets. available=${formatBucketProgress(collected, getBucketCounts(collected))}, required=서울 ${selectionTargets.seoulLimit}, 비서울 ${selectionTargets.nonSeoulLimit}, 음식 ${selectionTargets.foodTarget}, 비음식 ${selectionTargets.nonFoodTarget}`,
+    );
+  }
+
+  const selected = buildSelectedItems(collected, resolvedBucketTargets);
   const detailMap = new Map<string, GoodpriceDetail>();
 
   if (options.includeDetail) {
@@ -630,6 +963,21 @@ async function main() {
     importedAt: new Date().toISOString(),
     options,
     selectedCount: selected.length,
+    quotas: {
+      seoulLimit: options.seoulLimit,
+      nonSeoulLimit: selectionTargets.nonSeoulLimit,
+      foodRatio: options.foodRatio,
+      foodTarget: selectionTargets.foodTarget,
+      nonFoodTarget: selectionTargets.nonFoodTarget,
+      bucketCaps: selectionTargets.bucketCaps,
+      targets: resolvedBucketTargets,
+      actual: getBucketCounts({
+        seoulFood: collected.seoulFood.slice(0, resolvedBucketTargets.seoulFood),
+        seoulNonFood: collected.seoulNonFood.slice(0, resolvedBucketTargets.seoulNonFood),
+        nonSeoulFood: collected.nonSeoulFood.slice(0, resolvedBucketTargets.nonSeoulFood),
+        nonSeoulNonFood: collected.nonSeoulNonFood.slice(0, resolvedBucketTargets.nonSeoulNonFood),
+      }),
+    },
     regions: Array.from(
       selected.reduce((map, item) => {
         map.set(item.regionName, (map.get(item.regionName) ?? 0) + 1);

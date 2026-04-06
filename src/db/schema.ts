@@ -1,6 +1,7 @@
 import {
   type AnyPgColumn,
   boolean,
+  date,
   doublePrecision,
   index,
   integer,
@@ -166,10 +167,13 @@ export const places = pgTable(
     latitude: doublePrecision("latitude"),
     longitude: doublePrecision("longitude"),
     status: placeStatusEnum("status").default("active").notNull(),
+    primaryCategorySlug: varchar("primary_category_slug", { length: 80 }),
     representativePriceAmount: integer("representative_price_amount"),
     representativePriceLabel: varchar("representative_price_label", {
       length: 120,
     }),
+    likeCount: integer("like_count").default(0).notNull(),
+    dislikeCount: integer("dislike_count").default(0).notNull(),
     verifiedPriceItemCount: integer("verified_price_item_count")
       .default(0)
       .notNull(),
@@ -184,6 +188,10 @@ export const places = pgTable(
   (table) => [
     uniqueIndex("places_slug_unique").on(table.slug),
     index("places_status_updated_at_idx").on(table.status, table.updatedAt),
+    index("places_status_primary_category_idx").on(
+      table.status,
+      table.primaryCategorySlug,
+    ),
     index("places_representative_price_idx").on(
       table.representativePriceAmount,
     ),
@@ -416,6 +424,54 @@ export const adminActions = pgTable(
     index("admin_actions_admin_created_at_idx").on(
       table.adminUserId,
       table.createdAt,
+    ),
+  ],
+);
+
+export const visitActivities = pgTable(
+  "visit_activity",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    actorKey: varchar("actor_key", { length: 96 }).notNull(),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
+    visitorId: varchar("visitor_id", { length: 64 }),
+    routeGroup: varchar("route_group", { length: 24 }).notNull(),
+    routePath: varchar("route_path", { length: 160 }).notNull(),
+    entryRef: varchar("entry_ref", { length: 24 }),
+    entrySource: varchar("entry_source", { length: 32 }),
+    visitDate: date("visit_date").notNull(),
+    bucketStartedAt: timestamp("bucket_started_at", {
+      withTimezone: true,
+    }).notNull(),
+    hitCount: integer("hit_count").default(1).notNull(),
+    firstVisitedAt: timestamp("first_visited_at", {
+      withTimezone: true,
+    })
+      .defaultNow()
+      .notNull(),
+    lastVisitedAt: timestamp("last_visited_at", {
+      withTimezone: true,
+    })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("visit_activity_actor_group_bucket_unique").on(
+      table.actorKey,
+      table.routeGroup,
+      table.bucketStartedAt,
+    ),
+    index("visit_activity_date_group_idx").on(table.visitDate, table.routeGroup),
+    index("visit_activity_date_ref_idx").on(table.visitDate, table.entryRef),
+    index("visit_activity_date_source_idx").on(
+      table.visitDate,
+      table.entrySource,
+    ),
+    index("visit_activity_date_actor_idx").on(table.visitDate, table.actorKey),
+    index("visit_activity_user_date_idx").on(table.userId, table.visitDate),
+    index("visit_activity_visitor_date_idx").on(
+      table.visitorId,
+      table.visitDate,
     ),
   ],
 );

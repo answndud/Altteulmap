@@ -2,25 +2,24 @@ import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 
-import dotenv from "dotenv";
+import { loadEnvFilesWithShellPrecedence } from "./lib/load-env-files.mjs";
 
 const cwd = process.cwd();
 const target = process.argv.includes("--preview") ? "preview" : "production";
+const deploymentMode = process.argv.includes("--admin")
+  ? "admin"
+  : process.argv.includes("--public")
+    ? "public"
+    : "full";
 const envFiles =
   target === "production"
     ? [".env", ".env.production", ".env.local", ".env.production.local"]
     : [".env", ".env.local"];
 
-for (const filename of envFiles) {
-  const fullPath = path.join(cwd, filename);
-
-  if (fs.existsSync(fullPath)) {
-    dotenv.config({
-      path: fullPath,
-      override: true,
-    });
-  }
-}
+loadEnvFilesWithShellPrecedence({
+  cwd,
+  filenames: envFiles,
+});
 
 const requiredVars = [
   "DATABASE_URL",
@@ -32,6 +31,12 @@ const requiredVars = [
   "AUTH_NAVER_CLIENT_ID",
   "AUTH_NAVER_CLIENT_SECRET",
 ];
+
+const modeRequiredVars = {
+  full: [],
+  public: ["ADMIN_APP_URL"],
+  admin: ["SITE_URL", "ADMIN_APP_URL"],
+};
 
 const optionalVars = ["EMAIL_FROM", "RESEND_API_KEY"];
 
@@ -53,6 +58,14 @@ function isLocalhostUrl(value) {
   }
 }
 
+function isHttpsUrl(value) {
+  try {
+    return new URL(value).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 function printLine(message = "") {
   process.stdout.write(`${message}\n`);
 }
@@ -62,22 +75,64 @@ function printSection(title) {
   printLine(`[${title}]`);
 }
 
+function getDeploymentModeLabel(mode) {
+  switch (mode) {
+    case "public":
+      return "public-only worker";
+    case "admin":
+      return "standalone admin worker";
+    default:
+      return "full app worker";
+  }
+}
+
+function printUrlCheck(name, value, options = {}) {
+  const { requireHttps = false } = options;
+
+  if (!isTruthy(value)) {
+    printLine(`FAIL ${name} is missing`);
+    return false;
+  }
+
+  if (target === "production" && isLocalhostUrl(value)) {
+    printLine(`FAIL ${name} still points to localhost`);
+    return false;
+  }
+
+  if ((target === "production" || requireHttps) && !isHttpsUrl(value)) {
+    printLine(`WARN ${name} should use https`);
+    return true;
+  }
+
+  printLine(`OK   ${name} format looks valid`);
+  return true;
+}
+
 function main() {
-  printLine(`Checking Cloudflare deploy readiness for ${target}`);
+  printLine(
+    `Checking Cloudflare deploy readiness for ${target} (${getDeploymentModeLabel(deploymentMode)})`,
+  );
 
-  printSection("Required env");
-
-  const missingRequired = requiredVars.filter(
+  const deploymentRequiredVars = [
+    ...requiredVars,
+    ...modeRequiredVars[deploymentMode],
+  ];
+  const missingRequired = deploymentRequiredVars.filter(
     (name) => !isTruthy(process.env[name]),
   );
 
-  for (const name of requiredVars) {
+  printSection("Required env");
+
+  for (const name of deploymentRequiredVars) {
     printLine(`${missingRequired.includes(name) ? "FAIL" : "OK  "} ${name}`);
   }
 
   printSection("Optional env");
 
-  for (const name of optionalVars) {
+  const modeOptionalVars =
+    deploymentMode === "full" ? ["ADMIN_APP_URL", "SITE_URL"] : [];
+
+  for (const name of [...optionalVars, ...modeOptionalVars]) {
     printLine(`${isTruthy(process.env[name]) ? "OK  " : "WARN"} ${name}`);
   }
 
@@ -91,21 +146,47 @@ function main() {
     printLine("WARN USE_MOCK_DATA should be false before deploy");
   }
 
-  const nextAuthUrl = process.env.NEXTAUTH_URL ?? "";
+  const adminAppUrl = process.env.ADMIN_APP_URL ?? "";
+  const siteUrl = process.env.SITE_URL ?? "";
+  const nextAuthUrl =
+    deploymentMode === "admin" && isTruthy(adminAppUrl)
+      ? adminAppUrl
+      : (process.env.NEXTAUTH_URL ?? "");
 
-  if (!isTruthy(nextAuthUrl)) {
-    printLine("FAIL NEXTAUTH_URL is missing");
-  } else if (target === "production" && isLocalhostUrl(nextAuthUrl)) {
-    printLine("FAIL NEXTAUTH_URL still points to localhost");
-  } else if (target === "production" && !nextAuthUrl.startsWith("https://")) {
-    printLine("WARN NEXTAUTH_URL should use https in production");
-  } else {
-    printLine("OK   NEXTAUTH_URL format looks valid");
+  const nextAuthUrlOk = printUrlCheck("NEXTAUTH_URL", nextAuthUrl);
+  let adminAppUrlOk = true;
+  let siteUrlOk = true;
+
+  if (deploymentMode === "public") {
+    adminAppUrlOk = printUrlCheck("ADMIN_APP_URL", adminAppUrl, {
+      requireHttps: target === "production",
+    });
+
+    if (
+      isTruthy(adminAppUrl) &&
+      isTruthy(nextAuthUrl) &&
+      adminAppUrl === nextAuthUrl
+    ) {
+      printLine("WARN ADMIN_APP_URL is identical to NEXTAUTH_URL");
+    }
   }
 
-  const wranglerConfigPath = path.join(cwd, "wrangler.jsonc");
+  if (deploymentMode === "admin") {
+    siteUrlOk = printUrlCheck("SITE_URL", siteUrl, {
+      requireHttps: target === "production",
+    });
+
+    if (isTruthy(siteUrl) && isTruthy(nextAuthUrl) && siteUrl === nextAuthUrl) {
+      printLine("WARN SITE_URL is identical to NEXTAUTH_URL");
+    }
+  }
+
+  const wranglerConfigPath = path.join(
+    cwd,
+    deploymentMode === "admin" ? "wrangler.admin.jsonc" : "wrangler.jsonc",
+  );
   printLine(
-    `${fs.existsSync(wranglerConfigPath) ? "OK  " : "FAIL"} wrangler.jsonc`,
+    `${fs.existsSync(wranglerConfigPath) ? "OK  " : "FAIL"} ${path.basename(wranglerConfigPath)}`,
   );
 
   const devVarsPath = path.join(cwd, ".dev.vars");
@@ -120,6 +201,16 @@ function main() {
     `- Naver callback: ${nextAuthUrl || "<NEXTAUTH_URL>"}/api/auth/callback/naver`,
   );
 
+  if (deploymentMode === "public") {
+    printLine(
+      `- Public /admin entrypoint: ${adminAppUrl || "<ADMIN_APP_URL>"}/admin`,
+    );
+  }
+
+  if (deploymentMode === "admin") {
+    printLine(`- Public home link: ${siteUrl || "<SITE_URL>"}/`);
+  }
+
   if (missingRequired.length > 0) {
     console.error(
       `\nDeploy check failed. Missing required env: ${missingRequired.join(", ")}`,
@@ -128,8 +219,8 @@ function main() {
     return;
   }
 
-  if (target === "production" && isLocalhostUrl(nextAuthUrl)) {
-    console.error("\nDeploy check failed. NEXTAUTH_URL must not use localhost.");
+  if (!nextAuthUrlOk || !adminAppUrlOk || !siteUrlOk) {
+    console.error("\nDeploy check failed. Fix the invalid URL values above.");
     process.exitCode = 1;
     return;
   }

@@ -33,15 +33,23 @@ export function SocialAuthButtons({
   intent,
   onStart,
 }: SocialAuthButtonsProps) {
+  const enabledProviders = providers.filter((provider) => provider.enabled);
   const [pendingProvider, setPendingProvider] =
     useState<SocialAuthProviderId | null>(null);
   const [isPending, startTransition] = useTransition();
   const isBusy = isPending || pendingProvider !== null;
 
+  if (enabledProviders.length === 0) {
+    return (
+      <div className="rounded-[1.25rem] border border-dashed border-stone-300 bg-stone-50 px-4 py-3 text-sm leading-6 text-stone-500">
+        카카오와 네이버 소셜 로그인은 아직 준비 중입니다.
+      </div>
+    );
+  }
+
   return (
     <div className="grid gap-3">
-      {providers.map((provider) =>
-        provider.enabled ? (
+      {enabledProviders.map((provider) => (
           <button
             key={provider.id}
             type="button"
@@ -76,21 +84,7 @@ export function SocialAuthButtons({
               →
             </span>
           </button>
-        ) : (
-          <div
-            key={provider.id}
-            className="rounded-[1.4rem] border border-dashed border-stone-300 bg-white/75 px-4 py-4"
-          >
-            <p className="text-sm font-medium text-stone-900">
-              {provider.label} 연동 준비 중
-            </p>
-            <p className="mt-1 text-sm leading-6 text-stone-500">
-              {provider.unavailableReason ??
-                "현재 환경에서는 이 로그인 방식을 아직 사용할 수 없습니다."}
-            </p>
-          </div>
-        ),
-      )}
+      ))}
     </div>
   );
 }

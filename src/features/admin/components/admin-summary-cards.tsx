@@ -1,0 +1,32 @@
+type AdminSummaryCardItem = {
+  id: string;
+  label: string;
+  value: number | string;
+  detail: string;
+};
+
+type AdminSummaryCardsProps = {
+  items: AdminSummaryCardItem[];
+};
+
+export function AdminSummaryCards({ items }: AdminSummaryCardsProps) {
+  return (
+    <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {items.map((item) => (
+        <article
+          key={item.id}
+          data-testid={`admin-summary-card-${item.id}`}
+          className="rounded-[1.5rem] border border-stone-200 bg-stone-50 p-5"
+        >
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-600">
+            {item.label}
+          </p>
+          <h2 className="mt-3 text-3xl font-semibold text-stone-900">
+            {item.value}
+          </h2>
+          <p className="mt-3 text-sm leading-6 text-stone-600">{item.detail}</p>
+        </article>
+      ))}
+    </div>
+  );
+}

@@ -50,6 +50,27 @@
       "when": 1775052090538,
       "tag": "0006_boring_titania",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1775091519251,
+      "tag": "0007_true_carmella_unuscione",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1775097920707,
+      "tag": "0008_hot_mesmero",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1775293897367,
+      "tag": "0009_boring_invaders",
+      "breakpoints": true
     }
   ]
 }

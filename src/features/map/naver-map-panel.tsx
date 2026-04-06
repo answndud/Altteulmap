@@ -2,6 +2,7 @@
 
 import { Component, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { getCategoryBySlug } from "@/features/categories/catalog";
 import {
   DEFAULT_MAP_CENTER,
   getLoadedNaverMapSdk,
@@ -13,39 +14,46 @@ import {
   type NaverMapInstance,
   type NaverMarkerInstance,
 } from "@/features/map/naver-map-sdk";
-import type { PlaceBounds, PlaceRecord } from "@/features/places/types";
+import type {
+  PlaceBounds,
+  PlaceMapClusterMarkerRecord,
+  PlaceMapMarkerRecord,
+  PlaceMapPlaceMarkerRecord,
+  PlacePreviewRecord,
+} from "@/features/places/types";
 
 type NaverMapPanelProps = {
   initialBounds?: PlaceBounds | null;
-  places: PlaceRecord[];
+  isLoading?: boolean;
+  mapMarkers: PlaceMapMarkerRecord[];
+  placeCount?: number;
+  refreshAction?: {
+    isVisible: boolean;
+    isLoading: boolean;
+    onRefresh: () => void;
+  } | null;
   selectedCategoryLabel: string | null;
   activePlaceId?: string | null;
   focusPlacesKey?: string | null;
-  onSelectPlace?: (placeId: string) => void;
+  onSelectPlace?: (place: PlacePreviewRecord) => void;
   onViewportChange?: (viewport: MapViewport) => void;
 };
 
+type PlaceDisplayMarker = {
+  kind: "place";
+  id: string;
+  latitude: number;
+  longitude: number;
+  isActive: boolean;
+  place: PlacePreviewRecord;
+};
+
+type ClusterDisplayMarker = PlaceMapClusterMarkerRecord;
+
+type MapDisplayMarker = PlaceDisplayMarker | ClusterDisplayMarker;
+
 function getMapZoom(placeCount: number) {
   return placeCount > 1 ? 13 : 15;
-}
-
-function getMapCenter(places: PlaceRecord[]) {
-  if (places.length === 0) {
-    return DEFAULT_MAP_CENTER;
-  }
-
-  const totals = places.reduce(
-    (accumulator, place) => ({
-      lat: accumulator.lat + place.latitude,
-      lng: accumulator.lng + place.longitude,
-    }),
-    { lat: 0, lng: 0 },
-  );
-
-  return {
-    lat: totals.lat / places.length,
-    lng: totals.lng / places.length,
-  };
 }
 
 function getCenterFromBounds(bounds: PlaceBounds) {
@@ -55,8 +63,29 @@ function getCenterFromBounds(bounds: PlaceBounds) {
   };
 }
 
-function getPreviewBounds(places: PlaceRecord[]) {
-  if (places.length === 0) {
+function getMapCenter(items: Array<{ latitude: number; longitude: number }>) {
+  if (items.length === 0) {
+    return DEFAULT_MAP_CENTER;
+  }
+
+  const totals = items.reduce(
+    (accumulator, item) => ({
+      lat: accumulator.lat + item.latitude,
+      lng: accumulator.lng + item.longitude,
+    }),
+    { lat: 0, lng: 0 },
+  );
+
+  return {
+    lat: totals.lat / items.length,
+    lng: totals.lng / items.length,
+  };
+}
+
+function getPreviewBounds(
+  items: Array<{ latitude: number; longitude: number }>,
+) {
+  if (items.length === 0) {
     return {
       minLat: DEFAULT_MAP_CENTER.lat,
       maxLat: DEFAULT_MAP_CENTER.lat,
@@ -65,8 +94,8 @@ function getPreviewBounds(places: PlaceRecord[]) {
     };
   }
 
-  const latitudes = places.map((place) => place.latitude);
-  const longitudes = places.map((place) => place.longitude);
+  const latitudes = items.map((item) => item.latitude);
+  const longitudes = items.map((item) => item.longitude);
 
   return {
     minLat: Math.min(...latitudes),
@@ -74,6 +103,31 @@ function getPreviewBounds(places: PlaceRecord[]) {
     minLng: Math.min(...longitudes),
     maxLng: Math.max(...longitudes),
   };
+}
+
+function createPlaceDisplayMarker(
+  place: PlaceMapPlaceMarkerRecord,
+  isActive: boolean,
+): PlaceDisplayMarker {
+  return {
+    kind: "place",
+    id: place.id,
+    latitude: place.latitude,
+    longitude: place.longitude,
+    isActive,
+    place,
+  };
+}
+
+function getDisplayMarkers(
+  mapMarkers: PlaceMapMarkerRecord[],
+  activePlaceId: string | null,
+) {
+  return mapMarkers.map((marker) =>
+    marker.kind === "cluster"
+      ? marker
+      : createPlaceDisplayMarker(marker, marker.id === activePlaceId),
+  ) satisfies MapDisplayMarker[];
 }
 
 function serializeViewport(viewport: MapViewport) {
@@ -89,7 +143,7 @@ function serializeViewport(viewport: MapViewport) {
 }
 
 function isPlaceInsideViewport(
-  place: PlaceRecord,
+  place: Pick<PlacePreviewRecord, "latitude" | "longitude">,
   viewport: MapViewport | null,
   padding = 0.0003,
 ) {
@@ -109,25 +163,168 @@ function formatLikeCount(count: number) {
   return new Intl.NumberFormat("ko-KR").format(count);
 }
 
-function createMarkerIconHtml(count: number, isActive: boolean) {
-  const background = isActive ? "#d97f4d" : "#ffffff";
-  const textColor = isActive ? "#ffffff" : "#7c4a2f";
-  const borderColor = isActive ? "#d97f4d" : "#edd3bf";
-  const shadowColor = isActive
-    ? "rgba(169, 95, 53, 0.34)"
-    : "rgba(104, 71, 53, 0.16)";
-  const badgeBackground = isActive ? "rgba(255,255,255,0.18)" : "#fff2e8";
+type PlaceMarkerGroupKey =
+  | "food"
+  | "life-services"
+  | "shopping"
+  | "health"
+  | "study-work"
+  | "fallback";
+
+type PlaceMarkerTheme = {
+  fill: string;
+  activeFill: string;
+  stroke: string;
+  activeStroke: string;
+  coreRing: string;
+  coreDot: string;
+};
+
+const PLACE_MARKER_THEMES: Record<PlaceMarkerGroupKey, PlaceMarkerTheme> = {
+  food: {
+    fill: "#dc603e",
+    activeFill: "#c44d2d",
+    stroke: "rgba(126, 47, 25, 0.24)",
+    activeStroke: "rgba(112, 38, 19, 0.32)",
+    coreRing: "#8e3821",
+    coreDot: "#dc603e",
+  },
+  "life-services": {
+    fill: "#4f78bf",
+    activeFill: "#3e61a6",
+    stroke: "rgba(40, 65, 109, 0.22)",
+    activeStroke: "rgba(31, 53, 92, 0.3)",
+    coreRing: "#35558f",
+    coreDot: "#4f78bf",
+  },
+  shopping: {
+    fill: "#b25a72",
+    activeFill: "#95445a",
+    stroke: "rgba(106, 47, 64, 0.22)",
+    activeStroke: "rgba(88, 35, 50, 0.3)",
+    coreRing: "#7a3849",
+    coreDot: "#b25a72",
+  },
+  health: {
+    fill: "#2f8d69",
+    activeFill: "#1f7454",
+    stroke: "rgba(24, 87, 63, 0.22)",
+    activeStroke: "rgba(17, 71, 50, 0.3)",
+    coreRing: "#195a41",
+    coreDot: "#2f8d69",
+  },
+  "study-work": {
+    fill: "#4f647d",
+    activeFill: "#3b5067",
+    stroke: "rgba(43, 58, 74, 0.22)",
+    activeStroke: "rgba(34, 46, 60, 0.3)",
+    coreRing: "#314457",
+    coreDot: "#4f647d",
+  },
+  fallback: {
+    fill: "#9a613f",
+    activeFill: "#7d4a2b",
+    stroke: "rgba(95, 56, 34, 0.22)",
+    activeStroke: "rgba(79, 44, 24, 0.3)",
+    coreRing: "#693b21",
+    coreDot: "#9a613f",
+  },
+};
+
+const CLUSTER_MARKER_THEME = {
+  shellBackground: "rgba(255, 252, 248, 0.98)",
+  shellBorder: "rgba(180, 151, 126, 0.22)",
+  coreBackground: "#e7bf9d",
+  coreBorder: "rgba(165, 123, 89, 0.3)",
+  text: "#6f4630",
+  shadow: "0 16px 30px rgba(116, 88, 66, 0.18)",
+} as const;
+
+function getPlaceMarkerGroupKey(
+  categorySlug: string | null | undefined,
+): PlaceMarkerGroupKey {
+  const parentSlug = getCategoryBySlug(categorySlug)?.parentSlug;
+
+  switch (parentSlug) {
+    case "food":
+    case "life-services":
+    case "shopping":
+    case "health":
+    case "study-work":
+      return parentSlug;
+    default:
+      return "fallback";
+  }
+}
+
+function getPlaceMarkerVisual(
+  categorySlug: string | null | undefined,
+  isActive: boolean,
+) {
+  const theme = PLACE_MARKER_THEMES[getPlaceMarkerGroupKey(categorySlug)];
+
+  return {
+    canvasWidth: isActive ? 48 : 44,
+    canvasHeight: isActive ? 58 : 54,
+    pinSize: isActive ? 34 : 30,
+    coreSize: isActive ? 16 : 14,
+    dotSize: isActive ? 6 : 5,
+    fill: isActive ? theme.activeFill : theme.fill,
+    stroke: isActive ? theme.activeStroke : theme.stroke,
+    coreRing: theme.coreRing,
+    coreDot: theme.coreDot,
+    outline: "rgba(255, 255, 255, 0.98)",
+    shadow: `0 0 0 3px rgba(255,255,255,0.94), 0 0 0 4.5px ${
+      isActive ? theme.activeStroke : theme.stroke
+    }, 0 ${isActive ? 18 : 14}px ${isActive ? 32 : 26}px rgba(15,23,42,${
+      isActive ? "0.26" : "0.2"
+    })`,
+  };
+}
+
+function getClusterMarkerVisual(placeCount: number) {
+  if (placeCount >= 100) {
+    return {
+      outerSize: 70,
+      innerSize: 54,
+      fontSize: 16,
+    };
+  }
+
+  if (placeCount >= 20) {
+    return {
+      outerSize: 62,
+      innerSize: 48,
+      fontSize: 15,
+    };
+  }
+
+  return {
+    outerSize: 54,
+    innerSize: 40,
+    fontSize: 14,
+  };
+}
+
+function createPlaceMarkerIconHtml(
+  categorySlug: string | null | undefined,
+  isActive: boolean,
+) {
+  const visual = getPlaceMarkerVisual(categorySlug, isActive);
 
   return `
-    <div style="display:inline-flex;align-items:center;gap:6px;min-width:50px;height:34px;padding:0 11px;border-radius:16px;background:${background};color:${textColor};border:1px solid ${borderColor};box-shadow:0 10px 22px ${shadowColor};font-size:12px;font-weight:700;line-height:1;transform:translate(-50%,-50%);">
-        <span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:10px;background:${badgeBackground};font-size:11px;">👍</span>
-        <span>${formatLikeCount(count)}</span>
+    <div style="width:${visual.canvasWidth}px;height:${visual.canvasHeight}px;display:flex;align-items:flex-end;justify-content:center;">
+      <span style="position:relative;display:block;width:${visual.pinSize}px;height:${visual.pinSize}px;border-radius:${visual.pinSize}px ${visual.pinSize}px ${visual.pinSize}px 0;background:${visual.fill};border:2px solid ${visual.outline};box-shadow:${visual.shadow};transform:rotate(-45deg);">
+        <span style="position:absolute;left:50%;top:50%;width:${visual.coreSize}px;height:${visual.coreSize}px;border-radius:999px;background:#ffffff;border:2px solid ${visual.coreRing};transform:translate(-50%,-50%) rotate(45deg);">
+          <span style="position:absolute;left:50%;top:50%;width:${visual.dotSize}px;height:${visual.dotSize}px;border-radius:999px;background:${visual.coreDot};transform:translate(-50%,-50%);"></span>
+        </span>
+      </span>
     </div>
   `;
 }
 
 function createMapMarkerIcon(
-  count: number,
+  categorySlug: string | null | undefined,
   isActive: boolean,
   naver: ReturnType<typeof getLoadedNaverMapSdk>,
 ) {
@@ -138,27 +335,64 @@ function createMapMarkerIcon(
     return undefined;
   }
 
+  const visual = getPlaceMarkerVisual(categorySlug, isActive);
+
   return {
-    content: createMarkerIconHtml(count, isActive),
-    size: new Size(68, 34),
-    anchor: new Point(34, 17),
+    content: createPlaceMarkerIconHtml(categorySlug, isActive),
+    size: new Size(visual.canvasWidth, visual.canvasHeight),
+    anchor: new Point(visual.canvasWidth / 2, visual.canvasHeight),
+  };
+}
+
+function createClusterIconHtml(placeCount: number) {
+  const visual = getClusterMarkerVisual(placeCount);
+
+  return `
+    <div style="width:${visual.outerSize}px;height:${visual.outerSize}px;display:flex;align-items:center;justify-content:center;">
+      <span style="display:flex;align-items:center;justify-content:center;width:${visual.outerSize}px;height:${visual.outerSize}px;border-radius:999px;background:${CLUSTER_MARKER_THEME.shellBackground};border:1px solid ${CLUSTER_MARKER_THEME.shellBorder};box-shadow:${CLUSTER_MARKER_THEME.shadow};">
+        <span style="display:flex;align-items:center;justify-content:center;width:${visual.innerSize}px;height:${visual.innerSize}px;border-radius:999px;background:${CLUSTER_MARKER_THEME.coreBackground};border:1px solid ${CLUSTER_MARKER_THEME.coreBorder};color:${CLUSTER_MARKER_THEME.text};font-size:${visual.fontSize}px;font-weight:800;line-height:1;letter-spacing:-0.02em;">
+          ${formatLikeCount(placeCount)}
+        </span>
+      </span>
+    </div>
+  `;
+}
+
+function createClusterMarkerIcon(
+  placeCount: number,
+  naver: ReturnType<typeof getLoadedNaverMapSdk>,
+) {
+  const Point = naver?.maps.Point;
+  const Size = naver?.maps.Size;
+
+  if (!Point || !Size) {
+    return undefined;
+  }
+
+  const visual = getClusterMarkerVisual(placeCount);
+
+  return {
+    content: createClusterIconHtml(placeCount),
+    size: new Size(visual.outerSize, visual.outerSize),
+    anchor: new Point(visual.outerSize / 2, visual.outerSize / 2),
   };
 }
 
 function PreviewMap({
-  places,
+  markers,
   selectedCategoryLabel,
-  activePlaceId,
   onSelectPlace,
+  onActivateCluster,
 }: {
-  places: PlaceRecord[];
+  markers: MapDisplayMarker[];
   selectedCategoryLabel: string | null;
-  activePlaceId: string | null;
-  onSelectPlace: (placeId: string) => void;
+  onSelectPlace: (place: PlacePreviewRecord) => void;
+  onActivateCluster?: (marker: ClusterDisplayMarker) => void;
 }) {
-  const bounds = getPreviewBounds(places);
+  const bounds = getPreviewBounds(markers);
   const latRange = Math.max(bounds.maxLat - bounds.minLat, 0.01);
   const lngRange = Math.max(bounds.maxLng - bounds.minLng, 0.01);
+  const hasClusterMarkers = markers.some((marker) => marker.kind === "cluster");
 
   return (
     <div
@@ -166,34 +400,110 @@ function PreviewMap({
       data-testid="map-panel-preview"
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(251,146,60,0.18),transparent_30%),radial-gradient(circle_at_bottom_left,rgba(245,158,11,0.12),transparent_28%)]" />
-      {places.map((place) => {
-        const top = ((bounds.maxLat - place.latitude) / latRange) * 70 + 10;
-        const left = ((place.longitude - bounds.minLng) / lngRange) * 72 + 8;
-        const isActive = activePlaceId === place.id;
+      {markers.map((marker) => {
+        const top = ((bounds.maxLat - marker.latitude) / latRange) * 70 + 10;
+        const left = ((marker.longitude - bounds.minLng) / lngRange) * 72 + 8;
+
+        if (marker.kind === "cluster") {
+          const clusterVisual = getClusterMarkerVisual(marker.placeCount);
+
+          return (
+            <button
+              key={marker.id}
+              type="button"
+              data-testid={`map-preview-marker-${marker.id}`}
+              onClick={() => onActivateCluster?.(marker)}
+              className="absolute -translate-x-1/2 -translate-y-1/2 transition-transform hover:scale-[1.03]"
+              style={{
+                top: `${top}%`,
+                left: `${left}%`,
+              }}
+            >
+              <span
+                className="flex items-center justify-center rounded-full"
+                style={{
+                  width: `${clusterVisual.outerSize}px`,
+                  height: `${clusterVisual.outerSize}px`,
+                  background: CLUSTER_MARKER_THEME.shellBackground,
+                  border: `1px solid ${CLUSTER_MARKER_THEME.shellBorder}`,
+                  boxShadow: CLUSTER_MARKER_THEME.shadow,
+                }}
+              >
+                <span
+                  className="flex items-center justify-center rounded-full font-extrabold"
+                  style={{
+                    width: `${clusterVisual.innerSize}px`,
+                    height: `${clusterVisual.innerSize}px`,
+                    background: CLUSTER_MARKER_THEME.coreBackground,
+                    border: `1px solid ${CLUSTER_MARKER_THEME.coreBorder}`,
+                    color: CLUSTER_MARKER_THEME.text,
+                    fontSize: `${clusterVisual.fontSize}px`,
+                    letterSpacing: "-0.02em",
+                  }}
+                >
+                  {formatLikeCount(marker.placeCount)}
+                </span>
+              </span>
+            </button>
+          );
+        }
+
+        const placeVisual = getPlaceMarkerVisual(
+          marker.place.categorySlug,
+          marker.isActive,
+        );
 
         return (
           <button
-            key={place.id}
+            key={marker.id}
             type="button"
-            data-testid={`map-preview-marker-${place.id}`}
-            onClick={() => onSelectPlace(place.id)}
-            className="absolute"
+            data-testid={`map-preview-marker-${marker.id}`}
+            onClick={() => onSelectPlace(marker.place)}
+            className="absolute -translate-x-1/2 -translate-y-full transition-transform hover:scale-[1.04]"
             style={{
               top: `${top}%`,
               left: `${left}%`,
             }}
           >
             <span
-              className={`flex min-w-[3.35rem] items-center justify-center gap-1 rounded-2xl px-3 py-2 text-xs font-semibold shadow-lg transition ${
-                isActive
-                  ? "bg-[#dc8b5e] text-white"
-                  : "border border-[#edd3bf] bg-white text-[#7c4a2f]"
-              }`}
+              className="flex items-end justify-center"
+              style={{
+                width: `${placeVisual.canvasWidth}px`,
+                height: `${placeVisual.canvasHeight}px`,
+              }}
             >
-              <span className={`text-[11px] ${isActive ? "" : "opacity-90"}`}>
-                👍
+              <span
+                className="relative block"
+                style={{
+                  width: `${placeVisual.pinSize}px`,
+                  height: `${placeVisual.pinSize}px`,
+                  borderRadius: `${placeVisual.pinSize}px ${placeVisual.pinSize}px ${placeVisual.pinSize}px 0`,
+                  background: placeVisual.fill,
+                  border: `2px solid ${placeVisual.outline}`,
+                  boxShadow: placeVisual.shadow,
+                  transform: "rotate(-45deg)",
+                }}
+              >
+                <span
+                  className="absolute left-1/2 top-1/2 block rounded-full bg-white"
+                  style={{
+                    width: `${placeVisual.coreSize}px`,
+                    height: `${placeVisual.coreSize}px`,
+                    border: `2px solid ${placeVisual.coreRing}`,
+                    transform: "translate(-50%, -50%) rotate(45deg)",
+                  }}
+                >
+                  <span
+                    className="absolute left-1/2 top-1/2 block rounded-full"
+                    style={{
+                      width: `${placeVisual.dotSize}px`,
+                      height: `${placeVisual.dotSize}px`,
+                      background: placeVisual.coreDot,
+                      transform: "translate(-50%, -50%)",
+                    }}
+                  />
+                </span>
               </span>
-              <span>{formatLikeCount(place.likeCount)}</span>
             </span>
           </button>
         );
@@ -202,39 +512,50 @@ function PreviewMap({
         {selectedCategoryLabel
           ? `${selectedCategoryLabel} 카테고리만 표시 중`
           : "전체 카테고리 표시 중"}
+        {hasClusterMarkers ? " · 가까운 장소는 묶어 표시합니다" : ""}
       </div>
     </div>
   );
 }
 
 function NaverMapFallback({
-  places,
+  isLoading = false,
+  mapMarkers,
+  placeCount,
   selectedCategoryLabel,
   activePlaceId,
   onSelectPlace,
 }: {
-  places: PlaceRecord[];
+  isLoading?: boolean;
+  mapMarkers: PlaceMapMarkerRecord[];
+  placeCount?: number;
   selectedCategoryLabel: string | null;
-  activePlaceId: string | null;
-  onSelectPlace: (placeId: string) => void;
+  activePlaceId?: string | null;
+  onSelectPlace: (place: PlacePreviewRecord) => void;
 }) {
+  const displayMarkers = useMemo(
+    () => getDisplayMarkers(mapMarkers, activePlaceId ?? null),
+    [activePlaceId, mapMarkers],
+  );
+
   return (
     <section
-      className="overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-sm"
+      className="relative isolate overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-sm"
       data-testid="map-panel-shell"
     >
       <div className="flex items-center justify-between border-b border-stone-200 px-6 py-4">
         <h2 className="text-lg font-semibold text-stone-900">주변 지도</h2>
         <div className="altteulmap-badge whitespace-nowrap bg-stone-100 px-3 py-1 text-sm text-stone-600">
-          {places.length}곳
+          {isLoading && mapMarkers.length === 0
+            ? "불러오는 중"
+            : `${placeCount ?? mapMarkers.length}곳`}
         </div>
       </div>
 
-      <div className="relative h-[36rem] lg:h-[44rem]">
+      <div className="relative isolate z-0 h-[36rem] lg:h-[44rem]">
         <PreviewMap
-          places={places}
+          markers={displayMarkers}
           selectedCategoryLabel={selectedCategoryLabel}
-          activePlaceId={activePlaceId}
           onSelectPlace={onSelectPlace}
         />
         <div className="absolute left-4 top-4 z-10 rounded-2xl bg-white/95 px-4 py-3 text-sm text-stone-700 shadow-sm backdrop-blur">
@@ -271,7 +592,9 @@ class NaverMapPanelBoundary extends Component<
     if (this.state.hasError) {
       return (
         <NaverMapFallback
-          places={this.props.places}
+          isLoading={this.props.isLoading}
+          mapMarkers={this.props.mapMarkers}
+          placeCount={this.props.placeCount}
           selectedCategoryLabel={this.props.selectedCategoryLabel}
           activePlaceId={this.props.activePlaceId ?? null}
           onSelectPlace={this.props.onSelectPlace ?? (() => {})}
@@ -289,7 +612,10 @@ export function NaverMapPanel(props: NaverMapPanelProps) {
 
 function NaverMapPanelContent({
   initialBounds,
-  places,
+  isLoading = false,
+  mapMarkers,
+  placeCount,
+  refreshAction = null,
   selectedCategoryLabel,
   activePlaceId: controlledActivePlaceId,
   focusPlacesKey,
@@ -310,7 +636,7 @@ function NaverMapPanelContent({
   const [isLocating, setIsLocating] = useState(false);
   const [locationMessage, setLocationMessage] = useState<string | null>(null);
   const [internalActivePlaceId, setInternalActivePlaceId] = useState<string | null>(
-    places[0]?.id ?? null,
+    mapMarkers.find((marker) => marker.kind === "place")?.id ?? null,
   );
   const naverMapKeyId = getNaverMapKeyId();
   const activePlaceId =
@@ -318,24 +644,32 @@ function NaverMapPanelContent({
       ? internalActivePlaceId
       : controlledActivePlaceId;
   const activePlace = useMemo(
-    () => places.find((place) => place.id === activePlaceId) ?? null,
-    [activePlaceId, places],
+    () =>
+      mapMarkers.find(
+        (marker): marker is PlaceMapPlaceMarkerRecord =>
+          marker.kind === "place" && marker.id === activePlaceId,
+      ) ?? null,
+    [activePlaceId, mapMarkers],
+  );
+  const displayMarkers = useMemo(
+    () => getDisplayMarkers(mapMarkers, activePlaceId ?? null),
+    [activePlaceId, mapMarkers],
   );
   const showPreview = status !== "ready" || !hasVisibleMap;
 
   const selectPlace = useCallback(
-    (placeId: string) => {
+    (place: PlacePreviewRecord) => {
       if (controlledActivePlaceId === undefined) {
-        setInternalActivePlaceId(placeId);
+        setInternalActivePlaceId(place.id);
       }
 
-      onSelectPlace?.(placeId);
+      onSelectPlace?.(place);
     },
     [controlledActivePlaceId, onSelectPlace],
   );
   const emitPlaceSelect = useCallback(
-    (placeId: string) => {
-      selectPlace(placeId);
+    (place: PlacePreviewRecord) => {
+      selectPlace(place);
     },
     [selectPlace],
   );
@@ -374,6 +708,51 @@ function NaverMapPanelContent({
     lastViewportKeyRef.current = nextKey;
     onViewportChange?.(viewport);
   }, [onViewportChange]);
+  const focusCluster = useCallback(
+    (marker: ClusterDisplayMarker) => {
+      if (status !== "ready" || !mapInstanceRef.current) {
+        return;
+      }
+
+      const maps = getLoadedNaverMapSdk()?.maps;
+
+      if (!maps?.LatLng || !maps?.LatLngBounds) {
+        failMap("NAVER Maps LatLng API is unavailable.");
+        return;
+      }
+
+      try {
+        const southWest = new maps.LatLng(
+          marker.bounds.minLat,
+          marker.bounds.minLng,
+        );
+        const northEast = new maps.LatLng(
+          marker.bounds.maxLat,
+          marker.bounds.maxLng,
+        );
+        const clusterBounds = new maps.LatLngBounds(southWest, northEast);
+        const nextCenter = new maps.LatLng(marker.latitude, marker.longitude);
+        const latSpan = Math.abs(marker.bounds.maxLat - marker.bounds.minLat);
+        const lngSpan = Math.abs(marker.bounds.maxLng - marker.bounds.minLng);
+
+        if (latSpan < 0.0004 && lngSpan < 0.0004) {
+          const currentZoom = mapInstanceRef.current.getZoom?.() ?? 13;
+          mapInstanceRef.current.setCenter?.(nextCenter);
+          mapInstanceRef.current.setZoom?.(Math.min(currentZoom + 2, 17));
+          mapInstanceRef.current.panTo?.(nextCenter);
+        } else {
+          mapInstanceRef.current.fitBounds?.(clusterBounds);
+        }
+
+        window.setTimeout(() => {
+          emitViewportChange();
+        }, 100);
+      } catch (error) {
+        failMap("Failed to focus the NAVER map cluster.", error);
+      }
+    },
+    [emitViewportChange, failMap, status],
+  );
 
   const locateCurrentPosition = () => {
     if (status !== "ready" || !mapInstanceRef.current) {
@@ -522,9 +901,9 @@ function NaverMapPanelContent({
 
           const center = initialBounds
             ? getCenterFromBounds(initialBounds)
-            : getMapCenter(places);
+            : getMapCenter(mapMarkers);
           const centerLatLng = new maps.LatLng(center.lat, center.lng);
-          const nextZoom = getMapZoom(places.length);
+          const nextZoom = getMapZoom(mapMarkers.length);
           const map = new maps.Map(mapContainerRef.current, {
             center: centerLatLng,
             zoom: nextZoom,
@@ -535,7 +914,7 @@ function NaverMapPanelContent({
 
           mapInstanceRef.current = map;
 
-          if (initialBounds && places.length > 1) {
+          if (initialBounds) {
             const southWest = new maps.LatLng(
               initialBounds.minLat,
               initialBounds.minLng,
@@ -587,8 +966,8 @@ function NaverMapPanelContent({
     emitViewportChange,
     failMap,
     initialBounds,
+    mapMarkers,
     naverMapKeyId,
-    places,
   ]);
 
   useEffect(() => {
@@ -661,7 +1040,7 @@ function NaverMapPanelContent({
       window.clearTimeout(visibilityTimeoutId);
       mutationObserver.disconnect();
     };
-  }, [containerSize.height, containerSize.width, places, status]);
+  }, [containerSize.height, containerSize.width, mapMarkers, status]);
 
   useEffect(() => {
     if (status !== "ready" || !mapInstanceRef.current) {
@@ -677,17 +1056,32 @@ function NaverMapPanelContent({
 
     try {
       markerInstancesRef.current.forEach((marker) => marker.setMap?.(null));
-      markerInstancesRef.current = places.map((place) => {
-        const isActive = activePlaceId === place.id;
+      markerInstancesRef.current = displayMarkers.map((markerItem) => {
+        const title =
+          markerItem.kind === "cluster"
+            ? `${formatLikeCount(markerItem.placeCount)}곳`
+            : markerItem.place.name;
         const marker = new maps.Marker({
           map: mapInstanceRef.current,
-          position: new maps.LatLng(place.latitude, place.longitude),
-          title: place.name,
-          icon: createMapMarkerIcon(place.likeCount, isActive, { maps }),
+          position: new maps.LatLng(markerItem.latitude, markerItem.longitude),
+          title,
+          icon:
+            markerItem.kind === "cluster"
+              ? createClusterMarkerIcon(markerItem.placeCount, { maps })
+              : createMapMarkerIcon(
+                  markerItem.place.categorySlug,
+                  markerItem.isActive,
+                  { maps },
+                ),
         });
 
         maps.Event.addListener(marker, "click", () => {
-          emitPlaceSelect(place.id);
+          if (markerItem.kind === "cluster") {
+            focusCluster(markerItem);
+            return;
+          }
+
+          emitPlaceSelect(markerItem.place);
         });
 
         return marker;
@@ -695,7 +1089,7 @@ function NaverMapPanelContent({
     } catch (error) {
       failMap("Failed to render NAVER map markers.", error);
     }
-  }, [activePlaceId, emitPlaceSelect, failMap, places, status]);
+  }, [displayMarkers, emitPlaceSelect, failMap, focusCluster, status]);
 
   useEffect(() => {
     if (status !== "ready" || !activePlace || !mapInstanceRef.current) {
@@ -729,7 +1123,7 @@ function NaverMapPanelContent({
       status !== "ready" ||
       !mapInstanceRef.current ||
       !focusPlacesKey ||
-      places.length === 0
+      mapMarkers.length === 0
     ) {
       return;
     }
@@ -746,12 +1140,12 @@ function NaverMapPanelContent({
     }
 
     try {
-      const focusCenter = getMapCenter(places);
+      const focusCenter = getMapCenter(mapMarkers);
       const point = new LatLng(focusCenter.lat, focusCenter.lng);
 
       lastFocusPlacesKeyRef.current = focusPlacesKey;
       mapInstanceRef.current.setCenter?.(point);
-      mapInstanceRef.current.setZoom?.(getMapZoom(places.length));
+      mapInstanceRef.current.setZoom?.(getMapZoom(mapMarkers.length));
       mapInstanceRef.current.panTo?.(point);
       window.setTimeout(() => {
         emitViewportChange();
@@ -759,7 +1153,7 @@ function NaverMapPanelContent({
     } catch (error) {
       failMap("Failed to focus the NAVER map viewport.", error);
     }
-  }, [emitViewportChange, failMap, focusPlacesKey, places, status]);
+  }, [emitViewportChange, failMap, focusPlacesKey, mapMarkers, status]);
 
   useEffect(() => {
     if (status !== "ready" || !mapInstanceRef.current) {
@@ -810,42 +1204,59 @@ function NaverMapPanelContent({
 
   return (
     <section
-      className="overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-sm"
+      className="relative isolate overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-sm"
       data-testid="map-panel-shell"
     >
       <div className="flex items-center justify-between border-b border-stone-200 px-6 py-4">
         <h2 className="text-lg font-semibold text-stone-900">주변 지도</h2>
         <div className="altteulmap-badge whitespace-nowrap bg-stone-100 px-3 py-1 text-sm text-stone-600">
-          {places.length}곳
+          {isLoading && mapMarkers.length === 0
+            ? "불러오는 중"
+            : `${placeCount ?? mapMarkers.length}곳`}
         </div>
       </div>
 
-      <div className="relative h-[36rem] lg:h-[44rem]">
+      <div className="relative isolate z-0 h-[36rem] lg:h-[44rem]">
         <div
           ref={mapContainerRef}
           data-testid="map-panel"
-          className="altteulmap-naver-map h-full w-full overflow-hidden bg-stone-100"
+          className="altteulmap-naver-map relative z-0 h-full w-full overflow-hidden bg-stone-100"
         />
 
         {showPreview ? (
           <div className="absolute inset-0">
             <PreviewMap
-              places={places}
+              markers={displayMarkers}
               selectedCategoryLabel={selectedCategoryLabel}
-              activePlaceId={activePlaceId}
               onSelectPlace={selectPlace}
+              onActivateCluster={focusCluster}
             />
           </div>
         ) : null}
+
+        <div className="absolute left-1/2 top-4 z-10 -translate-x-1/2">
+          {refreshAction?.isVisible ? (
+            <button
+              type="button"
+              onClick={refreshAction.onRefresh}
+              disabled={refreshAction.isLoading}
+              data-testid="map-refresh-button"
+              className="altteulmap-accent-solid altteulmap-button whitespace-nowrap px-4 py-2 text-sm font-medium shadow-lg shadow-orange-200/60 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {refreshAction.isLoading ? "검색 중" : "이 지역 검색"}
+            </button>
+          ) : null}
+        </div>
 
         <div className="absolute right-4 top-4 z-10 flex flex-col items-end gap-2">
           <button
             type="button"
             onClick={locateCurrentPosition}
             disabled={status !== "ready" || isLocating}
+            data-testid="map-current-location-button"
             className="altteulmap-button whitespace-nowrap border border-stone-300 bg-white/95 px-3 py-1.5 text-xs font-semibold text-stone-800 shadow-sm backdrop-blur transition hover:bg-white disabled:cursor-not-allowed disabled:text-stone-400"
           >
-            {isLocating ? "위치 확인 중" : "내 위치"}
+            {isLocating ? "위치 확인 중" : "현재 위치"}
           </button>
 
           {locationMessage ? (

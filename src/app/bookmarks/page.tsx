@@ -1,12 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { SessionActionGroup } from "@/features/auth/session-action-group";
 import { BookmarkToggleButton } from "@/features/bookmarks/bookmark-toggle-button";
-import { listBookmarks } from "@/features/bookmarks/repository";
+import { listBookmarkedPlaces } from "@/features/bookmarks/repository";
 import { getCategoryBySlug } from "@/features/categories/catalog";
 import { formatKrw } from "@/features/places/queries";
-import { listPlaces } from "@/features/places/repository";
 import { createLoginHref, getSessionUser } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -18,44 +16,23 @@ export default async function BookmarksPage() {
     redirect(createLoginHref("/bookmarks"));
   }
 
-  const [bookmarkResult, placeResult] = await Promise.all([
-    listBookmarks(user),
-    listPlaces({ sort: "recent" }),
-  ]);
-
-  const placeById = new Map(placeResult.items.map((place) => [place.id, place]));
-  const bookmarkedPlaces = bookmarkResult.items
-    .map((bookmark) => ({
-      bookmark,
-      place: placeById.get(bookmark.placeId) ?? null,
-    }))
-    .filter(
-      (
-        entry,
-      ): entry is {
-        bookmark: (typeof bookmarkResult.items)[number];
-        place: NonNullable<(typeof entry)["place"]>;
-      } => entry.place !== null,
-    );
+  const bookmarkedPlaces = await listBookmarkedPlaces(user);
 
   return (
     <main className="bg-stone-50 px-4 py-8 sm:px-6">
       <section className="mx-auto max-w-7xl rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm sm:p-8">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-medium tracking-[0.18em] text-orange-600">
-              북마크
-            </p>
-            <h1 className="mt-3 text-3xl font-semibold tracking-tight text-stone-900 sm:text-5xl">
-              북마크한 장소
-            </h1>
-          </div>
-          <SessionActionGroup user={user} signOutCallbackUrl="/" />
+        <div>
+          <p className="text-xs font-medium tracking-[0.18em] text-orange-600">
+            북마크
+          </p>
+          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-stone-900 sm:text-5xl">
+            북마크한 장소
+          </h1>
         </div>
 
         {bookmarkedPlaces.length > 0 ? (
           <div data-testid="bookmark-list" className="mt-8 grid gap-4">
-            {bookmarkedPlaces.map(({ bookmark, place }) => {
+            {bookmarkedPlaces.map((place) => {
               const category = getCategoryBySlug(place.categorySlug);
 
               return (
@@ -67,7 +44,7 @@ export default async function BookmarksPage() {
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-600">
-                        북마크 {bookmark.createdAt}
+                        북마크 {place.createdAt}
                       </p>
                       <h2 className="mt-2 text-2xl font-semibold text-stone-900">
                         {place.name}
@@ -94,6 +71,7 @@ export default async function BookmarksPage() {
 
                   <div className="mt-4 flex flex-wrap gap-3">
                     <BookmarkToggleButton
+                      key={`${place.id}:on`}
                       placeId={place.id}
                       initialBookmarked
                       compact

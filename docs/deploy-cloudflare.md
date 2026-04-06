@@ -11,16 +11,19 @@
 ## 1. 배포 전 필수 확인
 1. `npm run verify`
 2. `npm run smoke:local`
-3. `USE_MOCK_DATA=false`
-4. 운영 DB 연결 문자열 준비
-5. `NEXTAUTH_URL`을 실제 배포 도메인으로 변경
-6. 네이버 지도 키와 OAuth callback URL을 운영 도메인 기준으로 등록
+3. `npm run smoke:remote`
+4. `USE_MOCK_DATA=false`
+5. 운영 DB 연결 문자열 준비
+6. `NEXTAUTH_URL`을 실제 배포 도메인으로 변경
+7. 관리자 앱을 분리할 경우 public 앱 `ADMIN_APP_URL`, admin 앱 `SITE_URL`까지 준비
+8. 네이버 지도 키와 OAuth callback URL을 운영 도메인 기준으로 등록
 
 ## 2. 필수 환경 변수
 - `DATABASE_URL`
 - `AUTH_SECRET`
 - `NEXTAUTH_URL`
 - `ADMIN_APP_URL` (`deploy:public` 또는 외부 관리자 앱 분리 시)
+- `SITE_URL` (`deploy:admin`으로 별도 관리자 앱을 둘 때 권장, public 홈 링크 기준)
 - `NEXT_PUBLIC_NAVER_MAP_KEY_ID`
 - `AUTH_KAKAO_CLIENT_ID`
 - `AUTH_KAKAO_CLIENT_SECRET`
@@ -54,28 +57,43 @@
 ```bash
 npm run verify
 npm run smoke:local
+npm run smoke:remote
 npm run deploy:check
 ```
+
+운영 URL smoke는 아래처럼 public/admin 주소를 명시하는 방식을 권장한다.
+
+```bash
+SMOKE_PUBLIC_URL=https://altteulmap.<subdomain>.workers.dev \
+SMOKE_ADMIN_URL=https://altteulmap-admin.<subdomain>.workers.dev \
+npm run smoke:remote
+```
+
+이 스크립트는 public `/`, `/robots.txt`, `/sitemap.xml`, sample place canonical, public `/admin`, public `/api/admin/places`, admin `/admin`, admin `/login`을 읽기 전용으로 확인한다.
 
 배포는 목적에 따라 아래를 사용한다.
 
 ```bash
 npm run deploy
+npm run deploy:check:public
 npm run deploy:public
+npm run deploy:check:admin
 npm run deploy:admin
 ```
 
 - `deploy`: 현재 앱 전체 배포
-- `deploy:public`: 관리자 route를 제외한 public 앱 배포
+- `deploy:public`: `/admin`, `/api/admin`을 외부 관리자 앱 redirect/API stub로 전환한 public 앱 배포
 - `deploy:admin`: 별도 `apps/admin` 관리자 앱 배포
 
 관리자 분리 기준 배포 순서는 아래를 권장한다.
 1. `npm run deploy:admin`
-2. `ADMIN_APP_URL=https://altteulmap-admin.<subdomain>.workers.dev` 설정
-3. `npm run deploy:public`
+2. admin Worker에 `NEXTAUTH_URL=https://altteulmap-admin.<subdomain>.workers.dev`, `SITE_URL=https://altteulmap.<subdomain>.workers.dev` 설정
+3. public Worker에 `ADMIN_APP_URL=https://altteulmap-admin.<subdomain>.workers.dev` 설정
+4. `npm run deploy:public`
 
 이 명령들은 `.next`, `.open-next`를 먼저 비우고 다시 OpenNext build를 만든 뒤 업로드한다.
 현재 저장소는 Cloudflare Workers Free 한도에 맞추기 위해 `webpack` build를 사용한다.
+배포/점검 스크립트는 쉘이나 CI에서 주입한 env를 로컬 `.env*`보다 우선 사용하므로, 운영 워크플로우에서 넘긴 `NEXTAUTH_URL`, `ADMIN_APP_URL`, `SITE_URL`이 로컬 파일 값에 덮이지 않는다.
 
 preview 기준으로 로컬 URL 허용 상태만 보려면:
 
@@ -86,14 +104,18 @@ npm run deploy:check -- --preview
 ## 7. 첫 배포 직후 확인
 1. `/`에서 지도 렌더링
 2. `/login`에서 카카오/네이버 로그인 버튼 노출
-3. `/robots.txt`
-4. `/sitemap.xml`
-5. 장소 상세 canonical
-6. 북마크/등록/신고 보호 라우트 동작
+3. public Worker의 `/admin`이 별도 admin Worker로 이동하는지 확인
+4. public Worker의 `/api/admin/places`가 `adminUrl`이 담긴 안내 JSON을 반환하는지 확인
+5. `/robots.txt`
+6. `/sitemap.xml`
+7. 장소 상세 canonical
+8. 북마크/등록/신고 보호 라우트 동작
+9. 필요 시 `npm run smoke:remote` 재실행
 
 ## 8. 주의사항
 - production에서는 `NEXTAUTH_URL`에 `localhost`를 쓰면 안 된다.
-- `deploy:public`은 `ADMIN_APP_URL` 없이 실행하면 실패하게 해두었다. public 번들에서 `/admin`, `/api/admin`을 제거하므로 외부 관리자 앱 주소가 필요하다.
+- `deploy:public`은 `ADMIN_APP_URL` 없이 실행하면 실패하게 해두었다. public 번들은 `/admin`, `/api/admin`을 external stub 모드로 빌드하므로 외부 관리자 앱 주소가 필요하다.
+- `deploy:admin`으로 별도 관리자 앱을 둘 때 `SITE_URL`이 빠지면 관리자 헤더의 홈 링크가 admin 앱 자신을 가리킬 수 있다.
 - 네이버 지도 키와 네이버 로그인 키는 서로 다른 값이다.
 - 지도용 네이버 키는 `NEXT_PUBLIC_NAVER_MAP_KEY_ID`, 로그인용은 `AUTH_NAVER_CLIENT_ID` / `AUTH_NAVER_CLIENT_SECRET`이다.
 - 네이버 지도는 환경 변수만 맞춰도 끝나지 않는다. NAVER Cloud Platform 지도 애플리케이션 설정의 웹 서비스 URL 또는 허용 도메인에 실제 배포 주소(`https://<worker>.<subdomain>.workers.dev` 또는 custom domain)를 같이 등록해야 한다.

@@ -124,6 +124,7 @@ npx wrangler login
 중요:
 - 이 내용은 OpenNext 문서와 현재 저장소의 배포 방식을 합친 운영 가이드다.
 - 현재 저장소는 `Workers Builds`가 아니라 `로컬 build -> wrangler deploy` 흐름이므로, 로컬 build 변수와 Cloudflare runtime 변수 둘 다 챙겨야 한다.
+- 현재 배포/점검 스크립트는 쉘이나 CI에서 주입한 env를 로컬 `.env*`보다 우선 사용한다. 즉 워크플로우가 넘긴 운영 `NEXTAUTH_URL`, `ADMIN_APP_URL`, `SITE_URL`이 개발용 파일 값으로 다시 덮이지 않는다.
 
 공식 문서:
 - [OpenNext env vars guide](https://opennext.js.org/cloudflare/howtos/env-vars)
@@ -136,6 +137,7 @@ npx wrangler login
 ```env
 DATABASE_URL=
 AUTH_SECRET=
+SITE_URL=
 NEXTAUTH_URL=
 ADMIN_APP_URL=
 NEXT_PUBLIC_NAVER_MAP_KEY_ID=
@@ -166,6 +168,7 @@ RESEND_API_KEY=
 - 실무적으로는 아래도 대시보드에서 변수로 관리하는 편이 낫다.
   - `AUTH_KAKAO_CLIENT_ID`
   - `AUTH_NAVER_CLIENT_ID`
+  - `SITE_URL`
   - `NEXTAUTH_URL`
   - `ADMIN_APP_URL`
 
@@ -176,6 +179,10 @@ RESEND_API_KEY=
 - `robots.txt`
 - `sitemap.xml`
 - canonical metadata
+
+관리자 앱을 따로 배포할 때는 `SITE_URL`도 같이 중요하다.
+- admin 앱 헤더의 홈 링크 기준 URL
+- public 앱 복귀 링크 기준 URL
 
 ### 가장 쉬운 순서
 1. 먼저 `workers.dev` 주소로 배포
@@ -191,6 +198,18 @@ RESEND_API_KEY=
 NEXTAUTH_URL=https://altteulmap.alexteam.workers.dev
 ```
 
+관리자 앱을 따로 두면 예시는 아래처럼 나뉜다.
+
+```env
+# public worker
+NEXTAUTH_URL=https://altteulmap.alexteam.workers.dev
+ADMIN_APP_URL=https://altteulmap-admin.alexteam.workers.dev
+
+# admin worker
+NEXTAUTH_URL=https://altteulmap-admin.alexteam.workers.dev
+SITE_URL=https://altteulmap.alexteam.workers.dev
+```
+
 참고:
 - `workers.dev` 형식은 Cloudflare 공식 문서 기준으로 `<worker-name>.<subdomain>.workers.dev`다.
 - 운영 서비스는 나중에 커스텀 도메인으로 바꾸는 게 좋다.
@@ -204,6 +223,8 @@ npm install
 npm run verify
 npm run test:e2e
 npm run deploy:check -- --preview
+npm run deploy:check:public
+npm run deploy:check:admin
 ```
 
 DB를 실제로 쓰는 상태면 필요 시:
@@ -247,7 +268,7 @@ npm run deploy:admin
 npm run deploy:public
 ```
 
-이때 `deploy:public`은 `ADMIN_APP_URL`이 비어 있으면 실패한다. public 번들에서 `/admin`, `/api/admin`을 제거하는 대신 관리자 링크를 외부 관리자 앱으로 보내기 때문이다.
+이때 `deploy:public`은 `ADMIN_APP_URL`이 비어 있으면 실패한다. public 번들은 `/admin`, `/api/admin`을 external redirect/API stub 모드로 빌드하고, 관리자 링크를 외부 관리자 앱으로 보내기 때문이다.
 
 공식 문서:
 - [Cloudflare Next.js guide](https://developers.cloudflare.com/workers/framework-guides/web-apps/nextjs/)

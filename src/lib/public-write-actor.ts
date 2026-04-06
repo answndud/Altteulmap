@@ -3,7 +3,7 @@ import "server-only";
 import { getSessionUser, type SessionUser } from "@/lib/session";
 import {
   createVisitorId,
-  getVisitorIdFromCookie,
+  getVisitorIdFromRequest,
   setVisitorIdCookie,
 } from "@/lib/visitor-id";
 
@@ -21,7 +21,7 @@ export async function getPublicWriteActor(
 ): Promise<PublicWriteActor> {
   const user = await getSessionUser();
   const createVisitorIfMissing = options?.createVisitorIfMissing ?? true;
-  const existingVisitorId = user ? null : await getVisitorIdFromCookie();
+  const existingVisitorId = user ? null : getVisitorIdFromRequest(request);
   const visitorId = user
     ? null
     : (existingVisitorId ??

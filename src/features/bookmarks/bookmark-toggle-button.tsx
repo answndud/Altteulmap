@@ -25,40 +25,50 @@ export function BookmarkToggleButton({
 
   const toggleBookmark = () => {
     startTransition(async () => {
-      const nextBookmarked = !bookmarked;
-      const response = await fetch(`/api/bookmarks/${encodeURIComponent(placeId)}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          bookmarked: nextBookmarked,
-        }),
-      });
+      try {
+        const nextBookmarked = !bookmarked;
+        const response = await fetch(
+          `/api/bookmarks/${encodeURIComponent(placeId)}`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              bookmarked: nextBookmarked,
+            }),
+          },
+        );
 
-      const result = (await response.json()) as {
-        ok: boolean;
-        bookmarked: boolean;
-        message: string;
-        requiresAuth?: boolean;
-      };
+        const result = (await response.json()) as {
+          ok: boolean;
+          bookmarked: boolean;
+          message: string;
+          requiresAuth?: boolean;
+        };
 
-      if (response.status === 401 || result.requiresAuth) {
-        if (loginHref) {
-          router.push(loginHref);
+        if (response.status === 401 || result.requiresAuth) {
+          if (loginHref) {
+            router.push(loginHref);
+            return;
+          }
+
+          setMessage(result.message);
+          return;
+        }
+
+        if (result.ok) {
+          setBookmarked(result.bookmarked);
+          setMessage(null);
+          router.refresh();
           return;
         }
 
         setMessage(result.message);
-        return;
+      } catch (error) {
+        console.error("Failed to toggle bookmark.", error);
+        setMessage("북마크 업데이트에 실패했습니다.");
       }
-
-      if (result.ok) {
-        setBookmarked(result.bookmarked);
-        router.refresh();
-      }
-
-      setMessage(result.message);
     });
   };
 

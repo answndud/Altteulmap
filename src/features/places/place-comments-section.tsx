@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 
+import { getRateLimitFeedbackMessage } from "@/lib/rate-limit-feedback";
 import type { PlaceComment } from "@/features/places/types";
 
 type PlaceCommentsSectionProps = {
@@ -12,6 +13,7 @@ type PlaceCommentsSectionProps = {
 type CommentActionResponse = {
   ok: boolean;
   message: string;
+  retryAfterMs?: number;
   item?: PlaceComment | null;
   deletedCommentId?: string | null;
 };
@@ -36,7 +38,14 @@ export function PlaceCommentsSection({
       });
 
       const result = (await response.json()) as CommentActionResponse;
-      setMessage(result.message);
+      setMessage(
+        getRateLimitFeedbackMessage({
+          response,
+          message: result.message,
+          retryAfterMs: result.retryAfterMs,
+          defaultMessage: "코멘트 등록 요청이 너무 빠릅니다.",
+        }),
+      );
 
       if (!response.ok || !result.ok || !result.item) {
         return;
@@ -86,22 +95,19 @@ export function PlaceCommentsSection({
           <textarea
             value={body}
             onChange={(event) => setBody(event.target.value)}
-            rows={3}
+            rows={4}
             disabled={isPending}
             data-testid="comment-body"
-            className="w-full rounded-[1rem] border border-stone-300 bg-white px-4 py-3 text-sm leading-6 text-stone-700 outline-none transition focus:border-stone-900 disabled:cursor-not-allowed disabled:opacity-60"
+            className="altteulmap-input min-h-28 resize-y px-4 py-3.5 text-sm leading-6 text-stone-700 disabled:cursor-not-allowed disabled:opacity-60"
             placeholder="예: 점심시간 전에는 금방 품절돼요. 현금 결제만 가능합니다."
           />
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-xs text-stone-500">
-              로그인 없이 익명 코멘트를 남길 수 있습니다.
-            </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
             <button
               type="button"
               onClick={handleSubmit}
               disabled={isPending || body.trim().length < 2}
               data-testid="comment-submit"
-              className="altteulmap-accent-solid altteulmap-button whitespace-nowrap px-4 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60"
+              className="altteulmap-accent-solid altteulmap-button inline-flex w-full items-center justify-center whitespace-nowrap px-4 py-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
             >
               {isPending ? "등록 중..." : "남기기"}
             </button>
@@ -120,7 +126,7 @@ export function PlaceCommentsSection({
               className="rounded-[1.15rem] bg-stone-50 px-4 py-4"
             >
               <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3">
+                <div className="flex min-w-0 flex-1 items-center gap-3">
                   <span className="flex h-9 w-9 items-center justify-center rounded-full bg-stone-200 text-xs font-semibold text-stone-700">
                     {comment.authorLabel.slice(0, 2)}
                   </span>

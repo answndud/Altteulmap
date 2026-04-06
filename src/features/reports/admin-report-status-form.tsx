@@ -12,18 +12,31 @@ type AdminReportStatusFormProps = {
   reportId: string;
   currentStatus: keyof typeof reportStatusMap;
   disabled?: boolean;
+  onSuccess?: (
+    status: keyof typeof reportStatusMap,
+    message: string,
+  ) => void;
 };
 
 export function AdminReportStatusForm({
   reportId,
   currentStatus,
   disabled = false,
+  onSuccess,
 }: AdminReportStatusFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
+  const [messageTone, setMessageTone] = useState<"default" | "success" | "error">(
+    "default",
+  );
+  const [pendingStatus, setPendingStatus] = useState<
+    keyof typeof reportStatusMap | null
+  >(null);
 
   const handleUpdate = (status: keyof typeof reportStatusMap) => {
+    setPendingStatus(status);
+
     startTransition(async () => {
       const response = await fetch(`/api/admin/reports/${reportId}`, {
         method: "PATCH",
@@ -39,8 +52,10 @@ export function AdminReportStatusForm({
       };
 
       setMessage(result.message);
+      setMessageTone(response.ok && result.ok ? "success" : "error");
 
       if (response.ok && result.ok) {
+        onSuccess?.(status, result.message);
         router.refresh();
       }
     });
@@ -71,8 +86,20 @@ export function AdminReportStatusForm({
         })}
       </div>
       {message ? (
-        <p data-testid="admin-report-status-message" className="text-xs text-stone-500">
-          {isPending ? "처리 중..." : message}
+        <p
+          data-testid="admin-report-status-message"
+          aria-live="polite"
+          className={`text-xs ${
+            messageTone === "success"
+              ? "text-emerald-700"
+              : messageTone === "error"
+                ? "text-rose-700"
+                : "text-stone-500"
+          }`}
+        >
+          {isPending && pendingStatus
+            ? `${reportStatusMap[pendingStatus]} 상태로 반영 중...`
+            : message}
         </p>
       ) : null}
     </div>

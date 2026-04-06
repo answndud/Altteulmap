@@ -1,7 +1,5 @@
 import "server-only";
 
-import { cookies } from "next/headers";
-
 const VISITOR_ID_COOKIE_NAME = "altteulmap_visitor_id";
 const VISITOR_ID_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
@@ -14,9 +12,38 @@ export function createVisitorId() {
   return crypto.randomUUID();
 }
 
-export async function getVisitorIdFromCookie() {
-  const cookieStore = await cookies();
-  return normalizeVisitorId(cookieStore.get(VISITOR_ID_COOKIE_NAME)?.value);
+export function getVisitorIdFromCookieHeader(
+  cookieHeader: string | null | undefined,
+) {
+  if (!cookieHeader) {
+    return null;
+  }
+
+  for (const part of cookieHeader.split(";")) {
+    const [rawName, ...rawValueParts] = part.split("=");
+
+    if (rawName?.trim() !== VISITOR_ID_COOKIE_NAME) {
+      continue;
+    }
+
+    const rawValue = rawValueParts.join("=").trim();
+
+    if (!rawValue) {
+      return null;
+    }
+
+    try {
+      return normalizeVisitorId(decodeURIComponent(rawValue));
+    } catch {
+      return normalizeVisitorId(rawValue);
+    }
+  }
+
+  return null;
+}
+
+export function getVisitorIdFromRequest(request: Request) {
+  return getVisitorIdFromCookieHeader(request.headers.get("cookie"));
 }
 
 function serializeCookie(

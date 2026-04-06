@@ -39,12 +39,19 @@ export function AdminPriceItemForm({
   const [isActive, setIsActive] = useState(initialIsActive);
   const [isRepresentative, setIsRepresentative] = useState(initialIsRepresentative);
   const [message, setMessage] = useState<string | null>(null);
+  const [messageTone, setMessageTone] = useState<"default" | "success" | "error">(
+    "default",
+  );
+  const [pendingLabel, setPendingLabel] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const submit = (overrides?: {
     isActive?: boolean;
     isRepresentative?: boolean;
+    pendingLabel?: string;
   }) => {
+    setPendingLabel(overrides?.pendingLabel ?? "저장");
+
     startTransition(async () => {
       const nextIsActive = overrides?.isActive ?? isActive;
       const nextIsRepresentative =
@@ -67,6 +74,7 @@ export function AdminPriceItemForm({
 
       const result = (await response.json()) as AdminPriceItemResponse;
       setMessage(result.message);
+      setMessageTone(response.ok && result.ok ? "success" : "error");
 
       if (response.ok && result.ok) {
         setIsActive(nextIsActive);
@@ -155,7 +163,7 @@ export function AdminPriceItemForm({
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
-          onClick={() => submit()}
+          onClick={() => submit({ pendingLabel: "저장" })}
           disabled={disabled || isPending}
           className="rounded-full bg-stone-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
@@ -163,7 +171,13 @@ export function AdminPriceItemForm({
         </button>
         <button
           type="button"
-          onClick={() => submit({ isRepresentative: true, isActive: true })}
+          onClick={() =>
+            submit({
+              isRepresentative: true,
+              isActive: true,
+              pendingLabel: "대표 가격 지정",
+            })
+          }
           disabled={disabled || isPending || !isActive}
           className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-60"
         >
@@ -171,7 +185,13 @@ export function AdminPriceItemForm({
         </button>
         <button
           type="button"
-          onClick={() => submit({ isActive: !isActive, isRepresentative: false })}
+          onClick={() =>
+            submit({
+              isActive: !isActive,
+              isRepresentative: false,
+              pendingLabel: isActive ? "숨기기" : "복원",
+            })
+          }
           disabled={disabled || isPending}
           className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-60"
         >
@@ -180,8 +200,17 @@ export function AdminPriceItemForm({
       </div>
 
       {message ? (
-        <p className="text-xs text-stone-500">
-          {isPending ? "처리 중..." : message}
+        <p
+          aria-live="polite"
+          className={`text-xs ${
+            messageTone === "success"
+              ? "text-emerald-700"
+              : messageTone === "error"
+                ? "text-rose-700"
+                : "text-stone-500"
+          }`}
+        >
+          {isPending ? `${pendingLabel ?? "처리"} 반영 중...` : message}
         </p>
       ) : null}
     </div>

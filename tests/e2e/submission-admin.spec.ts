@@ -115,11 +115,17 @@ test("장소를 등록하고 운영자가 승인하면 홈 검색에 노출된�
       .first();
 
     await expect(approvedListItem).toBeVisible();
-    await approvedListItem.dispatchEvent("click");
+    await expect(approvedListItem).toContainText(uniqueName);
 
-    const detailSheet = adminPage.getByTestId("place-detail-sheet");
-    await expect(detailSheet).toBeVisible();
-    await expect(detailSheet.getByRole("heading", { name: uniqueName })).toBeVisible();
+    const approvedPlaceTestId = await approvedListItem.getAttribute("data-testid");
+    expect(approvedPlaceTestId).toBeTruthy();
+
+    const approvedPlaceId = approvedPlaceTestId!.replace("place-list-item-", "");
+
+    await adminPage.goto(`/place/${approvedPlaceId}`);
+    await expect(
+      adminPage.getByRole("heading", { name: uniqueName }),
+    ).toBeVisible();
   } finally {
     if (userContext) {
       await userContext.close();
