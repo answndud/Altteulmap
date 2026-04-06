@@ -236,7 +236,7 @@ npm run db:seed
 ```
 
 이 저장소의 배포 체크 문서는 별도로 아래 파일에 있다.
-- `/Users/alex/project/altteulmap/docs/deploy-cloudflare.md`
+- `deploy-cloudflare.md`
 
 ## 9. 첫 `workers.dev` 배포
 

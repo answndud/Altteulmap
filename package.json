@@ -34,6 +34,7 @@
     "deploy:check:admin": "node scripts/check-cloudflare-deploy.mjs --admin",
     "hooks:install": "node scripts/git-hooks/install-hooks.mjs",
     "cf:clean": "rm -rf .next .open-next",
+    "clean:artifacts": "rm -rf .next .next-dev .open-next apps/admin/.next apps/admin/.next-dev apps/admin/.open-next test-results playwright-report tsconfig.tsbuildinfo apps/admin/tsconfig.tsbuildinfo",
     "cf:patch-next-runtime": "node scripts/patch-next-cloudflare-runtime.mjs",
     "cf:build": "npm run admin:sync && npm run cf:patch-next-runtime && npm run cf:clean && opennextjs-cloudflare build",
     "cf:build:public": "npm run cf:clean && node scripts/build-public-worker.mjs",
