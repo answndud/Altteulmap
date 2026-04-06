@@ -27,6 +27,9 @@
 4. 공유 telemetry 후속 활용 범위 판단: 현재 지표를 더 확장할지, 현 범위에서 동결할지 결정
 5. repo-local 개발 워크플로우 유지: `.agents` skills/reviewers, `.githooks`, `verify` 스크립트
 
+## 최근 완료 메모
+- README 포트폴리오 랜딩과 live 스크린샷 세트는 완료했다. 현재 GitHub 첫 화면에서는 제품 개요, 실데이터/배포 포인트, 핵심 화면, AI-native workflow를 짧게 확인할 수 있다.
+
 ## 현재 제품 상태
 
 ### 구현 완료

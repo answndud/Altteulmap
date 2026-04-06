@@ -4,6 +4,7 @@
 
 ## 진행 현황 요약
 - Cycle 10: 관리자 실제 구현을 `src/features/admin/**`로 모으고, public 앱 `entrypoints`와 별도 `apps/admin` 빌드를 추가해 관리자 분리 1차 완료. public `cf:build:public`은 `/admin`, `/api/admin`을 external redirect/API stub로 유지한 채 빌드하고, `deploy:check:public`, `deploy:check:admin`, `SITE_URL` 기준, `workers.dev` split 배포와 remote smoke까지 정리했다. custom domain 적용은 필요할 때만 마지막 운영 단계로 남아 있다
+- Cycle 10 후속: admin telemetry가 `useSearchParams()` 때문에 standalone admin Cloudflare build를 깨던 경로를 제거했고, admin build는 이제 `ADMIN_APP_URL`을 `NEXTAUTH_URL`로 강제해 shared `.env.production.local`에서도 올바른 callback 기준으로 동작한다. `deploy:check:admin`, `cf:build:admin`, live admin 재배포까지 다시 통과했다
 - Cycle 0: 프로젝트 로컬 기반, DB 경로, 지도 탐색, 장소 상세, 등록, 신고, 북마크, 관리자 검토, 로컬 인증, 네이버 지도 연동 완료
 - Cycle 1: 현재 위치 버튼, viewport 재조회, 모바일 목록 바텀시트, 모바일 상세 시트 기초 정리 완료
 - Cycle 2: `PLAN.md`/`PROGRESS.md` 운영 문서 형식 정비, 지역/전역 검색, 검색 URL 상태 반영 완료
@@ -40,6 +41,41 @@
 - 다음 우선순위: custom domain 적용 여부를 결정하고, 운영 도메인 QA와 모바일 제스처 실사용 검증을 더 진행할지 판단한다. 공유 telemetry는 현재 범위에서 동결할지 추가 활용할지 별도 결정이 남아 있다
 
 ## 실행 로그
+
+### 2026-04-06 12:52 KST: README 채용 제출용 압축 polish와 admin Cloudflare build 복구
+- 완료 내용
+  - `/Users/alex/project/altteulmap/README.md`를 한 번 더 압축해 제품 소개 페이지 톤으로 정리했다. `At a Glance`, `Highlights`, `Screenshots`, `Why This Repo Is Worth Opening`, `AI-Native Workflow` 중심으로 재구성했고, GitHub에서 바로 렌더되도록 이미지 경로를 `docs/readme/*.png` 상대 경로로 맞췄다.
+  - `/Users/alex/project/altteulmap/src/features/telemetry/visit-tracker.tsx`에서 `useSearchParams()` 의존을 제거하고 `window.location.search`를 effect 안에서 읽도록 바꿨다. 이 변경으로 standalone admin app의 `/_not-found` prerender가 telemetry 때문에 실패하던 경로를 없앴다.
+  - `/Users/alex/project/altteulmap/scripts/build-admin-worker.mjs`는 admin build 시 `ADMIN_APP_URL`을 `NEXTAUTH_URL`로 주입하도록 바꿨고, `/Users/alex/project/altteulmap/scripts/check-cloudflare-deploy.mjs`는 admin mode에서 `ADMIN_APP_URL`을 필수값으로 보고 callback reminder도 admin URL 기준으로 출력하도록 보강했다.
+  - `npm run deploy:admin`으로 admin worker를 다시 배포했고 live URL이 다시 정상 응답하는 것까지 확인했다.
+  - `npm run readme:screenshots`를 다시 실행해 README용 스크린샷 세트를 최신 배포 상태 기준으로 갱신했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run deploy:check:admin` 통과
+  - `npm run cf:build:admin` 통과
+  - `npm run deploy:admin` 통과
+  - `curl -I --max-time 20 https://altteulmap-admin.altteul-lab.workers.dev/` 결과 `200`
+  - `curl -I --max-time 20 https://altteulmap-admin.altteul-lab.workers.dev/login` 결과 `200`
+  - `curl -I --max-time 20 https://altteulmap-admin.altteul-lab.workers.dev/admin` 결과 `307 -> /login?callbackUrl=%2Fadmin`
+  - `npm run readme:screenshots` 통과
+- 메모
+  - admin Cloudflare version id: `4073cec5-2f67-4849-b8f9-31fb1b0ed714`
+  - admin runtime env는 dashboard에서도 `NEXTAUTH_URL=https://altteulmap-admin.altteul-lab.workers.dev`, `SITE_URL=https://altteulmap.altteul-lab.workers.dev` 조합으로 유지하는 것이 맞다.
+
+### 2026-04-06 12:35 KST: 포트폴리오용 README 랜딩 구조와 live 스크린샷 정리
+- 완료 내용
+  - `/Users/alex/project/altteulmap/PLAN.md`의 현재 우선순위에 `README 포트폴리오 polish`를 최상단으로 올렸다.
+  - `/Users/alex/project/altteulmap/scripts/capture-readme-screenshots.mjs`와 `package.json`의 `readme:screenshots` 스크립트를 추가해 live public/admin URL 기준 대표 화면을 `docs/readme/*.png`로 저장하는 재현 가능한 캡처 경로를 만들었다.
+  - `/Users/alex/project/altteulmap/docs/readme/hero-home.png`, `/Users/alex/project/altteulmap/docs/readme/place-detail.png`, `/Users/alex/project/altteulmap/docs/readme/mobile-map-sheet.png`, `/Users/alex/project/altteulmap/docs/readme/submit-form.png`, `/Users/alex/project/altteulmap/docs/readme/admin-console.png`를 생성했다.
+  - `/Users/alex/project/altteulmap/README.md`를 설치 문서 중심 구조에서 포트폴리오 랜딩 구조로 전면 개편했다. 상단은 `문제 정의 -> live demo -> 핵심 포인트 -> 화면 -> 사용자 흐름 -> 엔지니어링 결정 -> AI-Native Workflow -> 검증` 순서로 압축했고, 로컬 실행/문서 링크만 하단에 남겼다.
+  - 같은 README를 한 번 더 압축해 `TL;DR`, `Highlights`, `Why This Repo Is Interesting` 중심으로 정리했다. 목적은 채용/포트폴리오 링크에서 30초 안에 제품/엔지니어링 강점을 파악하게 만드는 것이다.
+- 검증 결과
+  - `npm run readme:screenshots` 통과
+  - `npm run verify:quick` 실행
+  - 저장된 스크린샷 수동 확인: hero/detail/mobile/submit/admin-console 5장 생성 확인
+- 메모
+  - README는 채용/포트폴리오 랜딩 톤에 맞춰 의도적으로 컴팩트하게 줄였고, 세부 배포/운영 설명은 기존 docs 링크로 내렸다.
+  - admin 내부 운영 화면 대신 접근 가능한 별도 admin worker 랜딩을 캡처해 `public/admin split` 구조를 보여주는 방향으로 정리했다.
 
 ### 2026-04-06 12:15 KST: 공개 지도 숫자 cluster 톤 완화 push 및 public Cloudflare 배포
 - 완료 내용

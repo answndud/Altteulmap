@@ -35,7 +35,7 @@ const requiredVars = [
 const modeRequiredVars = {
   full: [],
   public: ["ADMIN_APP_URL"],
-  admin: ["SITE_URL"],
+  admin: ["SITE_URL", "ADMIN_APP_URL"],
 };
 
 const optionalVars = ["EMAIL_FROM", "RESEND_API_KEY"];
@@ -146,9 +146,12 @@ function main() {
     printLine("WARN USE_MOCK_DATA should be false before deploy");
   }
 
-  const nextAuthUrl = process.env.NEXTAUTH_URL ?? "";
   const adminAppUrl = process.env.ADMIN_APP_URL ?? "";
   const siteUrl = process.env.SITE_URL ?? "";
+  const nextAuthUrl =
+    deploymentMode === "admin" && isTruthy(adminAppUrl)
+      ? adminAppUrl
+      : (process.env.NEXTAUTH_URL ?? "");
 
   const nextAuthUrlOk = printUrlCheck("NEXTAUTH_URL", nextAuthUrl);
   let adminAppUrlOk = true;

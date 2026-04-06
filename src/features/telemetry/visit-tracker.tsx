@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 import {
   isPlaceShareSource,
@@ -14,15 +14,15 @@ type VisitTrackerProps = {
 
 export function VisitTracker({ scope }: VisitTrackerProps) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const ref = searchParams.get("ref");
-  const sourceValue = searchParams.get("source");
 
   useEffect(() => {
     if (!pathname) {
       return;
     }
 
+    const searchParams = new URLSearchParams(window.location.search);
+    const ref = searchParams.get("ref");
+    const sourceValue = searchParams.get("source");
     const source = isPlaceShareSource(sourceValue) ? sourceValue : undefined;
 
     void fetch("/api/telemetry/visit", {
@@ -42,7 +42,7 @@ export function VisitTracker({ scope }: VisitTrackerProps) {
     }).catch(() => {
       // Ignore telemetry delivery failures. Admin metrics are best-effort.
     });
-  }, [pathname, ref, scope, sourceValue]);
+  }, [pathname, scope]);
 
   return null;
 }

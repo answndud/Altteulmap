@@ -28,6 +28,7 @@
     "verify": "npm run lint && npm run build",
     "smoke:local": "node scripts/smoke-local.mjs",
     "smoke:remote": "node scripts/smoke-remote.mjs",
+    "readme:screenshots": "node scripts/capture-readme-screenshots.mjs",
     "deploy:check": "node scripts/check-cloudflare-deploy.mjs",
     "deploy:check:public": "node scripts/check-cloudflare-deploy.mjs --public",
     "deploy:check:admin": "node scripts/check-cloudflare-deploy.mjs --admin",
