@@ -6,17 +6,27 @@ import { useState, useTransition } from "react";
 type AdminPriceReportReviewFormProps = {
   reportId: string;
   disabled?: boolean;
+  onSuccess?: (decision: "approve" | "reject", message: string) => void;
 };
 
 export function AdminPriceReportReviewForm({
   reportId,
   disabled = false,
+  onSuccess,
 }: AdminPriceReportReviewFormProps) {
   const router = useRouter();
   const [message, setMessage] = useState<string | null>(null);
+  const [messageTone, setMessageTone] = useState<"default" | "success" | "error">(
+    "default",
+  );
+  const [lastDecision, setLastDecision] = useState<"approve" | "reject" | null>(
+    null,
+  );
   const [isPending, startTransition] = useTransition();
 
   const submitDecision = (decision: "approve" | "reject") => {
+    setLastDecision(decision);
+
     startTransition(async () => {
       const response = await fetch(`/api/admin/prices/${reportId}`, {
         method: "PATCH",
@@ -32,8 +42,10 @@ export function AdminPriceReportReviewForm({
       };
 
       setMessage(result.message);
+      setMessageTone(response.ok && result.ok ? "success" : "error");
 
       if (response.ok && result.ok) {
+        onSuccess?.(decision, result.message);
         router.refresh();
       }
     });
@@ -62,8 +74,22 @@ export function AdminPriceReportReviewForm({
         </button>
       </div>
       {message ? (
-        <p data-testid="admin-price-review-message" className="text-xs text-stone-500">
-          {isPending ? "처리 중..." : message}
+        <p
+          data-testid="admin-price-review-message"
+          aria-live="polite"
+          className={`text-xs ${
+            messageTone === "success"
+              ? "text-emerald-700"
+              : messageTone === "error"
+                ? "text-rose-700"
+                : "text-stone-500"
+          }`}
+        >
+          {isPending
+            ? lastDecision === "approve"
+              ? "승인 반영 중..."
+              : "반려 반영 중..."
+            : message}
         </p>
       ) : null}
     </div>

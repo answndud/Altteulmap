@@ -1,24 +1,1235 @@
 # PROGRESS.md
 
-기준일: 2026-04-01
+기준일: 2026-04-05
 
 ## 진행 현황 요약
-- Cycle 10: 관리자 실제 구현을 `src/features/admin/**`로 모으고, public 앱 `entrypoints`와 별도 `apps/admin` 빌드를 추가해 관리자 분리 1차 스캐폴딩 완료. `deploy:admin`과 `deploy:public` 경로도 분리했고, 실제 admin deploy와 `ADMIN_APP_URL` cutover는 마지막 운영 적용만 남아 있음
+- Cycle 10: 관리자 실제 구현을 `src/features/admin/**`로 모으고, public 앱 `entrypoints`와 별도 `apps/admin` 빌드를 추가해 관리자 분리 1차 완료. public `cf:build:public`은 `/admin`, `/api/admin`을 external redirect/API stub로 유지한 채 빌드하고, `deploy:check:public`, `deploy:check:admin`, `SITE_URL` 기준, `workers.dev` split 배포와 remote smoke까지 정리했다. custom domain 적용은 필요할 때만 마지막 운영 단계로 남아 있다
+- Cycle 10 후속: admin telemetry가 `useSearchParams()` 때문에 standalone admin Cloudflare build를 깨던 경로를 제거했고, admin build는 이제 `ADMIN_APP_URL`을 `NEXTAUTH_URL`로 강제해 shared `.env.production.local`에서도 올바른 callback 기준으로 동작한다. `deploy:check:admin`, `cf:build:admin`, live admin 재배포까지 다시 통과했다
 - Cycle 0: 프로젝트 로컬 기반, DB 경로, 지도 탐색, 장소 상세, 등록, 신고, 북마크, 관리자 검토, 로컬 인증, 네이버 지도 연동 완료
 - Cycle 1: 현재 위치 버튼, viewport 재조회, 모바일 목록 바텀시트, 모바일 상세 시트 기초 정리 완료
 - Cycle 2: `PLAN.md`/`PROGRESS.md` 운영 문서 형식 정비, 지역/전역 검색, 검색 URL 상태 반영 완료
 - Cycle 3: 댓글 작성/삭제, 기존 장소 가격 제보, 관리자 가격 검토 큐 완료
 - Cycle 4: 관리자 가격 수정/숨김 UI, 대표 가격 재계산 규칙, 최소 rate limit, DB migration 적용, 실DB 런타임 검증 완료
-- Cycle 5: sitemap/robots/canonical/기본 metadata, OAuth scaffolding, deploy check, Playwright E2E 3차, 공개 UI polish 진행 중. 공개 쓰기는 북마크를 제외하고 익명 허용으로 정리됐고, 실제 외부 로그인 E2E와 운영 도메인 기준 점검은 남아 있음
+- Cycle 5: sitemap/robots/canonical/기본 metadata, OAuth scaffolding, deploy check, Playwright E2E 3차, 공개 UI polish 대부분 완료. 공개 쓰기는 북마크를 제외하고 익명 허용으로 정리됐고, public/admin 공통 헤더로 주요 이동 액션을 상단에 통합했다. 로그인/회원가입은 credentials 중심 액션 카드로 다시 단순화했고, 운영 도메인 기준 `workers.dev` 점검과 관리자 외부 앱 cutover도 정리됐다. 현재 남은 일은 custom domain 여부 결정과 더 깊은 QA다
 - Cycle 5 장소 등록 정책: 공개 폼은 텍스트 정보만 받고, 지도 위치와 네이버 지도 검색 확인은 운영자 승인 단계에서 처리하도록 다시 정리됨
 - Cycle 5 후속: GitHub Actions CI를 `push용 smoke`와 `PR용 full`로 분리하고 Cloudflare Builds와 분리 운영하는 경로 정리 완료
-- Cycle 6: 좋아요/싫어요 반응 도입 완료, 비로그인 visitor cookie 반응과 공개 메타 줄 분리까지 반영. 랭킹/목록 노출 확장은 남아 있음
+- Cycle 6: 좋아요/싫어요 반응 도입 완료, 비로그인 visitor cookie 반응과 공개 메타 줄 분리까지 반영. 홈 `인기 장소` 추천과 공유 후속은 반영했고, 별도 랭킹 화면은 현재 범위에서 제외함
 - Cycle 7: repo-local AI workflow 설정 완료 (`.agents`, `.githooks`, `verify`, local commit rules)
 - Cycle 8: 로컬 dev/runtime 안정화 완료 (`.next-dev` 분리, `webpack` dev 고정, build/e2e와 출력 경로 분리)
-- Cycle 9: 행정안전부 `착한가격업소` 실제 데이터 1000건 import 완료. 지역 라운드로빈 수집, 상세 메뉴 보강, DB seed/API 검증까지 반영됨
-- 다음 우선순위: 관리자 visit/activity telemetry 2차, 이후 실제 외부 로그인 E2E와 운영 도메인 점검
+- Cycle 9: 행정안전부 `착한가격업소` 실제 데이터 1000건 import 완료. 기본 selection은 `서울 500 + 비서울 500`, `음식점 70%`, `대표 가격 8천원 미만` 기준으로 유지되고 있고, 메뉴 라벨 dedupe까지 반영해 DB seed/API 검증을 다시 통과함
+- Cycle 5 지도 성능 후속: 지도 전용 preview payload와 마커/목록 렌더 상한, viewport 첫 진입의 1000건 SSR 제거, map API/server preview 응답 `count + capped items` 구조, `places` 비정규화, viewport/zoom 기반 cluster marker 계층, `items + mapMarkers` 분리, 서버 tile summary, viewport 무검색 SQL bucket aggregate, bounds 기반 short-lived 서버 캐시와 쓰기 후 invalidation, preview fallback/bootstrap fetch 회귀 수정, 공개 가격 필터 제거, `127.0.0.1` dev origin 허용까지 반영함
+- Cycle 5 운영 지표 후속: `visit_activity` 적재, public/admin layout tracker, `/api/telemetry/visit`, 관리자 overview 방문 카드, 로컬 admin 링크 fallback, 로그인 상태 header test id 복구까지 완료
+- Cycle 5 인증/UI 후속: `/login`, `/signup`은 설정성 패널 없이 액션 중심으로 다시 단순화했고, 지도 필터/검색 칩은 가로 레일로 정리했으며, login/signup E2E로 회귀를 유지함
+- Cycle 5 배포 후속: `deploy:check`와 public split build가 이제 쉘/CI env를 로컬 `.env*`보다 우선 사용하므로, 운영 URL과 split worker 값이 로컬 파일에 덮이지 않게 정리됨
+- Cycle 5 관리자 운영 UX 후속: moderation 카드의 즉시 성공 피드백, 공통 admin revalidation helper, public/admin entrypoint 재사용, admin moderation E2E fixture 정리까지 반영함
+- Cycle 5 공개 상세 후속: 새로 승인된 한글 slug 장소가 `/place/[slug]`에서 404로 떨어지던 route param 인코딩 문제를 수정했고, detail/price/comment/submission 관련 place page 회귀를 다시 통과시킴
+- Cycle 5 공개 UI/mobile polish 후속: 모바일 검색 요약은 한 줄 텍스트로 줄이고, 지도 목록 패널의 상태 안내는 하나의 요약 블록으로 합쳤으며, 상세 시트는 헤더/본문 중복 메타를 줄여 가격/액션 중심으로 시작하도록 다시 정리함
+- Cycle 5 모바일 시트 후속: 목록 시트에 `peek/expanded` 스냅과 drag-close를 추가했고, 상세 시트도 상단 핸들 drag-close를 지원하도록 정리했으며, 모바일/데스크톱 지도 회귀를 다시 통과시킴
+- Cycle 5 지도 탐색 UX 후속: 공개 지도 상단에 `이 지역 검색` 수동 재조회 버튼을 추가했고, `내 위치` 버튼은 `현재 위치`로 명확하게 바꿨다. viewport 흐름은 그대로 유지하면서도 사용자가 현재 지도 위치 기준으로 place/cluster를 다시 불러올 수 있게 했고, 데스크톱/모바일 지도 회귀에 버튼 노출과 수동 재조회 호출을 고정했다
+- Cycle 5 지도 마커 디자인 후속: place marker는 음식/생활서비스/장보기/건강/업무학습 상위 카테고리 기준 색 핀으로 다시 설계했고, 숫자 cluster는 중립 원형 계층으로 바꿔 같은 지도 화면에서 타입 구분과 시각 밀도를 함께 정리했다
+- Cycle 5 지도 마커 대비 후속: basemap과 섞이던 컬러 핀을 더 선명한 카테고리 팔레트와 강한 white halo, 중심 링 구조로 바꿨고, cluster도 slate 중심 원형 배지로 다시 정리해 확대/축소 상태 모두에서 배경 대비를 높였다
+- Cycle 5 지도 클러스터 톤 후속: 숫자 cluster는 같은 구조를 유지하되 slate 계열을 줄이고 더 밝은 크림/샌드 톤으로 조정해 overview 상태에서 덜 어둡고 답답하게 보이도록 정리했다
+- Cycle 5 공개 재검증 후속: 댓글/가격 제보/반응/북마크/장소 등록/신고 제출 route의 revalidation 경로를 공용 helper로 모아 홈/지도/상세/admin queue 반영 범위를 액션별로 정리했고, admin helper도 같은 place read 경로 정의를 재사용하도록 맞췄다
+- Cycle 5 운영 smoke 후속: `smoke:remote`와 `smoke:local`을 현재 UI/SEO 계약에 맞게 read-only smoke로 정리했고, Workers runtime에서 guest visitor cookie 조회가 public place read/write를 hang시키던 경로는 request cookie header 파싱과 DB read timeout fallback으로 완화했다. public worker를 다시 배포한 뒤 live `workers.dev` 기준 `smoke:remote`까지 통과했고, public `/api/admin/places` external stub는 다시 `200 + 안내 JSON` 계약으로 맞췄다
+- Cycle 5 rate limit UX 후속: 공개 쓰기와 회원가입 화면이 `429` 응답의 `Retry-After`/`X-RateLimit-Reset`을 읽어 남은 대기 시간을 같은 형식으로 보여주도록 정리했고, 댓글 E2E로 회귀를 붙였다
+- Cycle 5 관리자 UX polish 후속: `/admin/places`, `/admin/prices`, `/admin/reports`에 공통 queue nav와 핵심 개수 요약 카드를 붙였고, 신고 큐는 상태 필터와 빈 상태를 지원하도록 정리했다
+- Cycle 5 rate limit 정책/관측 후속: 공개 쓰기와 회원가입 정책 수치를 route 비용 기준으로 다시 조정했고, 응답 헤더에 `X-RateLimit-Policy`, `X-RateLimit-Window`를 추가해 운영 중 curl만으로도 어떤 bucket이 걸렸는지 바로 볼 수 있게 했다
+- Cycle 6 mock reaction 후속: mock runtime에서 `visitor:uuid:placeId` store key를 잘못 파싱해 비회원 좋아요 count가 0으로 남던 회귀를 수정했고, 데스크톱 `map.spec.ts`가 다시 통과함
+- Cycle 6 추천 후속: 홈 기본 화면에 `인기 장소` 섹션을 추가해 상위 6개 추천 장소를 노출하고, mock/desktop 회귀까지 붙였다
+- Cycle 6 공유 후속: 상세 페이지/상세 시트/지도 목록/인기 장소 카드가 같은 공유 payload를 쓰도록 정리했고, 공유 링크에는 `ref=share`, `source=detail|detail_sheet|list|trending`를 붙였다
+- Cycle 6 공유 telemetry 후속: `visit_activity`에 공유 ref/source를 저장하고, 관리자 overview에서 오늘/7일 공유 유입과 source breakdown을 확인할 수 있게 정리했다
+- 다음 우선순위: custom domain 적용 여부를 결정하고, 운영 도메인 QA와 모바일 제스처 실사용 검증을 더 진행할지 판단한다. 공유 telemetry는 현재 범위에서 동결할지 추가 활용할지 별도 결정이 남아 있다
 
 ## 실행 로그
+
+### 2026-04-06 12:52 KST: README 채용 제출용 압축 polish와 admin Cloudflare build 복구
+- 완료 내용
+  - `/Users/alex/project/altteulmap/README.md`를 한 번 더 압축해 제품 소개 페이지 톤으로 정리했다. `At a Glance`, `Highlights`, `Screenshots`, `Why This Repo Is Worth Opening`, `AI-Native Workflow` 중심으로 재구성했고, GitHub에서 바로 렌더되도록 이미지 경로를 `docs/readme/*.png` 상대 경로로 맞췄다.
+  - `/Users/alex/project/altteulmap/src/features/telemetry/visit-tracker.tsx`에서 `useSearchParams()` 의존을 제거하고 `window.location.search`를 effect 안에서 읽도록 바꿨다. 이 변경으로 standalone admin app의 `/_not-found` prerender가 telemetry 때문에 실패하던 경로를 없앴다.
+  - `/Users/alex/project/altteulmap/scripts/build-admin-worker.mjs`는 admin build 시 `ADMIN_APP_URL`을 `NEXTAUTH_URL`로 주입하도록 바꿨고, `/Users/alex/project/altteulmap/scripts/check-cloudflare-deploy.mjs`는 admin mode에서 `ADMIN_APP_URL`을 필수값으로 보고 callback reminder도 admin URL 기준으로 출력하도록 보강했다.
+  - `npm run deploy:admin`으로 admin worker를 다시 배포했고 live URL이 다시 정상 응답하는 것까지 확인했다.
+  - `npm run readme:screenshots`를 다시 실행해 README용 스크린샷 세트를 최신 배포 상태 기준으로 갱신했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run deploy:check:admin` 통과
+  - `npm run cf:build:admin` 통과
+  - `npm run deploy:admin` 통과
+  - `curl -I --max-time 20 https://altteulmap-admin.altteul-lab.workers.dev/` 결과 `200`
+  - `curl -I --max-time 20 https://altteulmap-admin.altteul-lab.workers.dev/login` 결과 `200`
+  - `curl -I --max-time 20 https://altteulmap-admin.altteul-lab.workers.dev/admin` 결과 `307 -> /login?callbackUrl=%2Fadmin`
+  - `npm run readme:screenshots` 통과
+- 메모
+  - admin Cloudflare version id: `4073cec5-2f67-4849-b8f9-31fb1b0ed714`
+  - admin runtime env는 dashboard에서도 `NEXTAUTH_URL=https://altteulmap-admin.altteul-lab.workers.dev`, `SITE_URL=https://altteulmap.altteul-lab.workers.dev` 조합으로 유지하는 것이 맞다.
+
+### 2026-04-06 12:35 KST: 포트폴리오용 README 랜딩 구조와 live 스크린샷 정리
+- 완료 내용
+  - `/Users/alex/project/altteulmap/PLAN.md`의 현재 우선순위에 `README 포트폴리오 polish`를 최상단으로 올렸다.
+  - `/Users/alex/project/altteulmap/scripts/capture-readme-screenshots.mjs`와 `package.json`의 `readme:screenshots` 스크립트를 추가해 live public/admin URL 기준 대표 화면을 `docs/readme/*.png`로 저장하는 재현 가능한 캡처 경로를 만들었다.
+  - `/Users/alex/project/altteulmap/docs/readme/hero-home.png`, `/Users/alex/project/altteulmap/docs/readme/place-detail.png`, `/Users/alex/project/altteulmap/docs/readme/mobile-map-sheet.png`, `/Users/alex/project/altteulmap/docs/readme/submit-form.png`, `/Users/alex/project/altteulmap/docs/readme/admin-console.png`를 생성했다.
+  - `/Users/alex/project/altteulmap/README.md`를 설치 문서 중심 구조에서 포트폴리오 랜딩 구조로 전면 개편했다. 상단은 `문제 정의 -> live demo -> 핵심 포인트 -> 화면 -> 사용자 흐름 -> 엔지니어링 결정 -> AI-Native Workflow -> 검증` 순서로 압축했고, 로컬 실행/문서 링크만 하단에 남겼다.
+  - 같은 README를 한 번 더 압축해 `TL;DR`, `Highlights`, `Why This Repo Is Interesting` 중심으로 정리했다. 목적은 채용/포트폴리오 링크에서 30초 안에 제품/엔지니어링 강점을 파악하게 만드는 것이다.
+- 검증 결과
+  - `npm run readme:screenshots` 통과
+  - `npm run verify:quick` 실행
+  - 저장된 스크린샷 수동 확인: hero/detail/mobile/submit/admin-console 5장 생성 확인
+- 메모
+  - README는 채용/포트폴리오 랜딩 톤에 맞춰 의도적으로 컴팩트하게 줄였고, 세부 배포/운영 설명은 기존 docs 링크로 내렸다.
+  - admin 내부 운영 화면 대신 접근 가능한 별도 admin worker 랜딩을 캡처해 `public/admin split` 구조를 보여주는 방향으로 정리했다.
+
+### 2026-04-06 12:15 KST: 공개 지도 숫자 cluster 톤 완화 push 및 public Cloudflare 배포
+- 완료 내용
+  - 숫자 cluster 톤 조정과 문서 업데이트를 `fix(map): soften cluster palette` (`36bcd4b`)로 커밋하고 `codex/ui-polish-batch` 브랜치에 push했다.
+  - 조정된 cluster 팔레트가 반영된 상태로 public worker를 다시 배포했다.
+- 검증 결과
+  - `git push origin codex/ui-polish-batch` 통과
+  - `npm run deploy:check` 통과
+  - `npm run deploy:public` 통과
+  - `curl -I --max-time 20 https://altteulmap.altteul-lab.workers.dev/` 결과 `200`
+- 메모
+  - public 배포 URL: `https://altteulmap.altteul-lab.workers.dev`
+  - Cloudflare version id: `0165f4a9-fef5-4ef0-8191-b0fb697b6927`
+
+### 2026-04-06 12:12 KST: 공개 지도 숫자 cluster 톤 완화
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/map/naver-map-panel.tsx`에서 숫자 cluster의 `shell/core/text/shadow` 팔레트를 더 밝은 크림/샌드 계열로 조정했다.
+  - 기존의 너무 어두운 slate core는 걷어내고, 밝은 shell과 따뜻한 sand core, 짙은 갈색 텍스트 조합으로 바꿔 cluster가 덜 무겁게 보이도록 정리했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+- 메모
+  - `npm run verify` 중 local production DB에 `places` 테이블이 없어 mock fallback 로그는 남았지만, lint/build는 정상 통과했다.
+
+### 2026-04-05 15:21 KST: `PLAN.md`/`PROGRESS.md` 현재 상태 기준으로 동기화
+- 완료 내용
+  - `/Users/alex/project/altteulmap/PLAN.md`의 현재 우선순위를 실제 남은 일 기준으로 다시 정리했다. 완료된 반응/공유/배포 항목은 우선순위에서 내리고, custom domain 여부, 운영 QA, 검색 URL 상태, 공유 telemetry 후속 판단만 남겨 두었다.
+  - 같은 문서의 `출시 준비`, `관리자 분리`, `테스트 체계` 설명을 현재 기준으로 갱신했다. `workers.dev` split 배포와 remote smoke는 완료 상태로 올리고, custom domain과 더 깊은 실사용 QA만 잔여로 남겼다.
+  - `PLAN.md`의 stale `in_progress` 항목 두 개를 실제 구현 상태에 맞춰 `done`으로 정리했다. 대상은 credentials 기반 인증/배포 체크리스트 정리와 좋아요/싫어요 반응 + 공유 후속 범위 재판단 항목이다.
+  - `/Users/alex/project/altteulmap/PROGRESS.md` 상단 요약과 다음 우선순위도 같은 기준으로 맞췄다.
+- 검증 결과
+  - 문서 정리 작업이라 별도 코드 검증은 실행하지 않았다.
+- 메모
+  - 현재 기준 남은 큰 일은 `custom domain 최종 적용 여부`, `운영 도메인 QA 심화`, `모바일 제스처 실사용 검증`, `공유 telemetry 후속 활용 여부 판단` 정도다.
+
+### 2026-04-05 12:48 KST: `착한가격업소` 기본 데이터셋을 `대표 가격 8천원 미만`으로 재생성
+- 완료 내용
+  - `/Users/alex/project/altteulmap/scripts/import-goodprice.ts`의 기본 `maxPrice`를 `8000`으로 낮추고, 가격 필터를 `이 값 미만` 기준으로 바꿨다. 이제 기본 실행은 `8000원` 항목을 포함하지 않는다.
+  - 같은 importer는 기존처럼 `서울도 음식 70%`, `비서울도 음식 70%`를 각각 강제하지 않고, 최종 선택 단계에서 `서울 500 / 비서울 500 / 음식 700 / 비음식 300`을 만족하는 실제 bucket 조합을 계산하도록 바꿨다. `8천원 미만` 기준에서는 `서울 비음식 150` 고정 quota가 부족해 기존 방식으로는 1000건 selection이 실패했다.
+  - `/Users/alex/project/altteulmap/src/features/places/imported-goodprice.json`과 `/Users/alex/project/altteulmap/data/goodprice/import-meta.json`을 새 기준으로 다시 생성했다. 최종 bucket actual은 `서울 음식 368`, `서울 비음식 132`, `비서울 음식 332`, `비서울 비음식 168`이다.
+  - `/Users/alex/project/altteulmap/README.md`에 기본 수집 기준을 `대표 가격 8천원 미만`으로 맞추고, `--max-price`가 `이 값 미만` 조건이라는 설명을 추가했다.
+  - `/Users/alex/project/altteulmap/PLAN.md`의 Cycle 9 완료 기준도 새 기본값으로 갱신했다.
+- 검증 결과
+  - `npx tsc --noEmit` 통과
+  - `npm run data:goodprice -- --limit=40 --delay-ms=50 --timeout-ms=10000 --include-detail=false --output=/tmp/goodprice-40.json --manifest=/tmp/goodprice-40-manifest.json` 통과
+  - `node` 검사 결과 `/tmp/goodprice-40.json`은 `40건`, `서울 20`, `비서울 20`, `음식 28`, `비음식 12`, `대표 가격 >= 8000` `0건`
+  - `npm run data:goodprice -- --delay-ms=50 --timeout-ms=10000` 통과
+  - `node` 검사 결과 `/Users/alex/project/altteulmap/src/features/places/imported-goodprice.json`은 `1000건`, `서울 500`, `비서울 500`, `음식 700`, `비음식 300`, `대표 가격 >= 8000` `0건`, `priceItems >= 8000` `0건`, `대표 가격 최대 7900`, `priceItems 최대 7900`
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+  - `npm run db:seed` 통과
+- 메모
+  - `npm run verify` 중 static generation 단계에서 production DB의 `places` 테이블 부재로 mock fallback 로그가 남는 현상은 기존과 동일하며, 이번 데이터셋 변경과는 무관하다.
+  - 새 manifest의 `quotas.targets`는 실제 선택에 사용된 bucket 수치다. 기본 분포는 `368/132/332/168`로 기록된다.
+
+### 2026-04-05 12:52 KST: `대표 가격 8천원 미만` 데이터셋 변경 push 및 public Cloudflare 재배포
+- 완료 내용
+  - `대표 가격 8천원 미만` 데이터셋/문서 변경을 `fix(data): tighten goodprice price ceiling` (`ab7ae4f`)로 커밋하고 `codex/ui-polish-batch` 브랜치에 push했다.
+  - public worker는 새 imported dataset이 반영된 상태로 다시 배포했다.
+- 검증 결과
+  - `git push origin codex/ui-polish-batch` 통과
+  - `npm run deploy:check:public` 통과
+  - `npm run deploy:public` 통과
+  - `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev SMOKE_ADMIN_URL=https://altteulmap-admin.altteul-lab.workers.dev npm run smoke:remote` 통과
+- 메모
+  - public 배포 URL: `https://altteulmap.altteul-lab.workers.dev`
+  - public worker version id: `080e4915-261b-4d32-b571-7fef31cc3010`
+
+### 2026-04-05 12:46 KST: `착한가격업소` importer selection 로직 포함 push 및 public Cloudflare 배포
+- 완료 내용
+  - importer quota selection 변경과 문서 정리를 `fix(data): refine goodprice quota selection` (`77dd22d`)로 커밋하고 `codex/ui-polish-batch` 브랜치에 push했다.
+  - 변경은 공개 앱 런타임 코드가 아니지만, 사용자가 요청한 현재 브랜치 상태 기준으로 public worker를 다시 배포했다.
+- 검증 결과
+  - `git push origin codex/ui-polish-batch` 통과
+  - `npm run deploy:check` 통과
+  - `npm run deploy:public` 통과
+  - `curl -I --max-time 20 https://altteulmap.altteul-lab.workers.dev/` 결과 `200`
+- 메모
+  - public 배포 URL: `https://altteulmap.altteul-lab.workers.dev`
+  - Cloudflare version id: `6b1e50b4-9876-4767-91b4-89c92ec734f4`
+
+### 2026-04-05 12:44 KST: `착한가격업소` importer quota 선택 로직 보강과 문서 정리
+- 완료 내용
+  - `/Users/alex/project/altteulmap/scripts/import-goodprice.ts`에서 서울/비서울, 음식/비음식 목표가 동시에 걸릴 때 bucket별 상한만으로 바로 고정하지 않고, 수집된 후보 풀 안에서 실제로 가능한 `targets`를 다시 계산한 뒤 그 target에 맞춰 selection 하도록 바꿨다.
+  - 같은 스크립트의 manifest는 이제 `foodTarget`, `nonFoodTarget`, `bucketCaps`, 최종 `targets`, 잘린 뒤의 `actual`을 함께 남긴다. 그래서 상한만 채운 중간 수집 상태와 실제 선택 결과를 구분해 볼 수 있다.
+  - `/Users/alex/project/altteulmap/README.md`, `/Users/alex/project/altteulmap/PROGRESS.md` 요약 문구도 현재 기본값인 `대표 가격 8천원 미만` 기준으로 정리했다.
+- 검증 결과
+  - `npm run data:goodprice -- --limit=40 --seoul-limit=20 --food-ratio=0.7 --max-price=8000 --include-detail=false --output=/tmp/altteulmap-goodprice-check/imported-goodprice.sample.json --manifest=/tmp/altteulmap-goodprice-check/import-meta.sample.json` 통과
+  - sample manifest 확인 결과 `selectedCount=40`, `seoulLimit=20`, `nonSeoulLimit=20`, `foodTarget=28`, `nonFoodTarget=12`, `targets=actual={seoulFood:15,seoulNonFood:5,nonSeoulFood:13,nonSeoulNonFood:7}`
+- 메모
+  - 이번 검증은 temp output으로만 실행해서 저장소의 `src/features/places/imported-goodprice.json`, `data/goodprice/import-meta.json`은 건드리지 않았다.
+
+### 2026-04-05 12:41 KST: 공개 지도 marker 대비 강화 push 및 public Cloudflare 배포
+- 완료 내용
+  - 공개 지도 marker 대비 조정 변경을 `fix(map): boost marker contrast` (`0f09c11`)로 커밋하고 `codex/ui-polish-batch` 브랜치에 push했다.
+  - 카테고리별 place marker의 채도와 white halo, 중심 ring 구조를 강화한 상태로 public worker를 다시 배포했다.
+- 검증 결과
+  - `git push origin codex/ui-polish-batch` 통과
+  - `npm run deploy:check` 통과
+  - `npm run deploy:public` 통과
+  - `curl -I --max-time 20 https://altteulmap.altteul-lab.workers.dev/` 결과 `200`
+- 메모
+  - public 배포 URL: `https://altteulmap.altteul-lab.workers.dev`
+  - Cloudflare version id: `3bc93651-9d8f-46b7-b9fc-408a307a9f99`
+
+### 2026-04-05 12:39 KST: 공개 지도 marker 대비 강화
+- 완료 내용
+  - `/Users/alex/project/altteulmap/PLAN.md`에 marker 대비 후속 작업을 추가한 뒤 완료 상태로 닫았다.
+  - `/Users/alex/project/altteulmap/src/features/map/naver-map-panel.tsx`에서 place marker 팔레트를 기존 earthy 톤보다 더 선명한 카테고리색으로 바꾸고, 각 핀에 공통 white halo와 중심 ring/dot를 넣어 basemap 위에서 먼저 보이도록 조정했다.
+  - 같은 파일에서 cluster marker도 아이보리/베이지 중심 구조에서 white shell + slate core로 바꿔 개요 상태에서 지도 바탕과 덜 섞이게 했다.
+  - preview fallback도 같은 helper를 쓰므로 실제 NAVER map marker와 같은 대비 규칙으로 같이 맞춰졌다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+- 메모
+  - `npm run verify` 중 local production DB에 `places` 테이블이 없어 mock fallback 로그는 남았지만, lint/build는 정상 통과했다.
+
+### 2026-04-05 12:36 KST: 공개 지도 카테고리 마커 리디자인 push 및 public Cloudflare 배포
+- 완료 내용
+  - 공개 지도 마커 리디자인 변경을 `feat(map): redesign category markers` (`fcb178e`)로 커밋하고 `codex/ui-polish-batch` 브랜치에 push했다.
+  - place marker는 상위 카테고리 5묶음 기준 색 핀으로, 숫자 cluster는 중립 원형 계층으로 바꾼 상태로 public worker를 다시 배포했다.
+- 검증 결과
+  - `git push origin codex/ui-polish-batch` 통과
+  - `npm run deploy:check` 통과
+  - `npm run deploy:public` 통과
+  - `curl -I --max-time 20 https://altteulmap.altteul-lab.workers.dev/` 결과 `200`
+- 메모
+  - public 배포 URL: `https://altteulmap.altteul-lab.workers.dev`
+  - Cloudflare version id: `049cea66-e4c3-4a60-96de-326576bc39f3`
+
+### 2026-04-05 12:31 KST: 공개 지도 마커 색 체계와 place/cluster 디자인 재정리
+- 완료 내용
+  - `/Users/alex/project/altteulmap/PLAN.md`에 공개 지도 마커 색 체계/디자인 정리 작업을 먼저 추가하고 완료 상태까지 갱신했다.
+  - `/Users/alex/project/altteulmap/src/features/map/naver-map-panel.tsx`에서 place marker를 기존 `좋아요 pill` 대신 카테고리 상위 그룹 기준의 컬러 핀으로 다시 설계했다. `food`, `life-services`, `shopping`, `health`, `study-work` 5개 그룹을 기준으로 색을 나눴고, active marker는 같은 색 계열에서 크기와 halo만 강화하도록 정리했다.
+  - 같은 파일에서 숫자 cluster도 기존 주황 캡슐 대신 중립 아이보리/스톤 계열의 원형 이중 레이어로 바꿨고, `placeCount`에 따라 outer/inner size와 font 크기를 조금씩 다르게 주어 overview에서 과하게 튀지 않게 조정했다.
+  - preview fallback과 실제 NAVER map marker가 같은 시각 규칙을 쓰도록 helper를 공용화했다. 그래서 SDK 실패 fallback과 실지도가 서로 다른 마커 언어를 쓰는 문제도 같이 줄였다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+- 메모
+  - `npm run verify` 중 local production DB에 `places` 테이블이 없어 build 단계에서 mock fallback 로그는 남았지만, lint/build 자체는 정상 통과했다.
+  - 이번 단계는 마커 색/형태 재설계에 집중했고, 실제 live 반영은 사용자가 원할 때 push/deploy 단계에서 이어가면 된다.
+
+### 2026-04-05 12:21 KST: 공개 지도 marker mode 분리 변경 push 및 public Cloudflare 배포
+- 완료 내용
+  - 누적된 워크트리 변경을 `feat(app): ship latest public and admin updates` (`366ff26`)로 커밋했고, `codex/ui-polish-batch` 브랜치에 push했다.
+  - push 전 원격 `codex/ui-polish-batch`에 `44ceee2`, `e06463e`가 먼저 올라와 있어 rebase로 합쳤다. 충돌은 `package.json`, `scripts/build-public-worker.mjs`, `src/features/places/repository.ts`, `PROGRESS.md`에서만 났고, public worker runtime hotfix와 이번 marker mode 분리 둘 다 유지하는 방향으로 정리했다.
+  - `npm run deploy:public`로 public worker를 다시 배포했다.
+- 검증 결과
+  - `git push origin codex/ui-polish-batch` 통과
+  - `npm run deploy:check` 통과
+  - `npm run deploy:public` 통과
+  - `curl -I --max-time 20 https://altteulmap.altteul-lab.workers.dev/` 결과 `200`
+  - live map API 검증
+    - `https://altteulmap.altteul-lab.workers.dev/api/places/map?minLat=37.4133&maxLat=37.7151&minLng=126.7341&maxLng=127.2693&zoom=9` 결과 `markerMode:"cluster"`, `kinds:["cluster"]`, `count:500`, `mapMarkerCount:19`
+    - `https://altteulmap.altteul-lab.workers.dev/api/places/map?query=김밥&scope=global` 결과 `markerMode:"place"`, `kinds:["place"]`, `count:40`, `mapMarkerCount:40`
+- 메모
+  - public 배포 URL: `https://altteulmap.altteul-lab.workers.dev`
+  - Cloudflare version id: `e1e12228-fc92-4fa6-bdda-76df3d794337`
+
+### 2026-04-05 12:07 KST: 공개 지도 marker 응답을 `cluster-only`/`place-only`로 분리
+- 완료 내용
+  - `/Users/alex/project/altteulmap/PLAN.md`에 공개 지도 marker mode 분리 작업을 먼저 추가한 뒤 구현을 진행했다.
+  - `/Users/alex/project/altteulmap/src/features/places/types.ts`에 `PlaceMapMarkerMode`를 추가했고, `/Users/alex/project/altteulmap/src/features/places/repository.ts`의 지도 marker 생성 로직을 `getPlaceOnlyMapMarkers()`와 `getClusterOnlyMapMarkers()`로 분리했다.
+  - 같은 파일에서 `/api/places/map`와 SSR 초기 payload가 `markerMode: "place" | "cluster"`를 항상 내려주도록 바꿨고, overview 단계에서는 cluster marker만, 검색/확대 단계에서는 place marker만 반환하게 정리했다.
+  - `/Users/alex/project/altteulmap/src/app/api/places/map/route.ts`, `/Users/alex/project/altteulmap/src/features/map/map-page.tsx`, `/Users/alex/project/altteulmap/src/features/places/map-explorer.tsx`도 새 응답 계약에 맞췄다. 클라이언트는 `visibleMarkerMode` 기준으로 해당 종류의 marker만 렌더하므로, 서버 응답이 흔들려도 UI에서는 혼합 표시가 다시 나오지 않게 했다.
+  - `/Users/alex/project/altteulmap/tests/e2e/map.spec.ts`에 map API가 한 번에 하나의 marker mode만 반환하는지 확인하는 회귀를 추가했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+  - `AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3107 USE_MOCK_DATA=true npx playwright test tests/e2e/map.spec.ts --project chromium` 통과
+  - 임시 `next start`(`http://127.0.0.1:3107`) 기준 `node` fetch 검증에서 `zoom=9` viewport 응답은 `markerMode: "cluster"` + `kinds:["cluster"]`, `query=김밥&scope=global` 응답은 `markerMode: "place"` + `kinds:["place"]`를 확인했다
+- 메모
+  - `verify`와 Playwright를 병렬로 돌리면 둘 다 `.next`를 쓰는 `3107` 경로에서 산출물이 섞일 수 있으므로, 이번 변경 검증은 `build` 완료 뒤 Playwright를 순차 실행했다.
+  - build 중 로컬 production DB에 `places` 테이블이 없어 mock fallback 로그는 남았지만, 빌드와 route 계약 검증은 정상 통과했다.
+
+### 2026-04-03 18:59 KST: public worker wide viewport map API와 middleware manifest runtime hotfix 복구
+- 완료 내용
+  - `/tmp/altteulmap-public-map-fix/scripts/patch-next-cloudflare-runtime.mjs`를 추가해 Cloudflare build 직전 `node_modules/next/dist/server/next-server.js`, `node_modules/next/dist/esm/server/next-server.js`의 `getMiddlewareManifest()`를 패치하도록 정리했다.
+  - manifest 파일이 worker 런타임의 `/.next/server/middleware-manifest.json` 경로에 없을 때는 `null`로 안전하게 빠지도록 바꿔, public worker preview/live가 모든 요청에서 500으로 죽던 회귀를 막았다.
+  - `/tmp/altteulmap-public-map-fix/scripts/build-public-worker.mjs`, `/tmp/altteulmap-public-map-fix/scripts/build-admin-worker.mjs`, `/tmp/altteulmap-public-map-fix/package.json`에 공통 patch step을 연결해 이후 OpenNext public/admin/common build에서도 같은 런타임 회귀가 다시 생기지 않게 했다.
+  - 이미 브랜치에 올라가 있던 `/tmp/altteulmap-public-map-fix/src/features/places/repository.ts`의 wide viewport marker hotfix(`071e639`)와 함께 public worker를 재배포했다. 이 조합으로 wide viewport `/api/places/map`의 Workers `1101` 응답이 실제 live에서 해소됐다.
+- 검증 결과
+  - `npm run cf:patch-next-runtime` 통과
+  - `AUTH_SECRET=altteulmap-build-secret-change-me NEXTAUTH_URL=https://altteulmap.altteul-lab.workers.dev SITE_URL=https://altteulmap.altteul-lab.workers.dev ADMIN_APP_URL=https://altteulmap-admin.altteul-lab.workers.dev USE_MOCK_DATA=true npm run preview:public` 후
+    - `curl http://127.0.0.1:8787/` 결과 `200`
+    - `curl 'http://127.0.0.1:8787/api/places/map?minLat=37.4133&maxLat=37.7151&minLng=126.7341&maxLng=127.2693&zoom=12'` 결과 `200` JSON
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+  - `AUTH_SECRET=altteulmap-build-secret-change-me NEXTAUTH_URL=https://altteulmap.altteul-lab.workers.dev SITE_URL=https://altteulmap.altteul-lab.workers.dev ADMIN_APP_URL=https://altteulmap-admin.altteul-lab.workers.dev npm run deploy:public` 통과
+  - live 검증
+    - `curl -I https://altteulmap.altteul-lab.workers.dev/` 결과 `200`
+    - `curl -I 'https://altteulmap.altteul-lab.workers.dev/api/places/map?minLat=37.4133&maxLat=37.7151&minLng=126.7341&maxLng=127.2693&zoom=12'` 결과 `200`
+    - 같은 JSON 응답 기준 `count=500`, `returnedCount=120`, `mapMarkerCount=24`, `cluster=21`, `place=3`
+  - 배포 URL: `https://altteulmap.altteul-lab.workers.dev`
+  - Cloudflare version id: `bf9a3b0e-1067-40ce-a7f7-abe4f92105f5`
+- 메모
+  - 로컬 `deploy:check`는 현재 shell에 운영용 `DATABASE_URL`, OAuth, 네이버 지도 key가 없어 실패했지만, actual deploy/runtime env는 Cloudflare에 저장된 값을 사용하므로 public deploy 자체는 정상 수행됐다.
+  - 이번 hotfix 범위는 `wide viewport map API 1101`과 `middleware-manifest` 런타임 500 복구다. 모바일 브라우저에서 실제 마커 표시 체감은 live bundle 새로고침 후 다시 확인하면 된다.
+
+### 2026-04-05 11:56 KST: 모바일 상세 시트와 네이버 지도 워터마크 레이어 충돌 수정
+- 완료 내용
+  - `/Users/alex/project/altteulmap/PLAN.md`에 모바일 상세 시트와 네이버 지도 워터마크 겹침 후속 작업을 먼저 추가한 뒤 구현을 진행했다.
+  - `/Users/alex/project/altteulmap/src/features/map/naver-map-panel.tsx`에서 preview/fallback/runtime 공통 지도 shell과 실제 map wrapper에 `relative isolate z-0` 레이어를 넣어, 네이버 지도 SDK가 주입하는 워터마크/attribution이 바깥 상세 시트보다 위로 튀어나오지 않도록 map stack을 분리했다.
+  - `/Users/alex/project/altteulmap/src/features/places/map-explorer.tsx`에서도 지도 영역 래퍼를 `isolate`된 stacking context로 맞춰 모바일 상세 시트와 목록 시트가 지도 내부 DOM보다 안정적으로 위에서 렌더되게 정리했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+  - 기존 로컬 `next dev`(`http://127.0.0.1:3000`) 기준 headless 브라우저 점검에서 모바일 목록으로 상세 시트를 연 뒤 `NAVER` 워터마크 텍스트 노드가 시트 위 노출 상태로 재현되지 않는 것을 확인했다
+- 메모
+  - build 중 로컬 production DB에 `places` 테이블이 없어 mock fallback 로그는 남았지만, 빌드 자체는 성공했다.
+
+### 2026-04-05 11:47 KST: 지도 수동 재조회 버튼 문구를 `이 지역 검색`으로 정리
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/map/naver-map-panel.tsx`의 수동 재조회 버튼 라벨을 `이 지도에서 다시 보기`에서 `이 지역 검색`으로 바꿨다.
+  - `/Users/alex/project/altteulmap/src/features/places/map-explorer.tsx`의 상태 안내와 빈 상태 문구도 같은 표현 기준으로 맞춰, 버튼과 설명이 서로 다른 용어를 쓰지 않게 정리했다.
+  - `/Users/alex/project/altteulmap/PLAN.md`, `/Users/alex/project/altteulmap/PROGRESS.md`의 해당 작업 설명도 새 라벨에 맞게 갱신했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+- 메모
+  - 테스트는 `data-testid` 기준이라 별도 Playwright 수정은 필요하지 않았다.
+
+### 2026-04-05 00:18 KST: 공개 지도에 현재 위치/수동 재조회 액션 추가
+- 완료 내용
+  - `/Users/alex/project/altteulmap/PLAN.md`에 공개 지도 드래그 탐색 보강 작업을 먼저 추가한 뒤 구현을 진행했다.
+  - `/Users/alex/project/altteulmap/src/features/map/naver-map-panel.tsx`에 상단 중앙 `이 지역 검색` 버튼과 `map-refresh-button` test id를 추가했다. 기존 `내 위치` 버튼은 `현재 위치`로 라벨을 명확히 하고 `map-current-location-button` test id를 붙였다.
+  - 같은 파일의 지도 컨트롤은 viewport fetch 구조를 바꾸지 않고도 현재 bounds 기준 재조회를 트리거할 수 있게 정리했다.
+  - `/Users/alex/project/altteulmap/src/features/places/map-explorer.tsx`는 수동 refresh tick을 추가해 viewport 모드에서 현재 지도 범위를 다시 요청할 수 있게 했고, 빈 상태/상태 안내 문구도 `이 지역 검색` 흐름에 맞게 조정했다.
+  - `/Users/alex/project/altteulmap/tests/e2e/map.spec.ts`는 데스크톱 홈 지도에서 `현재 위치`/`이 지역 검색` 버튼 노출과 수동 refresh 요청을 검증하도록 확장했고, `/Users/alex/project/altteulmap/tests/e2e/map.mobile.spec.ts`는 모바일에서도 두 버튼 노출을 확인하도록 갱신했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npx tsc --noEmit` 통과
+  - `npm run verify` 통과
+  - `AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3107 USE_MOCK_DATA=true npx playwright test tests/e2e/map.spec.ts --project chromium` 통과
+  - `AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3107 USE_MOCK_DATA=true npx playwright test tests/e2e/map.mobile.spec.ts --project mobile-chromium` 통과
+- 메모
+  - Playwright의 `chromium`과 `mobile-chromium`은 둘 다 `3107` 포트를 쓰므로 이번 변경에서도 순차 실행을 유지해야 안전하다.
+  - 첫 Playwright 실패는 새 코드 문제가 아니라 `verify`와 병렬 실행하며 이전 build 산출물을 잡은 케이스였고, `npm run verify` 완료 뒤 순차 재실행으로 정상 통과했다.
+
+### 2026-04-04 20:35 KST: 별도 랭킹 화면 범위 제외 결정 반영
+- 완료 내용
+  - `/Users/alex/project/altteulmap/PLAN.md`에서 `좋아요 랭킹`을 미구현 핵심/보류 범위에서 제거하고, 확장 기능 2차 우선순위를 `공유 후속 활용 범위` 기준으로 다시 정리했다.
+  - 같은 문서의 반응 기능/공유 기능 설명과 결정 메모도 현재 기준에 맞게 수정해, 별도 랭킹 화면은 만들지 않고 홈 `인기 장소` 추천 섹션만 유지한다는 정책을 명시했다.
+  - `/Users/alex/project/altteulmap/PROGRESS.md`의 진행 현황 요약과 다음 우선순위도 랭킹 제외 기준으로 갱신했다.
+  - `/Users/alex/project/altteulmap/prd.md`의 출시 후 빠른 후속 권장 항목은 `랭킹/추천 뷰` 대신 `추천 뷰 고도화`로 바꿨다.
+- 검증 결과
+  - 문서 범위 조정 작업이라 별도 코드 검증은 실행하지 않았다.
+- 메모
+  - 현재 반응 데이터는 홈 추천 섹션과 공유/telemetry 보조 신호 축적에 집중하고, 별도 순위 페이지나 랭킹 탭은 다시 범위에 넣지 않는다.
+
+### 2026-04-04 18:13 KST: 공유 유입 telemetry를 관리자 overview에 연결
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/db/schema.ts`의 `visit_activity`에 `entry_ref`, `entry_source` 컬럼과 조회용 index를 추가했고, `/Users/alex/project/altteulmap/drizzle/0009_boring_invaders.sql` migration을 생성했다.
+  - `/Users/alex/project/altteulmap/src/features/places/share.ts`는 공유 source 상수와 라벨 helper를 내보내도록 정리했고, `/Users/alex/project/altteulmap/src/features/telemetry/visit-tracker.tsx`는 URL query에서 `ref=share`, `source`만 정규화해서 `/api/telemetry/visit`로 보낸다.
+  - `/Users/alex/project/altteulmap/src/features/telemetry/api/visit-route.ts`, `/Users/alex/project/altteulmap/src/features/telemetry/repository.ts`는 공유 ref/source를 검증하고 저장하도록 바꿨다. 같은 30분 bucket 안에서는 처음 확인된 공유 유입 정보를 `coalesce`로 유지해, 이후 일반 탐색으로 덮여도 share attribution이 사라지지 않게 했다.
+  - `/Users/alex/project/altteulmap/src/features/admin/repository.ts`, `/Users/alex/project/altteulmap/src/features/admin/pages/dashboard-page.tsx`는 오늘/7일 공유 유입 수와 `detail/detail_sheet/list/trending` source breakdown을 admin overview에서 보여주도록 확장했다.
+  - `/Users/alex/project/altteulmap/tests/e2e/admin-dashboard.spec.ts`는 `/api/telemetry/visit`에 공유 유입 이벤트를 먼저 찍은 뒤, 관리자 대시보드에서 공유 유입 카드와 `인기 장소` source breakdown이 보이는지 확인하도록 강화했다.
+- 검증 결과
+  - `npm run db:generate` 통과
+  - `npx tsc --noEmit` 통과
+  - `npm run verify:quick` 통과
+  - `npm run db:up` 통과
+  - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap npm run db:push` 통과
+  - `npm run verify` 통과
+  - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap npm run db:seed` 통과
+  - `AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3107 DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap npx playwright test tests/e2e/admin-dashboard.spec.ts --project chromium` 통과
+- 메모
+  - 현재 share attribution은 `visit_activity`의 기존 30분 dedupe 정책을 그대로 따른다. 따라서 같은 actor가 같은 bucket 안에서 여러 공유 source로 들어와도 첫 source 하나만 유지한다. source별 세밀한 landing 분석이 필요해지면 별도 상세 이벤트 테이블을 추가하는 편이 맞다.
+
+### 2026-04-04 16:13 KST: 공유 강화 1차로 payload/source와 진입점 정리
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/places/share.ts`를 추가해 공유 제목/문구와 `ref=share`, `source=detail|detail_sheet|list|trending`가 붙은 링크 생성을 공용 helper로 묶었다.
+  - `/Users/alex/project/altteulmap/src/features/places/place-share-button.tsx`는 이제 `navigator.share()`에 `title + text + url`을 함께 넘기고, fallback 복사도 URL만이 아니라 공유 문구 전체를 복사한다. 테스트 id와 메시지 id도 호출 위치별로 따로 줄 수 있게 확장했다.
+  - `/Users/alex/project/altteulmap/src/app/place/[id]/page.tsx`, `/Users/alex/project/altteulmap/src/features/places/place-detail-sheet.tsx`는 새 helper를 사용하도록 바꿨고, place page metadata title/description도 공유용 요약을 기준으로 다시 정리했다.
+  - `/Users/alex/project/altteulmap/src/features/places/map-explorer.tsx`는 지도 목록 카드에 공유 버튼을 추가했고, `/Users/alex/project/altteulmap/src/features/places/trending-places-section.tsx`는 인기 장소 카드에서도 상세 링크와 별개로 공유 버튼을 제공하도록 바꿨다.
+  - `/Users/alex/project/altteulmap/tests/e2e/map.spec.ts`는 `navigator.share` payload를 직접 모킹해 `source=list`, `source=detail_sheet`, `source=trending`, `source=detail`이 각각 붙는지 확인하도록 회귀를 강화했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npx tsc --noEmit` 통과
+  - `npm run verify` 통과
+  - `AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3107 USE_MOCK_DATA=true npx playwright test tests/e2e/map.spec.ts --project chromium` 통과
+- 메모
+  - 첫 Playwright 실행은 `npm run verify` 전의 기존 `.next` 산출물을 재사용해 새 공유 버튼 test id를 찾지 못하고 실패했다. 새 build 후 재실행에서는 정상 통과했다.
+
+### 2026-04-04 16:06 KST: 사진 업로드 범위 제외 결정 반영
+- 완료 내용
+  - `/Users/alex/project/altteulmap/PLAN.md`에서 확장 기능 2차 우선순위를 `공유/랭킹` 기준으로 다시 적고, `미구현 핵심`의 사진 업로드 항목을 제거했다.
+  - 같은 문서의 Cycle 6 설명도 `공유/사진 업로드` 대신 `공유/랭킹` 재판단으로 바꿨고, 결정 메모에 사진 업로드를 저장 용량과 운영 비용 이유로 현재 범위에서 제외한다는 정책을 남겼다.
+  - `/Users/alex/project/altteulmap/trd.md`의 오픈 기술 이슈도 `이미지 업로드를 MVP에 포함할지 여부`에서 `현재 범위에서 제외 유지`로 정리했다.
+  - `/Users/alex/project/altteulmap/PROGRESS.md`의 다음 우선순위도 `공유/랭킹` 기준으로 맞췄다.
+- 검증 결과
+  - 문서 결정 반영 작업이라 별도 코드 검증은 실행하지 않았다.
+- 메모
+  - 현재 저장소에는 사진 업로드 기능 구현 코드가 아직 없어서, 이번 변경은 제품 범위와 우선순위 문서 정리에 집중했다.
+
+### 2026-04-04 15:59 KST: 공개 쓰기/회원가입 rate limit 수치 재조정과 관측 헤더 추가
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/lib/rate-limit.ts`의 정책 값을 route 비용 기준으로 다시 조정했다.
+    - 장소 등록: 30분 4회
+    - 댓글: 10분 8회
+    - 가격 제보: 10분 8회
+    - 신고: 30분 6회
+    - 좋아요/싫어요: 5분 40회
+    - 회원가입: 30분 3회
+  - 같은 helper가 내려주는 헤더에 `X-RateLimit-Policy`, `X-RateLimit-Window`를 추가했다. 기존 `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`, `Retry-After`와 함께 보면 어떤 bucket이 어떤 창으로 적용되는지 바로 알 수 있다.
+  - `/Users/alex/project/altteulmap/tests/e2e/comments.spec.ts`의 rate limit 회귀는 하드코딩된 `10회` 대신 첫 응답의 `x-ratelimit-limit`를 읽어 현재 정책 수치에 따라 동적으로 quota를 채우도록 바꿨다. 같은 테스트에서 `x-ratelimit-policy=place_comment_submission`, `x-ratelimit-window=600`도 같이 검증한다.
+  - `/Users/alex/project/altteulmap/trd.md`에도 현재 운영 기준 정책 수치와 헤더 계약을 반영했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+  - `AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3107 USE_MOCK_DATA=true npx playwright test tests/e2e/comments.spec.ts --project chromium` 통과
+  - `PORT=3112 AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3112 USE_MOCK_DATA=true npm run start` 후 `curl -sS -D - -o /dev/null -X POST 'http://127.0.0.1:3112/api/auth/signup' -H 'Content-Type: application/json' --data '{"email":"bad","nickname":"x","password":"short"}'` 결과
+    - `x-ratelimit-limit: 3`
+    - `x-ratelimit-policy: auth_signup`
+    - `x-ratelimit-window: 1800`
+- 메모
+  - 현재 저장소의 rate limit 저장소는 계속 프로세스 메모리 기반이다. 이번 단계는 수치와 응답 계약을 먼저 안정화해 운영 중 관측과 조정을 쉽게 만드는 데 집중했다.
+
+### 2026-04-04 16:07 KST: 관리자 큐 페이지 공통 네비/요약과 신고 상태 필터 정리
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/admin/components/admin-queue-nav.tsx`, `/Users/alex/project/altteulmap/src/features/admin/components/admin-summary-cards.tsx`를 추가해 관리자 큐 페이지가 공통 운영 네비와 핵심 개수 요약 카드를 공유하도록 정리했다.
+  - `/Users/alex/project/altteulmap/src/features/admin/pages/places-page.tsx`, `/Users/alex/project/altteulmap/src/features/admin/pages/prices-page.tsx`, `/Users/alex/project/altteulmap/src/features/admin/pages/reports-page.tsx`는 `getAdminOverview()`를 함께 읽어 승인 대기 장소, 가격 제보, 열린 신고 같은 운영 지표를 상단에서 바로 확인할 수 있게 바꿨다.
+  - 신고 큐는 `status` query param 기반 필터를 지원하도록 바꿨다. `/admin/reports`는 이제 `전체`, `열림`, `검토 중`, `처리 완료`, `기각` 필터와 상태별 count badge를 보여주고, 선택한 상태에 해당하는 신고가 없을 때 빈 상태 문구를 분리해서 보여준다.
+  - `/Users/alex/project/altteulmap/tests/e2e/report-admin.spec.ts`에는 신고를 `처리 완료`로 바꾼 뒤 `?status=resolved`, `?status=open` 필터에서 보임/숨김이 맞는지 확인하는 회귀를 추가했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+  - `AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3107 DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap npx playwright test tests/e2e/admin-dashboard.spec.ts tests/e2e/price-review.spec.ts tests/e2e/report-admin.spec.ts tests/e2e/submission-admin.spec.ts --project chromium` 통과
+- 메모
+  - `verify` 과정에서 `admin:sync`가 entrypoint 페이지를 다시 생성하므로, source of truth는 계속 `src/features/admin/pages/**`로 유지한다.
+
+### 2026-04-04 15:43 KST: 공개 쓰기/회원가입 `429` 대기 시간 안내 공용화
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/lib/rate-limit-feedback.ts`를 추가해 브라우저에서 `Retry-After`, `X-RateLimit-Reset`, JSON `retryAfterMs`를 함께 읽고 `약 N초/분 후 다시 시도해주세요.` 형식의 공통 문구를 만들게 했다.
+  - `/Users/alex/project/altteulmap/src/features/submission/place-submit-form.tsx`, `/Users/alex/project/altteulmap/src/features/places/place-comments-section.tsx`, `/Users/alex/project/altteulmap/src/features/places/place-price-report-form.tsx`, `/Users/alex/project/altteulmap/src/features/reports/report-submit-form.tsx`, `/Users/alex/project/altteulmap/src/features/auth/signup-form.tsx`, `/Users/alex/project/altteulmap/src/features/places/place-reaction-buttons.tsx`는 이제 `429` 응답에서 남은 대기 시간을 같은 형식으로 보여준다.
+  - 댓글 회귀는 `/Users/alex/project/altteulmap/tests/e2e/comments.spec.ts`에 추가했다. 같은 방문자 세션에서 코멘트 10건으로 quota를 채운 뒤 11번째 제출 시 `코멘트 등록 요청이 너무 빠릅니다. 약 ... 후 다시 시도해주세요.` 문구가 보이는지 검증한다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+  - `AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3107 USE_MOCK_DATA=true npx playwright test tests/e2e/comments.spec.ts --project chromium` 통과
+- 메모
+  - 현재 대기 시간 문구는 header 우선, JSON body fallback 순서로 계산한다. server 정책 수치를 나중에 조정해도 클라이언트 메시지 포맷은 그대로 재사용할 수 있다.
+
+### 2026-04-04 17:28 KST: public worker 재배포와 live `smoke:remote` 통과
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/lib/admin-app.ts`의 external admin API stub status를 `503`에서 `200`으로 조정했다. public `/api/admin/places`는 별도 관리자 앱 안내용 endpoint라 `ok: false` body와 `adminUrl`만 있으면 충분하고, live smoke도 이 계약을 기준으로 다시 통과한다.
+  - 같은 수정이 포함된 public worker를 `NEXTAUTH_URL=https://altteulmap.altteul-lab.workers.dev`, `ADMIN_APP_URL=https://altteulmap-admin.altteul-lab.workers.dev` 기준으로 다시 배포했다.
+  - 새 public version에서 live `smoke:remote`를 다시 실행해 public `/`, `/robots.txt`, `/sitemap.xml`, sample place canonical, public `/admin`, public `/api/admin/places`, admin `/admin`, admin `/login`을 한 번에 재검증했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `NEXTAUTH_URL=https://altteulmap.altteul-lab.workers.dev ADMIN_APP_URL=https://altteulmap-admin.altteul-lab.workers.dev npm run deploy:check:public` 통과
+  - `NEXTAUTH_URL=https://altteulmap-admin.altteul-lab.workers.dev SITE_URL=https://altteulmap.altteul-lab.workers.dev npm run deploy:check:admin` 통과
+  - `NEXTAUTH_URL=https://altteulmap.altteul-lab.workers.dev ADMIN_APP_URL=https://altteulmap-admin.altteul-lab.workers.dev npm run deploy:public` 통과
+  - `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev SMOKE_ADMIN_URL=https://altteulmap-admin.altteul-lab.workers.dev npm run smoke:remote` 통과
+- 메모
+  - public worker 현재 version id: `9968cae6-966c-49a0-8882-abe3e87f463e`
+  - 직전 배포에서 `public /api/admin/places`가 `503`을 반환해 smoke가 실패했지만, body는 이미 정상 안내 JSON이었고 status만 계약과 어긋나 있었다.
+
+### 2026-04-04 16:20 KST: 운영 smoke 스크립트 정리와 Workers public read hang 완화
+- 완료 내용
+  - `/Users/alex/project/altteulmap/scripts/smoke-local.mjs`를 현재 제품 계약에 맞춰 read-only smoke로 다시 정리했다. 이제 홈 canonical, `robots.txt`, `sitemap.xml`, sample place canonical, map API, place detail API, 로그인 화면 렌더만 검증하고, 예전 `credentials -> bookmarks/admin API` 검사는 제거했다.
+  - `/Users/alex/project/altteulmap/scripts/smoke-remote.mjs`를 추가하고, `/Users/alex/project/altteulmap/package.json`, `/Users/alex/project/altteulmap/README.md`, `/Users/alex/project/altteulmap/docs/deploy-cloudflare.md`에 remote smoke 사용법과 점검 범위를 반영했다. 로그인 matcher도 더 이상 `로컬 로그인` 문구를 기대하지 않고 `login-form` 렌더 기준으로 본다.
+  - live smoke 조사 과정에서 public `map/detail`과 guest write 경로가 Cloudflare/OpenNext runtime에서 hang 되는 현상을 확인했고, 원인 후보를 둘로 나눠 정리했다. `next/headers` 기반 visitor cookie 조회는 request-driven API 경로에서 hang을 유발했고, DB read는 응답이 지연되거나 schema가 없을 때 fallback 전에 멈출 수 있었다.
+  - `/Users/alex/project/altteulmap/src/lib/visitor-id.ts`는 `next/headers` 의존을 제거하고 raw `cookie` header 파싱 helper로 바꿨다. `/Users/alex/project/altteulmap/src/lib/public-write-actor.ts`와 `/Users/alex/project/altteulmap/src/app/api/places/[id]/route.ts`는 request header 기반 visitor id를 쓰도록 갱신했다.
+  - `/Users/alex/project/altteulmap/src/app/place/[id]/page.tsx`는 guest viewer용 visitor cookie를 서버 페이지에서 더 이상 직접 읽지 않게 조정했다. guest는 place page SSR에서 viewer reaction 초기값을 `null`로 시작하지만, worker hang 없이 page 자체는 계속 렌더된다.
+  - `/Users/alex/project/altteulmap/src/features/places/repository.ts`에는 `withDatabaseReadTimeout()`을 추가해 `listPlaces`, `listMapPlaces`, `listTrendingPlaces`, `getPlaceDetail`가 DB read 지연 시 실패를 surface하고 기존 mock fallback으로 빠지게 했다. 로컬 `wrangler dev`에서 DB schema 부재(`relation "places" does not exist`)가 나도 public `map/detail` read는 `mock` 응답으로 복구되는 것까지 확인했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+  - `set -a; source .env.production.local; set +a; npx wrangler dev -c wrangler.jsonc --port 8791` 후 runtime probe
+    - `curl -sS -D - 'http://127.0.0.1:8791/api/places/map?scope=global&query=%EA%B9%80%EB%B0%A5'` 결과 `200`, `source: "mock"`
+    - `curl -sS -D - 'http://127.0.0.1:8791/api/places/goodprice-16045'` 결과 `200`, `source: "mock"`
+    - `curl -sS -D - 'http://127.0.0.1:8791/place/goodprice-16045'` 결과 `200`
+  - `AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3111 SITE_URL=http://127.0.0.1:3111 USE_MOCK_DATA=true npm run build` 통과
+  - `PORT=3111 AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3111 SITE_URL=http://127.0.0.1:3111 USE_MOCK_DATA=true npm run start` 후
+    - `SMOKE_BASE_URL=http://127.0.0.1:3111 npm run smoke:local` 통과
+    - `curl -sS -D - 'http://127.0.0.1:3111/api/places/map?scope=global&query=%EA%B9%80%EB%B0%A5'` 결과 `200`
+    - `curl -sS -D - 'http://127.0.0.1:3111/place/goodprice-16045'` 결과 `200`
+- 메모
+  - local/prod smoke에서 canonical과 sitemap은 build 시점 `SITE_URL`을 그대로 굽기 때문에, `smoke:local`을 돌릴 때는 `build`와 `start` 모두에 같은 localhost `SITE_URL`/`NEXTAUTH_URL`을 넘기는 편이 안전하다.
+  - `smoke:remote`는 아직 live `workers.dev`에 새 public worker를 다시 배포하지 않은 상태라 재실행하지 않았다. 다음 액션은 current public worker 재배포 후 `NEXTAUTH_URL=https://altteulmap.altteul-lab.workers.dev ADMIN_APP_URL=https://altteulmap-admin.altteul-lab.workers.dev npm run smoke:remote`를 다시 돌리는 것이다.
+
+### 2026-04-04 15:31 KST: 공개 쓰기와 북마크의 public 재검증 경로 공용화
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/places/revalidation.ts`를 추가해 public place read 경로와 액션별 revalidation helper를 한 군데로 모았다. `place detail`, `home`, `map`, `bookmarks`, `admin queue` 반영 범위를 helper 이름에서 바로 읽을 수 있게 정리했다.
+  - 같은 helper는 `revalidatePath("/place/[id]", "page")`와 concrete slug path를 같이 다뤄, 공개 상세 페이지 invalidation 기준을 route segment 수준으로도 같이 잡는다.
+  - `/Users/alex/project/altteulmap/src/app/api/places/[id]/comments/route.ts`, `/Users/alex/project/altteulmap/src/app/api/places/[id]/comments/[commentId]/route.ts`, `/Users/alex/project/altteulmap/src/app/api/places/[id]/prices/route.ts`, `/Users/alex/project/altteulmap/src/app/api/places/[id]/reaction/route.ts`, `/Users/alex/project/altteulmap/src/app/api/bookmarks/[id]/route.ts`는 흩어져 있던 `revalidatePath` 호출을 새 helper로 교체했다.
+  - `/Users/alex/project/altteulmap/src/app/api/places/route.ts`는 공개 장소 등록 성공 시 admin place queue와 dashboard를 재검증하도록 바꿨고, `/Users/alex/project/altteulmap/src/app/api/reports/route.ts`는 신고 제출 성공 시 admin reports queue를 재검증하도록 보강했다.
+  - `/Users/alex/project/altteulmap/src/features/admin/revalidation.ts`도 public place read 경로 정의를 재사용하게 정리해, admin moderation과 public write가 place/home/map 재검증 기준을 따로 들고 있지 않게 맞췄다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+  - `AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3107 USE_MOCK_DATA=true npx playwright test tests/e2e/map.spec.ts --project chromium` 통과
+  - `AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3107 DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap npx playwright test tests/e2e/comments.spec.ts tests/e2e/bookmarks.spec.ts tests/e2e/price-review.spec.ts tests/e2e/report-admin.spec.ts tests/e2e/submission-admin.spec.ts` 통과
+- 메모
+  - `npm run verify` 중 `sitemap.xml` 단계에서 production DB의 `places` 테이블 부재로 mock fallback 로그가 남는 현상은 기존과 동일하며, 이번 변경과는 무관하다.
+  - Playwright는 여전히 `3107` 단일 포트를 사용하므로, mock/DB 세트는 순차 실행을 유지하는 편이 안전하다.
+
+### 2026-04-04 15:08 KST: 모바일 목록/상세 시트 스냅과 drag-close 추가
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/places/use-mobile-sheet-gesture.ts`를 추가해 모바일 시트 핸들에서 쓸 공용 pointer gesture helper를 만들었다. upward drag는 expand, downward drag는 collapse 또는 close로 해석하고, 현재 drag offset은 transform으로만 적용한다.
+  - `/Users/alex/project/altteulmap/src/features/places/map-explorer.tsx`에서 모바일 목록 시트에 `peek/expanded` 상태를 추가했다. open 시 기본은 `peek`이고, 헤더의 `펼치기/줄이기` 버튼과 상단 핸들 drag로 스냅을 바꿀 수 있다. expanded 상태에서 downward drag는 `peek`로, peek 상태에서 downward drag는 닫기로 동작한다.
+  - `/Users/alex/project/altteulmap/src/features/places/place-detail-sheet.tsx`는 상단 핸들에 같은 gesture helper를 연결해 모바일 상세 시트를 downward drag로 닫을 수 있게 했다.
+  - `/Users/alex/project/altteulmap/src/app/globals.css`에는 모바일 시트의 height/transform transition과 `data-sheet-mode`, `data-sheet-dragging` 규칙을 추가해 list sheet가 `46dvh` peek와 `72dvh` expanded 사이를 전환하도록 맞췄다.
+  - `/Users/alex/project/altteulmap/tests/e2e/map.mobile.spec.ts`는 목록 시트의 `peek -> expanded -> drag collapse -> drag close`, 상세 시트의 drag-close까지 검증하도록 갱신했다.
+- 검증 결과
+  - `npx tsc --noEmit` 통과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+  - `AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3107 USE_MOCK_DATA=true npx playwright test tests/e2e/map.spec.ts --project chromium` 통과
+  - `AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3107 USE_MOCK_DATA=true npx playwright test tests/e2e/map.mobile.spec.ts --project mobile-chromium` 통과
+- 메모
+  - Playwright는 `next start` 기반이라, 새 `data-*` 속성과 handle이 안 보이던 첫 실패는 stale `.next` 빌드 때문이었다. 이후 `npm run verify`로 rebuild한 뒤 회귀를 다시 고정했다.
+  - 모바일/데스크톱 Playwright를 같은 포트(`3107`)로 병렬 실행하면 `EADDRINUSE`가 나므로, 이후에도 두 세트는 순차 실행하는 편이 안전하다.
+
+### 2026-04-04 13:42 KST: 홈 `인기 장소` 추천 섹션 추가
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/places/repository.ts`에 `listTrendingPlaces()`를 추가했다. DB는 `좋아요 수 -> 검증 수 -> 최근 갱신 -> 낮은 비추천 -> 대표 가격 -> 이름` 순서로 상위 장소를 고르고, mock도 같은 의도로 `좋아요 우선 + 최근 갱신` comparator를 사용한다.
+  - `/Users/alex/project/altteulmap/src/features/places/trending-places-section.tsx`를 새로 추가해 상위 6개 카드를 홈에서 가로 레일/데스크톱 3열 grid로 보여주도록 했다. 카드에는 순위, 카테고리/지역, 대표 가격, `좋아요 N` 또는 `최근 갱신` 이유를 같이 노출한다.
+  - `/Users/alex/project/altteulmap/src/features/map/map-page.tsx`는 검색어가 없을 때만 `listTrendingPlaces(6, activeCategory)`를 SSR로 불러오고, 지도 아래에 `인기 장소` 섹션을 렌더한다. 검색 결과 화면에서는 추천 섹션을 숨겨 검색 맥락과 경쟁하지 않게 했다.
+  - `/Users/alex/project/altteulmap/tests/e2e/map.spec.ts`에 홈 추천 섹션 노출과 카드 클릭 후 상세 페이지 이동 회귀를 추가했다.
+  - `/Users/alex/project/altteulmap/README.md`의 기본 E2E 목록도 현재 검증 범위에 맞게 갱신했다.
+- 검증 결과
+  - `npx tsc --noEmit` 통과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+  - `AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3107 USE_MOCK_DATA=true npx playwright test tests/e2e/map.spec.ts --project chromium` 통과
+  - `AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3107 USE_MOCK_DATA=true npx playwright test tests/e2e/map.mobile.spec.ts --project mobile-chromium` 통과
+- 메모
+  - imported goodprice seed는 현재 `likeCount=0`이 많아서, 실제 live 데이터가 쌓이기 전까지는 `최근 갱신` 라벨이 함께 보이는 추천 섹션 성격이 더 강하다.
+  - 검증 중 추천 섹션이 보이지 않던 첫 실패는 코드 문제가 아니라 새 UI 패치 전 `.next` 빌드를 Playwright가 재사용한 상태였고, `npm run verify`로 새 빌드를 만든 뒤 회귀가 정상 통과했다.
+
+### 2026-04-04 13:16 KST: mock runtime 데스크톱 지도 비회원 좋아요 회귀 수정
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/places/repository.ts`의 mock reaction summary 계산에서 store key를 `split(":")`로 읽던 로직을 `parseStoredReactionPlaceId()` helper로 교체했다.
+  - 원인은 mock store key가 `visitor:uuid:placeId` 또는 `user:userId:placeId` 형태인데, 기존 구현이 두 번째 토큰을 place id로 잘못 읽어 `getMockReactionSummary()`가 누적 count를 전혀 세지 못하던 점이었다. 그래서 API는 `"좋아요를 남겼습니다."`를 반환해도 `likeCount`는 계속 `0`이었다.
+  - `/Users/alex/project/altteulmap/tests/e2e/map.spec.ts`는 직전 턴에서 이미 오래된 고정 fixture를 제거해 두었고, 이번 턴에서는 mock runtime 기준 좋아요 count가 실제로 오르는지 다시 안정화했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npx tsc --noEmit` 통과
+  - `npm run build` 통과
+  - `PORT=3117 USE_MOCK_DATA=true AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3117 npm run start` 후 수동 확인
+    - `curl -i -s -X PUT 'http://127.0.0.1:3117/api/places/goodprice-16045/reaction' -H 'Content-Type: application/json' --data '{"reaction":"like"}'` 결과 `{"ok":true,"source":"mock","reaction":"like","likeCount":1,"dislikeCount":0,...}`
+  - `AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3107 USE_MOCK_DATA=true npx playwright test tests/e2e/map.spec.ts --project chromium` 통과
+  - `AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3107 USE_MOCK_DATA=true npx playwright test tests/e2e/map.mobile.spec.ts --project mobile-chromium` 통과
+- 메모
+  - 검증용 서버는 `lsof -tiTCP:3117 -sTCP:LISTEN | xargs -r kill`로 종료했다.
+  - 이전에 띄워 둔 `3116` mock server도 같이 종료했다.
+
+### 2026-04-04 12:22 KST: 공개 지도 목록/상세의 중복 메타와 상태 안내를 압축
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/map/map-page.tsx`에서 모바일 검색 카드 상단 요약을 여러 badge 대신 한 줄 summary text(`검색어 · 카테고리 · 범위`)로 바꿔 첫 화면 높이를 다시 줄였다.
+  - `/Users/alex/project/altteulmap/src/features/places/map-explorer.tsx`에 `ListStatusSummary`를 추가해 `불러오는 중`, `총 N곳 중 M곳 먼저 표시`, `목록은 120곳까지만 표시` 안내를 데스크톱/모바일 공통의 단일 요약 패널로 합쳤다. 기존처럼 동일 성격의 안내 박스가 2~3장 연달아 쌓이지 않게 정리했다.
+  - `/Users/alex/project/altteulmap/src/features/places/place-detail-sheet.tsx`는 헤더 아래에서 제목/주소/카테고리/지역을 다시 반복하지 않고, 본문 시작을 카테고리/지역 chip + 선택적 사업장 이름 + 대표 가격 패널로 재구성했다. 닫기 버튼도 모바일 기준 더 작은 chrome으로 줄였다.
+  - 같은 파일에서 검증 중 드러난 별도 회귀를 일부 보강했다. 상세 fetch가 늦게 끝날 때 locally 바뀐 반응 수치가 즉시 덮이지 않도록 reaction override state를 추가했다.
+  - `/Users/alex/project/altteulmap/tests/e2e/map.spec.ts`는 오래된 고정 fixture 대신 `/Users/alex/project/altteulmap/tests/e2e/helpers/place.ts`로 현재 runtime에서 검색 가능한 장소를 동적으로 집어오도록 바꿨다.
+- 검증 결과
+  - `npx tsc --noEmit` 통과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+  - `AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3107 USE_MOCK_DATA=true npx playwright test tests/e2e/map.mobile.spec.ts --project mobile-chromium` 통과
+  - `AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3107 USE_MOCK_DATA=true npx playwright test tests/e2e/map.spec.ts --project chromium` 실패
+    - 검색 fixture 문제는 없어졌지만, mock runtime 기준 비회원 좋아요 count가 detail sheet에서 즉시 증가하지 않는 별도 회귀가 남아 있다.
+- 메모
+  - 현재 polish 범위 자체는 완료했다. 다음 액션은 `USE_MOCK_DATA=true` 기준 `map.spec.ts`가 실패시키는 비회원 좋아요 흐름을 별도 버그로 조사하는 것이다.
+
+### 2026-04-04 11:44 KST: 한글 slug 신규 장소 상세 404 수정
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/app/place/[id]/page.tsx`에 `normalizePlaceRouteId()`를 추가해 server page와 `generateMetadata()`가 `params.id`를 그대로 쓰지 않고 `decodeURIComponent()`한 slug로 상세 lookup을 수행하도록 고쳤다.
+  - 원인은 신규 승인 장소의 한글 slug가 server page render에서는 `e2e%EB...` 같은 encoded 값으로 들어오고 있었는데, DB lookup은 raw slug 기준이라 `getPlaceDetail()`이 `null`을 반환하고 `notFound()`로 떨어지던 점이었다. 같은 slug의 `/api/places/[slug]`는 `200`이라 page route 쪽 route param 처리 문제로 범위를 좁혔다.
+  - `/Users/alex/project/altteulmap/tests/e2e/submission-admin.spec.ts`는 승인 후 홈 검색 노출뿐 아니라 실제 `/place/[slug]` 상세 진입까지 다시 검증하도록 복구했다.
+  - `/Users/alex/project/altteulmap/tests/e2e/comments.spec.ts`도 오래된 `school-gimbap` fixture 대신 `/Users/alex/project/altteulmap/tests/e2e/helpers/place.ts`를 써서 현재 실데이터 seed 기준 place page 회귀를 확인하도록 맞췄다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+  - `PORT=3111 AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3111 DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap npm run start` 후 런타임 확인
+    - `curl -s -o /dev/null -w '%{http_code}\n' 'http://127.0.0.1:3111/place/e2e분식1775269839905'` 결과 `200`
+    - `curl -s 'http://127.0.0.1:3111/place/e2e분식1775269839905'` 응답 본문에서 `E2E분식1775269839905` heading 확인
+  - `AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3107 DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap npx playwright test tests/e2e/comments.spec.ts tests/e2e/price-review.spec.ts tests/e2e/submission-admin.spec.ts` 통과
+- 메모
+  - 이번 이슈는 API route와 server page가 같은 `slug`를 쓰더라도 page 쪽 `params.id`가 percent-encoded 상태로 들어오는 경로가 있던 점이 핵심이었다. 앞으로 place-like dynamic route를 늘릴 때는 route param normalization 여부를 먼저 확인하는 편이 안전하다.
+
+### 2026-04-04 11:35 KST: 관리자 moderation UX 즉시 피드백과 공통 재검증 helper 정리
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/admin/revalidation.ts`를 추가해 장소 승인, 가격 제보 검토, 신고 상태 변경, 가격 항목 수정 후의 admin/public `revalidatePath` 경로를 공통 helper로 모았다.
+  - `/Users/alex/project/altteulmap/src/features/admin/api/place-detail.ts`, `/Users/alex/project/altteulmap/src/features/admin/api/price-detail.ts`, `/Users/alex/project/altteulmap/src/features/admin/api/report-detail.ts`, `/Users/alex/project/altteulmap/src/features/admin/api/price-item-detail.ts`는 새 helper만 호출하도록 정리했고, `src/features/admin/entrypoints/api/**`는 canonical API 구현 re-export로 바꿨다.
+  - `/Users/alex/project/altteulmap/src/features/admin/components/admin-pending-place-card.tsx`, `/Users/alex/project/altteulmap/src/features/admin/components/admin-pending-price-report-card.tsx`, `/Users/alex/project/altteulmap/src/features/admin/components/admin-report-card.tsx`를 추가해 승인/반려/상태 변경이 refresh 전에도 카드나 badge에 즉시 반영되게 했다.
+  - `/Users/alex/project/altteulmap/src/features/places/admin-place-review-form.tsx`, `/Users/alex/project/altteulmap/src/features/places/admin-price-report-review-form.tsx`, `/Users/alex/project/altteulmap/src/features/reports/admin-report-status-form.tsx`, `/Users/alex/project/altteulmap/src/features/places/admin-price-item-form.tsx`는 action별 pending 문구와 성공/실패 tone을 분리해 메시지를 더 명확하게 보여주도록 정리했다.
+  - `/Users/alex/project/altteulmap/src/features/admin/pages/places-page.tsx`, `/Users/alex/project/altteulmap/src/features/admin/pages/prices-page.tsx`, `/Users/alex/project/altteulmap/src/features/admin/pages/reports-page.tsx`는 새 client card wrapper를 쓰도록 바꿨고, `src/features/admin/entrypoints/pages/**`도 canonical page re-export로 정리했다.
+  - admin moderation 회귀 확인을 위해 `/Users/alex/project/altteulmap/tests/e2e/helpers/place.ts`를 추가했고, `/Users/alex/project/altteulmap/tests/e2e/price-review.spec.ts`, `/Users/alex/project/altteulmap/tests/e2e/report-admin.spec.ts`의 오래된 `school-gimbap` fixture를 현재 실데이터 seed에서 찾는 helper 기준으로 바꿨다. `/Users/alex/project/altteulmap/tests/e2e/submission-admin.spec.ts`는 승인 후 홈 검색 노출 검증에 집중하도록 상세 페이지 의존을 줄였다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+  - `npm run db:up` 통과
+  - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap npm run db:push` 통과
+  - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap npm run db:seed` 통과
+  - `AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3107 DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap npx playwright test tests/e2e/admin-dashboard.spec.ts tests/e2e/submission-admin.spec.ts tests/e2e/price-review.spec.ts tests/e2e/report-admin.spec.ts` 통과
+- 메모
+  - 수동 확인 중 `slug='e2e분식1775269839905'` 같은 새 승인 한글 slug 장소는 `/api/places/[slug]`에서는 `200`으로 보이지만 `/place/[slug]` 페이지는 `404`를 반환하는 별도 이슈를 확인했다. 이번 moderation UX 작업과는 분리해서 다음 우선순위로 조사/수정할 예정이다.
+
+### 2026-04-04 11:15 KST: 공개 쓰기 rate limit 정책 중앙화와 응답 헤더 통일
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/lib/rate-limit.ts`에 공개 쓰기 정책별 limit/window 정의를 `RATE_LIMIT_POLICIES`로 모으고, `consumeRateLimitPolicy()`, `applyRateLimitHeaders()`를 추가했다.
+  - `/Users/alex/project/altteulmap/src/app/api/places/route.ts`, `/Users/alex/project/altteulmap/src/app/api/places/[id]/comments/route.ts`, `/Users/alex/project/altteulmap/src/app/api/places/[id]/prices/route.ts`, `/Users/alex/project/altteulmap/src/app/api/reports/route.ts`, `/Users/alex/project/altteulmap/src/app/api/auth/signup/route.ts`, `/Users/alex/project/altteulmap/src/app/api/places/[id]/reaction/route.ts`가 숫자를 직접 들고 있지 않고 공통 정책 이름을 사용하도록 바꿨다.
+  - 같은 route들은 이제 정상 응답과 `400`/`429` 응답 모두에 `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`을 내리고, `429`에는 `Retry-After`까지 함께 보낸다.
+  - 반응 API는 별도 visitor cookie 처리 대신 `/Users/alex/project/altteulmap/src/lib/public-write-actor.ts`의 공통 actor/cookie 경로를 재사용하도록 정리했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+  - `PORT=3110 USE_MOCK_DATA=true AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3110 npm run start` 후 수동 확인
+    - `POST /api/auth/signup` 잘못된 body 6회 호출 시 `400 -> ... -> 429`로 전환되고 `X-RateLimit-*`, `Retry-After` 헤더 확인
+    - `PUT /api/places/goodprice-13952/reaction` 정상 호출 시 `200`과 `X-RateLimit-Limit=20`, `X-RateLimit-Remaining=19`, visitor cookie 설정 확인
+- 메모
+  - 현재 rate limit 저장소는 여전히 프로세스 메모리 기반이라 Worker 인스턴스 간 완전한 전역 보장은 없다. 이번 단계는 운영 정책 수치와 응답 계약을 먼저 고정해 관측/조정을 쉽게 만드는 데 집중했다.
+
+### 2026-04-04 11:05 KST: `workers.dev` 기준 public/admin split 운영 배포 적용
+- 완료 내용
+  - `.env.production.local`에 `SITE_URL=https://altteulmap.altteul-lab.workers.dev`를 추가해 public 홈 기준 URL을 명시했다.
+  - Wrangler 인증 상태와 운영 URL 설정을 확인한 뒤, admin 앱은 셸 env로 `NEXTAUTH_URL=https://altteulmap-admin.altteul-lab.workers.dev`, `SITE_URL=https://altteulmap.altteul-lab.workers.dev`를 명시해 배포했다.
+  - public 앱은 셸 env로 `NEXTAUTH_URL=https://altteulmap.altteul-lab.workers.dev`, `ADMIN_APP_URL=https://altteulmap-admin.altteul-lab.workers.dev`를 명시해 외부 admin redirect/API stub 모드로 다시 배포했다.
+  - 런타임에서 public `/` 응답 200, public `/admin`의 admin worker redirect, public `/api/admin/places`의 안내 JSON, `robots.txt`, `sitemap.xml`, admin `/admin`의 로그인 redirect를 다시 확인했다.
+- 검증 결과
+  - `npx wrangler whoami` 통과
+  - `npm run deploy:check:public` 통과
+  - `npm run deploy:check:admin` 통과
+  - `NEXTAUTH_URL=https://altteulmap-admin.altteul-lab.workers.dev SITE_URL=https://altteulmap.altteul-lab.workers.dev npm run deploy:admin` 통과
+  - `NEXTAUTH_URL=https://altteulmap.altteul-lab.workers.dev ADMIN_APP_URL=https://altteulmap-admin.altteul-lab.workers.dev npm run deploy:public` 통과
+  - `curl -I --max-time 20 https://altteulmap.altteul-lab.workers.dev/` 결과 `200`
+  - `curl -I --max-time 20 https://altteulmap.altteul-lab.workers.dev/admin` 결과 `307 -> https://altteulmap-admin.altteul-lab.workers.dev/admin`
+  - `curl -s --max-time 20 https://altteulmap.altteul-lab.workers.dev/api/admin/places` 결과 `adminUrl=https://altteulmap-admin.altteul-lab.workers.dev/admin/places`
+  - `curl -s --max-time 20 https://altteulmap.altteul-lab.workers.dev/robots.txt` 결과 `Host`와 `Sitemap`이 public workers.dev 기준으로 노출
+  - `curl -s --max-time 20 https://altteulmap.altteul-lab.workers.dev/sitemap.xml` 결과 루트와 place URL이 public workers.dev 기준으로 노출
+  - `curl -I --max-time 20 https://altteulmap-admin.altteul-lab.workers.dev/admin` 결과 `307 -> /login?callbackUrl=%2Fadmin`
+- 메모
+  - admin worker version id: `9b7f5abb-4f98-4c9f-91d8-9b95d23a9862`
+  - public worker version id: `6c8f880e-a925-44f7-baa7-051a27736b5a`
+  - admin 배포는 public용 `.env.production.local` 값을 그대로 쓰지 않고 셸 env override로 `NEXTAUTH_URL`을 admin 주소로 분리하는 방식이 안전하다.
+
+### 2026-04-03 16:42 KST: 공개 UI 밀도 정리 커밋 푸시와 public Cloudflare 배포
+- 완료 내용
+  - 공개 UI 밀도 정리 변경은 `feat(ui): tighten public layout density` (`7a898e1`)로 커밋해 `codex/ui-polish-batch` 브랜치에 push했다.
+  - 첫 deploy 시 clean build에서 `/Users/alex/project/altteulmap/src/features/map/map-page.tsx`가 import하는 `/Users/alex/project/altteulmap/src/features/map/route-reset-details.tsx`가 커밋에서 빠져 있어 public worker build가 실패했다.
+  - 누락 파일을 복원해 `fix(build): restore route reset details` (`82c8b88`)로 추가 커밋한 뒤 같은 브랜치에 다시 push했고, 그 커밋 기준으로 public worker를 재배포했다.
+- 검증 결과
+  - `git push origin codex/ui-polish-batch` 통과
+  - `npm run deploy:check` 통과
+  - `npm run deploy:public` 통과
+  - `curl -I --max-time 20 https://altteulmap.altteul-lab.workers.dev/` 결과 `200`
+  - 배포 URL: `https://altteulmap.altteul-lab.workers.dev`
+  - Cloudflare version id: `0d99da66-1b53-464b-837f-5f90093ae4fb`
+- 메모
+  - 실제 live runtime은 `82c8b88` 기준이다.
+  - deploy 직전에는 `git stash push --keep-index -u -m 'codex-temp-ui-ship-20260403'`로 unrelated 미커밋 변경을 잠시 분리해 clean commit 기준으로 build/deploy를 수행했다.
+
+### 2026-04-03 16:35 KST: 공개 UI 후속으로 헤더 1줄화, 홈 map-first 재배치, auth/등록 화면 감량
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/components/global-header.tsx`, `/Users/alex/project/altteulmap/src/components/brand-mark.tsx`에서 모바일 헤더를 줄바꿈 없는 단일 행 구조로 바꿨다. 액션 버튼은 모바일에서 짧은 라벨과 가로 스크롤 행으로 정리했고, 인증 화면에서는 중복되는 `로그인` 버튼을 헤더에서 숨기도록 조정했다.
+  - `/Users/alex/project/altteulmap/src/features/map/map-page.tsx`, `/Users/alex/project/altteulmap/src/features/places/map-explorer.tsx`에서 홈 상단 hero와 필터 박스의 높이/패딩/간격을 줄이고, 모바일 검색/필터 영역을 더 얕은 형태로 다시 묶었다. 지도 영역 자체의 시작 위치도 위로 당겼다.
+  - `/Users/alex/project/altteulmap/src/app/login/page.tsx`, `/Users/alex/project/altteulmap/src/app/signup/page.tsx`, `/Users/alex/project/altteulmap/src/features/auth/login-form.tsx`, `/Users/alex/project/altteulmap/src/features/auth/signup-form.tsx`에서 인증 화면을 더 작은 단일 카드 구조로 정리했다. 상단 설명 문구와 중복 전환 링크를 제거하고, 하단 한 줄 링크만 남겼다.
+  - `/Users/alex/project/altteulmap/src/app/submit/page.tsx`, `/Users/alex/project/altteulmap/src/features/submission/place-submit-form.tsx`에서 등록 화면의 바깥 카드와 폼 안의 중첩 surface를 줄였다. 가격 항목 카드, 주소 블록, 결과 패널도 더 평평한 계층으로 맞췄다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+    - build 중 `sitemap.xml` 단계에서 production DB에 `places` 테이블이 없을 때 mock fallback 로그는 기존과 동일하게 남지만, 빌드 자체는 성공
+  - `AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3109 USE_MOCK_DATA=true npx next start -p 3109`로 production server를 띄운 뒤 Playwright probe로 `/`, `/login`, `/signup`, `/submit`의 desktop/mobile viewport를 재측정했다
+  - 핵심 측정값 변화
+    - 모바일 header height: `153px -> 58.19px`
+    - 홈 mobile map shell top: `516.5px -> 327.69px`
+    - 홈 desktop map shell top: `638.66px -> 544.89px`
+    - 로그인 mobile form top: `147.48px`
+    - 회원가입 mobile form top: `82.19px`
+    - 등록 mobile form top: `150.19px`
+    - 샘플 페이지 horizontal overflow: 모두 `0`
+- 메모
+  - production server 점검 후 `pkill -f "next start -p 3109"`로 서버를 내렸다.
+  - 홈 데스크톱 첫 화면은 이전보다 가벼워졌지만, 더 과감한 `map-first`를 원하면 다음 단계에서 데스크톱 검색/카테고리 박스를 지도 옆으로 재배치하는 방향도 가능하다.
+
+### 2026-04-03 15:58 KST: 공개 페이지 브라우저/모바일 디자인 전면 리뷰
+- 완료 내용
+  - 배포본 `https://altteulmap.altteul-lab.workers.dev` 기준으로 `/`, `/login`, `/signup`, `/submit`를 데스크톱/모바일 viewport에서 다시 점검했다.
+  - `/Users/alex/project/altteulmap/src/components/global-header.tsx`, `/Users/alex/project/altteulmap/src/components/brand-mark.tsx`, `/Users/alex/project/altteulmap/src/features/map/map-page.tsx`, `/Users/alex/project/altteulmap/src/app/login/page.tsx`, `/Users/alex/project/altteulmap/src/app/signup/page.tsx`, `/Users/alex/project/altteulmap/src/features/auth/login-form.tsx`, `/Users/alex/project/altteulmap/src/features/auth/signup-form.tsx`, `/Users/alex/project/altteulmap/src/app/submit/page.tsx`, `/Users/alex/project/altteulmap/src/features/submission/place-submit-form.tsx`를 기준으로 레이아웃 밀도와 CTA 집중도를 코드 리뷰했다.
+  - 주요 리스크는 모바일 전역 헤더 높이 과다, 홈에서 지도 시작 위치가 너무 아래로 밀리는 구조, 인증 화면의 전역 이동과 폼 내부 이동 중복, 등록 폼의 카드 레이어 과다로 정리했다.
+- 검증 결과
+  - `node <<'EOF'` 기반 Playwright probe로 배포본 `/`, `/login`, `/signup`, `/submit`의 desktop/mobile bounding box, header height, map/form start position, overflowX를 수집했다.
+  - 수집 기준 viewport
+    - desktop: `1440x960`
+    - mobile: `390x664`
+  - 핵심 측정값
+    - 홈 mobile header height: `153px`
+    - 홈 mobile map shell top: `516.5px`
+    - 홈 desktop map shell top: `638.66px`
+    - 로그인/회원가입/등록 mobile header height: 모두 `153px`
+    - 샘플 페이지 horizontal overflow: 모두 `0`
+- 메모
+  - 이번 턴은 리뷰만 수행했고 코드 변경은 하지 않았다.
+  - 다음 수정 우선순위는 `모바일 header 1줄화`, `홈 첫 화면 map-first 재배치`, `auth 페이지 전역 nav 축소`, `등록 폼 표면 레이어 감량` 순서로 보는 것이 타당하다.
+
+### 2026-04-03 15:05 KST: 모바일 지도 zoom-out 시 overview cluster 복귀 정책 추가
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/places/map-explorer.tsx`에 모바일 marker 표시 정책을 다시 넣되, 이전 회귀처럼 광범위하게 숨기지 않도록 임계 zoom을 낮췄다. 이제 모바일 `viewport + 무검색 + 선택된 place 없음 + cluster 존재` 상태에서만 `zoom <= 10.75`일 때 cluster marker만 우선 노출한다.
+  - 따라서 initial/zoom-out overview에서는 개별 place marker가 화면에 과도하게 남지 않고 cluster 중심 개요로 돌아가며, `zoom > 10.75` 구간에서는 서버가 내려준 place marker를 그대로 보여 줘서 확대 후에도 다시 숫자만 남던 이전 회귀를 피한다.
+  - 수정은 `fix(map): re-cluster mobile markers on zoom out` (`25971e1`) 커밋으로 정리해 `codex/ui-polish-batch` 브랜치에 push했고, public worker를 다시 배포했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+    - build 중 `sitemap.xml` 단계에서 production DB에 `places` 테이블이 없을 때 mock fallback 로그는 기존과 동일하게 남지만, 빌드 자체는 성공
+  - `USE_MOCK_DATA=true npx playwright test tests/e2e/map.mobile.spec.ts --project mobile-chromium` 통과
+  - `npm run deploy:check` 통과
+  - `npm run deploy:public` 통과
+  - `curl -I https://altteulmap.altteul-lab.workers.dev/` 결과 `200`
+  - 배포 URL: `https://altteulmap.altteul-lab.workers.dev`
+  - Cloudflare version id: `9c902b78-24ff-428a-b9b0-904142594238`
+- 메모
+  - 이번 수정은 clean HEAD 기준으로 커밋/배포한 뒤, 원래 워크트리 변경을 다시 복원하는 방식으로 처리한다.
+
+### 2026-04-03 14:10 KST: 공개 지도 가격 필터 제거
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/map/map-page.tsx`에서 모바일/데스크톱 가격 필터 UI, `maxPrice` hidden input, 가격 파라미터 URL 조합을 제거했다. 공개 지도 탐색 조건은 이제 카테고리와 검색 범위만 남는다.
+  - `/Users/alex/project/altteulmap/src/features/places/map-explorer.tsx`, `/Users/alex/project/altteulmap/src/app/api/places/map/route.ts`, `/Users/alex/project/altteulmap/src/features/places/repository.ts`, `/Users/alex/project/altteulmap/src/features/places/queries.ts`에서 `maxPrice` prop, query string, API filter payload, repository/mock filtering 경로를 함께 제거했다.
+  - `/Users/alex/project/altteulmap/tests/e2e/map-price-filter.spec.ts`, `/Users/alex/project/altteulmap/tests/e2e/map-price-filter.mobile.spec.ts`는 가격 필터 동작 검증 대신 가격 옵션 비노출과 카테고리 탐색 유지 회귀를 검증하도록 바꿨다.
+  - `/Users/alex/project/altteulmap/PLAN.md`, `/Users/alex/project/altteulmap/prd.md`, `/Users/alex/project/altteulmap/trd.md`를 현재 제품 계약에 맞춰 갱신했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+  - `AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3107 USE_MOCK_DATA=true npx playwright test tests/e2e/map-price-filter.spec.ts tests/e2e/map-price-filter.mobile.spec.ts` 통과
+- 메모
+  - 2026-04-03의 가격 필터 회귀 수정 로그는 현재 제품 계약에서는 역사 기록으로만 남고, 실제 서비스 기능은 이번 턴에서 제거됐다.
+
+### 2026-04-03 13:25 KST: 모바일 지도에서 cluster만 남던 client-side suppression 회귀 수정
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/places/map-explorer.tsx`에서 모바일 viewport 전용 `cluster-only` 분기를 제거했다. 이제 서버가 확대된 bounds/zoom 기준으로 place marker를 함께 반환하면 모바일에서도 그대로 지도에 전달된다.
+  - 문제 원인은 같은 파일의 `mobileOverviewMarkers`였다. `isMobileViewport + viewport search + 무검색 + selectedPlace 없음 + cluster 존재 + zoom <= 13.25` 조건이면 서버 응답에 place marker가 섞여 있어도 클라이언트가 다시 cluster만 남기고 있었고, 이 때문에 모바일에서 숫자 마커만 계속 보일 수 있었다.
+  - 로컬 API probe로 bootstrap bounds(`37.4133~37.7151`, `126.7341~127.2693`) 기준 응답을 다시 확인했다. 서버는 이미 `zoom 12`부터 `cluster 21 + place 3`, `zoom 15`에서 `cluster 47 + place 7`처럼 개별 place marker를 내려주고 있어, 이번 회귀의 직접 원인이 서버가 아니라 클라이언트 suppression임을 확인했다.
+  - 수정은 `fix(map): restore mobile place markers` (`8686fbc`)로 커밋해 `codex/ui-polish-batch` 브랜치에 push했고, public worker를 다시 배포했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - clean worktree 기준 `npm run verify` 통과
+  - `USE_MOCK_DATA=true npx playwright test tests/e2e/map.mobile.spec.ts --project mobile-chromium` 통과
+  - `npm run deploy:check` 통과
+  - `npm run deploy:public` 통과
+  - `curl -I https://altteulmap.altteul-lab.workers.dev/` 결과 `200`
+  - 배포 URL: `https://altteulmap.altteul-lab.workers.dev`
+  - Cloudflare version id: `e2eebb66-92bc-442e-88ca-31b6da5a9875`
+- 메모
+  - clean verify/deploy를 위해 커밋 후 나머지 미커밋 변경을 `git stash push -u -m 'codex-temp-mobile-map-fix-20260403'`로 잠시 분리했다. 이 stash는 배포 직후 다시 원복할 예정이다.
+
+### 2026-04-03 13:20 KST: 가격 필터 모바일 회귀와 `127.0.0.1` dev 접근 문제 정리
+- 완료 내용
+  - `/Users/alex/project/altteulmap/next.config.ts`에 `allowedDevOrigins: ["127.0.0.1"]`를 추가했다. 이제 로컬 dev 서버를 `localhost:3000`으로 띄워도 브라우저를 `http://127.0.0.1:3000`으로 열 때 Next 16 dev origin 제한 때문에 hydration과 `/api/places/map` fetch가 막히지 않는다.
+  - `/Users/alex/project/altteulmap/src/features/map/route-reset-details.tsx`를 추가해 모바일 `탐색 조건` 박스를 client wrapper로 감쌌다. route key가 바뀌면 wrapper 자체가 remount되어 `open` 상태가 닫힌 상태로 초기화된다.
+  - `/Users/alex/project/altteulmap/src/features/map/map-page.tsx`의 모바일 가격/카테고리/검색 범위 패널은 위 wrapper를 쓰도록 바꿨다. 그래서 `5,000원 이하`를 누른 뒤 다시 `탐색 조건`을 열면 `전체 가격`, `10,000원 이하`, `20,000원 이하`를 다시 바로 고를 수 있다.
+  - `/Users/alex/project/altteulmap/tests/e2e/map-price-filter.mobile.spec.ts`를 추가해 모바일에서 `5,000원 이하 -> 탐색 조건 다시 열기 -> 10,000원 이하` 흐름을 회귀로 고정했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3107 USE_MOCK_DATA=true npm run verify` 통과
+  - `AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3107 USE_MOCK_DATA=true npx playwright test tests/e2e/map-price-filter.spec.ts tests/e2e/map-price-filter.mobile.spec.ts` 통과
+  - 수동 dev 확인
+    - `PORT=3000 USE_MOCK_DATA=true AUTH_SECRET=testsecret NEXTAUTH_URL=http://127.0.0.1:3000 npm run dev` 후 `http://127.0.0.1:3000/`에서 badge `507곳`, 목록 `120`, `/api/places/map` 응답 확인
+    - 모바일 viewport에서 `5,000원 이하` 선택 후 `탐색 조건`을 다시 열면 `전체 가격`, `10,000원 이하`가 다시 보이고 `?maxPrice=10000`까지 이동 확인
+- 메모
+  - 이번 사용자 보고 증상은 두 갈래였다. 정상 origin(`localhost`)에서는 가격 필터 자체는 동작했지만 모바일에서는 `<details>` open 상태가 route 전환 뒤 남아 다시 탭했을 때 닫혀 버렸고, `127.0.0.1` 접근에서는 Next dev origin 제한 때문에 hydration과 지도 fetch가 불안정했다.
+
+### 2026-04-03 13:18 KST: 모바일 지도 UX 후속 커밋 푸시와 public Cloudflare 배포
+- 완료 내용
+  - 모바일 지도 시트 후속 수정은 `fa1d3aa` (`feat(ui): refine mobile map sheets`) 커밋으로 정리해 `codex/ui-polish-batch` 브랜치에 push했다.
+  - public worker는 커밋 상태만 배포되도록 나머지 미커밋 변경을 임시로 분리한 뒤 `npm run deploy:check`, `npm run deploy:public` 순서로 배포했다.
+- 검증 결과
+  - `npm run deploy:check` 통과
+  - `npm run deploy:public` 통과
+  - 배포 URL: `https://altteulmap.altteul-lab.workers.dev`
+  - Cloudflare version id: `aa70be6e-ceb3-4d6a-aace-90015b38d53c`
+- 메모
+  - 배포 후 원래 워크트리의 미커밋 변경은 다시 복원했다. 현재 public 배포본은 `fa1d3aa` 기준이고, 그 외 로컬 미커밋 변경은 아직 push/deploy 범위에 포함되지 않는다.
+
+### 2026-04-03 13:10 KST: 모바일 지도 시트 레이어, bottom-sheet 비율, 저줌 마커 정책 후속 정리
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/app/globals.css`에 모바일 시트 공용 safe-area 규칙을 추가해 목록/상세 시트를 `top-2/bottom-2` 전체 오버레이가 아니라 bottom-sheet 최대 높이 기준으로 다루도록 바꿨다.
+  - `/Users/alex/project/altteulmap/src/features/places/map-explorer.tsx`에서 모바일 목록 시트 z-index를 전역 헤더보다 높게 올리고, 목록 시트에 새 mobile sheet 규칙을 적용했다. 동시에 모바일 `viewport + 무검색 + 저줌` 상태에서는 cluster marker가 있으면 cluster만 우선 보여주도록 바꿔 count marker와 개별 place marker가 섞여 보이는 첫 화면을 줄였다.
+  - `/Users/alex/project/altteulmap/src/features/places/place-detail-sheet.tsx`는 모바일 상세 시트도 같은 safe-area bottom-sheet 규칙으로 옮기고, 상단 헤더를 generic 문구 대신 실제 장소명/주소 중심으로 바꿨다. 상세 시트 z-index도 전역 헤더보다 높게 조정했다.
+  - `/Users/alex/project/altteulmap/tests/e2e/map.mobile.spec.ts`는 고정 mock 숫자/slug 의존을 걷어내고, 실제 첫 목록 아이템 기준으로 상세 시트가 열리는지와 모바일 시트가 viewport를 과도하게 덮지 않는지 확인하도록 보강했다.
+- 검증 결과
+  - `npm run verify` 통과
+    - build 중 `sitemap.xml` 단계에서 production DB에 `places` 테이블이 없을 때 mock fallback 로그는 기존과 동일하게 남지만, 빌드 자체는 성공
+  - `USE_MOCK_DATA=true npx playwright test tests/e2e/map.mobile.spec.ts --project mobile-chromium` 통과
+- 메모
+  - 이번 수정으로 모바일 목록 시트는 이전보다 낮고 짧아져 한 화면에 보이는 카드 수가 줄었다. 대신 상단 닫기 버튼이 헤더 뒤로 숨지 않고, 실제 지도 작업면과 상단 안전영역은 더 넓게 확보된다.
+
+### 2026-04-03 12:25 KST: 모바일 지도 UX 코드 리뷰
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/components/global-header.tsx`, `/Users/alex/project/altteulmap/src/app/layout.tsx`, `/Users/alex/project/altteulmap/src/features/places/map-explorer.tsx`, `/Users/alex/project/altteulmap/src/features/places/place-detail-sheet.tsx`, `/Users/alex/project/altteulmap/src/features/map/naver-map-panel.tsx`, `/Users/alex/project/altteulmap/src/features/places/repository.ts`를 기준으로 모바일 지도 UX를 코드만 보고 리뷰했다.
+  - 전역 헤더 z-index가 모바일 목록/상세 시트보다 높아 닫기 영역을 가릴 수 있는 구조, 모바일 시트가 safe area 없이 거의 전체 높이를 점유하는 구조, 서버 마커 생성이 cluster/place를 같은 응답에 섞어 내려주는 구조를 주요 이슈로 정리했다.
+- 검증 결과
+  - 코드 리뷰만 수행했고 별도 명령 검증은 추가로 실행하지 않았다.
+- 메모
+  - 다음 액션은 모바일 시트 레이어 우선순위 재정리, safe-area 대응, 모바일 개요 줌에서 cluster/place 표시 정책 분리 순서가 적절하다.
+
+### 2026-04-03 11:56 KST: preview fallback에서도 bootstrap fetch와 가격 필터가 끊기지 않게 회귀 수정
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/places/map-explorer.tsx`에서 viewport 모드의 첫 client fetch가 실제 지도 SDK의 viewport 이벤트만 기다리지 않도록 바꿨다. `viewport`가 아직 없으면 `initialBounds`를 bootstrap bounds로 써서 `/api/places/map`를 바로 호출한다.
+  - `MapExplorer`는 이미 `key` 기반 remount를 사용하고 있으므로, 이번 회귀의 직접 원인인 bootstrap fetch 경로만 보강했다. 가격 필터 전환도 remount 뒤 같은 bootstrap fetch를 타므로 `maxPrice=5000` 응답이 정상적으로 다시 내려온다.
+  - `/Users/alex/project/altteulmap/tests/e2e/map-price-filter.spec.ts`를 추가해 네이버 지도 SDK fallback 상황에서도 `/` 첫 진입 시 bootstrap fetch가 발생하고, `5,000원 이하` 클릭 시 `/api/places/map?...maxPrice=5000` 응답과 목록이 계속 보이는지 검증하도록 했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3107 USE_MOCK_DATA=true npm run verify` 통과
+  - `AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3107 USE_MOCK_DATA=true npx playwright test tests/e2e/map-price-filter.spec.ts` 통과
+- 메모
+  - 회귀 원인은 viewport 모드의 첫 fetch가 지도 SDK가 내리는 실제 viewport 이벤트에만 묶여 있었던 점이다. SDK가 없거나 늦게 뜨는 환경에서는 `/api/places/map` 호출이 아예 없어서 목록/미리보기 마커가 0건에 고정됐고, 가격 필터 전환 시에도 같은 증상이 반복됐다.
+
+### 2026-04-03 11:55 KST: 카테고리 칩을 가로 레일에서 반응형 그리드로 전환
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/map/map-page.tsx`에서 카테고리 필터만 별도 chip class로 분리했다. 이제 모바일 `탐색 조건` 박스와 데스크톱 필터 박스 모두 카테고리는 `w-full + min-w-0 + text-center` 규칙을 쓰고, `whitespace-nowrap`를 제거했다.
+  - 같은 파일에서 카테고리 영역을 `altteulmap-scroll-row` 대신 `altteulmap-chip-grid`로 바꿨다. 검색 범위/가격 필터는 기존 가로 레일을 유지하고, 항목 수가 많은 카테고리만 박스 안에서 여러 줄로 자연스럽게 배치된다.
+  - `/Users/alex/project/altteulmap/src/app/globals.css`에 `altteulmap-chip-grid`를 추가해 모바일 2열, `sm` 3열, `lg` 이상 auto-fit grid로 반응형 배치를 고정했다.
+  - 검증 중 드러난 기존 lint blocker도 같이 정리했다. `/Users/alex/project/altteulmap/src/features/places/map-explorer.tsx`에서 props 동기화용 setState effect를 제거했고, 현재는 부모 key remount로 초기화 흐름을 유지한다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+    - build 중 `sitemap.xml` 단계에서 production DB에 `places` 테이블이 없을 때 mock fallback 로그는 기존과 동일하게 남지만, 빌드 자체는 성공
+- 메모
+  - 이번 수정 목적은 카테고리 개수가 늘어도 필터 박스 오른쪽 바깥으로 시각적으로 밀려나지 않게 만드는 것이다. 현재는 카테고리만 wrap/grid 기준으로 바뀌고, 가격/검색 범위처럼 짧은 칩 묶음은 기존 가로 레일 UX를 그대로 유지한다.
+
+### 2026-04-02 21:40 KST: admin worker 루트 `/` 500을 안전한 랜딩 페이지로 교체
+- 완료 내용
+  - `/Users/alex/project/altteulmap/apps/admin/src/app/page.tsx`의 server redirect(`/admin`)를 제거하고, `/admin` 또는 `/login`으로 이동할 수 있는 정적 랜딩 페이지로 교체했다.
+  - 같은 파일에 `dynamic = "force-dynamic"`을 추가해 OpenNext preview/worker에서 bare root `/`가 정적으로 취급되며 `DYNAMIC_SERVER_USAGE`로 500이 나던 경로를 동적으로 고정했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run deploy:admin` 통과
+  - `curl -I https://altteulmap-admin.altteul-lab.workers.dev/` 결과 `200`
+  - `curl -I https://altteulmap-admin.altteul-lab.workers.dev/admin` 결과 `307 -> /login?callbackUrl=%2Fadmin`
+  - `curl -I https://altteulmap-admin.altteul-lab.workers.dev/login` 결과 `200`
+- 메모
+  - public `altteulmap`과 admin `altteulmap-admin`은 분리 worker라서, public worker를 `external admin` 모드로 배포한 현재 구조에서는 admin worker를 삭제하면 `/admin` 운영 경로가 사라진다.
+
+### 2026-04-02 14:18 KST: 배포/점검 스크립트의 env precedence를 쉘·CI 우선으로 정리
+- 완료 내용
+  - `/Users/alex/project/altteulmap/scripts/lib/load-env-files.mjs`를 추가해 `.env`, `.env.production`, `.env.local`, `.env.production.local`을 읽되, 이미 주입된 쉘/CI env는 덮어쓰지 않고 파일끼리만 뒤 순서가 앞 순서를 덮도록 공통 helper를 만들었다.
+  - `/Users/alex/project/altteulmap/scripts/check-cloudflare-deploy.mjs`, `/Users/alex/project/altteulmap/scripts/build-public-worker.mjs`는 이제 이 helper를 써서 로컬 파일보다 셸/CI env를 우선한다. 따라서 운영 워크플로우에서 넘긴 `NEXTAUTH_URL`, `ADMIN_APP_URL`, `SITE_URL`이 개발용 `.env*` 값으로 다시 덮이지 않는다.
+  - `/Users/alex/project/altteulmap/README.md`, `/Users/alex/project/altteulmap/docs/deploy-cloudflare.md`, `/Users/alex/project/altteulmap/docs/cloudflare-account-to-deploy.md`, `/Users/alex/project/altteulmap/PLAN.md`에 이 precedence 규칙과 split 배포 기준 문구를 반영했고, 예전 `public 번들에서 /admin 제거` 문장도 현재 external stub 동작 기준으로 고쳤다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `NEXTAUTH_URL=https://override-public.example.workers.dev ADMIN_APP_URL=https://override-admin.example.workers.dev npm run deploy:check:public` 통과
+    - callback reminder와 public `/admin` entrypoint가 모두 override 값으로 출력되는 것 확인
+  - `NEXTAUTH_URL=https://override-admin.example.workers.dev SITE_URL=https://override-public.example.workers.dev npm run deploy:check:admin` 통과
+    - callback reminder와 public home link가 모두 override 값으로 출력되는 것 확인
+  - `ADMIN_APP_URL=https://override-admin.example.workers.dev NEXTAUTH_URL=https://override-public.example.workers.dev npm run cf:build:public` 통과
+  - `npm run verify` 통과
+    - build 중 `sitemap.xml` 단계에서 production DB에 `places` 테이블이 없을 때 mock fallback 로그는 기존과 동일하게 남지만, 빌드 자체는 성공
+- 메모
+  - 이전에는 deploy check/build 스크립트가 `dotenv.config({ override: true })`를 써서 셸에서 넘긴 운영 URL도 `.env.production.local` 같은 로컬 파일 값으로 다시 덮을 수 있었다. 이번 수정으로 CI와 운영 배포에서 env 우선순위가 의도대로 맞춰졌다.
+
+### 2026-04-02 14:14 KST: 관리자 외부 앱 cutover 경로를 external stub 빌드 기준으로 마무리
+- 완료 내용
+  - `/Users/alex/project/altteulmap/scripts/build-public-worker.mjs`를 바꿔 public worker build가 더 이상 `src/app/admin`, `src/app/api/admin`를 삭제하지 않고, `src/features/admin/entrypoints`만 `external` 모드로 동기화한 뒤 OpenNext build를 수행하도록 정리했다. build 후에는 기존 entrypoint를 복구한다.
+  - `/Users/alex/project/altteulmap/package.json`에 `admin:sync:embedded`, `admin:sync:external`, `deploy:check:public`, `deploy:check:admin` 스크립트를 추가해 split 배포 검증 경로를 명시했다.
+  - `/Users/alex/project/altteulmap/scripts/check-cloudflare-deploy.mjs`는 `--public`, `--admin` 모드를 지원하게 바꿨다. public split은 `ADMIN_APP_URL`, standalone admin worker는 `SITE_URL`까지 확인하고, callback/home link 기준 URL을 같이 출력한다.
+  - `/Users/alex/project/altteulmap/src/lib/env.ts`, `/Users/alex/project/altteulmap/src/lib/site.ts`, `/Users/alex/project/altteulmap/.env.example`에 `SITE_URL`을 반영했다. admin 앱은 `NEXTAUTH_URL`을 자기 자신 기준으로 두고도 헤더의 홈 링크는 public 앱으로 보낼 수 있게 됐다.
+  - `/Users/alex/project/altteulmap/src/lib/admin-app.ts`는 로컬 보호 로직을 `NEXTAUTH_URL` 기준으로 유지해, `SITE_URL`이 별도로 있어도 localhost 개발/테스트에서는 외부 admin 링크가 자동으로 새지 않게 했다.
+  - `/Users/alex/project/altteulmap/README.md`, `/Users/alex/project/altteulmap/docs/deploy-cloudflare.md`, `/Users/alex/project/altteulmap/docs/cloudflare-account-to-deploy.md`, `/Users/alex/project/altteulmap/PLAN.md`를 업데이트해 split 배포 순서, env 역할, public `/admin` redirect/API stub 동작, admin 앱의 `SITE_URL` 사용 규칙을 남겼다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+    - build 중 `sitemap.xml` 단계에서 production DB에 `places` 테이블이 없을 때 mock fallback 로그는 기존과 동일하게 남지만, 빌드 자체는 성공
+  - `npm run deploy:check:public -- --preview` 실패
+    - 의도된 결과로, preview env에 `ADMIN_APP_URL`이 없으면 split public 배포를 막는지 확인했다
+  - `npm run deploy:check:admin -- --preview` 실패
+    - 의도된 결과로, preview env에 `SITE_URL`이 없으면 standalone admin 배포를 막는지 확인했다
+  - `NEXTAUTH_URL=https://altteulmap.example.workers.dev ADMIN_APP_URL=https://altteulmap-admin.example.workers.dev npm run deploy:check:public` 통과
+  - `NEXTAUTH_URL=https://altteulmap-admin.example.workers.dev SITE_URL=https://altteulmap.example.workers.dev npm run deploy:check:admin` 통과
+  - `npm run cf:build:public` 통과
+    - public worker route manifest에 `/admin`, `/admin/places`, `/api/admin/places` 등이 남아 external stub 모드로 빌드되는 것 확인
+  - `npm run cf:build:admin` 통과
+  - `ALTTEULMAP_ADMIN_MODE=external NEXTAUTH_URL=https://altteulmap.example.workers.dev ADMIN_APP_URL=https://altteulmap-admin.example.workers.dev npm run build` 통과
+  - `PORT=3126 NEXTAUTH_URL=https://altteulmap.example.workers.dev ADMIN_APP_URL=https://altteulmap-admin.example.workers.dev npm run start` 후 수동 확인
+    - `curl -si http://127.0.0.1:3126/admin` 결과 `307 Temporary Redirect`, `location: https://altteulmap-admin.example.workers.dev/admin`
+    - `curl -s http://127.0.0.1:3126/api/admin/places` 결과 `{"ok":false,"message":"관리자 기능은 별도 관리자 앱으로 이동했습니다.","adminUrl":"https://altteulmap-admin.example.workers.dev/admin/places"}`
+    - `curl -s http://127.0.0.1:3126/ | rg 'https://altteulmap-admin.example.workers.dev/admin'` 결과 public 헤더의 admin 링크가 외부 앱 주소를 가리키는 것 확인
+  - `npm run admin:sync` 실행으로 작업 종료 시 entrypoint를 다시 embedded 모드로 복구
+- 메모
+  - localhost 보호 로직은 그대로 유지한다. `NEXTAUTH_URL`이 localhost면 `ADMIN_APP_URL`이 있어도 public 앱은 외부 admin 링크를 쓰지 않는다.
+  - 실제 운영 cutover는 아직 남아 있다. 이제 필요한 것은 live `workers.dev` 또는 custom domain 값으로 env를 채운 뒤 `deploy:check:public`, `deploy:check:admin`, `deploy:public`, `deploy:admin` 순서를 실행하는 마지막 배포 작업이다.
+
+### 2026-04-02 13:52 KST: 인증 진입면 재단순화와 지도 필터 칩 가로 레일 정리
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/app/login/page.tsx`, `/Users/alex/project/altteulmap/src/app/signup/page.tsx`에서 설정 확인용 패널 렌더를 제거하고, 로그인/가입 액션 카드만 남기도록 다시 단순화했다.
+  - `/Users/alex/project/altteulmap/src/features/auth/auth-readiness-panel.tsx`는 삭제했고, `/Users/alex/project/altteulmap/src/features/auth/repository.ts`, `/Users/alex/project/altteulmap/src/features/auth/constants.ts`에서 readiness panel용 callback/env diagnostics 메타데이터를 걷어냈다.
+  - `/Users/alex/project/altteulmap/src/features/auth/login-form.tsx`, `/Users/alex/project/altteulmap/src/features/auth/signup-form.tsx`, `/Users/alex/project/altteulmap/src/features/auth/social-auth-buttons.tsx`를 정리해 이메일 로그인/가입을 먼저 보여주고, 소셜 로그인은 활성 provider가 있을 때만 보이게 바꿨다.
+  - `/Users/alex/project/altteulmap/src/app/globals.css`, `/Users/alex/project/altteulmap/src/features/map/map-page.tsx`에 가로 스크롤 레일 스타일을 추가해 모바일/데스크톱의 카테고리, 가격 필터, 검색 범위 칩이 여러 줄로 무너지지 않게 정리했다.
+  - `/Users/alex/project/altteulmap/tests/e2e/login.spec.ts`는 readiness panel 존재 대신 액션 중심 로그인/회원가입 전환 흐름을 검증하도록 갱신했고, `/Users/alex/project/altteulmap/README.md`의 readiness panel 설명도 제거했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npx tsc --noEmit` 통과
+  - `npm run verify` 통과
+    - build 중 `sitemap.xml` 단계에서 production DB에 `places` 테이블이 없을 때 mock fallback 로그는 기존과 동일하게 남지만, 빌드 자체는 성공
+  - `AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3107 AUTH_DEMO_PASSWORD=demo1234 AUTH_ADMIN_PASSWORD=admin1234 DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap USE_MOCK_DATA=false npx playwright test tests/e2e/login.spec.ts tests/e2e/signup.spec.ts` 통과
+- 메모
+  - 같은 날 12:00 KST에 넣었던 readiness panel은 과도한 운영 확인 UI로 판단돼 이번 턴에서 제거했다. 현재 제품 기준 필수 인증 경로는 credentials 로그인/회원가입과 북마크 보호, 관리자 권한 확인이다.
+
+### 2026-04-02 12:00 KST: 로그인/회원가입 진입면에 auth readiness 패널 추가
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/auth/repository.ts`에서 provider별 callback URL, 필수 env 키, 누락 env 키, 현재 인증 기준 origin을 계산하는 diagnostics 로직을 추가했다.
+  - `/Users/alex/project/altteulmap/src/features/auth/auth-readiness-panel.tsx`를 새로 만들어 `/login`, `/signup`에서 현재 인증 기준 URL, provider별 callback URL, 사용 가능 여부, 누락 env 키를 바로 볼 수 있게 했다.
+  - `/Users/alex/project/altteulmap/src/features/auth/constants.ts`의 auth provider 타입을 확장해 callback URL과 setup metadata를 함께 다루도록 정리했다.
+  - `/Users/alex/project/altteulmap/tests/e2e/login.spec.ts`를 추가해 로그인/회원가입 진입면에서 readiness 패널과 provider callback URL이 보이는지 검증했다.
+  - `/Users/alex/project/altteulmap/README.md`에도 login/signup 화면에서 callback URL을 바로 확인할 수 있다는 설명을 추가했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npx tsc --noEmit` 통과
+  - `npm run verify` 통과
+    - build 중 `sitemap.xml` 단계에서 production DB에 `places` 테이블이 없을 때 mock fallback 로그는 기존과 동일하게 남지만, 빌드 자체는 성공
+  - `AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3107 AUTH_DEMO_PASSWORD=demo1234 AUTH_ADMIN_PASSWORD=admin1234 DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap USE_MOCK_DATA=false npx playwright test tests/e2e/login.spec.ts tests/e2e/signup.spec.ts` 통과
+- 메모
+  - 이 단계는 일시적으로 현재 callback 기준과 누락 설정을 화면에서 바로 확인하려는 목적이었다. 같은 날 13:52 KST 후속 작업에서 panel은 제거됐고, 현재 우선순위는 운영 도메인 배포 점검과 관리자 외부 앱 cutover다.
+
+### 2026-04-02 11:58 KST: 지도 마커 팔레트를 중간 톤으로 재조정
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/map/naver-map-panel.tsx`의 marker 팔레트를 한 단계 부드럽게 낮췄다. 비활성 place marker는 진한 남색 대신 밝은 샌드/클레이 톤, active marker는 과한 주황 대신 중간 톤 테라코타, cluster marker는 어두운 남색 대신 밝은 카라멜 계열로 바꿨다.
+  - preview fallback 오버레이도 같은 톤으로 맞췄고, 그림자 역시 차가운 진회색 계열에서 더 자연스러운 웜 섀도로 조정했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+- 메모
+  - 목적은 이전 다크 팔레트의 대비는 조금 낮추되, 지도 바탕과 섞이지 않게 white halo와 테두리는 유지하는 것이다. 현재는 기존보다 덜 무겁고, 그래도 마커 실루엣은 남도록 맞췄다.
+
+### 2026-04-02 11:53 KST: 관리자 visit/activity telemetry 2차와 로그인 상태 header 회귀 정리
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/db/schema.ts`에 `visit_activity` 테이블과 dedupe/조회용 index를 추가했고, `/Users/alex/project/altteulmap/drizzle/0008_hot_mesmero.sql` 마이그레이션을 생성해 적용했다.
+  - `/Users/alex/project/altteulmap/src/features/telemetry/repository.ts`에 30분 bucket 기준 방문 적재, 120일 보존 정리, 오늘/7일 방문 수, 고유 방문자, DAU/WAU, 7일 재방문율 집계 로직을 추가했다.
+  - `/Users/alex/project/altteulmap/src/features/telemetry/api/visit-route.ts`, `/Users/alex/project/altteulmap/src/app/api/telemetry/visit/route.ts`, `/Users/alex/project/altteulmap/apps/admin/src/app/api/telemetry/visit/route.ts`를 통해 public/admin 공통 방문 적재 API를 열고, `/Users/alex/project/altteulmap/src/app/layout.tsx`, `/Users/alex/project/altteulmap/apps/admin/src/app/layout.tsx`에 tracker를 연결했다.
+  - `/Users/alex/project/altteulmap/src/features/admin/repository.ts`, `/Users/alex/project/altteulmap/src/features/admin/pages/dashboard-page.tsx`, `/Users/alex/project/altteulmap/src/features/admin/entrypoints/pages/dashboard-page.tsx`에서 방문 지표를 overview 카드로 노출하도록 바꿨다.
+  - 검증 중 드러난 회귀도 같이 정리했다. `/Users/alex/project/altteulmap/src/components/global-header.tsx`에 `session-user-badge`, `session-admin-link`, `session-login-link` test id와 계정 라벨을 복원했고, 로그아웃은 항상 `/`로 돌아가게 바꿨다. `/Users/alex/project/altteulmap/src/lib/admin-app.ts`는 로컬/테스트 host일 때 `ADMIN_APP_URL`이 있어도 내부 `/admin`을 우선 사용하도록 조정했다.
+  - `/Users/alex/project/altteulmap/src/features/places/repository.ts`의 `formatDate()`는 문자열/잘못된 날짜를 안전하게 처리하도록 바꿔 Playwright webserver에서 보이던 `RangeError: Invalid time value` fallback 로그를 제거했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npx tsc --noEmit` 통과
+  - `npm run db:generate` 통과
+  - `npm run db:push` 통과
+  - `npm run verify` 통과
+    - build 중 `sitemap.xml` 단계에서 production DB에 `places` 테이블이 없을 때 mock fallback 로그는 기존과 동일하게 남지만, 빌드 자체는 성공
+  - `psql postgresql://postgres:postgres@127.0.0.1:5432/altteulmap -c "select route_group, visit_date, count(*) from visit_activity group by route_group, visit_date order by visit_date desc, route_group asc;"` 결과 `admin/public` route group 집계 확인
+  - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap PORT=3119 USE_MOCK_DATA=false NEXTAUTH_URL=http://127.0.0.1:3119 npm run start` 후 수동 확인
+  - `curl -s 'http://127.0.0.1:3119/api/places/map?minLat=33&maxLat=39&minLng=124&maxLng=132&zoom=13' | jq '{source, mock, count, returnedCount, mapMarkerCount}'` 결과 `database/false/1000/120/11`
+  - cookie jar 로그인 뒤 `curl -s -b "$jar" "$base/admin" | rg -o 'data-testid=\"[^\"]+\"' | sort -u` 결과 `admin-metric-today-visits`, `admin-metric-weekly-visits`, `admin-metric-dau-wau`, `admin-metric-returning-rate`, `sign-out-button` 포함 확인
+  - `AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3107 AUTH_DEMO_PASSWORD=demo1234 AUTH_ADMIN_PASSWORD=admin1234 DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap USE_MOCK_DATA=false npx playwright test tests/e2e/admin-dashboard.spec.ts` 통과
+- 메모
+  - 초기 Playwright 재실행에서는 header test id 제거, 외부 `ADMIN_APP_URL` 우선, 로그아웃 callback이 `/admin`으로 남아 있는 세 가지 회귀가 드러났고, 이번 턴에서 모두 같이 정리했다.
+  - 방문 지표는 visitor cookie/user id 기준 actor key와 30분 bucket dedupe를 사용한다. admin/public route group은 path 기준으로 분리해 같은 actor라도 운영 화면 방문을 따로 볼 수 있게 했다.
+
+### 2026-04-02 11:51 KST: build/verify가 실행 중인 dev 서버의 `.next-dev`를 지우던 회귀 수정
+- 완료 내용
+  - `/Users/alex/project/altteulmap/package.json`의 `build`에서 `.next-dev` 삭제를 제거했다. 이제 production build는 `.next`만 정리하고, 실행 중인 dev 서버 산출물은 건드리지 않는다.
+  - 같은 파일의 `dev`에서도 자동 `.next-dev` 삭제를 제거했다. dev 캐시 초기화는 `npm run dev:clean`으로만 수동 수행하도록 다시 고정했다.
+  - `cf:clean`도 `.next-dev`를 지우지 않게 바꿨다. 따라서 Cloudflare preview/deploy용 clean build가 로컬 dev 서버를 망가뜨리지 않는다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - 실행 중인 기존 dev 서버(`http://127.0.0.1:3000`)에 대해 변경 후 `curl` 결과 `200` 유지 확인
+  - 같은 상태에서 `npm run build`를 병행 실행해도 dev 서버 `200` 응답이 유지되는 것 확인
+- 메모
+  - 이번 증상의 직접 원인은 `build/verify/cf:clean`이 live dev 산출물인 `.next-dev`를 같이 삭제하던 점이다. 그 상태에서 dev 서버는 chunk/manifest를 잃어 500을 내고, 재시작해야만 `.next-dev`를 다시 만들 수 있었다.
+  - 이미 깨진 상태를 복구할 때만 `npm run dev:clean && npm run dev`를 쓰면 되고, 평소에는 그냥 `npm run dev`만 쓰면 된다.
+
+### 2026-04-02 11:46 KST: 지도 마커 대비 강화로 실제 지도와 플레이스 구분 개선
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/map/naver-map-panel.tsx`의 place marker/cluster marker 팔레트를 다시 잡았다. 비활성 place marker는 진한 남색, 활성 place marker는 밝은 주황, cluster marker는 더 어두운 남색으로 분리해 지도 바탕색과 겹치지 않게 했다.
+  - 같은 파일의 실지도 marker HTML은 흰색 외곽선, 더 강한 그림자, 약간 큰 아이콘 크기와 anchor로 맞춰 확대 상태에서도 배경 지도 위에서 먼저 보이게 정리했다.
+  - preview fallback 오버레이도 같은 색 규칙을 쓰도록 바꿔, SDK fallback과 실지도 사이의 시각 규칙이 어긋나지 않게 맞췄다.
+- 검증 결과
+  - `npm run verify` 통과
+    - build 중 `sitemap.xml` 단계에서 production DB에 `places` 테이블이 없을 때 mock fallback 로그는 기존과 동일하게 남지만, 빌드 자체는 성공
+  - follow-up formatting 확인으로 `npm run verify:quick` 재실행 통과
+- 메모
+  - 이번 조정의 핵심은 기존 warm beige/orange 위주의 마커가 네이버 기본 지도색과 비슷하게 섞이던 문제를 줄이는 것이다. 현재는 비활성/cluster를 cool dark 계열로 이동시키고, active만 주황으로 남겨 선택 상태도 더 눈에 띄게 했다.
+
+### 2026-04-02 11:37 KST: bounds 기반 map API short-lived 서버 캐시와 쓰기 후 invalidation 추가
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/places/repository.ts`에 `bounds`가 있는 지도 조회 전용 메모리 캐시를 추가했다. key는 정렬/필터/검색어/bounds/zoom bucket 기준으로 만들고, TTL은 짧게 유지하면서 최대 엔트리 수를 제한한다.
+  - 같은 파일의 `listDatabaseMapPlaces()`는 `bounds` 요청일 때 먼저 캐시를 조회하고, miss일 때만 DB를 다시 읽어 결과를 저장한다.
+  - `refreshPlaceReactionSummary()`, `refreshPlacePricingSummary()`, `moderateDatabasePlace()`에서 캐시를 즉시 비우도록 연결해 좋아요/싫어요, 대표 가격 변경, 장소 승인/반려 뒤에는 stale viewport 결과가 남지 않게 했다.
+  - `/Users/alex/project/altteulmap/src/app/api/places/map/route.ts`는 디버깅용 `X-Altteulmap-Map-Cache` 헤더로 `miss/hit/bypass`를 내려 현재 캐시 상태를 바로 확인할 수 있게 했다. 응답 본문 계약은 그대로 유지했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npx tsc --noEmit` 통과
+  - `npm run verify` 통과
+    - build 중 `sitemap.xml` 단계에서 production DB에 `places` 테이블이 없을 때 mock fallback 로그는 기존과 동일하게 남지만, 빌드 자체는 성공
+  - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap PORT=3116 USE_MOCK_DATA=false NEXTAUTH_URL=http://127.0.0.1:3116 npm run start` 후 수동 확인
+  - wide viewport header 확인
+    - 첫 요청 `X-Altteulmap-Map-Cache: miss`
+    - 같은 요청 재호출 `X-Altteulmap-Map-Cache: hit`
+    - `PUT /api/places/goodprice-15311/reaction` 뒤 같은 요청 재호출 `X-Altteulmap-Map-Cache: miss`
+  - `curl -sD - -o /dev/null 'http://127.0.0.1:3116/api/places/map?query=%EA%B9%80%EB%B0%A5&scope=global'` 결과 header `X-Altteulmap-Map-Cache: bypass`
+- 메모
+  - 현재 캐시는 `bounds`가 있는 지도 조회에만 적용된다. 전역 검색처럼 bounds가 없는 요청은 우선 bypass로 두고, 필요하면 이후 별도 정책으로 확장한다.
+
+### 2026-04-02 10:27 KST: viewport 무검색 map API를 SQL bucket aggregate로 전환
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/places/repository.ts`에서 지도 조회 조건과 정렬을 helper로 분리하고, `viewport + query 없음` 경로는 `count`, 목록용 `items`, 지도용 `mapMarkers`를 각각 별도 쿼리로 계산하도록 바꿨다.
+  - 같은 파일에 SQL bucket aggregate 경로를 추가해 넓은 viewport에서는 전체 place preview를 메모리로 읽어 cluster를 만들지 않고, PostgreSQL `group by` 집계로 cluster summary를 바로 생성한다.
+  - bucket에 place가 1개만 있는 경우는 place marker로, 여러 개인 경우는 cluster marker로 변환해 기존 클라이언트 계약은 유지했다.
+  - 글로벌 검색이나 query가 있는 경로는 기존 preview 기반 흐름을 유지해 회귀 범위를 `viewport 무검색`으로 한정했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npx tsc --noEmit` 통과
+  - `npm run verify` 통과
+    - build 중 `sitemap.xml` 단계에서 production DB에 `places` 테이블이 없을 때 mock fallback 로그는 기존과 동일하게 남지만, 빌드 자체는 성공
+  - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap PORT=3115 USE_MOCK_DATA=false NEXTAUTH_URL=http://127.0.0.1:3115 npm run start` 후 수동 확인
+  - `curl -s 'http://127.0.0.1:3115/api/places/map?minLat=33&maxLat=39&minLng=124&maxLng=132&zoom=13'` 결과
+    - `source: database`
+    - `mock: false`
+    - `count: 1000`
+    - `returnedCount: 120`
+    - `mapMarkerCount: 11`
+    - `clusterCount: 11`
+    - `placeCount: 0`
+    - `truncated: true`
+  - `curl -s 'http://127.0.0.1:3115/api/places/map?query=%EA%B9%80%EB%B0%A5&scope=global'` 결과
+    - `source: database`
+    - `mock: false`
+    - `count: 40`
+    - `returnedCount: 40`
+    - `mapMarkerCount: 40`
+    - `truncated: false`
+  - Playwright headless runtime script 결과
+    - `/` 진입 후 `previewMarkerCount: 11`
+    - 그중 `clusterMarkerCount: 11`
+    - 같은 시점 목록 DOM은 `listItems: 120`
+    - summary 안내문 노출 확인
+- 메모
+  - 이번 단계로 넓은 viewport 무검색에서는 전체 결과 1000건을 모두 row 단위로 읽어 JS에서 cluster를 만들지 않는다. 다음 최적화 후보는 SQL bucket 결과를 viewport key 단위로 짧게 캐시하거나, geotile key를 더 명시적으로 써서 재조회 중복 계산을 더 줄이는 쪽이다.
+
+### 2026-04-02 10:21 KST: map API `items + mapMarkers` 분리와 서버 tile summary로 marker payload 추가 축소
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/places/types.ts`에 지도 전용 `PlaceMapMarkerRecord` 타입을 추가해 개별 place marker와 cluster marker를 같은 계약으로 다루도록 정리했다.
+  - `/Users/alex/project/altteulmap/src/features/places/repository.ts`의 `listMapPlaces()`는 이제 목록 패널용 `items`와 지도용 `mapMarkers`를 분리해 반환한다. 목록은 최대 `120`건까지만 유지하고, 넓은 viewport에서는 bounds/zoom 기준 tile bucket으로 묶은 cluster summary만 지도에 내려준다.
+  - `/Users/alex/project/altteulmap/src/app/api/places/map/route.ts`는 `zoom`을 받아 `mapMarkers`, `mapMarkerCount`, `returnedCount`, `truncated`를 함께 내려주도록 바꿨다.
+  - `/Users/alex/project/altteulmap/src/features/map/map-page.tsx`, `/Users/alex/project/altteulmap/src/features/places/map-explorer.tsx`, `/Users/alex/project/altteulmap/src/features/map/naver-map-panel.tsx`는 새 계약에 맞춰 목록/상세는 `items`, 지도 렌더는 `mapMarkers`만 쓰도록 정리했다. 넓은 화면에서는 서버가 내려준 cluster summary를 그대로 쓰고, 개별 place 선택/상세 진입은 place marker만 이어받는다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npx tsc --noEmit` 통과
+  - `npm run verify` 통과
+    - build 중 `sitemap.xml` 단계에서 production DB에 `places` 테이블이 없을 때 mock fallback 로그는 기존과 동일하게 남지만, 빌드 자체는 성공
+  - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap PORT=3114 USE_MOCK_DATA=false NEXTAUTH_URL=http://127.0.0.1:3114 npm run start` 후 수동 확인
+  - `curl -s 'http://127.0.0.1:3114/api/places/map?minLat=33&maxLat=39&minLng=124&maxLng=132&zoom=13'` 결과
+    - `count: 1000`
+    - `returnedCount: 120`
+    - `mapMarkerCount: 15`
+    - `truncated: true`
+  - Playwright headless runtime script 결과
+    - `/` 진입 후 preview overlay 기준 `previewMarkerCount: 11`
+    - 그중 `clusterMarkerCount: 10`
+    - cluster 라벨 예시 `138, 35, 87, 69, 64, 48, 28, 27`
+    - 같은 시점 목록 DOM은 `listItems: 120`
+    - summary 안내문 `현재 조건에 맞는 장소는 총 507곳이고, 성능을 위해 120곳만 먼저 불러왔습니다` 노출 확인
+- 메모
+  - 이번 단계로 넓은 viewport에서는 목록 패널과 지도 marker가 더 이상 같은 preview 배열을 공유하지 않는다. API 응답은 목록용 `120`건과 지도용 cluster summary `15`건으로 분리됐고, 다음 최적화 후보는 SQL 단계에서 geotile 집계나 tile cache를 더 직접 도입하는 방향이다.
+
+### 2026-04-02 10:11 KST: 북마크 목록 조회 구조 단순화와 토글 회귀 테스트 보강
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/bookmarks/repository.ts`에 `listBookmarkedPlaces()`를 추가해 북마크 페이지가 전체 장소 목록을 다시 읽어 매칭하지 않고, `bookmarks -> places` join으로 바로 카드 데이터를 가져오도록 바꿨다.
+  - `/Users/alex/project/altteulmap/src/app/bookmarks/page.tsx`는 새 helper를 쓰도록 정리했다. 이제 북마크 목록이 다른 place list 정렬/필터 구현에 흔들리지 않고 저장 시점 순서대로 바로 렌더된다.
+  - `/Users/alex/project/altteulmap/src/features/bookmarks/bookmark-toggle-button.tsx`는 fetch 실패를 잡아 사용자 메시지를 남기고, 성공 시 stale message를 지우도록 보강했다.
+  - server refresh 뒤 버튼 상태가 초기 북마크 값과 어긋나지 않도록 `/Users/alex/project/altteulmap/src/features/places/map-explorer.tsx`, `/Users/alex/project/altteulmap/src/features/places/place-detail-sheet.tsx`, `/Users/alex/project/altteulmap/src/app/place/[id]/page.tsx`, `/Users/alex/project/altteulmap/src/app/bookmarks/page.tsx`에서 북마크 버튼 `key`를 상태 기준으로 줘 remount되게 했다.
+  - `/Users/alex/project/altteulmap/tests/e2e/bookmarks.spec.ts`는 오래된 fixture slug를 하드코딩하지 않고, 현재 `/api/places/map` 응답에서 실제 place를 골라 북마크 저장/해제 흐름을 검증하도록 바꿨다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3107 AUTH_DEMO_PASSWORD=demo1234 AUTH_ADMIN_PASSWORD=admin1234 DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap USE_MOCK_DATA=false npx playwright test tests/e2e/bookmarks.spec.ts` 통과
+  - `npm run verify` 통과
+    - build 중 `sitemap.xml` 단계에서 production DB의 `places` 테이블이 없을 때 mock fallback 로그는 기존과 동일하게 남지만, 빌드 자체는 성공
+- 메모
+  - 로컬에서 북마크 API 저장/해제 자체는 재현 시 정상 동작했고, 이번 보강은 북마크 목록 조합과 client button state가 데이터셋/refresh 타이밍에 흔들릴 수 있는 지점을 먼저 정리하는 목적이다.
+
+### 2026-04-02 10:10 KST: viewport/zoom 기반 cluster marker 계층으로 지도 marker 수 축소
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/map/naver-map-panel.tsx`에 `PlaceDisplayMarker`, `ClusterDisplayMarker`, `MapDisplayMarker`와 `buildDisplayMarkers()`를 추가해, 서버가 내려준 preview를 viewport bounds/zoom/container size 기준 grid bucket으로 다시 묶도록 바꿨다.
+  - 같은 파일의 preview fallback과 실지도 marker 렌더가 모두 같은 `buildDisplayMarkers()` 결과를 사용하도록 정리했다. preview는 cluster badge를 직접 그리고, 실지도는 cluster marker와 place marker를 각각 다른 custom icon으로 렌더한다.
+  - active place는 cluster 안에 있더라도 단일 marker로 유지해 선택한 장소가 다시 숨지 않게 했고, 넓은 viewport에서는 cluster marker 클릭 시 해당 bounds로 `fitBounds` 또는 zoom-in 하도록 연결했다.
+  - `/Users/alex/project/altteulmap/src/features/places/map-explorer.tsx`는 더 이상 별도 marker 샘플링을 하지 않고, 지도에는 서버 cap preview 그대로 넘긴 뒤 실제 마커 축약은 `NaverMapPanel`의 cluster layer가 맡도록 단순화했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+    - build 중 `sitemap.xml` 단계에서 production DB에 `places` 테이블이 없을 때 mock fallback 로그는 기존과 동일하게 남지만, 빌드 자체는 성공
+  - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap PORT=3113 USE_MOCK_DATA=false NEXTAUTH_URL=http://127.0.0.1:3113 npm run start` 후 수동 확인
+  - `curl -s 'http://127.0.0.1:3113/api/places/map?minLat=33&maxLat=39&minLng=124&maxLng=132'` 결과
+    - `count: 1000`
+    - `returnedCount: 360`
+    - `truncated: true`
+  - Playwright headless runtime script 결과
+    - `/` 진입 후 preview overlay 기준 `previewMarkerCount: 17`
+    - 그중 `clusterMarkerCount: 12`
+    - cluster 라벨 예시 `52, 39, 73, 88, 6, 6, 25, 9`
+    - 같은 시점 목록 DOM은 `placeListItems: 120`
+    - badge는 `507곳`, cluster 안내문 `가까운 장소는 묶어 표시합니다` 노출 확인
+- 메모
+  - 이번 단계로 넓은 viewport에서도 서버가 내려준 `360` preview를 그대로 전부 마커로 그리지 않고, 실제 초기 preview overlay 기준 `17`개 marker만 보이게 줄었다. 다음 체감 최적화 후보는 cluster/tile을 SQL 단계나 타일 캐시와 더 직접 연결하는 방향이다.
+
+### 2026-04-02 10:58 KST: `places` 비정규화로 지도 읽기 join/반응 집계 축소
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/db/schema.ts`의 `places`에 `primary_category_slug`, `like_count`, `dislike_count`를 추가했고, `status + primary_category_slug` 인덱스를 붙였다.
+  - `/Users/alex/project/altteulmap/drizzle/0007_true_carmella_unuscione.sql`은 컬럼 추가 뒤 `place_categories`, `place_reactions`에서 기존 데이터를 backfill하도록 보강했다. 로컬 `db:push`는 schema 기준으로 컬럼/인덱스만 적용하므로, local DB 값은 이어서 `db:seed`로 채워 검증했다.
+  - `/Users/alex/project/altteulmap/src/features/places/repository.ts`는 지도/global preview와 일반 place list에서 더 이상 `loadCategoryMap()`이나 반응 count 집계를 돌지 않고 `places.primaryCategorySlug`, `places.likeCount`, `places.dislikeCount`를 직접 읽는다.
+  - 같은 파일의 상세 읽기는 요약 카운트는 `places`에서 바로 읽고, viewer-specific `viewerReaction`만 `place_reactions`에서 별도 조회하도록 줄였다.
+  - 반응 쓰기 경로도 바꿨다. `setDatabasePlaceReaction()` 뒤에 `refreshPlaceReactionSummary()`를 호출해 `places.like_count/dislike_count`를 즉시 동기화한다.
+  - `/Users/alex/project/altteulmap/src/db/seed.ts`, `/Users/alex/project/altteulmap/src/features/places/repository.ts`의 신규 place insert도 `primaryCategorySlug`, `likeCount`, `dislikeCount`를 함께 적재하도록 맞췄다.
+- 검증 결과
+  - `npm run db:generate` 통과
+  - `npm run verify:quick` 통과
+  - `npm run db:push` 통과
+  - `npm run db:seed` 통과
+  - `npm run verify` 통과
+    - build 중 `sitemap.xml` 단계에서 production DB에 `places` 테이블이 없을 때 mock fallback 로그는 기존과 동일하게 남지만, 빌드 자체는 성공
+  - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap PORT=3111 USE_MOCK_DATA=false NEXTAUTH_URL=http://127.0.0.1:3111 npm run start` 후 수동 확인
+  - `psql ... -Atc "select count(*) from places where primary_category_slug is null;"` 결과 `0`
+  - `curl -s 'http://127.0.0.1:3111/api/places/map?category=korean&minLat=33&maxLat=39&minLng=124&maxLng=132'` 결과
+    - `count: 524`
+    - `returnedCount: 360`
+    - 응답 preview의 `categorySlug`가 모두 `korean`
+  - 반응 동기화 확인
+    - `PUT /api/places/goodprice-17626/reaction` with `{"reaction":"like"}` 결과 `likeCount: 1`
+    - 직후 DB 값 `goodprice-17626|1|0`
+    - 같은 visitor cookie로 `{"reaction":null}` 결과 `likeCount: 0`
+    - 직후 DB 값도 `goodprice-17626|0|0`으로 복귀
+- 메모
+  - 이번 단계로 지도 읽기 경로는 `place_categories`/`place_reactions`에 대한 bulk lookup 없이 `places` 단일 테이블 중심으로 preview를 만들 수 있게 됐다. 다음 체감 최적화 후보는 viewport 규모별 cluster/tile 계층 도입이나, 넓은 viewport에서 SQL 단계 limit/cluster key를 더 직접 활용하는 방향이다.
+
+### 2026-04-02 10:00 KST: public/admin 공통 헤더 도입과 페이지별 중복 상단 액션 제거
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/components/global-header.tsx`를 추가해 `알뜰맵` 로고, `장소 등록하기`, `북마크`, `운영자 관리`, `로그인/로그아웃`을 공통 헤더로 묶었다.
+  - `/Users/alex/project/altteulmap/src/lib/auth-navigation.ts`를 추가하고 `/Users/alex/project/altteulmap/src/lib/session.ts`의 로그인/회원가입 callback helper를 분리해, client header에서도 현재 경로 기준 로그인 링크를 안전하게 만들 수 있게 했다.
+  - `/Users/alex/project/altteulmap/src/app/layout.tsx`, `/Users/alex/project/altteulmap/apps/admin/src/app/layout.tsx`에 공통 헤더를 연결해 public 앱과 별도 admin 앱 모두에서 같은 상단 이동 구조를 쓰도록 맞췄다.
+  - `/Users/alex/project/altteulmap/src/features/map/map-page.tsx`, `/Users/alex/project/altteulmap/src/app/submit/page.tsx`, `/Users/alex/project/altteulmap/src/app/report/page.tsx`, `/Users/alex/project/altteulmap/src/app/bookmarks/page.tsx`, `/Users/alex/project/altteulmap/src/app/login/page.tsx`, `/Users/alex/project/altteulmap/src/app/signup/page.tsx`, `/Users/alex/project/altteulmap/src/app/place/[id]/page.tsx`와 관리자 페이지들에서 페이지별 상단 액션 블록을 제거하고, 페이지 본문은 제목/로컬 서브 내비게이션만 남도록 정리했다.
+  - 더 이상 쓰지 않는 `/Users/alex/project/altteulmap/src/features/auth/session-action-group.tsx`는 삭제했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - Playwright headless DOM 점검으로 `/`, `/submit`, `/bookmarks`, `/login`, `/admin`에서 공통 `<header>`와 `알뜰맵`, `장소 등록하기`, `북마크`, `운영자 관리`, `로그인` 링크 존재 확인
+  - `rg -n "SessionActionGroup" src/app src/features apps/admin/src/app` 결과 정의 파일 외 사용처 0건 확인 후 파일 삭제
+- 메모
+  - `/Users/alex/project/altteulmap/apps/admin` 전체 build는 현재 저장소의 기존 shared blocker인 `/Users/alex/project/altteulmap/src/features/places/repository.ts` 타입 오류가 남아 있어 별도 재검증을 생략했다. 공통 헤더 자체는 public 라우트 기준 런타임에서 먼저 확인했다.
+
+### 2026-04-02 10:46 KST: map API 서버 cap과 total count 분리로 네트워크 payload 축소
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/places/repository.ts`의 `PlacePreviewListResult`에 전체 매칭 수 `count`를 추가하고, 지도 preview 응답은 최대 `360`건만 반환하도록 바꿨다.
+  - 검색어가 있는 글로벌 검색은 기존 정렬 순서를 유지하도록 상위 preview만 자르고, viewport/기본 탐색은 grid bucket round-robin 방식으로 공간 분산 샘플링을 적용해 한 구역에 과도하게 쏠리지 않게 했다.
+  - `/Users/alex/project/altteulmap/src/app/api/places/map/route.ts`는 이제 `count`, `returnedCount`, `truncated`를 같이 내려준다. `count`는 전체 조건 일치 수, `returnedCount`는 실제 응답 preview 수다.
+  - `/Users/alex/project/altteulmap/src/features/map/map-page.tsx`, `/Users/alex/project/altteulmap/src/features/places/map-explorer.tsx`, `/Users/alex/project/altteulmap/src/features/map/naver-map-panel.tsx`를 함께 수정해 지도/목록 badge는 전체 개수 기준으로 보이게 하고, 서버 cap이 걸렸을 때는 `총 N곳 중 M곳만 먼저 불러옴` 안내를 표시하도록 바꿨다.
+  - 검증 중 드러난 기존 회귀도 같이 복구했다. `/Users/alex/project/altteulmap/src/lib/session.ts`에서 auth navigation helper를 외부 파일로 분리한 뒤 re-export가 빠져 있었고, 이 때문에 `/Users/alex/project/altteulmap/src/app/bookmarks/page.tsx` 등 `@/lib/session` import가 build에서 깨졌다. helper re-export를 복구해 기존 import 계약을 유지했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+    - build 중 `sitemap.xml` 단계에서 production DB에 `places` 테이블이 없을 때 mock fallback 로그는 기존과 동일하게 남지만, 빌드 자체는 성공
+  - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap PORT=3111 USE_MOCK_DATA=false NEXTAUTH_URL=http://127.0.0.1:3111 npm run start` 후 수동 확인
+  - `curl -s 'http://127.0.0.1:3111/api/places/map?minLat=33&maxLat=39&minLng=124&maxLng=132'` 결과
+    - `count: 1000`
+    - `returnedCount: 360`
+    - `truncated: true`
+  - Playwright headless runtime script 결과
+    - `/` 진입 직후 `initialListCount: 0`, 지도 badge `불러오는 중`
+    - client fetch 후 `hydratedListCount: 120`, 지도 badge `507곳`, 서버 cap 안내문 1개 노출
+    - `/?q=김밥&scope=global` 진입 직후 `globalListCount: 40`, 서버 cap 안내문 0개
+- 메모
+  - 이번 단계로 map API는 더 이상 전체 preview 1000건을 매번 직렬화해 보내지 않는다. 다음 체감 최적화 후보는 카테고리/반응 요약을 `places`에 비정규화해 map read를 단일 테이블 중심으로 줄이거나, viewport가 넓을 때는 cluster tile 계층으로 넘어가는 것이다.
+
+### 2026-04-02 10:23 KST: viewport 첫 진입의 장소 SSR 제거와 bootstrap client fetch 전환
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/map/map-page.tsx`에서 viewport 모드의 `/` 첫 렌더가 더 이상 `listMapPlaces()`를 서버에서 호출하지 않도록 바꿨다. 기본 진입은 서울 bootstrap bounds만 내려주고, 글로벌 검색일 때만 서버가 preview 목록을 미리 채운다.
+  - 같은 흐름을 위해 `/Users/alex/project/altteulmap/src/features/places/map-explorer.tsx`에 `prefetchedOnServer` 기준 첫 fetch 스킵 로직을 넣었다. 이제 viewport 기본 진입은 mount 후 map idle 시점에 `/api/places/map`를 호출하고, 글로벌 검색은 기존처럼 SSR 결과를 그대로 보여주며 첫 중복 fetch를 생략한다.
+  - `/Users/alex/project/altteulmap/src/features/map/naver-map-panel.tsx`는 장소가 0건이어도 `initialBounds`가 있으면 바로 `fitBounds` 하도록 수정했다. 덕분에 빈 bootstrap 상태에서도 서울 범위를 먼저 보여주고, 로딩 중에는 지도/목록 배지에 `불러오는 중` 상태를 노출한다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+    - build 중 `sitemap.xml` 단계에서 production DB에 `places` 테이블이 없을 때 mock fallback 로그는 계속 남지만, 기존과 동일하게 빌드 자체는 성공
+  - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap PORT=3111 USE_MOCK_DATA=false NEXTAUTH_URL=http://127.0.0.1:3111 npm run start` 후 수동 확인
+  - `curl -s http://127.0.0.1:3111/ | rg -o 'data-testid="place-list-item-[^"]+"' -c` 결과 match 없음(exit 1)으로 viewport 기본 진입의 raw HTML에 목록 item SSR이 사라진 것 확인
+  - `curl -s 'http://127.0.0.1:3111/?q=%EA%B9%80%EB%B0%A5&scope=global' | rg -o 'data-testid="place-list-item-[^"]+"' -c` 결과 `40`으로 글로벌 검색 SSR 유지 확인
+  - Playwright headless runtime script 결과
+    - `/` 진입 직후 `initialCount: 0`, 로딩 문구 2개 노출
+    - client fetch 후 `hydratedCount: 120`, 지도 배지 `240곳`
+    - `/?q=김밥&scope=global` 진입 직후 `globalImmediateCount: 40`
+- 메모
+  - 이번 단계로 가장 큰 초기 payload 병목인 `viewport 1000건 SSR`은 제거됐다. 다음 체감 최적화 후보는 `/api/places/map` 응답 자체에 서버 cap을 두고 `items + totalCount`로 분리하는 것이다.
+
+### 2026-04-02 10:04 KST: 지도 페이지 외곽 셸 폭 확장
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/map/map-page.tsx`의 지도 페이지 바깥 셸만 조정했다. `max-w-7xl`를 `max-w-[96rem]`로 넓히고, `main` 좌우 padding은 줄였으며, 카드 내부 padding도 `p-4/sm:p-6/xl:p-7`로 얕게 바꿨다.
+  - 같은 `rounded-[2rem] border ...` 카드 클래스가 등록/신고/관리자 화면에도 반복되지만, 이번에는 지도 페이지에만 적용했다. 폼 화면까지 같이 넓히면 읽기성이 떨어질 수 있어서 분리 유지가 낫다고 판단했다.
+  - 이어서 `/Users/alex/project/altteulmap/src/features/places/map-explorer.tsx`의 desktop 그리드를 `xl:grid-cols-[minmax(0,2.2fr)_15rem] 2xl:grid-cols-[minmax(0,2.35fr)_15.5rem]`로 바꿨고, `/Users/alex/project/altteulmap/src/features/places/place-detail-sheet.tsx`의 desktop 상세 패널 최대 폭도 `25.5rem / 26.5rem`로 줄여 지도 작업면을 더 확보했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - Playwright headless로 `1440px` viewport에서 `/` 진입 후 레이아웃 폭 측정 결과 `main padding-left: 24px`, `shellWidth: 1392`, `sectionWidth: 1392` 확인
+  - 같은 `1440px` viewport에서 지도 grid 재측정 결과 `gridWidth: 1334`, `mapWidth: 1078`, `listWidth: 240`, 상세 패널 open 폭 `408` 확인
+- 메모
+  - 지도 화면은 카드형 읽기 레이아웃보다 작업면 확보가 더 중요하다. 다음 후속으로는 필요 시 `MapExplorer`의 desktop list 폭과 map/list 비율도 따로 손볼 수 있다.
+
+### 2026-04-02 09:56 KST: 공개 입력 폼 비율 규칙 재정리와 모바일/detail sheet 가로 넘침 제거
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/places/place-price-report-form.tsx`에서 가격 제보 폼을 모바일 기본 1열로 되돌리고, 2열 전환 시점을 `md`로 늦췄다. `minmax(0, ...)` 기반 grid와 `altteulmap-input` 공용 폭 규칙을 적용해 detail sheet 안에서도 오른쪽 가격 입력이 카드 밖으로 튀어나오지 않게 정리했다.
+  - 같은 폼에서 `로그인 없이 새 가격 제보를 보낼 수 있습니다.` 보조 문구를 제거하고, 액션 버튼은 모바일에서 `w-full`, 넓은 화면에서는 `w-auto`로 동작하게 바꿨다.
+  - `/Users/alex/project/altteulmap/src/features/places/place-comments-section.tsx`의 코멘트 입력도 같은 규칙으로 바꿨다. textarea 높이/resize, 버튼 정렬, `min-w-0`를 보강했고 `로그인 없이 익명 코멘트를 남길 수 있습니다.` 문구를 제거했다.
+  - `/Users/alex/project/altteulmap/src/features/submission/place-submit-form.tsx`, `/Users/alex/project/altteulmap/src/features/reports/report-submit-form.tsx`도 같은 입력 규칙으로 통일했다. 공개 등록의 가격 항목 grid는 `lg` 이전에는 세로 스택으로 유지하고, 모든 input/select/textarea에 `w-full + min-w-0`가 보장되도록 정리했다.
+  - `/Users/alex/project/altteulmap/src/app/globals.css`의 `altteulmap-input`에 `width: 100%`, `min-width: 0`, placeholder 색상을 추가했고, `/Users/alex/project/altteulmap/src/app/place/[id]/page.tsx`, `/Users/alex/project/altteulmap/src/features/places/place-detail-sheet.tsx`의 가격 항목 row도 모바일에서 세로 배치로 바꿔 긴 텍스트/가격 조합이 좁은 폭에서 겹치지 않게 했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `rg -n "로그인 없이 .*제보|로그인 없이 .*코멘트|로그인 없이 .*등록" src/features src/app` 결과 0건
+  - Playwright headless DOM audit로 `390px` viewport에서 `/submit`, `/report?placeId=test-place&placeName=테스트 장소`, `/place/goodprice-16045`, 홈 detail sheet의 `main`/해당 폼 `scrollWidth === clientWidth` 확인
+  - 같은 DOM audit를 `700px` viewport에서 `/place/goodprice-16045`, 홈 detail sheet에 다시 실행했고 `overflowX: false` 확인
+- 메모
+  - 이번 수정은 단일 스크린샷 대응이 아니라 `sm`에서 너무 이르게 다열 grid로 넘어가던 공개 폼 전반을 정리하는 목적이다. 앞으로 입력 폼은 `모바일 1열 -> md/lg 이후 다열`, `input/select/textarea는 공용 폭 규칙`, `하단 액션은 모바일 세로 정렬`을 기본값으로 삼는다.
+
+### 2026-04-02 09:38 KST: 지도 전용 preview payload와 렌더 상한으로 실데이터 1000건 지도 성능 완화
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/places/types.ts`에 `PlacePreviewRecord`를 추가하고, `/Users/alex/project/altteulmap/src/features/places/repository.ts`에 지도 전용 `listMapPlaces()`를 분리했다. 지도 첫 화면과 `/Users/alex/project/altteulmap/src/app/api/places/map/route.ts`는 더 이상 `priceItems/history/comments`를 실어 보내지 않는다.
+  - `/Users/alex/project/altteulmap/src/features/map/map-page.tsx`, `/Users/alex/project/altteulmap/src/features/places/map-explorer.tsx`, `/Users/alex/project/altteulmap/src/features/map/naver-map-panel.tsx`를 수정해 지도는 preview payload만 받고, 클라이언트 렌더는 `목록 최대 120개`, `마커 최대 240개` 기준으로 제한한다. 마커는 grid 샘플링으로 한 지역에 과도하게 몰리지 않게 했다.
+  - 같은 `/Users/alex/project/altteulmap/src/features/places/map-explorer.tsx`에서 viewport 재조회 요청을 4자리 반올림 bounds 기반 request key로 묶고, `180ms` debounce를 걸었다. 이전에는 idle 이벤트마다 새 bounds object가 들어와 같은 영역에서도 반복 fetch가 날 수 있었다.
+  - `/Users/alex/project/altteulmap/src/features/places/place-detail-sheet.tsx`는 preview payload에서도 바로 열리도록 조정했다. 기본 정보는 preview로 즉시 보여주고, 상세 가격/코멘트는 기존 `/api/places/[id]` fetch가 도착하면 채운다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과. build 중 `.env.production.local` DB에 `places` 테이블이 없어 sitemap build 로그에는 기존 mock fallback 메시지가 남지만 lint/build는 성공
+  - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap PORT=3111 USE_MOCK_DATA=false NEXTAUTH_URL=http://127.0.0.1:3111 npm run start` 후 Playwright 브라우저 스크립트로 `/` 진입 시 `place-list-item-*` DOM 수 `120`, `map-preview-marker-*` DOM 수 `21`, 렌더 상한 안내 문구 노출 확인
+  - 같은 runtime에서 `curl 'http://127.0.0.1:3111/api/places/map?minLat=33&maxLat=39&minLng=124&maxLng=132'` 검사 결과 `count: 1000`, `source: "database"` 유지, 첫 item key에 `priceItems/history/comments`가 빠진 preview payload 확인
+  - 기존 `tests/e2e/map.spec.ts`, `tests/e2e/map.mobile.spec.ts`는 현재 저장소가 실데이터 import를 기본 시드로 쓰면서 여전히 `"학교앞김밥"`, `"6곳"` 같은 mock fixture를 기대해 실패했다. 이번 지도 성능 변경의 직접 회귀라기보다 테스트 데이터 계약 미스매치다.
+- 메모
+  - 지도 상단 뱃지는 전체 결과 수를 계속 보여주고, 실제 DOM 렌더 개수만 줄인다. 따라서 “현재 지도에 몇 곳이 있는지” 정보와 “브라우저가 한 번에 그리는 양”을 분리할 수 있다.
+  - 다음 지도 품질 후속 후보는 `viewport zoom 수준별 marker cap 조정`, `가상 스크롤 목록`, `초기 서울/현재 위치 기준 bootstrap`이다.
+
+### 2026-04-02 09:34 KST: auth 성공 이동의 라우터 액션 충돌 제거와 NextAuth route handler 복구
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/auth/login-form.tsx`, `/Users/alex/project/altteulmap/src/features/auth/signup-form.tsx`에서 인증 성공 후 `router.replace()`와 `router.refresh()`를 연달아 호출하던 흐름을 제거했다. 이제 `signIn` 결과의 `url` 또는 `callbackUrl`로 `window.location.assign()`을 사용해 이동하므로 App Router 초기화 타이밍에 의존하지 않는다.
+  - `/Users/alex/project/altteulmap/src/app/api/auth/[...nextauth]/route.ts`에서 lazy NextAuth wrapper가 `context`를 버리던 문제를 고쳤다. 이전에는 `NextAuth(getAuthOptions())(request)`만 호출해 App Route가 아니라 Pages API 경로로 오인되었고, 그 결과 `/api/auth/providers`에서 `Cannot destructure property 'nextauth' of 'req.query' as it is undefined` 500이 발생했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `curl -i -s http://localhost:3000/api/auth/providers` 결과 `200 OK`와 provider JSON 응답 확인
+  - Playwright 브라우저 스모크로 `http://localhost:3000/signup?callbackUrl=%2Fbookmarks` 진입 후 신규 계정 가입 완료, 최종 URL `http://localhost:3000/bookmarks`, browser `errors: []` 확인
+  - `npm run build`는 기존 타입 오류 `src/features/places/repository.ts:862` (`PlacePreviewRecord[]` -> `PlaceRecord[]`)로 실패. 이번 auth/router 수정 파일과는 무관한 현재 저장소 blocker로 분리 판단
+- 메모
+  - 이번 runtime error는 auth 성공 직후 client router action을 중복 dispatch하던 흐름이 가장 유력한 원인이었다. NextAuth route handler 500도 동시에 존재해 인증 화면 자체를 불안정하게 만들고 있었으므로 함께 정리했다.
+
+### 2026-04-02 09:28 KST: `착한가격업소` importer quota를 `서울 500 + 비서울 500`, `음식점 70%`로 재조정하고 seed blocker 수정
+- 완료 내용
+  - `/Users/alex/project/altteulmap/scripts/import-goodprice.ts`에 quota 기반 selection 로직을 추가했다. 기본 `data:goodprice` 실행은 `서울 500`, `비서울 500`, `음식점 700`, `비음식 300`을 동시에 채울 때까지 수집하고, 비서울은 시도별 round-robin을 유지한다.
+  - 같은 스크립트에 `--seoul-limit`, `--food-ratio` 옵션을 추가했다. 작은 샘플 실행에서는 `limit`에 맞춰 서울 quota가 자동 축소되고, 기본 `1000건` 실행에서는 `서울 500 + 비서울 500`이 유지된다.
+  - 상세 메뉴에서 같은 장소 안에 동일 메뉴 라벨이 여러 가격으로 내려오는 경우가 있어, importer에서 메뉴 라벨을 정규화해 한 항목으로 접도록 수정했다. 우선순위는 `대표 지정 메뉴`, `목록 대표 가격과 일치`, `같은 라벨이면 더 낮은 가격` 순서다.
+  - `/Users/alex/project/altteulmap/src/features/places/imported-goodprice.json`, `/Users/alex/project/altteulmap/data/goodprice/import-meta.json`, `/Users/alex/project/altteulmap/README.md`, `/Users/alex/project/altteulmap/PLAN.md`를 새 기본 quota와 seed 호환 결과에 맞게 갱신했다.
+  - 최종 생성 결과는 `1000` places, `2581` price items이며, `서울 500`, `비서울 500`, `음식점 700`, `비음식 300`, `대표 가격 최대 10000원`, `priceItems > 10000` `0건`, `장소별 중복 메뉴 라벨` `0건`이다.
+- 검증 결과
+  - `npm run data:goodprice -- --limit=20 --delay-ms=50 --timeout-ms=10000 --include-detail=false --output=/tmp/goodprice-20.json --manifest=/tmp/goodprice-20-manifest.json` 통과. 결과 `서울 10`, `비서울 10`, `음식점 14`, `비음식 6` 확인
+  - `npm run data:goodprice -- --delay-ms=50 --timeout-ms=10000` 1차 실행 후 `npm run db:seed`에서 `price_items_place_label_unique` 위반 재현
+  - importer dedupe 수정 후 `npm run data:goodprice -- --delay-ms=50 --timeout-ms=10000` 재실행 통과
+  - `python3`로 `/Users/alex/project/altteulmap/src/features/places/imported-goodprice.json`, `/Users/alex/project/altteulmap/data/goodprice/import-meta.json` 검사 결과 `1000/500/500/700/300`, `priceItems > 10000 = 0`, `duplicateLabelPlaces = 0`, manifest quota target/actual 일치 확인
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과. build 중 `.env.production.local` DB에 `places` 테이블이 없어 mock fallback 로그는 남았지만 lint/build 자체는 성공
+  - `npm run db:up` 통과
+  - `npm run db:seed` 통과
+  - `node - <<'NODE' ... select count(*) from places/price_items ... NODE` 결과 `placeCount 1000`, `priceItemCount 2581`, `seoulCount 500` 확인
+  - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap PORT=3111 USE_MOCK_DATA=false NEXTAUTH_URL=http://127.0.0.1:3111 npm run start` 후 `curl 'http://127.0.0.1:3111/api/places/map?minLat=33&maxLat=39&minLng=124&maxLng=132'` 결과 `source: "database"`, `count: 1000` 확인
+- 메모
+  - plain `npm run start`는 `.env.production.local` 쪽 DB를 먼저 읽어 local seed와 다른 DB를 바라볼 수 있다. 로컬 DB 기반 runtime 확인이 필요하면 이번처럼 `DATABASE_URL`을 명시적으로 주입하는 편이 안전하다.
+  - 비서울 500은 시도별 round-robin으로 채우고 있어서 전국 분포는 과도하게 한 지역에 몰리지 않는다. 현재 실제 결과는 `data/goodprice/import-meta.json`의 `regions`, `categories`, `quotas`에서 바로 확인할 수 있다.
 
 ### 2026-04-02 09:08 KST: `착한가격업소` 실제 데이터 importer 구현과 1000건 seed 반영
 - 완료 내용
@@ -120,6 +1331,20 @@
 - 메모
   - 이번 이슈의 직접 원인은 `next dev`가 `.next/dev/cache/turbopack` 아래 SST/metadata를 쓰는 동안, build/start/e2e 경로가 같은 `.next`를 다시 만지면서 cache 참조가 깨진 것이다. 사용자에게 보인 `Unable to open static sorted file`, `Failed to lookup task ids`, `Another write batch or compaction is already active`는 이 충돌의 결과다.
   - 이후 로컬 dev가 다시 이상하면 production 산출물인 `.next`는 건드리지 말고 `rm -rf .next-dev && npm run dev`로 복구하는 것을 기본 경로로 삼는다.
+
+### 2026-04-02 09:27 KST: `.next-dev` 자동 삭제 제거로 webpack pack cache ENOENT 재발 방지
+- 완료 내용
+  - `/Users/alex/project/altteulmap/package.json`에서 `dev`, `build`, `cf:clean`이 더 이상 `.next-dev`를 자동 삭제하지 않도록 수정했다. 이제 `.next-dev`는 오직 dev 서버 전용 산출물로 유지되고, production build와 Cloudflare clean은 `.next`/`.open-next`만 정리한다.
+  - `/Users/alex/project/altteulmap/apps/admin/package.json`도 같은 규칙으로 맞춰 `dev`/`build`가 관리자 dev 산출물을 임의로 지우지 않게 했다.
+  - `/Users/alex/project/altteulmap/package.json`, `/Users/alex/project/altteulmap/apps/admin/package.json`에 `dev:clean`을 추가했고, `/Users/alex/project/altteulmap/README.md`의 복구 절차도 `npm run dev:clean` 기준으로 정리했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run dev:clean` 후 `npm run dev` 기동, `curl -s -o /tmp/altteulmap-root-after-dev.html -w '%{http_code}' http://127.0.0.1:3000/` 결과 `200`
+  - dev 서버 유지 상태에서 `npm run build` 통과
+  - build 직후 `test -d .next-dev/dev/cache/webpack/client-development && echo present-after-build` 확인
+  - build 직후 `curl -s -o /tmp/altteulmap-root-after-build.html -w '%{http_code}' http://127.0.0.1:3000/` 결과 `200`
+- 메모
+  - 이번 `ENOENT ... .next-dev/dev/cache/webpack/client-development/*.pack.gz`는 webpack pack cache가 손상된 것이 아니라, 다른 스크립트가 살아 있는 dev 산출물 디렉터리를 지워서 생긴 증상으로 판단했다.
 
 ### 2026-04-02 08:18 KST: `/map` 호환 경로를 redirect로 줄이고 홈 단일 진입점으로 정리
 - 완료 내용

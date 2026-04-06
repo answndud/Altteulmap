@@ -4,6 +4,7 @@ import { and, desc, eq } from "drizzle-orm";
 
 import { getDb, isDatabaseEnabled } from "@/db/client";
 import { bookmarks, places } from "@/db/schema";
+import { mockPlaces } from "@/features/places/catalog-data";
 
 type DataSource = "mock" | "database";
 
@@ -15,6 +16,16 @@ export type BookmarkActor = {
 
 type BookmarkRecord = {
   placeId: string;
+  createdAt: string;
+};
+
+export type BookmarkedPlaceRecord = {
+  id: string;
+  name: string;
+  district: string;
+  categorySlug: string;
+  representativePriceAmount: number;
+  representativePriceLabel: string;
   createdAt: string;
 };
 
@@ -67,6 +78,32 @@ function getMockBookmarks(actor: BookmarkActor | null): BookmarkListResult {
   };
 }
 
+function getMockBookmarkedPlaces(
+  actor: BookmarkActor | null,
+): BookmarkedPlaceRecord[] {
+  const bookmarks = getMockBookmarks(actor).items;
+
+  return bookmarks
+    .map((bookmark) => {
+      const place = mockPlaces.find((item) => item.id === bookmark.placeId);
+
+      if (!place) {
+        return null;
+      }
+
+      return {
+        id: place.id,
+        name: place.name,
+        district: place.district,
+        categorySlug: place.categorySlug,
+        representativePriceAmount: place.representativePriceAmount,
+        representativePriceLabel: place.representativePriceLabel,
+        createdAt: bookmark.createdAt,
+      } satisfies BookmarkedPlaceRecord;
+    })
+    .filter((item): item is BookmarkedPlaceRecord => item !== null);
+}
+
 async function listDatabaseBookmarks(
   actor: BookmarkActor | null,
 ): Promise<BookmarkListResult> {
@@ -99,6 +136,40 @@ async function listDatabaseBookmarks(
     userLabel: getUserLabel(actor),
     authenticated: true,
   };
+}
+
+async function listDatabaseBookmarkedPlaces(
+  actor: BookmarkActor | null,
+): Promise<BookmarkedPlaceRecord[]> {
+  if (!actor) {
+    return [];
+  }
+
+  const db = getDb();
+  const rows = await db
+    .select({
+      id: places.slug,
+      name: places.name,
+      district: places.district,
+      categorySlug: places.primaryCategorySlug,
+      representativePriceAmount: places.representativePriceAmount,
+      representativePriceLabel: places.representativePriceLabel,
+      createdAt: bookmarks.createdAt,
+    })
+    .from(bookmarks)
+    .innerJoin(places, eq(bookmarks.placeId, places.id))
+    .where(and(eq(bookmarks.userId, actor.id), eq(places.status, "active")))
+    .orderBy(desc(bookmarks.createdAt));
+
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    district: row.district,
+    categorySlug: row.categorySlug ?? "other-service",
+    representativePriceAmount: row.representativePriceAmount ?? 0,
+    representativePriceLabel: row.representativePriceLabel ?? "대표 가격 준비 중",
+    createdAt: formatDate(row.createdAt),
+  }));
 }
 
 async function setDatabaseBookmark(
@@ -230,5 +301,21 @@ export async function setBookmark(
       message: "북마크 업데이트에 실패했습니다.",
       placeId: placeSlug,
     };
+  }
+}
+
+export async function listBookmarkedPlaces(actor: BookmarkActor | null) {
+  if (!isDatabaseEnabled()) {
+    return getMockBookmarkedPlaces(actor);
+  }
+
+  try {
+    return await listDatabaseBookmarkedPlaces(actor);
+  } catch (error) {
+    console.error(
+      "Failed to load bookmarked places. Falling back to mock data.",
+      error,
+    );
+    return getMockBookmarkedPlaces(actor);
   }
 }

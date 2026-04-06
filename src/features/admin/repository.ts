@@ -14,6 +14,8 @@ import {
   authAccountHints,
   type AppUserRole,
 } from "@/features/auth/constants";
+import { PLACE_SHARE_SOURCES } from "@/features/places/share";
+import { getVisitMetrics, type VisitMetrics } from "@/features/telemetry/repository";
 import { mockPlaces } from "@/features/places/catalog-data";
 import { mockReports } from "@/features/reports/mock-data";
 
@@ -31,6 +33,7 @@ export type AdminOverviewUserRecord = {
 export type AdminOverviewResult = {
   source: DataSource;
   visitMetricsAvailable: boolean;
+  visitMetrics: VisitMetrics;
   stats: {
     totalUsers: number;
     adminUsers: number;
@@ -57,6 +60,7 @@ function getMockAdminOverview(): AdminOverviewResult {
   return {
     source: "mock",
     visitMetricsAvailable: false,
+    visitMetrics: getVisitMetricsFallback(),
     stats: {
       totalUsers: 2,
       adminUsers: 1,
@@ -81,6 +85,28 @@ function getMockAdminOverview(): AdminOverviewResult {
   };
 }
 
+function getVisitMetricsFallback(): VisitMetrics {
+  return {
+    todayVisits: 0,
+    last7DaysVisits: 0,
+    todayUniqueVisitors: 0,
+    last7DaysUniqueVisitors: 0,
+    todaySharedVisits: 0,
+    last7DaysSharedVisits: 0,
+    todaySharedUniqueVisitors: 0,
+    last7DaysSharedUniqueVisitors: 0,
+    dau: 0,
+    wau: 0,
+    returningVisitors7d: 0,
+    returningVisitorRate7d: 0,
+    shareSourceBreakdown7d: PLACE_SHARE_SOURCES.map((source) => ({
+      source,
+      visits: 0,
+      uniqueVisitors: 0,
+    })),
+  };
+}
+
 async function getDatabaseAdminOverview(): Promise<AdminOverviewResult> {
   const db = getDb();
   const now = new Date();
@@ -93,6 +119,7 @@ async function getDatabaseAdminOverview(): Promise<AdminOverviewResult> {
     [openReportCountsRow],
     recentUsersRows,
     activeSessionUserRows,
+    visitMetrics,
   ] = await Promise.all([
     db
       .select({
@@ -156,6 +183,7 @@ async function getDatabaseAdminOverview(): Promise<AdminOverviewResult> {
       .from(authSessions)
       .where(gt(authSessions.expires, now))
       .groupBy(authSessions.userId),
+    getVisitMetrics(),
   ]);
 
   const activeSessionUserIds = new Set(
@@ -164,7 +192,8 @@ async function getDatabaseAdminOverview(): Promise<AdminOverviewResult> {
 
   return {
     source: "database",
-    visitMetricsAvailable: false,
+    visitMetricsAvailable: true,
+    visitMetrics,
     stats: {
       totalUsers: Number(userCountsRow?.totalUsers ?? 0),
       adminUsers: Number(userCountsRow?.adminUsers ?? 0),

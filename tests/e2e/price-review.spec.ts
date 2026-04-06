@@ -9,6 +9,7 @@ import {
   DEMO_PASSWORD,
   loginWithCredentials,
 } from "./helpers/auth";
+import { pickSearchablePlace } from "./helpers/place";
 
 test("가격 제보를 보내면 운영자가 가격 검토 큐에서 반려할 수 있다", async ({
   browser,
@@ -24,12 +25,13 @@ test("가격 제보를 보내면 운영자가 가격 검토 큐에서 반려할 
   try {
     userContext = await browser.newContext();
     const userPage = await userContext.newPage();
+    const place = await pickSearchablePlace(userPage);
 
-    await userPage.goto("/place/school-gimbap");
+    await userPage.goto(`/place/${place.id}`);
 
     if (/\/login\?/.test(userPage.url())) {
       await loginWithCredentials(userPage, {
-        callbackUrl: "/place/school-gimbap",
+        callbackUrl: `/place/${place.id}`,
         email: DEMO_EMAIL,
         password: DEMO_PASSWORD,
       });
@@ -37,13 +39,13 @@ test("가격 제보를 보내면 운영자가 가격 검토 큐에서 반려할 
 
     if ((await userPage.getByTestId("price-report-submit").count()) === 0) {
       await loginWithCredentials(userPage, {
-        callbackUrl: "/place/school-gimbap",
+        callbackUrl: `/place/${place.id}`,
         email: DEMO_EMAIL,
         password: DEMO_PASSWORD,
       });
     }
 
-    await expect(userPage).toHaveURL(/\/place\/school-gimbap$/);
+    await expect(userPage).toHaveURL(new RegExp(`/place/${place.id}$`));
     await expect(userPage.getByTestId("place-price-report-form")).toBeVisible();
     await userPage.getByTestId("price-report-label").fill(uniqueLabel);
     await userPage.getByTestId("price-report-amount").fill("6100");

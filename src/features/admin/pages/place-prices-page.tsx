@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { AccessDeniedPanel } from "@/components/access-denied-panel";
-import { SessionActionGroup } from "@/features/auth/session-action-group";
 import { AdminPriceItemForm } from "@/features/places/admin-price-item-form";
 import { formatKrw } from "@/features/places/queries";
 import { getAdminPlacePriceDetail } from "@/features/places/repository";
@@ -81,7 +80,6 @@ export default async function AdminPlacePricesDetailPage({
             >
               장소 보기
             </Link>
-            <SessionActionGroup user={user} signOutCallbackUrl="/" compact />
           </div>
         </div>
 

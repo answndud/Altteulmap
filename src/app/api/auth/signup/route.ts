@@ -1,29 +1,32 @@
 import { createCredentialsUser } from "@/features/auth/repository";
 import { credentialsSignupSchema } from "@/features/auth/schema";
-import { consumeRateLimit } from "@/lib/rate-limit";
+import {
+  applyRateLimitHeaders,
+  consumeRateLimitPolicy,
+} from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  const rateLimit = consumeRateLimit({
-    scope: "auth_signup",
-    key:
-      request.headers.get("x-forwarded-for") ??
+  const rateLimit = consumeRateLimitPolicy(
+    "authSignup",
+    request.headers.get("x-forwarded-for") ??
       request.headers.get("x-real-ip") ??
       "guest",
-    limit: 5,
-    windowMs: 30 * 60 * 1000,
-  });
+  );
 
   if (!rateLimit.ok) {
-    return Response.json(
-      {
-        ok: false,
-        message: "회원가입 요청이 너무 빠릅니다. 잠시 후 다시 시도해주세요.",
-        item: null,
-        retryAfterMs: rateLimit.retryAfterMs,
-      },
-      { status: 429 },
+    return applyRateLimitHeaders(
+      Response.json(
+        {
+          ok: false,
+          message: "회원가입 요청이 너무 빠릅니다. 잠시 후 다시 시도해주세요.",
+          item: null,
+          retryAfterMs: rateLimit.retryAfterMs,
+        },
+        { status: 429 },
+      ),
+      rateLimit,
     );
   }
 
@@ -31,14 +34,17 @@ export async function POST(request: Request) {
   const parsed = credentialsSignupSchema.safeParse(body);
 
   if (!parsed.success) {
-    return Response.json(
-      {
-        ok: false,
-        message: "회원가입 입력값 검증에 실패했습니다.",
-        item: null,
-        error: parsed.error.flatten(),
-      },
-      { status: 400 },
+    return applyRateLimitHeaders(
+      Response.json(
+        {
+          ok: false,
+          message: "회원가입 입력값 검증에 실패했습니다.",
+          item: null,
+          error: parsed.error.flatten(),
+        },
+        { status: 400 },
+      ),
+      rateLimit,
     );
   }
 
@@ -51,5 +57,5 @@ export async function POST(request: Request) {
         ? 503
         : 500;
 
-  return Response.json(result, { status });
+  return applyRateLimitHeaders(Response.json(result, { status }), rateLimit);
 }

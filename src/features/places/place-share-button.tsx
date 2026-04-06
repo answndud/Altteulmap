@@ -4,8 +4,12 @@ import { useState } from "react";
 
 type PlaceShareButtonProps = {
   path: string;
+  text?: string;
   title: string;
   className?: string;
+  messageClassName?: string;
+  messageTestId?: string;
+  testId?: string;
 };
 
 function ShareIcon() {
@@ -31,32 +35,40 @@ function ShareIcon() {
 
 export function PlaceShareButton({
   path,
+  text,
   title,
   className,
+  messageClassName,
+  messageTestId = "place-share-message",
+  testId = "place-share-button",
 }: PlaceShareButtonProps) {
   const [message, setMessage] = useState<string | null>(null);
 
   const handleShare = async () => {
     const url = new URL(path, window.location.origin).toString();
+    const clipboardText = [title, text, url]
+      .filter((item): item is string => Boolean(item))
+      .join("\n");
 
     try {
       if (navigator.share) {
         await navigator.share({
           title,
+          text,
           url,
         });
-        setMessage("공유 링크를 준비했습니다.");
+        setMessage("공유 문구를 준비했습니다.");
         return;
       }
 
-      await navigator.clipboard.writeText(url);
-      setMessage("링크를 복사했습니다.");
+      await navigator.clipboard.writeText(clipboardText);
+      setMessage("공유 문구를 복사했습니다.");
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {
         return;
       }
 
-      setMessage("링크를 복사하지 못했습니다.");
+      setMessage("공유 문구를 준비하지 못했습니다.");
     }
   };
 
@@ -65,7 +77,7 @@ export function PlaceShareButton({
       <button
         type="button"
         onClick={handleShare}
-        data-testid="place-share-button"
+        data-testid={testId}
         className={
           className ??
           "altteulmap-button inline-flex whitespace-nowrap border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
@@ -77,7 +89,10 @@ export function PlaceShareButton({
         </span>
       </button>
       {message ? (
-        <p className="text-xs text-stone-500" data-testid="place-share-message">
+        <p
+          className={messageClassName ?? "text-xs text-stone-500"}
+          data-testid={messageTestId}
+        >
           {message}
         </p>
       ) : null}

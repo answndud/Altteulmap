@@ -1,11 +1,14 @@
-import { revalidatePath } from "next/cache";
+import { revalidateAfterPlacePriceSubmission } from "@/features/places/revalidation";
 import { createPlacePriceReport } from "@/features/places/repository";
 import { placePriceReportSchema } from "@/features/places/write-schema";
 import {
   getPublicWriteActor,
   setPublicWriteActorCookie,
 } from "@/lib/public-write-actor";
-import { consumeRateLimit } from "@/lib/rate-limit";
+import {
+  applyRateLimitHeaders,
+  consumeRateLimitPolicy,
+} from "@/lib/rate-limit";
 
 type RouteContext = {
   params: Promise<{
@@ -16,12 +19,7 @@ type RouteContext = {
 export async function POST(request: Request, context: RouteContext) {
   const actor = await getPublicWriteActor(request);
 
-  const rateLimit = consumeRateLimit({
-    scope: "place_price_submission",
-    key: actor.key,
-    limit: 10,
-    windowMs: 10 * 60 * 1000,
-  });
+  const rateLimit = consumeRateLimitPolicy("placePriceSubmission", actor.key);
 
   if (!rateLimit.ok) {
     const response = Response.json(
@@ -35,7 +33,7 @@ export async function POST(request: Request, context: RouteContext) {
 
     setPublicWriteActorCookie(response, actor, request);
 
-    return response;
+    return applyRateLimitHeaders(response, rateLimit);
   }
 
   const body = await request.json();
@@ -53,21 +51,17 @@ export async function POST(request: Request, context: RouteContext) {
 
     setPublicWriteActorCookie(response, actor, request);
 
-    return response;
+    return applyRateLimitHeaders(response, rateLimit);
   }
 
   const { id } = await context.params;
   const result = await createPlacePriceReport(id, parsed.data, actor.user?.id ?? null);
 
   if (result.ok) {
-    revalidatePath("/admin");
-    revalidatePath("/admin/prices");
-    revalidatePath("/api/admin/prices");
-    revalidatePath(`/place/${id}`);
-    revalidatePath(`/api/places/${id}`);
+    revalidateAfterPlacePriceSubmission(id);
   }
 
   const response = Response.json(result, { status: result.ok ? 200 : 404 });
   setPublicWriteActorCookie(response, actor, request);
-  return response;
+  return applyRateLimitHeaders(response, rateLimit);
 }

@@ -2,12 +2,15 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AccessDeniedPanel } from "@/components/access-denied-panel";
-import { SessionActionGroup } from "@/features/auth/session-action-group";
-import { AdminReportStatusForm } from "@/features/reports/admin-report-status-form";
+import { AdminQueueNav } from "@/features/admin/components/admin-queue-nav";
+import { AdminReportCard } from "@/features/admin/components/admin-report-card";
+import { AdminSummaryCards } from "@/features/admin/components/admin-summary-cards";
+import { getAdminOverview } from "@/features/admin/repository";
 import { listReports } from "@/features/reports/repository";
 import {
-  reportReasonMap,
   reportStatusMap,
+  reportStatusOptions,
+  type ReportModerationInput,
 } from "@/features/reports/schema";
 import {
   createLoginHref,
@@ -17,14 +20,32 @@ import {
 
 export const dynamic = "force-dynamic";
 
-const statusClassMap = {
-  open: "bg-rose-100 text-rose-700",
-  reviewing: "bg-amber-100 text-amber-700",
-  resolved: "bg-emerald-100 text-emerald-700",
-  dismissed: "bg-stone-200 text-stone-700",
-} as const;
+type AdminReportsPageProps = {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
 
-export default async function AdminReportsPage() {
+type ReportStatusFilter = ReportModerationInput["status"] | "all";
+
+function getFirstValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function parseStatusFilter(value: string | undefined): ReportStatusFilter {
+  if (
+    value === "open" ||
+    value === "reviewing" ||
+    value === "resolved" ||
+    value === "dismissed"
+  ) {
+    return value;
+  }
+
+  return "all";
+}
+
+export default async function AdminReportsPage({
+  searchParams,
+}: AdminReportsPageProps) {
   const user = await getSessionUser();
 
   if (!user) {
@@ -45,7 +66,28 @@ export default async function AdminReportsPage() {
     );
   }
 
-  const result = await listReports();
+  const params = await searchParams;
+  const statusFilter = parseStatusFilter(getFirstValue(params.status));
+
+  const [result, overview] = await Promise.all([
+    listReports(),
+    getAdminOverview(),
+  ]);
+  const statusCounts = {
+    all: result.items.length,
+    open: result.items.filter((report) => report.status === "open").length,
+    reviewing: result.items.filter((report) => report.status === "reviewing")
+      .length,
+    resolved: result.items.filter((report) => report.status === "resolved")
+      .length,
+    dismissed: result.items.filter((report) => report.status === "dismissed")
+      .length,
+  } satisfies Record<ReportStatusFilter, number>;
+  const filteredItems =
+    statusFilter === "all"
+      ? result.items
+      : result.items.filter((report) => report.status === statusFilter);
+  const resolvedCount = statusCounts.resolved + statusCounts.dismissed;
 
   return (
     <main className="bg-stone-50 px-4 py-8 sm:px-6">
@@ -56,44 +98,22 @@ export default async function AdminReportsPage() {
               운영
             </p>
             <h1 className="mt-3 text-3xl font-semibold tracking-tight text-stone-900 sm:text-5xl">
-              신고 검토 큐 초안
+              신고 검토 큐
             </h1>
             <p className="mt-4 max-w-3xl text-base leading-7 text-stone-600">
-              1인 운영 기준 최소 검토 화면입니다. 로컬 초기 단계에서는 목업으로도
-              확인할 수 있고, DB가 붙으면 같은 화면에서 실제 신고 큐를 볼 수
-              있습니다.
+              공개 신고를 확인하고 현재 상태를 즉시 바꿉니다. 열린 신고를 먼저
+              처리하면서 장소 상세와 신고 폼을 같이 열어 재현할 수 있습니다.
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Link
-              href="/admin"
-              className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
-            >
-              대시보드
-            </Link>
-            <Link
-              href="/admin/places"
-              className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
-            >
-              장소 승인 큐
-            </Link>
-            <Link
-              href="/admin/prices"
-              className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
-            >
-              가격 제보 큐
-            </Link>
-            <Link
-              href="/api/admin/reports"
-              className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
-            >
-              응답 보기
-            </Link>
-            <SessionActionGroup user={user} signOutCallbackUrl="/" compact />
-          </div>
+          <Link
+            href="/api/admin/reports"
+            className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
+          >
+            응답 보기
+          </Link>
         </div>
 
-        <div className="mt-6">
+        <div className="mt-6 flex flex-wrap gap-2">
           <span
             className={`rounded-full px-3 py-1 text-xs font-semibold ${
               result.source === "database"
@@ -105,62 +125,107 @@ export default async function AdminReportsPage() {
           </span>
         </div>
 
-        <div data-testid="admin-report-list" className="mt-8 grid gap-4">
-          {result.items.map((report) => (
-            <article
-              key={report.id}
-              data-testid="admin-report-card"
-              className="rounded-[1.75rem] border border-stone-200 bg-stone-50 p-5"
+        <AdminQueueNav current="reports" stats={overview.stats} />
+        <AdminSummaryCards
+          items={[
+            {
+              id: "open-reports",
+              label: "열린 신고",
+              value: statusCounts.open,
+              detail: "아직 손대지 않은 신고 수입니다.",
+            },
+            {
+              id: "reviewing-reports",
+              label: "검토 중 신고",
+              value: statusCounts.reviewing,
+              detail: "운영자가 처리 중으로 표시한 신고 수입니다.",
+            },
+            {
+              id: "resolved-reports",
+              label: "처리 완료/기각",
+              value: resolvedCount,
+              detail: "이미 처리 방향이 정해진 신고 수입니다.",
+            },
+          ]}
+        />
+
+        <div
+          data-testid="admin-report-filter-bar"
+          className="mt-6 flex flex-wrap gap-2"
+        >
+          <Link
+            href="/admin/reports"
+            data-testid="admin-report-filter-all"
+            data-active={statusFilter === "all" ? "true" : "false"}
+            aria-current={statusFilter === "all" ? "page" : undefined}
+            className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium ${
+              statusFilter === "all"
+                ? "border-stone-900 bg-stone-900 text-white"
+                : "border-stone-300 bg-white text-stone-700 transition hover:bg-stone-100"
+            }`}
+          >
+            <span>전체</span>
+            <span
+              className={`rounded-full px-2 py-0.5 text-xs ${
+                statusFilter === "all"
+                  ? "bg-white/15 text-white"
+                  : "bg-stone-100 text-stone-600"
+              }`}
             >
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-600">
-                    {report.id}
-                  </p>
-                  <h2
-                    data-testid="admin-report-place-name"
-                    className="mt-2 text-xl font-semibold text-stone-900"
-                  >
-                    {report.placeName}
-                  </h2>
-                  <p className="mt-2 text-sm text-stone-500">
-                    {reportReasonMap[report.reasonType]} · 접수 {report.createdAt}
-                  </p>
-                </div>
+              {statusCounts.all}
+            </span>
+          </Link>
+          {reportStatusOptions.map((statusOption) => {
+            const active = statusFilter === statusOption.value;
+
+            return (
+              <Link
+                key={statusOption.value}
+                href={`/admin/reports?status=${statusOption.value}`}
+                data-testid={`admin-report-filter-${statusOption.value}`}
+                data-active={active ? "true" : "false"}
+                aria-current={active ? "page" : undefined}
+                className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium ${
+                  active
+                    ? "border-stone-900 bg-stone-900 text-white"
+                    : "border-stone-300 bg-white text-stone-700 transition hover:bg-stone-100"
+                }`}
+              >
+                <span>{reportStatusMap[statusOption.value]}</span>
                 <span
-                  data-testid="admin-report-status-badge"
-                  className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClassMap[report.status]}`}
+                  className={`rounded-full px-2 py-0.5 text-xs ${
+                    active
+                      ? "bg-white/15 text-white"
+                      : "bg-stone-100 text-stone-600"
+                  }`}
                 >
-                  {reportStatusMap[report.status]}
+                  {statusCounts[statusOption.value]}
                 </span>
-              </div>
-              <p className="mt-4 text-sm leading-6 text-stone-700">
-                {report.detail}
-              </p>
-              <div className="mt-4 grid gap-4 lg:grid-cols-[auto_1fr] lg:items-start">
-                <div className="flex flex-wrap gap-3">
-                  <Link
-                    href={`/place/${report.placeId}`}
-                    className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
-                  >
-                    장소 보기
-                  </Link>
-                  <Link
-                    href={`/report?placeId=${report.placeId}&placeName=${encodeURIComponent(report.placeName)}`}
-                    className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
-                  >
-                    신고 재현
-                  </Link>
-                </div>
-                <AdminReportStatusForm
-                  reportId={report.id}
-                  currentStatus={report.status}
-                  disabled={result.source !== "database"}
-                />
-              </div>
-            </article>
-          ))}
+              </Link>
+            );
+          })}
         </div>
+
+        {filteredItems.length > 0 ? (
+          <div data-testid="admin-report-list" className="mt-8 grid gap-4">
+            {filteredItems.map((report) => (
+              <AdminReportCard
+                key={report.id}
+                report={report}
+                disabled={result.source !== "database"}
+              />
+            ))}
+          </div>
+        ) : (
+          <div
+            data-testid="admin-report-empty"
+            className="mt-8 rounded-[1.75rem] border border-dashed border-stone-300 bg-stone-50 p-8 text-sm leading-6 text-stone-600"
+          >
+            {statusFilter === "all"
+              ? "현재 접수된 신고가 없습니다."
+              : `${reportStatusMap[statusFilter]} 상태의 신고가 없습니다.`}
+          </div>
+        )}
       </section>
     </main>
   );

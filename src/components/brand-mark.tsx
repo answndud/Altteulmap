@@ -8,9 +8,9 @@ type BrandMarkProps = {
 
 const variantClassMap = {
   compact: {
-    wrapper: "gap-1.5",
+    wrapper: "gap-0.5",
     eyebrow: "text-[0.65rem] tracking-[0.28em] text-stone-500",
-    title: "text-2xl sm:text-[2rem]",
+    title: "text-[1.55rem] sm:text-[1.85rem]",
     description: "hidden",
   },
   hero: {

@@ -1,4 +1,4 @@
-import { revalidatePath } from "next/cache";
+import { revalidateAfterPriceItemUpdate } from "@/features/admin/revalidation";
 import { updatePriceItem } from "@/features/places/repository";
 import { adminPriceItemUpdateSchema } from "@/features/places/write-schema";
 import { getSessionUser } from "@/lib/session";
@@ -50,18 +50,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   const result = await updatePriceItem(id, parsed.data, user.id);
 
   if (result.ok) {
-    revalidatePath("/admin");
-    revalidatePath("/admin/prices");
-    revalidatePath("/api/admin/prices");
-
-    if (result.placeId) {
-      revalidatePath(`/admin/prices/places/${result.placeId}`);
-      revalidatePath(`/place/${result.placeId}`);
-      revalidatePath(`/api/places/${result.placeId}`);
-    }
-
-    revalidatePath("/");
-    revalidatePath("/api/places/map");
+    revalidateAfterPriceItemUpdate(result.placeId);
   }
 
   const status = result.ok

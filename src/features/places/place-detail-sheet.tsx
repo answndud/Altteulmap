@@ -12,8 +12,13 @@ import {
 } from "@/features/places/place-reaction-buttons";
 import { PlaceShareButton } from "@/features/places/place-share-button";
 import { PlacePriceReportForm } from "@/features/places/place-price-report-form";
+import { useMobileSheetGesture } from "@/features/places/use-mobile-sheet-gesture";
 import { formatKrw } from "@/features/places/queries";
-import type { PlaceRecord } from "@/features/places/types";
+import { createPlaceSharePayload } from "@/features/places/share";
+import type {
+  PlacePreviewRecord,
+  PlaceRecord,
+} from "@/features/places/types";
 
 type PlaceDetailResponse = {
   item: PlaceRecord;
@@ -25,7 +30,7 @@ type PlaceDetailSheetProps = {
   bookmarkedPlaceIds: string[];
   currentMapHref: string;
   placeId: string | null;
-  previewPlace: PlaceRecord | null;
+  previewPlace: PlacePreviewRecord | null;
   onClose: () => void;
   onPlaceReactionChange?: (nextState: PlaceReactionUpdate) => void;
 };
@@ -34,6 +39,12 @@ type PlaceDetailState = {
   error: string | null;
   item: PlaceDetailResponse | null;
   placeId: string | null;
+};
+
+type PlaceReactionOverride = {
+  dislikeCount: number;
+  likeCount: number;
+  viewerReaction: PlaceReactionUpdate["viewerReaction"];
 };
 
 function createLoginHref(path: string) {
@@ -69,6 +80,13 @@ export function PlaceDetailSheet({
     error: null,
     item: null,
     placeId: null,
+  });
+  const [reactionOverrides, setReactionOverrides] = useState<
+    Record<string, PlaceReactionOverride>
+  >({});
+  const detailSheetGesture = useMobileSheetGesture({
+    enabled: Boolean(placeId),
+    onClose,
   });
 
   useEffect(() => {
@@ -149,7 +167,17 @@ export function PlaceDetailSheet({
   const data = detailState.placeId === placeId ? detailState.item : null;
   const error = detailState.placeId === placeId ? detailState.error : null;
   const isLoading = detailState.placeId !== placeId;
-  const place = data?.item ?? previewPlace;
+  const rawPlace = data?.item ?? previewPlace;
+  const reactionOverride = rawPlace ? reactionOverrides[rawPlace.id] : null;
+  const place = rawPlace
+    ? {
+        ...rawPlace,
+        likeCount: reactionOverride?.likeCount ?? rawPlace.likeCount,
+        dislikeCount: reactionOverride?.dislikeCount ?? rawPlace.dislikeCount,
+        viewerReaction:
+          reactionOverride?.viewerReaction ?? rawPlace.viewerReaction,
+      }
+    : null;
   const category = place ? getCategoryBySlug(place.categorySlug) : null;
   const isBookmarked = place ? bookmarkedPlaceIds.includes(place.id) : false;
   const placePath = place ? `/place/${place.id}` : null;
@@ -158,8 +186,31 @@ export function PlaceDetailSheet({
     ? `/report?placeId=${place.id}&placeName=${encodeURIComponent(place.name)}`
     : null;
   const reportHref = reportPath;
+  const sharePayload = place
+    ? createPlaceSharePayload(place, "detail_sheet")
+    : null;
+  const placePriceItems = place?.priceItems ?? [];
+  const placeComments = place?.comments ?? [];
+  const businessNameLabel =
+    place?.businessName && place.businessName !== place.name
+      ? place.businessName
+      : null;
+  const placeMetaItems = [
+    category?.name ?? null,
+    place?.district ?? null,
+  ].filter((item): item is string => Boolean(item));
+  const hasDetailTopMeta = placeMetaItems.length > 0 || Boolean(businessNameLabel);
 
   const handleReactionUpdate = (nextState: PlaceReactionUpdate) => {
+    setReactionOverrides((current) => ({
+      ...current,
+      [nextState.placeId]: {
+        dislikeCount: nextState.dislikeCount,
+        likeCount: nextState.likeCount,
+        viewerReaction: nextState.viewerReaction,
+      },
+    }));
+
     setDetailState((current) => {
       if (
         current.placeId !== nextState.placeId ||
@@ -187,7 +238,7 @@ export function PlaceDetailSheet({
   };
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-50 xl:absolute xl:inset-0">
+    <div className="pointer-events-none fixed inset-0 z-[90] xl:absolute xl:inset-0 xl:z-30">
       <button
         type="button"
         aria-label="상세 패널 닫기"
@@ -199,26 +250,45 @@ export function PlaceDetailSheet({
         role="dialog"
         aria-modal="true"
         data-testid="place-detail-sheet"
-        className="pointer-events-auto absolute inset-x-2 bottom-2 top-2 flex w-auto flex-col overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-2xl xl:inset-x-auto xl:inset-y-0 xl:right-0 xl:top-0 xl:w-full xl:max-h-none xl:max-w-[28rem] xl:rounded-l-[2rem] xl:rounded-r-none xl:border-l xl:border-r-0"
+        data-sheet-dragging={detailSheetGesture.isDragging ? "true" : "false"}
+        data-sheet-mode="default"
+        style={detailSheetGesture.style}
+        className="altteulmap-mobile-sheet altteulmap-mobile-sheet-detail pointer-events-auto absolute flex w-auto flex-col overflow-hidden rounded-[1.75rem] border border-stone-200 bg-white shadow-2xl xl:inset-x-auto xl:inset-y-0 xl:right-0 xl:top-0 xl:w-full xl:max-h-none xl:max-w-[25.5rem] 2xl:max-w-[26.5rem] xl:rounded-l-[2rem] xl:rounded-r-none xl:border-l xl:border-r-0"
       >
-        <div className="sticky top-0 z-10 border-b border-stone-200 bg-white/95 px-4 pb-4 pt-2 backdrop-blur sm:px-5">
+        <div className="sticky top-0 z-10 border-b border-stone-200 bg-white/95 px-4 pb-3 pt-2 backdrop-blur sm:px-5">
           <div className="flex items-center justify-center pb-3 xl:hidden">
-            <span className="h-1.5 w-12 rounded-full bg-stone-300" />
+            <div
+              role="presentation"
+              data-testid="place-detail-drag-handle"
+              onPointerCancel={detailSheetGesture.handlePointerCancel}
+              onPointerDown={detailSheetGesture.handlePointerDown}
+              onPointerMove={detailSheetGesture.handlePointerMove}
+              onPointerUp={detailSheetGesture.handlePointerUp}
+              className="flex w-full justify-center py-1"
+              style={{ touchAction: "none" }}
+            >
+              <span className="h-1.5 w-12 rounded-full bg-stone-300" />
+            </div>
           </div>
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-orange-600">
-                상세 정보
+                {category?.parentName ?? "장소 상세"}
               </p>
-              <h2 className="mt-1 text-lg font-semibold tracking-tight text-stone-900 sm:text-xl">
-                장소를 자세히 보기
+              <h2 className="mt-1 truncate text-base font-semibold tracking-tight text-stone-900 sm:text-lg">
+                {place?.name ?? "장소 정보"}
               </h2>
+              {place?.address ? (
+                <p className="mt-1 truncate text-xs text-stone-500">
+                  {place.address}
+                </p>
+              ) : null}
             </div>
             <button
               type="button"
               onClick={onClose}
               data-testid="place-detail-close"
-              className="altteulmap-button shrink-0 whitespace-nowrap border border-stone-300 bg-white px-3 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
+              className="altteulmap-button shrink-0 whitespace-nowrap border border-stone-300 bg-white px-2.5 py-1.5 text-xs text-stone-700 transition hover:bg-stone-100 sm:px-3 sm:py-2 sm:text-sm"
             >
               닫기
             </button>
@@ -227,7 +297,7 @@ export function PlaceDetailSheet({
 
         <div
           ref={scrollContainerRef}
-          className="flex-1 overflow-y-auto px-4 py-5 sm:px-5"
+          className="altteulmap-mobile-sheet-scroll flex-1 overflow-y-auto px-4 py-5 sm:px-5"
         >
           {isLoading && !previewPlace ? <LoadingState /> : null}
 
@@ -250,30 +320,29 @@ export function PlaceDetailSheet({
 
           {place ? (
             <div className="space-y-5">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-orange-600">
-                    {category?.parentName ?? "생활비 절감"}
-                  </p>
-                  <h3 className="mt-2 text-2xl font-semibold tracking-tight text-stone-900">
-                    {place.name}
-                  </h3>
-                  {place.businessName && place.businessName !== place.name ? (
-                    <p className="mt-3 text-sm text-stone-500">
-                      {place.businessName}
-                    </p>
-                  ) : null}
-                  <p className="mt-1 text-sm text-stone-500">
-                    {category?.name ?? "기타"}
-                  </p>
-                  <p className="mt-1 text-sm leading-6 text-stone-500">
-                    {place.address}
-                  </p>
-                </div>
-              </div>
-
               <section className="altteulmap-accent-panel rounded-[1.75rem] p-5">
-                <p className="text-sm text-[#a06a48]">대표 가격</p>
+                {placeMetaItems.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {placeMetaItems.map((item) => (
+                      <span
+                        key={item}
+                        className="rounded-full border border-[#ddb596] bg-white/70 px-3 py-1 text-xs font-medium text-[#8f522f]"
+                      >
+                        {item}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+                {businessNameLabel ? (
+                  <p className="mt-3 text-sm text-[#8f522f]">
+                    사업장 이름 {businessNameLabel}
+                  </p>
+                ) : null}
+                <p
+                  className={`${hasDetailTopMeta ? "mt-4 " : ""}text-sm text-[#a06a48]`}
+                >
+                  대표 가격
+                </p>
                 <p className="mt-2 text-3xl font-semibold">
                   {formatKrw(place.representativePriceAmount)}원
                 </p>
@@ -292,14 +361,18 @@ export function PlaceDetailSheet({
                 </div>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <BookmarkToggleButton
+                    key={`${place.id}:${isBookmarked ? "on" : "off"}`}
                     placeId={place.id}
                     initialBookmarked={isBookmarked}
                     loginHref={bookmarkLoginHref}
                   />
                   <PlaceShareButton
-                    path={`/place/${place.id}`}
-                    title={place.name}
+                    path={sharePayload?.path ?? `/place/${place.id}`}
+                    title={sharePayload?.title ?? place.name}
+                    text={sharePayload?.text}
                     className="altteulmap-button inline-flex whitespace-nowrap border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
+                    testId="place-detail-share-button"
+                    messageTestId="place-detail-share-message"
                   />
                   {reportHref ? (
                     <Link
@@ -357,21 +430,21 @@ export function PlaceDetailSheet({
 
               <section className="rounded-[1.5rem] border border-stone-200 bg-white p-5">
                 <h4 className="text-sm font-semibold text-stone-900">가격 항목</h4>
-                {place.priceItems.length > 0 ? (
+                {placePriceItems.length > 0 ? (
                   <div className="mt-4 space-y-3">
-                    {place.priceItems.map((item) => (
+                    {placePriceItems.map((item) => (
                       <div
                         key={item.id}
                         className="rounded-[1.15rem] bg-stone-50 px-4 py-4"
                       >
-                        <div className="flex items-center justify-between gap-3">
-                          <div>
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="min-w-0">
                             <p className="font-medium text-stone-900">{item.label}</p>
                             <p className="mt-1 text-xs text-stone-500">
                               마지막 제보 {item.reportedAt}
                             </p>
                           </div>
-                          <div className="text-right">
+                          <div className="shrink-0 text-left sm:text-right">
                             <p className="font-semibold text-stone-900">
                               {formatKrw(item.amount)}원
                               {item.unitLabel ? ` / ${item.unitLabel}` : ""}
@@ -390,13 +463,13 @@ export function PlaceDetailSheet({
               <PlacePriceReportForm
                 key={`${place.id}-price-form`}
                 placeId={place.id}
-                suggestedItems={place.priceItems}
+                suggestedItems={placePriceItems}
               />
 
               <PlaceCommentsSection
                 key={`${place.id}-comments`}
                 placeId={place.id}
-                initialComments={place.comments}
+                initialComments={placeComments}
               />
             </div>
           ) : null}
