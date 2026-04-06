@@ -417,6 +417,7 @@ export function MapExplorer({
   const [isMobileListOpen, setIsMobileListOpen] = useState(false);
   const [mobileListSheetMode, setMobileListSheetMode] =
     useState<MobileSheetMode>("peek");
+  const lastMobileListCloseAtRef = useRef(0);
   const [manualRefreshTick, setManualRefreshTick] = useState(0);
   const shouldSkipInitialFetchRef = useRef(prefetchedOnServer);
   const activeBounds =
@@ -471,6 +472,7 @@ export function MapExplorer({
         }
       : null;
   const closeMobileList = () => {
+    lastMobileListCloseAtRef.current = Date.now();
     setIsMobileListOpen(false);
     setMobileListSheetMode("peek");
   };
@@ -479,6 +481,14 @@ export function MapExplorer({
   };
   const collapseMobileList = () => {
     setMobileListSheetMode("peek");
+  };
+  const openMobileList = () => {
+    if (Date.now() - lastMobileListCloseAtRef.current < 250) {
+      return;
+    }
+
+    setMobileListSheetMode("peek");
+    setIsMobileListOpen(true);
   };
   const mobileListSheetGesture = useMobileSheetGesture({
     enabled: isMobileListOpen,
@@ -631,10 +641,7 @@ export function MapExplorer({
             <div className="pointer-events-auto flex items-center gap-2 rounded-2xl border border-stone-200 bg-white/95 p-2 shadow-lg backdrop-blur">
               <button
                 type="button"
-                onClick={() => {
-                  setMobileListSheetMode("peek");
-                  setIsMobileListOpen(true);
-                }}
+                onClick={openMobileList}
                 data-testid="mobile-place-list-open"
                 className="altteulmap-accent-solid altteulmap-button whitespace-nowrap px-4 py-2 text-sm font-medium"
               >
