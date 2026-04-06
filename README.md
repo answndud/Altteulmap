@@ -10,7 +10,9 @@
 
 - Demo: [altteulmap.altteul-lab.workers.dev](https://altteulmap.altteul-lab.workers.dev)
 - Admin: [altteulmap-admin.altteul-lab.workers.dev](https://altteulmap-admin.altteul-lab.workers.dev)
-- Docs: [Cloudflare deploy guide](docs/deploy-cloudflare.md)
+- Docs: [Cloudflare deploy guide](docs/deploy/deploy-cloudflare.md)
+
+최근 유행했던 `거지맵` 서비스에서 아이디어를 얻었습니다. 다만 음식점에만 머무르지 않고, 생활 서비스까지 포함한 더 넓은 절약 지도 형태로 확장하고 싶었습니다. 여기에 공공데이터를 적극적으로 활용해 실제 운영 가능한 데이터 기반 서비스를 만들고 싶었고, 고물가와 취업난이 겹친 지금의 시대감에도 잘 맞는 주제라고 판단해 개발했습니다.
 
 ![Altteulmap home](docs/readme/hero-home.png)
 
