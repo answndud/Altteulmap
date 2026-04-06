@@ -130,6 +130,27 @@ npx wrangler login
 - [OpenNext env vars guide](https://opennext.js.org/cloudflare/howtos/env-vars)
 - [Wrangler environment variables](https://developers.cloudflare.com/workers/wrangler/configuration/)
 
+### Workers Builds를 같이 쓸 때
+- public/admin worker 모두 Cloudflare Dashboard의 Root directory는 repo root(`/`)를 권장한다.
+- 이유는 현재 저장소가 루트 `package-lock.json`을 기준으로 의존성을 설치하기 때문이다.
+- 특히 `altteulmap-admin`의 Root directory를 `apps/admin`으로 두면 Cloudflare 기본 설치 단계(`npm ci`)가 `apps/admin/package-lock.json`을 찾다가 실패한다.
+
+권장 값:
+
+```text
+altteulmap
+- Root directory: /
+- Install command: npm ci
+- Build command: npm run cf:build:public
+- Deploy command: npx opennextjs-cloudflare deploy -c wrangler.jsonc
+
+altteulmap-admin
+- Root directory: /
+- Install command: npm ci
+- Build command: npm run cf:build:admin
+- Deploy command: npx opennextjs-cloudflare deploy -c wrangler.admin.jsonc
+```
+
 ## 6. 첫 배포 전에 준비할 환경 변수
 
 이 저장소 기준 필수값:

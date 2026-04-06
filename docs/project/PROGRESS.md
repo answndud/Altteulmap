@@ -3,6 +3,7 @@
 기준일: 2026-04-06
 
 ## 진행 현황 요약
+- Cloudflare Builds 후속: `altteulmap-admin` 자동 빌드는 `apps/admin`를 root directory로 둘 때 `package-lock.json` 부재로 `npm ci`가 즉시 실패한다는 점을 확인했다. 현재 권장 설정은 public/admin 모두 root directory `/`, `npm ci`, 각각 `cf:build:*` + `wrangler*.jsonc` deploy 조합이다
 - Cycle 11: 장소 등록/가격 제보/신고 관리자 큐에 `AI 1차 검수` 패널을 추가했다. 제안은 로컬 검수 에이전트가 자동 생성·저장하고, 관리자 카드는 권장 액션/신뢰도/근거/플래그를 보여준 뒤 기존 승인/반려/상태 변경 흐름으로 최종 확정한다. 댓글은 현재 관리자 검수 큐가 없어 1차 범위에서 제외했다
 - Cycle 10: 관리자 실제 구현을 `src/features/admin/**`로 모으고, public 앱 `entrypoints`와 별도 `apps/admin` 빌드를 추가해 관리자 분리 1차 완료. public `cf:build:public`은 `/admin`, `/api/admin`을 external redirect/API stub로 유지한 채 빌드하고, `deploy:check:public`, `deploy:check:admin`, `SITE_URL` 기준, `workers.dev` split 배포와 remote smoke까지 정리했다. custom domain 적용은 필요할 때만 마지막 운영 단계로 남아 있다
 - Cycle 10 후속: admin telemetry가 `useSearchParams()` 때문에 standalone admin Cloudflare build를 깨던 경로를 제거했고, admin build는 이제 `ADMIN_APP_URL`을 `NEXTAUTH_URL`로 강제해 shared `.env.production.local`에서도 올바른 callback 기준으로 동작한다. `deploy:check:admin`, `cf:build:admin`, live admin 재배포까지 다시 통과했다
@@ -140,6 +141,18 @@
   - `curl -I --max-time 20 https://altteulmap-admin.altteul-lab.workers.dev/admin` 결과 `307 -> /login?callbackUrl=%2Fadmin`
 - 메모
   - 수동 deploy는 정상 동작하므로 현재 문제는 앱 번들 자체보다 Cloudflare Builds가 repo push를 처리하는 환경/설정 쪽일 가능성이 더 높다.
+
+### 2026-04-06 14:36 KST: Cloudflare admin Root directory 원인 정리
+- 완료 내용
+  - 사용자가 전달한 Cloudflare build log를 기준으로 `altteulmap-admin` 자동 빌드 실패 원인을 확인했다.
+  - 원인은 Root directory를 `apps/admin`으로 둔 상태에서 Cloudflare 기본 설치 단계가 `npm ci`를 실행하며 `apps/admin/package-lock.json`을 찾는 것이었다.
+  - 현재 저장소의 admin 앱은 루트 `package-lock.json`과 shared dependency tree를 사용하므로, Workers Builds 설정은 public/admin 모두 repo root(`/`)를 쓰는 쪽으로 정리했다.
+  - `/Users/alex/project/altteulmap/docs/deploy/deploy-cloudflare.md`, `/Users/alex/project/altteulmap/docs/deploy/cloudflare-account-to-deploy.md`에 이 설정을 명시했다.
+- 검증 결과
+  - 사용자가 제공한 Cloudflare log에서 `npm ci`가 lockfile 부재로 실패한 사실 확인
+  - 현재 로컬 기준 `npm run cf:build:admin`, `npm run cf:build:public` 통과 상태 유지
+- 메모
+  - `apps/admin`은 독립 npm package처럼 보이지만 설치 기준은 루트다. 따라서 Root directory를 하위 폴더로 제한하는 대신 build/deploy command만 admin 전용으로 나누는 편이 안전하다.
 
 ### 2026-04-06 13:18 KST: 루트 문서 재배치와 build 산출물 정리
 - 완료 내용

@@ -53,6 +53,30 @@
 4. 필요 시 Hyperdrive 생성
 5. Workers 환경 변수 또는 secret 등록
 
+## 5-1. Workers Builds 권장 설정
+
+현재 저장소는 `apps/admin`이 별도 앱처럼 보이지만, 의존성 설치는 루트 `package-lock.json`과 루트 `node_modules`를 기준으로 동작한다.
+그래서 `altteulmap-admin`의 Root directory를 `apps/admin`으로 두면 Cloudflare 기본 설치 단계(`npm ci`)가 `apps/admin/package-lock.json`을 찾다가 실패한다.
+
+자동 배포 기준으로는 public/admin 모두 repo root(`/`)를 쓰는 구성이 안전하다.
+
+### public worker: `altteulmap`
+- Root directory: `/`
+- Install command: `npm ci`
+- Build command: `npm run cf:build:public`
+- Deploy command: `npx opennextjs-cloudflare deploy -c wrangler.jsonc`
+
+### admin worker: `altteulmap-admin`
+- Root directory: `/`
+- Install command: `npm ci`
+- Build command: `npm run cf:build:admin`
+- Deploy command: `npx opennextjs-cloudflare deploy -c wrangler.admin.jsonc`
+
+주의:
+- `altteulmap-admin`의 Root directory를 `apps/admin`으로 두지 않는다.
+- admin 앱은 shared 코드와 루트 lockfile을 같이 쓰므로, Root directory를 하위 폴더로 제한하면 설치 단계에서 깨지기 쉽다.
+- build watch paths를 따로 줄 수는 있지만 shared 의존 범위가 넓으므로, 처음에는 비워 두는 편이 안전하다.
+
 ## 6. 로컬 사전 점검 명령
 ```bash
 npm run verify
