@@ -3,6 +3,7 @@
 기준일: 2026-04-12
 
 ## 진행 현황 요약
+- public/admin을 현재 성능 보정 기준으로 재배포했다. live 첫 진입 요청 수는 `95 -> 51`로 줄었고, `_rsc` prefetch flood와 telemetry `500`도 사라졌다. 현재 남은 비용의 대부분은 네이버 지도 SDK/타일(`script 16`, `image 30~31`)이다
 - telemetry 500 원인 분리 완료: `/api/telemetry/visit`가 stale DB에서도 더 이상 `500`을 내지 않고 `200 + tracked:false + source:mock`으로 degrade된다. 동시에 `src/db/client.ts`는 nested `cause`의 `message/code`까지 따라가 DB unavailable 판정을 더 정확히 하도록 보강했다
 - 지도 체감 성능 3차 보정: 데스크톱 목록 카드의 북마크/공유 버튼을 idle 이후가 아니라 `목록 준비 후 짧은 고정 지연` 뒤에 붙이도록 바꿨다. 첫 목록 렌더 시점에는 보조 액션 test id가 `0`, 1.1초 뒤에는 `80`으로 돌아오는 것을 로컬 production에서 확인했다
 - 지도 체감 성능 2차 보정: 홈 카테고리 필터를 접힌 상태 기본값으로 바꿨다. 모바일은 `전체 + 8개 + 더보기`, 데스크톱은 `전체 + 10개 + 더보기`만 먼저 렌더하고, 숨겨진 카테고리가 선택된 경우에도 해당 칩은 접힌 상태에서 계속 보이게 유지한다
@@ -57,6 +58,25 @@
 - 다음 우선순위: `Cycle 12`는 `Phase A 남은 blocker(운영 DB credential 복구 + moderation_suggestions migration) -> Phase B 운영/모바일 실기기 QA` 순서로 진행한다. 운영 URL은 현재 `workers.dev` split으로 고정했고, 검색 URL 상태/공유 telemetry는 현 범위로 동결했다
 
 ## 실행 로그
+
+### 2026-04-17 00:05 KST: 성능 보정본 live 재배포와 첫 진입 네트워크 재확인
+- 완료 내용
+  - current commit `a9dc35d` 기준으로 public/admin worker를 다시 배포했다. public version은 `cba2d8d7-f601-4985-b070-0e97de50191a`, admin version은 `1e2b599a-ba15-41ff-a40c-76037c4d5176`다.
+  - 배포 후 remote smoke를 다시 돌려 public canonical, robots, sitemap, public `/admin` redirect, public admin api redirect, admin `/login` 계약이 모두 유지되는 것을 확인했다.
+  - live 첫 진입 네트워크를 Playwright로 다시 재측정했다. 이전 live는 `95 requests`와 `_rsc` prefetch flood, telemetry `500`이 남아 있었지만, 재배포 후에는 `51 requests`로 내려왔다.
+- 검증 결과
+  - `npm run deploy:public` 통과
+  - `npm run deploy:admin` 통과
+  - `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev SMOKE_ADMIN_URL=https://altteulmap-admin.altteul-lab.workers.dev npm run smoke:remote` 통과
+  - live first-entry 측정 결과:
+    - total requests `51`
+    - `fetch 1`, `ping 1`, `xhr 1`, `script 16`, `image 30`, `document 1`, `stylesheet 1`
+    - `/api/telemetry/visit` status `200`
+    - `/api/places/map?...` status `200`
+    - `_rsc` prefetch 요청 없음
+- 메모
+  - 남은 비용은 app 자체보다 네이버 지도 런타임이다. 현재 기준 상위 origin은 `nrbe.pstatic.net` 타일 `31`, `oapi.map.naver.com` script `3`, `ssl.pstatic.net` script `2`다.
+  - 다음 성능 후속은 `네이버 지도 초기 타일/SDK 비용을 더 줄일 수 있는지`를 판단하는 단계다. 예를 들면 초기 zoom/viewport, map mount timing, static preview fallback 같은 선택지를 비교해야 한다.
 
 ### 2026-04-16 16:50 KST: telemetry route를 DB 장애 시 no-op fallback으로 전환
 - 완료 내용
