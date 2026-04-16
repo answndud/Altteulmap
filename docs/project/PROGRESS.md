@@ -3,7 +3,8 @@
 기준일: 2026-04-12
 
 ## 진행 현황 요약
-- public/admin을 현재 성능 보정 기준으로 재배포했다. live 첫 진입 요청 수는 `95 -> 51`로 줄었고, `_rsc` prefetch flood와 telemetry `500`도 사라졌다. 현재 남은 비용의 대부분은 네이버 지도 SDK/타일(`script 16`, `image 30~31`)이다
+- 지도 체감 성능 4차 보정: 네이버 지도 패널을 preview-first delayed boot로 바꿨다. 자동 부팅은 최소 `900ms` 뒤에만 시작하고, preview tap/cluster/current-location/`이 지역 검색` 상호작용은 즉시 boot로 우회한다. local production 첫 `1.2s` 요청은 `45 -> 14`, 같은 구간의 네이버 지도 asset은 `26 -> 0`으로 줄었고, live public도 첫 `1.2s` 요청 `11`, map asset `0`, total `44`까지 내려왔다
+- public/admin을 현재 성능 보정 기준으로 재배포했다. live 첫 진입 요청 수는 `95 -> 51 -> 44`로 줄었고, `_rsc` prefetch flood와 telemetry `500`도 사라졌다. 현재 남은 steady-state 비용의 대부분은 여전히 네이버 지도 SDK/타일(`script 16`, `image 22`)이다
 - telemetry 500 원인 분리 완료: `/api/telemetry/visit`가 stale DB에서도 더 이상 `500`을 내지 않고 `200 + tracked:false + source:mock`으로 degrade된다. 동시에 `src/db/client.ts`는 nested `cause`의 `message/code`까지 따라가 DB unavailable 판정을 더 정확히 하도록 보강했다
 - 지도 체감 성능 3차 보정: 데스크톱 목록 카드의 북마크/공유 버튼을 idle 이후가 아니라 `목록 준비 후 짧은 고정 지연` 뒤에 붙이도록 바꿨다. 첫 목록 렌더 시점에는 보조 액션 test id가 `0`, 1.1초 뒤에는 `80`으로 돌아오는 것을 로컬 production에서 확인했다
 - 지도 체감 성능 2차 보정: 홈 카테고리 필터를 접힌 상태 기본값으로 바꿨다. 모바일은 `전체 + 8개 + 더보기`, 데스크톱은 `전체 + 10개 + 더보기`만 먼저 렌더하고, 숨겨진 카테고리가 선택된 경우에도 해당 칩은 접힌 상태에서 계속 보이게 유지한다
@@ -58,6 +59,38 @@
 - 다음 우선순위: `Cycle 12`는 `Phase A 남은 blocker(운영 DB credential 복구 + moderation_suggestions migration) -> Phase B 운영/모바일 실기기 QA` 순서로 진행한다. 운영 URL은 현재 `workers.dev` split으로 고정했고, 검색 URL 상태/공유 telemetry는 현 범위로 동결했다
 
 ## 실행 로그
+
+### 2026-04-17 00:25 KST: 네이버 지도 preview-first delayed boot 적용과 live 재실측
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/map/naver-map-panel.tsx`를 preview-first delayed boot 구조로 바꿨다. 초기 렌더에서는 preview만 먼저 보여주고, 자동 SDK 부팅은 최소 `900ms` 뒤에만 시작하게 했다.
+  - preview 영역 pointer/key interaction, preview cluster 선택, `현재 위치`, `이 지역 검색`, place 선택은 모두 즉시 `setShouldBootMap(true)`로 우회하도록 묶었다. 따라서 첫 화면은 가볍게 유지하면서도 사용자가 지도를 바로 만지려는 순간에는 지연 없이 실제 지도를 띄운다.
+  - preview 상태에서 `cluster`를 누르거나 `현재 위치`를 먼저 누른 경우를 위해 pending ref를 두고, map status가 `ready`가 되면 대기 중이던 cluster focus/current-location 동작을 이어서 실행하게 했다.
+  - public worker만 다시 배포했다. 현재 live public version은 `32da4479-838a-417c-8e84-7663554dde17`이다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+  - `PORT=3010 npm run start` 후 local production Playwright one-off 측정:
+    - 변경 전 첫 `1.2s`: total `45`, map asset `26`
+    - 변경 후 첫 `1.2s`: total `14`, `stylesheet 1`, `script 10`, `document 1`, `ping 1`, `fetch 1`, map asset `0`
+    - 변경 후 total `3.4s`: total `45`, `script 16`, `image 23`, map asset `26`
+    - preview는 초기부터 visible, 초기 상태 문구는 `지도를 준비하는 중입니다.`
+  - local production interaction check:
+    - `map-current-location-button` 초기 disabled `false`
+    - `map-refresh-button` 즉시 클릭 시 `/api/places/map` status `200`
+    - mobile emulation에서 `목록 보기` 버튼과 목록 시트 open 정상
+  - `npm run deploy:public` 통과
+  - `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev SMOKE_ADMIN_URL=https://altteulmap-admin.altteul-lab.workers.dev npm run smoke:remote` 통과
+  - live public Playwright one-off 측정:
+    - 첫 `1.2s`: total `11`, `document 1`, `stylesheet 1`, `script 9`, map asset `0`
+    - total `3.6s`: total `44`, `script 16`, `ping 1`, `fetch 2`, `image 22`, `xhr 1`, map asset `28`
+    - preview는 초기부터 visible, 초기 상태 문구는 `지도를 준비하는 중입니다.`
+  - live interaction check:
+    - `map-current-location-button` 초기 disabled `false`
+    - `map-refresh-button` 즉시 클릭 시 `/api/places/map` status `200`
+    - mobile emulation에서 `목록 보기` 버튼과 목록 시트 open 정상
+- 메모
+  - 이번 단계로 app 자체의 초기 경쟁 요청은 거의 정리됐다. 첫 진입 초반 구간에서 남는 비용은 네이버 지도 asset이 아니라 Next 기본 script 정도다.
+  - 이제 성능 후속의 실질적인 다음 레버는 `boot 이후` 네이버 타일 수를 더 줄이는 일이다. 이건 mount timing보다 zoom/bounds/marker strategy 쪽 영향이 더 크다.
 
 ### 2026-04-17 00:05 KST: 성능 보정본 live 재배포와 첫 진입 네트워크 재확인
 - 완료 내용
