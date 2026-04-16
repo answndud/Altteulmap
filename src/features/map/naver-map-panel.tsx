@@ -52,6 +52,23 @@ type ClusterDisplayMarker = PlaceMapClusterMarkerRecord;
 
 type MapDisplayMarker = PlaceDisplayMarker | ClusterDisplayMarker;
 
+type IdleDeadlineLike = {
+  didTimeout: boolean;
+  timeRemaining: () => number;
+};
+
+type IdleWindow = Window &
+  typeof globalThis & {
+    requestIdleCallback?: (
+      callback: (deadline: IdleDeadlineLike) => void,
+      options?: { timeout: number },
+    ) => number;
+    cancelIdleCallback?: (handle: number) => void;
+  };
+
+const MAP_BOOT_DELAY_MS = 900;
+const MAP_BOOT_IDLE_TIMEOUT_MS = 400;
+
 function getMapZoom(placeCount: number) {
   return placeCount > 1 ? 13 : 15;
 }
@@ -628,9 +645,13 @@ function NaverMapPanelContent({
   const currentLocationMarkerRef = useRef<NaverMarkerInstance | null>(null);
   const lastViewportKeyRef = useRef<string | null>(null);
   const lastFocusPlacesKeyRef = useRef<string | null>(null);
+  const pendingClusterFocusRef = useRef<ClusterDisplayMarker | null>(null);
+  const pendingLocateCurrentPositionRef = useRef(false);
+  const naverMapKeyId = getNaverMapKeyId();
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+  const [shouldBootMap, setShouldBootMap] = useState(false);
   const [status, setStatus] = useState<MapStatus>(
-    getNaverMapKeyId() ? "loading" : "missing-key",
+    naverMapKeyId ? "loading" : "missing-key",
   );
   const [hasVisibleMap, setHasVisibleMap] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
@@ -638,7 +659,6 @@ function NaverMapPanelContent({
   const [internalActivePlaceId, setInternalActivePlaceId] = useState<string | null>(
     mapMarkers.find((marker) => marker.kind === "place")?.id ?? null,
   );
-  const naverMapKeyId = getNaverMapKeyId();
   const activePlaceId =
     controlledActivePlaceId === undefined
       ? internalActivePlaceId
@@ -659,13 +679,17 @@ function NaverMapPanelContent({
 
   const selectPlace = useCallback(
     (place: PlacePreviewRecord) => {
+      if (naverMapKeyId) {
+        setShouldBootMap(true);
+      }
+
       if (controlledActivePlaceId === undefined) {
         setInternalActivePlaceId(place.id);
       }
 
       onSelectPlace?.(place);
     },
-    [controlledActivePlaceId, onSelectPlace],
+    [controlledActivePlaceId, naverMapKeyId, onSelectPlace],
   );
   const emitPlaceSelect = useCallback(
     (place: PlacePreviewRecord) => {
@@ -673,6 +697,14 @@ function NaverMapPanelContent({
     },
     [selectPlace],
   );
+  const requestMapBoot = useCallback(() => {
+    if (!naverMapKeyId) {
+      return false;
+    }
+
+    setShouldBootMap(true);
+    return true;
+  }, [naverMapKeyId]);
   const clearMapInstance = useCallback(() => {
     markerInstancesRef.current.forEach((marker) => marker.setMap?.(null));
     markerInstancesRef.current = [];
@@ -682,6 +714,8 @@ function NaverMapPanelContent({
     mapInstanceRef.current = null;
     lastViewportKeyRef.current = null;
     lastFocusPlacesKeyRef.current = null;
+    pendingClusterFocusRef.current = null;
+    pendingLocateCurrentPositionRef.current = false;
   }, []);
   const failMap = useCallback(
     (message: string, error?: unknown) => {
@@ -753,9 +787,8 @@ function NaverMapPanelContent({
     },
     [emitViewportChange, failMap, status],
   );
-
-  const locateCurrentPosition = () => {
-    if (status !== "ready" || !mapInstanceRef.current) {
+  const runLocateCurrentPosition = useCallback(() => {
+    if (!mapInstanceRef.current) {
       setLocationMessage("지도가 준비된 뒤 현재 위치를 사용할 수 있습니다.");
       return;
     }
@@ -817,7 +850,39 @@ function NaverMapPanelContent({
         maximumAge: 60000,
       },
     );
-  };
+  }, [emitViewportChange]);
+
+  const handlePreviewClusterActivate = useCallback(
+    (marker: ClusterDisplayMarker) => {
+      requestMapBoot();
+
+      if (status !== "ready" || !mapInstanceRef.current) {
+        pendingClusterFocusRef.current = marker;
+        return;
+      }
+
+      focusCluster(marker);
+    },
+    [focusCluster, requestMapBoot, status],
+  );
+
+  const locateCurrentPosition = useCallback(() => {
+    const canBootMap = requestMapBoot();
+
+    if (status !== "ready" || !mapInstanceRef.current) {
+      if (canBootMap) {
+        pendingLocateCurrentPositionRef.current = true;
+        setLocationMessage("지도를 준비한 뒤 현재 위치를 찾습니다.");
+      } else {
+        setLocationMessage("지도 설정이 아직 준비되지 않아 현재 위치를 사용할 수 없습니다.");
+      }
+
+      return;
+    }
+
+    pendingLocateCurrentPositionRef.current = false;
+    runLocateCurrentPosition();
+  }, [requestMapBoot, runLocateCurrentPosition, status]);
 
   useEffect(() => {
     const container = mapContainerRef.current;
@@ -873,8 +938,53 @@ function NaverMapPanelContent({
   }, [failMap, naverMapKeyId]);
 
   useEffect(() => {
+    if (!naverMapKeyId || shouldBootMap) {
+      return;
+    }
+
+    const idleWindow = window as IdleWindow;
+    let isDisposed = false;
+    let idleCallbackId: number | null = null;
+
+    const bootMap = () => {
+      if (isDisposed) {
+        return;
+      }
+
+      setShouldBootMap(true);
+    };
+
+    const timeoutId = window.setTimeout(() => {
+      if (typeof idleWindow.requestIdleCallback === "function") {
+        idleCallbackId = idleWindow.requestIdleCallback(
+          () => {
+            bootMap();
+          },
+          { timeout: MAP_BOOT_IDLE_TIMEOUT_MS },
+        );
+        return;
+      }
+
+      bootMap();
+    }, MAP_BOOT_DELAY_MS);
+
+    return () => {
+      isDisposed = true;
+      window.clearTimeout(timeoutId);
+
+      if (
+        idleCallbackId !== null &&
+        typeof idleWindow.cancelIdleCallback === "function"
+      ) {
+        idleWindow.cancelIdleCallback(idleCallbackId);
+      }
+    };
+  }, [naverMapKeyId, shouldBootMap]);
+
+  useEffect(() => {
     if (
       !naverMapKeyId ||
+      !shouldBootMap ||
       !mapContainerRef.current ||
       containerSize.width === 0 ||
       containerSize.height === 0 ||
@@ -968,6 +1078,7 @@ function NaverMapPanelContent({
     initialBounds,
     mapMarkers,
     naverMapKeyId,
+    shouldBootMap,
   ]);
 
   useEffect(() => {
@@ -1041,6 +1152,33 @@ function NaverMapPanelContent({
       mutationObserver.disconnect();
     };
   }, [containerSize.height, containerSize.width, mapMarkers, status]);
+
+  useEffect(() => {
+    if (
+      status !== "ready" ||
+      !mapInstanceRef.current ||
+      !pendingClusterFocusRef.current
+    ) {
+      return;
+    }
+
+    const nextCluster = pendingClusterFocusRef.current;
+    pendingClusterFocusRef.current = null;
+    focusCluster(nextCluster);
+  }, [focusCluster, status]);
+
+  useEffect(() => {
+    if (
+      status !== "ready" ||
+      !mapInstanceRef.current ||
+      !pendingLocateCurrentPositionRef.current
+    ) {
+      return;
+    }
+
+    pendingLocateCurrentPositionRef.current = false;
+    runLocateCurrentPosition();
+  }, [runLocateCurrentPosition, status]);
 
   useEffect(() => {
     if (status !== "ready" || !mapInstanceRef.current) {
@@ -1199,8 +1337,12 @@ function NaverMapPanelContent({
       : status === "error"
         ? "지도를 불러오지 못해 임시 미리보기로 표시합니다."
         : showPreview
-          ? "지도를 불러오는 중입니다."
+          ? shouldBootMap
+            ? "지도를 불러오는 중입니다."
+            : "지도를 준비하는 중입니다."
           : null;
+  const canLocateCurrentPosition =
+    Boolean(naverMapKeyId) && (status === "loading" || status === "ready");
 
   return (
     <section
@@ -1224,12 +1366,16 @@ function NaverMapPanelContent({
         />
 
         {showPreview ? (
-          <div className="absolute inset-0">
+          <div
+            className="absolute inset-0"
+            onPointerDownCapture={requestMapBoot}
+            onKeyDownCapture={requestMapBoot}
+          >
             <PreviewMap
               markers={displayMarkers}
               selectedCategoryLabel={selectedCategoryLabel}
               onSelectPlace={selectPlace}
-              onActivateCluster={focusCluster}
+              onActivateCluster={handlePreviewClusterActivate}
             />
           </div>
         ) : null}
@@ -1238,7 +1384,10 @@ function NaverMapPanelContent({
           {refreshAction?.isVisible ? (
             <button
               type="button"
-              onClick={refreshAction.onRefresh}
+              onClick={() => {
+                requestMapBoot();
+                refreshAction.onRefresh();
+              }}
               disabled={refreshAction.isLoading}
               data-testid="map-refresh-button"
               className="altteulmap-accent-solid altteulmap-button whitespace-nowrap px-4 py-2 text-sm font-medium shadow-lg shadow-orange-200/60 disabled:cursor-not-allowed disabled:opacity-70"
@@ -1252,7 +1401,7 @@ function NaverMapPanelContent({
           <button
             type="button"
             onClick={locateCurrentPosition}
-            disabled={status !== "ready" || isLocating}
+            disabled={!canLocateCurrentPosition || isLocating}
             data-testid="map-current-location-button"
             className="altteulmap-button whitespace-nowrap border border-stone-300 bg-white/95 px-3 py-1.5 text-xs font-semibold text-stone-800 shadow-sm backdrop-blur transition hover:bg-white disabled:cursor-not-allowed disabled:text-stone-400"
           >
