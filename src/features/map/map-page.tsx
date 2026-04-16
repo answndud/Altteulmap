@@ -178,6 +178,7 @@ export default async function MapPage({ searchParams }: MapPageProps) {
                     href={createHref({
                       category: activeCategory,
                     })}
+                    prefetch={false}
                     className="text-xs font-medium text-stone-500 transition hover:text-stone-900"
                   >
                     검색 지우기
@@ -261,6 +262,7 @@ export default async function MapPage({ searchParams }: MapPageProps) {
                         query: activeQuery,
                         searchScope: activeSearchScope,
                       })}
+                      prefetch={false}
                       className={`${mobileCategoryChipClass} ${
                         !activeCategory
                           ? "altteulmap-accent-chip"
@@ -281,6 +283,7 @@ export default async function MapPage({ searchParams }: MapPageProps) {
                               query: activeQuery,
                               searchScope: activeSearchScope,
                             })}
+                            prefetch={false}
                             className={`${mobileCategoryChipClass} ${
                               isActive
                                 ? "altteulmap-accent-chip"
@@ -312,6 +315,7 @@ export default async function MapPage({ searchParams }: MapPageProps) {
                     query: activeQuery,
                     searchScope: activeSearchScope,
                   })}
+                  prefetch={false}
                   className={`${desktopCategoryChipClass} ${
                     !activeCategory
                       ? "altteulmap-accent-chip"
@@ -332,6 +336,7 @@ export default async function MapPage({ searchParams }: MapPageProps) {
                           query: activeQuery,
                           searchScope: activeSearchScope,
                         })}
+                        prefetch={false}
                         className={`${desktopCategoryChipClass} ${
                           isActive
                             ? "altteulmap-accent-chip"
@@ -354,6 +359,7 @@ export default async function MapPage({ searchParams }: MapPageProps) {
                     href={createHref({
                       category: activeCategory,
                     })}
+                    prefetch={false}
                     className="altteulmap-button whitespace-nowrap border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
                   >
                     검색 지우기

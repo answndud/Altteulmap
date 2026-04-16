@@ -5,7 +5,7 @@
 ## 이 문서의 목적
 - Cloudflare 계정이 아직 없는 상태에서 시작해 알뜰맵을 첫 배포하는 전체 순서를 한 번에 정리한다.
 - 현재 저장소 기준 배포 방식인 `Next.js + OpenNext + Cloudflare Workers + Wrangler` 흐름을 기준으로 설명한다.
-- 첫 배포는 `workers.dev` 주소로, 그 다음은 커스텀 도메인으로 전환하는 순서를 권장한다.
+- 현재 출시 범위는 `workers.dev` split 운영까지를 기준으로 설명한다. custom domain은 선택적 후속 작업이다.
 
 ## 이 저장소 기준 전제
 - 현재 저장소는 이미 Cloudflare Workers 배포 설정이 들어 있다.
@@ -28,8 +28,8 @@
 5. Cloudflare 대시보드에 런타임 변수/시크릿 등록
 6. 카카오/네이버 OAuth callback을 실제 배포 URL로 수정
 7. 재배포
-8. 커스텀 도메인 연결
-9. `NEXTAUTH_URL`과 OAuth callback을 커스텀 도메인 기준으로 다시 수정 후 최종 배포
+8. `workers.dev` split URL을 운영 기준값으로 고정
+9. custom domain은 별도 cycle에서만 진행
 
 ## 1. Cloudflare 계정 만들기
 1. Cloudflare 회원가입 페이지로 이동한다.
@@ -52,11 +52,11 @@
 - 첫 배포를 빨리 확인하기에 가장 쉽다.
 - 형식은 보통 아래와 같다.
   - `<worker-name>.<account-subdomain>.workers.dev`
-- Cloudflare 문서 기준으로 `workers.dev`는 빠른 시작용이고, 운영 서비스는 커스텀 도메인이 더 권장된다.
+- 현재 알뜰맵 운영 기준은 public/admin을 분리한 `workers.dev` split이다.
   - [workers.dev](https://developers.cloudflare.com/workers/configuration/routing/workers-dev/)
 
 ### Custom Domain
-- 실제 운영은 `app.example.com` 같은 커스텀 도메인 연결을 권장한다.
+- custom domain은 선택적 후속 작업이다.
 - Custom Domain을 쓰려면 해당 도메인이 Cloudflare zone으로 활성화되어 있어야 한다.
 - Cloudflare 문서 기준으로 Custom Domain은 Worker가 origin인 경우 권장된다.
   - [Custom Domains](https://developers.cloudflare.com/workers/configuration/routing/custom-domains/)
@@ -233,7 +233,9 @@ SITE_URL=https://altteulmap.alexteam.workers.dev
 
 참고:
 - `workers.dev` 형식은 Cloudflare 공식 문서 기준으로 `<worker-name>.<subdomain>.workers.dev`다.
-- 운영 서비스는 나중에 커스텀 도메인으로 바꾸는 게 좋다.
+- 현재 운영에서는 아래 두 주소를 기준값으로 유지한다.
+  - public: `https://altteulmap.altteul-lab.workers.dev`
+  - admin: `https://altteulmap-admin.altteul-lab.workers.dev`
 
 ## 8. 배포 전 로컬 검증
 
@@ -242,6 +244,7 @@ SITE_URL=https://altteulmap.alexteam.workers.dev
 ```bash
 npm install
 npm run verify
+npm run db:check:production
 npm run test:e2e
 npm run deploy:check -- --preview
 npm run deploy:check:public
@@ -359,9 +362,9 @@ npm run deploy
 
 대시보드 변수/시크릿을 주된 runtime source로 쓸 때는 재배포 전에 현재 대시보드 값이 유지되는지 확인한다. `keep vars` 계열 옵션을 쓰는 경우에는 사용 중인 OpenNext/Wrangler 버전의 최신 문법을 먼저 확인하는 편이 안전하다.
 
-## 13. 커스텀 도메인 연결
+## 13. 커스텀 도메인 연결(선택)
 
-실서비스 전환은 `workers.dev`보다 커스텀 도메인을 권장한다.
+현재 출시 범위에는 포함하지 않는다. DNS 제어권과 OAuth callback, canonical 재정렬이 필요할 때만 별도 작업으로 진행한다.
 
 ### 전제
 - 도메인이 있어야 한다.

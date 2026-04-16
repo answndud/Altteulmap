@@ -40,11 +40,9 @@ export default async function AdminPricesPage() {
     );
   }
 
-  const [result, recentPlaces, overview] = await Promise.all([
-    listPendingPriceReports(),
-    listPlaces({ sort: "recent" }),
-    getAdminOverview(),
-  ]);
+  const result = await listPendingPriceReports();
+  const recentPlaces = await listPlaces({ sort: "recent" });
+  const overview = await getAdminOverview();
 
   return (
     <main className="bg-stone-50 px-4 py-8 sm:px-6">

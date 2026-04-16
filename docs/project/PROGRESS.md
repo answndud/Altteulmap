@@ -1,9 +1,19 @@
 # PROGRESS.md
 
-기준일: 2026-04-06
+기준일: 2026-04-12
 
 ## 진행 현황 요약
+- 지도 체감 성능 1차 보정: 홈 지도 화면의 category/login/submit/admin/detail `Link` prefetch를 껐고, desktop 장소 목록은 idle 이후 지연 마운트되도록 바꿨으며, 목록 렌더 상한도 `desktop 80 / mobile 40`으로 낮췄다. `VisitTracker`는 idle 이후 `sendBeacon` 우선 전송으로 미뤄 첫 진입 네트워크를 덜 방해하게 했다. 로컬 production 기준 홈 첫 진입 fetch/xhr는 `api/places/map` 1건과 외부 네이버 수집 1건만 남았고, 기존처럼 category/login/submit prefetch가 쏟아지지 않았다
+- Phase A 운영 DB 진단 보강: `npm run db:check:production`을 추가해 현재 `DATABASE_URL`로 실제 연결, moderation schema 유무, drizzle migration table 유무를 한 번에 확인할 수 있게 했다. 현재 production credential은 여전히 `Tenant or user not found`로 실패하며, URL encoding 문제가 아니라 stale/wrong credential이라는 점을 다시 확인했다
+- Phase B 준비 보강: [mobile-qa-checklist.md](/Users/alex/project/altteulmap/docs/project/mobile-qa-checklist.md)를 추가해 iPhone Safari, Android Chrome 기준의 public/admin 실기기 확인 항목과 기록 포맷을 고정했다
+- Phase D backlog freeze 완료: 검색 URL 상태는 현재 `q/scope` URL 반영 범위로 유지하고, 공유 telemetry는 관리자 overview/source breakdown 범위까지만 유지하기로 고정했다. 별도 추천/랭킹 확장, 사진 업로드, `bang`, `deal`, 프론트엔드 디자인 polish는 현재 출시 범위에서 계속 제외한다
+- Phase C 운영 URL 고정 완료: 현재 운영 URL을 `workers.dev` split(public `altteulmap.altteul-lab.workers.dev`, admin `altteulmap-admin.altteul-lab.workers.dev`)으로 공식화했고, README/배포 문서의 launch 설명도 이 기준으로 정리했다. `smoke:remote`를 다시 실행해 canonical, robots, sitemap, public `/admin` redirect, public `/api/admin/places`, admin `/login` 계약이 여전히 맞는 것을 확인했다
+- 루트/관리자 앱의 로컬 빌드 산출물과 테스트 잔여물을 정리했다. `.next`, `.next-dev`, `.open-next`, `apps/admin/.next`, `apps/admin/.open-next`, `test-results`, `tsconfig.tsbuildinfo`, `.wrangler`를 삭제해 약 `669.38 MB`를 확보했고, tracked 파일 영향 없이 워킹 트리는 깨끗한 상태를 유지했다
 - Cloudflare Builds 후속: `altteulmap-admin` 자동 빌드는 `apps/admin`를 root directory로 둘 때 `package-lock.json` 부재로 `npm ci`가 즉시 실패한다는 점을 확인했다. 현재 권장 설정은 public/admin 모두 root directory `/`, `npm ci`, 각각 `cf:build:*` + `wrangler*.jsonc` deploy 조합이다
+- Phase B QA 부분 진행: live public URL은 Chromium desktop/mobile emulation에서 `map panel`, `현재 위치`, `이 지역 검색`, 모바일 `목록 보기` 버튼이 모두 노출되는 것을 확인했다. admin은 브라우저 자동화 대신 real credentials callback + `wrangler tail` 기준으로 `/admin/reports`와 AI 패널 흐름을 확인했다. 다만 실제 iPhone Safari, Android Chrome 실기기 검증은 아직 남아 있다
+- Phase A degraded admin 후속: 관리자 overview에 DB probe를 추가하고 admin pages read를 직렬화해, broken DB 상태에서 `/admin/reports` 반복 요청이 `200`으로 유지되도록 정리했다. `wrangler tail` 기준으로 credentials callback 이후 `/admin/reports` 3연속 요청이 모두 `Ok`로 끝났고 hung exception은 재현되지 않았다
+- Phase A degraded runtime 후속: 운영 DB credential 복구 시도 중 `.env.production.local`의 Supabase pooler URL은 비밀번호 특수문자 인코딩 문제를 넘겨도 여전히 `Tenant or user not found`를 반환했다. 따라서 실제 DB 복구는 못 했고, 대신 public/admin/read-heavy 경로에 DB 장애 circuit breaker를 넣어 반복 DB 시도를 줄였으며, auth callback에서는 이 breaker를 제거해 remote credentials fallback 로그인을 다시 정상화했다
+- Phase A live rollout 후속: `moderation_suggestions` read/write가 live DB schema 누락이나 DB 장애로 깨져도 관리자 큐는 비영속 AI 제안으로 계속 열리도록 정리했고, known demo/admin degraded 로그인도 유지되게 했다. public/admin 재배포, remote smoke, live `/admin/reports` 로그인 확인까지 끝냈지만 운영 DB는 여전히 `Tenant or user not found`라 persisted migration 적용은 blocker로 남아 있다
 - Cycle 11: 장소 등록/가격 제보/신고 관리자 큐에 `AI 1차 검수` 패널을 추가했다. 제안은 로컬 검수 에이전트가 자동 생성·저장하고, 관리자 카드는 권장 액션/신뢰도/근거/플래그를 보여준 뒤 기존 승인/반려/상태 변경 흐름으로 최종 확정한다. 댓글은 현재 관리자 검수 큐가 없어 1차 범위에서 제외했다
 - Cycle 10: 관리자 실제 구현을 `src/features/admin/**`로 모으고, public 앱 `entrypoints`와 별도 `apps/admin` 빌드를 추가해 관리자 분리 1차 완료. public `cf:build:public`은 `/admin`, `/api/admin`을 external redirect/API stub로 유지한 채 빌드하고, `deploy:check:public`, `deploy:check:admin`, `SITE_URL` 기준, `workers.dev` split 배포와 remote smoke까지 정리했다. custom domain 적용은 필요할 때만 마지막 운영 단계로 남아 있다
 - Cycle 10 후속: admin telemetry가 `useSearchParams()` 때문에 standalone admin Cloudflare build를 깨던 경로를 제거했고, admin build는 이제 `ADMIN_APP_URL`을 `NEXTAUTH_URL`로 강제해 shared `.env.production.local`에서도 올바른 callback 기준으로 동작한다. `deploy:check:admin`, `cf:build:admin`, live admin 재배포까지 다시 통과했다
@@ -13,7 +23,7 @@
 - Cycle 2: `PLAN.md`/`PROGRESS.md` 운영 문서 형식 정비, 지역/전역 검색, 검색 URL 상태 반영 완료
 - Cycle 3: 댓글 작성/삭제, 기존 장소 가격 제보, 관리자 가격 검토 큐 완료
 - Cycle 4: 관리자 가격 수정/숨김 UI, 대표 가격 재계산 규칙, 최소 rate limit, DB migration 적용, 실DB 런타임 검증 완료
-- Cycle 5: sitemap/robots/canonical/기본 metadata, OAuth scaffolding, deploy check, Playwright E2E 3차, 공개 UI polish 대부분 완료. 공개 쓰기는 북마크를 제외하고 익명 허용으로 정리됐고, public/admin 공통 헤더로 주요 이동 액션을 상단에 통합했다. 로그인/회원가입은 credentials 중심 액션 카드로 다시 단순화했고, 운영 도메인 기준 `workers.dev` 점검과 관리자 외부 앱 cutover도 정리됐다. 현재 남은 일은 custom domain 여부 결정과 더 깊은 QA다
+- Cycle 5: sitemap/robots/canonical/기본 metadata, OAuth scaffolding, deploy check, Playwright E2E 3차, 공개 UI polish 대부분 완료. 공개 쓰기는 북마크를 제외하고 익명 허용으로 정리됐고, public/admin 공통 헤더로 주요 이동 액션을 상단에 통합했다. 로그인/회원가입은 credentials 중심 액션 카드로 다시 단순화했고, 운영 도메인 기준 `workers.dev` 점검과 관리자 외부 앱 cutover도 정리됐다. 현재 남은 일은 실기기 QA와 운영 DB 복구다
 - Cycle 5 장소 등록 정책: 공개 폼은 텍스트 정보만 받고, 지도 위치와 네이버 지도 검색 확인은 운영자 승인 단계에서 처리하도록 다시 정리됨
 - Cycle 5 후속: GitHub Actions CI를 `push용 smoke`와 `PR용 full`로 분리하고 Cloudflare Builds와 분리 운영하는 경로 정리 완료
 - Cycle 6: 좋아요/싫어요 반응 도입 완료, 비로그인 visitor cookie 반응과 공개 메타 줄 분리까지 반영. 홈 `인기 장소` 추천과 공유 후속은 반영했고, 별도 랭킹 화면은 현재 범위에서 제외함
@@ -41,9 +51,174 @@
 - Cycle 6 추천 후속: 홈 기본 화면에 `인기 장소` 섹션을 추가해 상위 6개 추천 장소를 노출하고, mock/desktop 회귀까지 붙였다
 - Cycle 6 공유 후속: 상세 페이지/상세 시트/지도 목록/인기 장소 카드가 같은 공유 payload를 쓰도록 정리했고, 공유 링크에는 `ref=share`, `source=detail|detail_sheet|list|trending`를 붙였다
 - Cycle 6 공유 telemetry 후속: `visit_activity`에 공유 ref/source를 저장하고, 관리자 overview에서 오늘/7일 공유 유입과 source breakdown을 확인할 수 있게 정리했다
-- 다음 우선순위: `Cycle 12` 기준으로 `AI 검수 live rollout -> 운영 도메인/모바일 QA -> 운영 URL 최종 고정 -> 검색 URL 상태/공유 telemetry 후속 판단` 순서로 진행한다
+- 다음 우선순위: `Cycle 12`는 `Phase A 남은 blocker(운영 DB credential 복구 + moderation_suggestions migration) -> Phase B 운영/모바일 실기기 QA` 순서로 진행한다. 운영 URL은 현재 `workers.dev` split으로 고정했고, 검색 URL 상태/공유 telemetry는 현 범위로 동결했다
 
 ## 실행 로그
+
+### 2026-04-16 15:05 KST: 지도 첫 진입 prefetch/목록 렌더를 줄여 체감 성능 1차 보정
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/components/brand-mark.tsx`, `/Users/alex/project/altteulmap/src/components/global-header.tsx`, `/Users/alex/project/altteulmap/src/features/map/map-page.tsx`, `/Users/alex/project/altteulmap/src/features/places/trending-places-section.tsx`에서 홈 첫 화면에 바로 보이는 `Link`들의 `prefetch`를 껐다. category 칩, 검색 지우기, 장소 등록, 북마크, 로그인, 운영자 관리, 추천 카드 상세 링크가 더 이상 첫 진입에 RSC prefetch를 쏘지 않는다.
+  - `/Users/alex/project/altteulmap/src/features/places/map-explorer.tsx`에서 desktop 장소 목록을 idle 이후에 지연 마운트하도록 바꿨고, 목록 렌더 상한을 `desktop 80 / mobile 40`으로 낮췄다. 목적은 지도를 먼저 그린 뒤 무거운 카드 DOM과 bookmark/share 버튼을 붙이는 것이다.
+  - `/Users/alex/project/altteulmap/src/features/telemetry/visit-tracker.tsx`는 `fetch`를 즉시 보내지 않고 idle 이후 `navigator.sendBeacon` 우선 전송으로 미뤘다. 첫 진입 경합을 줄이기 위한 변경이다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+  - `PORT=3010 npm run start`로 로컬 production 서버를 띄운 뒤 Playwright로 홈 첫 진입 네트워크를 확인한 결과:
+    - fetch/xhr 총 2건
+    - `http://127.0.0.1:3010/api/places/map?...` 1건
+    - `https://kr-col-ext.nelo.navercorp.com/_store` 1건
+    - 기존 live 측정에서 보이던 `?category=...&_rsc=*`, `/login?...&_rsc=*`, `/submit?_rsc=*`, `/api/telemetry/visit` 초기 요청은 재현되지 않음
+- 메모
+  - build/start 중 운영 DB는 여전히 stale credential 때문에 fallback 로그를 남겼지만, 이번 작업의 관심사는 홈 첫 진입 네트워크와 DOM 감량이라 검증에는 영향이 없었다.
+  - 다음 성능 후속은 `카테고리 필터 UI 자체 DOM 감량`, `desktop 목록 카드 액션 지연 렌더`, `telemetry 500 원인 분리` 순으로 보는 게 맞다.
+
+### 2026-04-12 13:15 KST: 운영 DB 진단 스크립트와 실기기 QA 체크리스트 추가
+- 완료 내용
+  - `/Users/alex/project/altteulmap/scripts/check-production-db.mjs`와 `package.json`의 `db:check:production` 명령을 추가했다. 이 스크립트는 현재 `DATABASE_URL`을 안전하게 마스킹해서 요약하고, 실제 DB 연결, `moderation_suggestions` 테이블/enum, `drizzle.__drizzle_migrations` 존재 여부를 확인한다.
+  - 현재 `.env.production.local` 기준 production DB 연결은 여전히 `Tenant or user not found`로 실패했다. raw password 분리 전달과 encoded URL 전달을 둘 다 확인한 결과라서, 이번에도 URL encoding이 아니라 credential 자체가 stale/wrong이라는 결론이 유지된다.
+  - `/Users/alex/project/altteulmap/docs/project/mobile-qa-checklist.md`를 추가해 iPhone Safari, Android Chrome 기준 public/admin 실기기 검증 항목과 기록 템플릿을 정리했다.
+  - `/Users/alex/project/altteulmap/docs/deploy/deploy-cloudflare.md`, `/Users/alex/project/altteulmap/docs/deploy/cloudflare-account-to-deploy.md`, `/Users/alex/project/altteulmap/docs/README.md`에 새 진단 명령과 체크리스트 링크를 반영했다.
+- 검증 결과
+  - `npm run db:check:production` 실행 결과:
+    - `host=aws-1-ap-northeast-2.pooler.supabase.com`
+    - `port=6543`
+    - `status=failed`
+    - `message=Tenant or user not found`
+    - conclusion: `URL encoding이 아니라 stale/wrong credential`
+  - raw password object connection / encoded URL connection 비교 테스트 둘 다 `Tenant or user not found` 확인
+  - `npm run verify:quick` 통과
+- 메모
+  - 현재 환경에서 Cloudflare/GitHub secret value 자체는 읽을 수 없으므로, 실제 복구는 저장소 밖의 운영 credential source를 다시 가져와 갱신해야 한다.
+  - 이제 다음 세션은 `db:check:production`으로 먼저 진단하고, credential이 복구되면 그 즉시 migration 존재 여부와 schema 상태를 다시 확인하면 된다.
+
+### 2026-04-12 11:32 KST: Phase D backlog freeze를 현재 범위 기준으로 고정
+- 완료 내용
+  - `/Users/alex/project/altteulmap/docs/project/PLAN.md`에서 `Cycle 12`의 `출시 직전 backlog를 정리해 다음 cycle 범위를 고정한다` 작업을 `pending -> done`으로 정리했다.
+  - search URL 상태는 현재 `q/scope` URL 반영 범위만 유지하고 추가 검색/탐색 확장은 보류하도록 문서에 명시했다.
+  - 공유 telemetry는 현재 관리자 overview의 공유 유입/source breakdown 범위까지만 유지하고, 추천/랭킹 확장으로 이어지는 추가 개발은 현재 cycle에서 동결한다고 명시했다.
+  - `bang`, `deal`, 사진 업로드, 랭킹 화면, 프론트엔드 디자인 polish도 현재 출시 범위에서 계속 제외한다고 같은 문서에 고정했다.
+- 검증 결과
+  - 문서 정리 작업이라 별도 코드/배포 명령은 실행하지 않았다.
+- 메모
+  - 현재 남은 일은 문서 판단이 아니라 실제 blocker 처리다. 즉 운영 DB credential 복구와 실기기 QA가 다음 실행 대상이다.
+
+### 2026-04-12 11:20 KST: Phase C 운영 URL을 `workers.dev` split 기준으로 고정
+- 완료 내용
+  - `/Users/alex/project/altteulmap/docs/project/PLAN.md`에서 `Cycle 12`의 `운영 URL 전략을 최종 고정한다` 작업을 `in_progress -> done`으로 정리했다. 현재 운영 기준은 public `https://altteulmap.altteul-lab.workers.dev`, admin `https://altteulmap-admin.altteul-lab.workers.dev`다.
+  - `/Users/alex/project/altteulmap/README.md`의 rollout/next 설명을 현재 운영 기준에 맞춰 갱신했다. launch URL은 `workers.dev` split으로 고정하고, custom domain은 별도 후속 작업으로만 남겼다.
+  - `/Users/alex/project/altteulmap/docs/deploy/deploy-cloudflare.md`, `/Users/alex/project/altteulmap/docs/deploy/cloudflare-account-to-deploy.md`도 현재 운영 기준을 `workers.dev` split으로 명시하도록 정리했다. 기존의 `첫 배포 후 custom domain 전환 권장` 톤은 `선택적 후속 작업`으로 낮췄다.
+- 검증 결과
+  - `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev SMOKE_ADMIN_URL=https://altteulmap-admin.altteul-lab.workers.dev npm run smoke:remote` 통과
+  - smoke 결과:
+    - `home canonical=https://altteulmap.altteul-lab.workers.dev`
+    - `robots=ok`
+    - `sitemap=ok`
+    - `sample place canonical=https://altteulmap.altteul-lab.workers.dev/place/goodprice-14501`
+    - `public /admin redirect=https://altteulmap-admin.altteul-lab.workers.dev/admin`
+    - `public admin api=https://altteulmap-admin.altteul-lab.workers.dev/admin/places`
+    - `admin /admin redirect=/login?callbackUrl=%2Fadmin`
+    - `admin login=ok`
+- 메모
+  - custom domain 자체를 금지한 것은 아니다. 다만 현재 출시 기준에서는 DNS/OAuth callback/canonical 재정렬 비용이 더 크므로, 별도 cycle로 분리했다.
+  - 현재 남은 실제 blocker는 운영 DB credential 복구와 모바일 실기기 QA다.
+
+### 2026-04-10 12:33 KST: Phase B live QA 1차(Chromium emulation + remote admin)
+- 완료 내용
+  - live public/admin URL 기준으로 Phase B 핵심 흐름의 1차 운영 QA를 진행했다. 실기기 대신 현재 환경에서 가능한 Chromium desktop/mobile emulation과 remote auth/tail 조합으로 확인했다.
+  - public 쪽은 desktop emulation에서 지도 패널, `현재 위치`, `이 지역 검색` 버튼 노출을 확인했다.
+  - public 쪽은 mobile emulation에서 지도 패널, `목록 보기`, `현재 위치`, `이 지역 검색` 버튼 노출을 확인했다.
+  - admin 쪽은 browser login script가 URL 대기 타이밍 때문에 불안정해, 실제 운영 기준으로는 credentials callback + `/admin/reports` 연속 요청 + `wrangler tail` 로그를 기준으로 확인했다.
+- 검증 결과
+  - `node -e "const { chromium } = require('playwright'); ..."` 기준 desktop live check 결과:
+    `{\"flow\":\"public-desktop-min\",\"mapVisible\":true,\"current\":true,\"refresh\":true}`
+  - `node -e "const { chromium, devices } = require('playwright'); ..."` 기준 mobile emulation live check 결과:
+    `{\"flow\":\"public-mobile-min\",\"mapVisible\":true,\"openButtonVisible\":true,\"current\":true,\"refresh\":true}`
+  - remote admin credentials callback + `/admin/reports` 연속 3회 요청 결과:
+    `request_1=200`, `request_2=200`, `request_3=200`
+  - `wrangler tail -c wrangler.admin.jsonc --format pretty` 기준 같은 흐름에서 `POST /api/auth/callback/credentials`와 `GET /admin/reports` 3회가 모두 `Ok`
+  - `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev SMOKE_ADMIN_URL=https://altteulmap-admin.altteul-lab.workers.dev npm run smoke:remote` 통과
+- 메모
+  - 이번 QA는 실제 iPhone Safari/Android Chrome이 아니라 Chromium emulation이다. 따라서 `drag 감각`, `현재 위치 권한 UX`, `실제 모바일 브라우저 제스처`는 아직 실기기 확인이 필요하다.
+  - admin browser automation은 live URL 대기 타이밍 때문에 flaky했지만, 실제 운영 callback과 tail 로그 기준으로는 관리자 보고서 큐와 AI 패널 흐름이 정상 응답했다.
+
+### 2026-04-10 12:29 KST: degraded admin 반복 요청 hang 완화
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/admin/repository.ts`의 admin overview 조회 앞단에 짧은 DB probe를 넣어, broken DB에서 overview fan-out 쿼리를 한 번에 퍼뜨리지 않도록 바꿨다.
+  - `/Users/alex/project/altteulmap/src/features/admin/pages/dashboard-page.tsx`, `/Users/alex/project/altteulmap/src/features/admin/pages/places-page.tsx`, `/Users/alex/project/altteulmap/src/features/admin/pages/prices-page.tsx`, `/Users/alex/project/altteulmap/src/features/admin/pages/reports-page.tsx`는 `Promise.all` 병렬 조회를 직렬 read로 바꿨다. degraded 상태에서는 첫 실패가 circuit을 열고 뒤 read는 즉시 mock으로 내려가도록 만든 변경이다.
+  - sync 결과로 `/Users/alex/project/altteulmap/src/features/admin/entrypoints/pages/dashboard-page.tsx`, `/Users/alex/project/altteulmap/src/features/admin/entrypoints/pages/places-page.tsx`, `/Users/alex/project/altteulmap/src/features/admin/entrypoints/pages/prices-page.tsx`, `/Users/alex/project/altteulmap/src/features/admin/entrypoints/pages/reports-page.tsx`도 같은 내용으로 갱신했다.
+  - public/admin worker를 다시 배포했다. 현재 live version은 public `f28aa986-5f32-4266-a9ec-9f6aabc5c91c`, admin `c8165b6d-946d-4139-87e1-5b22013a1b38`다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+  - `npm run deploy:admin` 통과
+  - `npm run deploy:public` 통과
+  - `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev SMOKE_ADMIN_URL=https://altteulmap-admin.altteul-lab.workers.dev npm run smoke:remote` 통과
+  - remote credentials callback 이후 `/admin/reports` 3회 연속 `curl` 요청에서 `request_1=200`, `request_2=200`, `request_3=200` 확인
+  - `wrangler tail -c wrangler.admin.jsonc --format pretty` 기준으로 `POST /api/auth/callback/credentials`와 이어진 `GET /admin/reports` 3회가 모두 `Ok`였고, 직전 턴에 보이던 hung exception은 재현되지 않음
+- 메모
+  - 운영 DB는 여전히 깨져 있으므로 admin read는 계속 mock fallback 로그를 남긴다. 다만 지금은 반복 요청에서도 관리자 화면이 정상 응답하는 쪽으로 안정화됐다.
+  - 다음 우선순위는 그대로 production DB credential 복구와 `moderation_suggestions` migration 적용이다. 그 전까지는 degraded 운영 경로를 기준으로 QA를 이어갈 수 있다.
+
+### 2026-04-10 12:24 KST: DB 장애 circuit breaker 추가와 remote auth callback 복구
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/db/client.ts`에 짧은 DB 장애 circuit breaker를 추가했다. `Tenant or user not found`, DNS/connection timeout류 에러가 한 번 발생하면 같은 runtime 인스턴스가 잠시 DB를 다시 두드리지 않고 mock fallback으로 바로 내려가도록 정리했다.
+  - `/Users/alex/project/altteulmap/src/features/places/repository.ts`, `/Users/alex/project/altteulmap/src/features/reports/repository.ts`, `/Users/alex/project/altteulmap/src/features/admin/repository.ts`, `/Users/alex/project/altteulmap/src/features/bookmarks/repository.ts`에서 주요 read/fallback catch에 circuit mark를 연결했다. 목적은 운영 DB가 죽어 있을 때 지도/관리자 개요/신고/북마크 read가 매번 같은 실패를 반복하지 않게 하는 것이다.
+  - `/Users/alex/project/altteulmap/src/features/auth/repository.ts`에도 처음에는 같은 circuit mark를 넣었지만, Cloudflare Workers runtime에서 credentials callback이 `1101 hung request`로 깨지는 회귀를 확인했다. auth 경로에서는 이 mark를 제거하고 degraded login fallback만 유지하도록 되돌렸다.
+  - public/admin worker를 다시 배포했고, 최종 live version은 public `24f6b57f-a808-4668-a1b1-18873f9f1bcc`, admin `0f4ffb4a-50fe-417e-884c-a29cf89c7135`다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+  - `DATABASE_URL=postgresql://example:example@127.0.0.1:5432/example USE_MOCK_DATA=false npx tsx ...`로 circuit helper 검증:
+    `tenantError=true`, `missingTable=false`, `before=true -> after-mark=false -> after-expire=true`
+  - `node`/`postgres` 직접 접속 테스트에서 `.env.production.local`의 Supabase pooler credential 후보는 URL-safe 인코딩을 적용해도 `Tenant or user not found` 동일 응답 확인
+  - `npm run deploy:admin` 통과
+  - `npm run deploy:public` 통과
+  - `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev SMOKE_ADMIN_URL=https://altteulmap-admin.altteul-lab.workers.dev npm run smoke:remote` 통과
+  - remote credentials callback 수동 검증에서 `callback_status=200`, `report_status=200`, `final_url=/admin/reports`, `ai_panel_count=3`, `has_ai_text=true` 확인
+  - `wrangler tail` 기준으로 remote `/api/auth/callback/credentials`는 최종 배포본에서 `Ok`, `/admin/reports` 1차 요청도 `Ok` 확인
+- 메모
+  - 운영 DB 복구 자체는 여전히 안 됐다. 현재 `.env.production.local`과 live secret 계열에서 사용 중인 Supabase credential이 stale 또는 잘못된 값일 가능성이 높다.
+  - 이번 턴의 실질 결과는 persisted live 전환이 아니라 degraded 운영 경로의 안정화다. 사용자 흐름은 다시 살아 있지만, `moderation_suggestions` migration 적용과 실데이터 복구는 별도 blocker로 남아 있다.
+
+### 2026-04-10 12:12 KST: Phase A degraded fallback live 반영과 원격 검증
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/admin/moderation-agent.ts`에서 `moderation_suggestions` read/write를 감싸, live DB에 테이블이나 enum이 아직 없거나 읽기 자체가 실패해도 관리자 큐가 비영속 AI suggestion으로 계속 열리게 했다.
+  - `/Users/alex/project/altteulmap/src/features/auth/repository.ts`에서 DB disabled/error 시 known demo/admin 계정의 degraded fallback 로그인이 계속 되도록 보강했다. 운영 DB가 깨진 상태에서도 canonical fallback password로 local admin/demo user를 열 수 있게 좁게 정리했다.
+  - `/Users/alex/project/altteulmap/docs/project/PLAN.md`의 `Phase A`와 `다음 실행 순서`를 현재 blocker 기준으로 다시 갱신했다. 현재 남은 핵심은 재배포가 아니라 운영 DB credential 복구와 migration 적용이다.
+  - public/admin worker를 다시 배포했다. 현재 live version은 public `be8a3046-9696-4e31-827a-c0343b33a110`, admin `758cdf40-6e16-4cc2-8ab4-622c07b5a0a9`다.
+  - live `https://altteulmap-admin.altteul-lab.workers.dev/admin/reports`에 `admin@altteulmap.local` + fallback credential로 로그인해, 최종 URL이 `/admin/reports`로 유지되고 AI 패널이 실제로 렌더되는 것을 확인했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+    build 중 live DB 조회는 여전히 `Tenant or user not found`로 실패했지만, mock fallback으로 빌드는 완료됨
+  - `npm run deploy:admin` 통과
+  - `npm run deploy:public` 통과
+  - `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev SMOKE_ADMIN_URL=https://altteulmap-admin.altteul-lab.workers.dev npm run smoke:remote` 통과
+  - `curl` cookie-jar 기준 `GET /api/auth/csrf -> POST /api/auth/callback/credentials -> GET /admin/reports` 검증에서 `callback_status=200`, `final_url=/admin/reports`, `has_ai_text=true`, `ai_panel_count=3` 확인
+- 메모
+  - 운영 DB probe와 build/deploy 로그는 계속 `Tenant or user not found`를 반환했다. 즉 persisted `moderation_suggestions` migration 적용 자체는 아직 못 했다.
+  - 현재 `workers.dev`는 degraded but usable 상태다. 관리자 로그인과 mock 관리자 큐, `AI 1차 검수` 패널은 살아 있고, persistence/live DB 경로만 blocker로 남아 있다.
+  - 다음 시작점은 production `DATABASE_URL`/tenant credential 복구, `moderation_suggestions` migration 적용, 그 다음 live admin queue 재확인이다.
+
+### 2026-04-10 11:51 KST: 남은 일의 현실적 실행 계획 상세화
+- 완료 내용
+  - `/Users/alex/project/altteulmap/docs/project/PLAN.md`의 `Cycle 12`를 실제 운영 기준으로 다시 쪼갰다. 단순 우선순위 대신 `Phase A: AI 검수 live rollout`, `Phase B: 운영 도메인/모바일 QA`, `Phase C: 운영 URL 최종 고정`, `Phase D: backlog freeze` 4단계로 정리했다.
+  - 각 단계에 `목표`, `작업`, `현실적 체크포인트`, `완료 기준`, `중단 기준`을 추가해 다음 세션에서 바로 실행 판단을 할 수 있게 했다.
+  - 새 계획은 디자인 polish를 배제하고, 운영 반영과 QA, URL 기준 정리에만 집중하도록 고정했다.
+- 검증 결과
+  - 계획 정리 전용 세션이라 별도 코드/배포 검증은 실행하지 않았다.
+- 메모
+  - 다음 구현/실행 시작점은 `Phase A`다. 즉 live DB migration 적용 여부 확인과 public/admin 재배포부터 시작하면 된다.
+
+### 2026-04-10 11:51 KST: 프론트엔드 디자인 polish 범위 제외
+- 완료 내용
+  - `/Users/alex/project/altteulmap/docs/project/PLAN.md`의 현재 우선순위에서 별도 공개 UI polish 항목을 제거하고, 남은 일은 `AI 검수 live 반영`, `운영 QA`, `운영 URL 고정`, `검색 URL 상태/공유 telemetry 판단` 중심으로 다시 정리했다.
+  - 같은 문서의 `부분 구현`과 `결정 메모`에도 프론트엔드 디자인/비주얼 polish는 현재 수준을 유지하고, 기능 버그가 아닌 이상 현재 범위에서 제외한다는 결정을 명시했다.
+  - `Cycle 12`의 backlog 정리 항목도 같은 기준으로 업데이트해 다음 세션이 UI redesign이나 추가 motion polish로 흐르지 않도록 고정했다.
+- 검증 결과
+  - 문서 결정 반영 작업이라 별도 코드 검증은 실행하지 않았다.
+- 메모
+  - 현재 남은 일은 기능 추가보다 live rollout, QA, 운영 설정 고정 쪽이다.
 
 ### 2026-04-06 14:05 KST: README rollout 계획 보강과 후속 실행 순서 정리
 - 완료 내용
@@ -259,6 +434,18 @@
 
 ### 2026-04-05 12:52 KST: `대표 가격 8천원 미만` 데이터셋 변경 push 및 public Cloudflare 재배포
 - 완료 내용
+
+### 2026-04-06 14:55 KST: README 작업 후 남은 로컬 산출물 정리
+- 완료 내용
+  - `/Users/alex/project/altteulmap/.next`, `/Users/alex/project/altteulmap/.next-dev`, `/Users/alex/project/altteulmap/.open-next`, `/Users/alex/project/altteulmap/apps/admin/.next`, `/Users/alex/project/altteulmap/apps/admin/.open-next`, `/Users/alex/project/altteulmap/test-results`, `/Users/alex/project/altteulmap/tsconfig.tsbuildinfo`, `/Users/alex/project/altteulmap/.wrangler`를 삭제했다.
+  - 모두 로컬에서 다시 생성 가능한 빌드/테스트 산출물과 캐시만 대상으로 삼았고, README 스크린샷·문서·소스 파일은 건드리지 않았다.
+- 검증 결과
+  - `git status --short --branch` 확인 결과 tracked 변경 없음
+  - 삭제 전 대상 산출물 합계: `701,897,781 bytes`
+  - 삭제 후 대상 산출물 합계: `0 bytes`
+  - 확보 용량: 약 `669.38 MB`
+- 메모
+  - 필요 시 루트 정리는 `npm run clean:artifacts`로 다시 반복할 수 있다. `.wrangler`는 별도로 재생성되므로 필요할 때만 남기고 평소에는 지워도 된다.
   - `대표 가격 8천원 미만` 데이터셋/문서 변경을 `fix(data): tighten goodprice price ceiling` (`ab7ae4f`)로 커밋하고 `codex/ui-polish-batch` 브랜치에 push했다.
   - public worker는 새 imported dataset이 반영된 상태로 다시 배포했다.
 - 검증 결과
@@ -2305,7 +2492,7 @@
   - 현재 로컬 `.env`, Docker Postgres, 네이버 지도 키가 이미 준비돼 있어 다음 cycle은 기능 확장에 바로 들어갈 수 있다.
 
 ## 다음 작업
-1. 카카오 또는 네이버 실제 developer 설정으로 외부 로그인 end-to-end 검증
-2. 실제 도메인이 정해지면 `NEXTAUTH_URL`을 운영 주소로 바꾸고 `npm run deploy:check` 재실행
-3. 필요 시 캐시/재검증 정책을 추가 보강해 관리자 승인 직후 상세 반영 지연을 더 줄이기
-4. 이후 E2E 자동화 도입 여부 판단
+1. production `DATABASE_URL`/tenant credential을 복구하고 `moderation_suggestions` migration을 실제 운영 DB에 적용
+2. migration 이후 public/admin worker를 다시 재배포하고 live 관리자 큐가 mock이 아닌 persisted 경로에서도 `AI 1차 검수` 패널을 유지하는지 확인
+3. iPhone Safari, Android Chrome 기준으로 `현재 위치`, `이 지역 검색`, 시트 drag, 관리자 AI 패널까지 포함한 Phase B 실사용 QA 수행
+4. backlog freeze 결정은 유지하고, 새 기능보다 운영 안정화와 실사용 QA에만 집중

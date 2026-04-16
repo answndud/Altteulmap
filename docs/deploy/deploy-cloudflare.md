@@ -8,15 +8,23 @@
 - 계정 생성부터 첫 배포까지의 전체 절차는 아래 문서를 함께 본다.
   - `cloudflare-account-to-deploy.md`
 
+## 현재 운영 기준
+- 현재 운영 URL은 custom domain이 아니라 `workers.dev` split이다.
+- public: `https://altteulmap.altteul-lab.workers.dev`
+- admin: `https://altteulmap-admin.altteul-lab.workers.dev`
+- `NEXTAUTH_URL`, `SITE_URL`, `ADMIN_APP_URL`, canonical, robots, sitemap, admin redirect는 위 두 주소를 기준으로 유지한다.
+- custom domain은 별도 cycle에서 DNS, callback, canonical을 다시 묶어 처리할 후속 작업이다.
+
 ## 1. 배포 전 필수 확인
 1. `npm run verify`
-2. `npm run smoke:local`
-3. `npm run smoke:remote`
-4. `USE_MOCK_DATA=false`
-5. 운영 DB 연결 문자열 준비
-6. `NEXTAUTH_URL`을 실제 배포 도메인으로 변경
-7. 관리자 앱을 분리할 경우 public 앱 `ADMIN_APP_URL`, admin 앱 `SITE_URL`까지 준비
-8. 네이버 지도 키와 OAuth callback URL을 운영 도메인 기준으로 등록
+2. `npm run db:check:production`
+3. `npm run smoke:local`
+4. `npm run smoke:remote`
+5. `USE_MOCK_DATA=false`
+6. 운영 DB 연결 문자열 준비
+7. `NEXTAUTH_URL`을 실제 배포 도메인으로 변경
+8. 관리자 앱을 분리할 경우 public 앱 `ADMIN_APP_URL`, admin 앱 `SITE_URL`까지 준비
+9. 네이버 지도 키와 OAuth callback URL을 운영 도메인 기준으로 등록
 
 ## 2. 필수 환경 변수
 - `DATABASE_URL`
@@ -80,6 +88,7 @@
 ## 6. 로컬 사전 점검 명령
 ```bash
 npm run verify
+npm run db:check:production
 npm run smoke:local
 npm run smoke:remote
 npm run deploy:check
@@ -94,6 +103,7 @@ npm run smoke:remote
 ```
 
 이 스크립트는 public `/`, `/robots.txt`, `/sitemap.xml`, sample place canonical, public `/admin`, public `/api/admin/places`, admin `/admin`, admin `/login`을 읽기 전용으로 확인한다.
+`db:check:production`은 현재 `DATABASE_URL`로 실제 연결, moderation schema 유무, drizzle migration table 유무를 확인하고, `Tenant or user not found`가 나오면 URL encoding이 아니라 stale credential 문제라는 점까지 분리해준다.
 
 배포는 목적에 따라 아래를 사용한다.
 

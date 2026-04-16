@@ -2,7 +2,7 @@ import "server-only";
 
 import { and, desc, eq, gt, or, sql } from "drizzle-orm";
 
-import { getDb, isDatabaseEnabled } from "@/db/client";
+import { getDb, isDatabaseEnabled, markDatabaseUnavailable } from "@/db/client";
 import {
   authSessions,
   contentReports,
@@ -110,6 +110,14 @@ function getVisitMetricsFallback(): VisitMetrics {
 async function getDatabaseAdminOverview(): Promise<AdminOverviewResult> {
   const db = getDb();
   const now = new Date();
+
+  // Probe the current connection once before fanning out into many overview queries.
+  await db
+    .select({
+      id: users.id,
+    })
+    .from(users)
+    .limit(1);
 
   const [
     [userCountsRow],
@@ -226,6 +234,7 @@ export async function getAdminOverview() {
   try {
     return await getDatabaseAdminOverview();
   } catch (error) {
+    markDatabaseUnavailable(error);
     console.error("Failed to load admin overview. Falling back to mock data.", error);
 
     return getMockAdminOverview();

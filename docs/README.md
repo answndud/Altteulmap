@@ -11,3 +11,4 @@
 ## Project Workflow
 - [PLAN](project/PLAN.md)
 - [PROGRESS](project/PROGRESS.md)
+- [Mobile QA checklist](project/mobile-qa-checklist.md)

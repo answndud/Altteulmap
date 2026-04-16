@@ -4,7 +4,7 @@ import { desc, eq } from "drizzle-orm";
 
 import { ensureContentReportModerationSuggestions } from "@/features/admin/moderation-agent";
 import type { ModerationSuggestionRecord } from "@/features/admin/moderation-suggestion";
-import { getDb, isDatabaseEnabled } from "@/db/client";
+import { getDb, isDatabaseEnabled, markDatabaseUnavailable } from "@/db/client";
 import { adminActions, contentReports, places } from "@/db/schema";
 import { mockReports, type MockReportRecord } from "@/features/reports/mock-data";
 import type {
@@ -272,6 +272,7 @@ export async function listReports() {
   try {
     return await listDatabaseReports();
   } catch (error) {
+    markDatabaseUnavailable(error);
     console.error("Failed to load reports from database. Falling back to mock data.", error);
 
     return listMockReports();
@@ -295,6 +296,7 @@ export async function createReportSubmission(
   try {
     return await createDatabaseReportSubmission(input, reporterUserId);
   } catch (error) {
+    markDatabaseUnavailable(error);
     console.error("Failed to persist report submission. Falling back to mock preview.", error);
 
     return {
@@ -324,6 +326,7 @@ export async function updateReportStatus(
   try {
     return await updateDatabaseReportStatus(id, input, adminUserId);
   } catch (error) {
+    markDatabaseUnavailable(error);
     console.error("Failed to update report status.", error);
 
     return {

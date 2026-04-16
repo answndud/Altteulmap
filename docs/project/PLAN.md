@@ -1,6 +1,6 @@
 # PLAN.md
 
-기준일: 2026-04-06  
+기준일: 2026-04-12  
 목표: Altteulmap를 `지도 기반 절약 장소 탐색 + 가격 제보` 서비스 기준에서 MVP 완성도와 출시 준비 수준까지 끌어올린다.
 
 ## 운영 규칙
@@ -21,18 +21,105 @@
   - 핫딜 `deal`
 
 ## 현재 우선순위
-1. AI 검수 1차 live rollout: `moderation_suggestions` migration 적용, public/admin 재배포, live 관리자 큐 확인
-2. 운영 품질/QA 후속 정리: 운영 도메인 smoke 심화, 모바일 제스처 실사용 검증, `현재 위치`/`이 지역 검색`/AI 검수 패널 실기기 확인
-3. 운영 도메인 출시 마감: `workers.dev` 유지 또는 custom domain 적용 여부 확정, canonical/robots/sitemap/auth URL 최종 점검
-4. 공개 UI 잔여 polish: 검색 URL 상태와 소규모 상호작용 polish 정리
-5. 공유 telemetry 후속 활용 범위 판단: 현재 지표를 더 확장할지, 현 범위에서 동결할지 결정
+1. AI 검수 1차 live rollout 마감: 운영 DB `DATABASE_URL`/migration access 복구, `moderation_suggestions` 적용, public/admin persisted live 경로 확인
+2. 운영 품질/QA 후속 정리: 운영 도메인 smoke 심화, 모바일 제스처 실사용 검증, `현재 위치`/`이 지역 검색`/AI 검수 패널 실기기 확인, 지도 첫 진입 체감 성능 보정
+3. repo 상태 유지: 배포 문서, smoke 경로, Cloudflare build 설정, repo-local workflow 유지
 
 ## 다음 실행 순서
-1. live DB에 `moderation_suggestions` migration을 적용하고 admin/public worker를 재배포한다.
-2. live 관리자 큐에서 장소 등록/가격 제보/신고 카드의 `AI 1차 검수` 패널 노출과 기존 승인/반려 동작을 확인한다.
-3. 운영 도메인 기준 read-only smoke와 모바일 실기기 QA로 지도/제스처/현재 위치/AI 패널을 다시 점검한다.
-4. `workers.dev`를 그대로 운영할지, custom domain을 붙일지 결정한 뒤 canonical/auth URL/sitemap을 최종 고정한다.
-5. 위 1~4가 끝난 뒤 검색 URL 상태와 공유 telemetry 확장 여부를 다음 cycle 범위로 재판단한다.
+1. live `DATABASE_URL`/migration access를 복구하고 `moderation_suggestions` migration을 적용한다.
+2. public/admin worker를 현재 코드 기준으로 다시 재배포하고, live 관리자 큐에서 장소 등록/가격 제보/신고 카드의 `AI 1차 검수` 패널이 persistence 기준으로 붙는지 확인한다.
+3. `workers.dev` degraded fallback 로그인과 mock 관리자 큐도 함께 유지되는지 확인한 뒤, 운영 도메인 기준 모바일 실기기 QA로 지도/제스처/현재 위치/AI 패널을 다시 점검한다.
+4. 현재 운영 URL은 `workers.dev` split(`altteulmap.altteul-lab.workers.dev`, `altteulmap-admin.altteul-lab.workers.dev`)으로 유지하고, custom domain은 별도 cycle로 분리한다.
+5. 검색 URL 상태와 공유 telemetry는 현재 범위(`q/scope` URL 반영, 관리자 overview share breakdown)로 동결 유지한다. 프론트엔드 디자인 polish는 현재 범위에서 제외한다.
+
+## 현실적 실행 계획
+
+### 원칙
+- 새 기능 추가보다 `live 반영 -> 실사용 QA -> 운영 URL 고정 -> backlog 정리` 순서로 간다.
+- 프론트엔드 디자인 polish는 현재 범위에서 제외하고, 실제로 사용자 흐름을 막는 기능 문제만 수정한다.
+- 각 단계는 다음 단계의 입력값을 만들 정도까지만 진행하고, blocker가 생기면 즉시 `PROGRESS.md`에 남긴다.
+
+### Phase A: AI 검수 live rollout
+- 목표
+  - 로컬에서 끝난 `AI 1차 검수`를 실제 운영 경로에 반영한다.
+- 작업
+  - 운영 DB `DATABASE_URL`/credential 상태 확인 및 복구
+  - 운영 DB credential/migration 상태를 빠르게 확인하는 진단 스크립트 유지
+  - 운영 DB의 `moderation_suggestions` 적용 상태 확인
+  - 필요 시 migration 적용
+  - public/admin worker 재배포
+  - live 관리자 큐에서 `place_submission`, `price_report`, `content_report` 3종 카드 확인
+  - remote smoke 재실행
+- 현실적 체크포인트
+  - Cloudflare Builds가 아니라 로컬 deploy 경로가 더 안정적이면 그 경로를 우선 사용한다
+  - admin/public 중 하나라도 env나 binding이 어긋나면 배포를 멈추고 설정부터 고친다
+  - 운영 DB migration 접근이 당장 막혀 있으면, 관리자 큐가 깨지지 않도록 AI 제안을 비영속 fallback으로라도 보여준 뒤 persistence는 별도 blocker로 분리한다
+  - 운영 DB 연결이 깨져도 `workers.dev` 데모는 known demo/admin 계정 로그인과 mock fallback 관리자 큐까지는 계속 열리게 유지한다
+  - 현재는 degraded fallback 경로가 먼저 살아 있어야 하고, persisted live 전환은 운영 DB credential 복구 이후에 마무리한다
+- 완료 기준
+  - live 관리자 큐에서 AI 패널이 실제 데이터에 대해 보인다
+  - 승인/반려/상태 변경이 기존처럼 동작한다
+  - remote smoke 결과가 `PROGRESS.md`에 남는다
+- 중단 기준
+  - 운영 DB migration 실패
+  - admin/public worker 응답 계약이 깨짐
+  - AI 패널이 live에서 subject type 일부에만 붙는 경우
+
+### Phase B: 운영 도메인/모바일 QA
+- 목표
+  - 자동화가 못 잡는 실사용 문제를 최소 범위로 확인한다
+- 작업
+  - public: 홈 진입, 현재 위치, 지도 드래그, `이 지역 검색`, cluster 확대/축소, 상세 시트 열기/닫기
+  - 공개 쓰기: 익명 장소 등록, 댓글, 가격 제보, 신고 중 최소 핵심 1회씩 확인
+  - admin: 로그인, 장소 등록/가격 제보/신고 큐, AI 패널 노출 확인
+  - 기기: iPhone Safari 1대, Android Chrome 1대 기준
+  - 실기기 QA 체크리스트와 기록 포맷을 문서로 유지
+  - 과도한 home prefetch, 초기 목록 DOM, 초기 telemetry 네트워크를 줄여 지도-first 체감을 보정
+- 현실적 체크포인트
+  - 모든 조합을 다 보는 대신 `지도 탐색`, `익명 쓰기`, `관리자 검수` 3개 흐름만 본다
+  - 디자인 감각보다 기능 파손 여부를 우선 기록한다
+  - 발견 이슈는 `출시 막는 문제`와 `후속 개선`으로 분리한다
+- 완료 기준
+  - 각 핵심 흐름에 대해 `통과/실패/재현 조건`이 체크리스트로 남는다
+  - 치명 이슈가 없거나, 있으면 다음 fix task로 분리된다
+- 중단 기준
+  - 현재 위치 권한/지도 재조회/시트 제스처가 실기기에서 반복적으로 실패
+  - admin AI 패널이 모바일 또는 운영 도메인에서 렌더되지 않음
+
+### Phase C: 운영 URL 최종 고정 (완료)
+- 목표
+  - 현재 운영 URL 기준을 `workers.dev` split으로 하나로 고정한다
+- 작업
+  - 현재 `workers.dev` 기준 canonical, robots, sitemap, auth callback 확인
+  - 문서, README, 배포 가이드의 운영 URL 설명을 `workers.dev` split 기준으로 통일한다
+  - custom domain은 `선택적 후속 작업`으로만 남기고 현재 출시 범위에서는 제외한다
+- 현실적 체크포인트
+  - custom domain이 제품 출시에 필수가 아니면 억지로 진행하지 않는다
+  - 도메인 자체보다 `URL 기준이 문서/배포/env에서 하나로 맞는지`가 더 중요하다
+- 완료 기준
+  - 운영 URL 기준이 `workers.dev` split으로 고정되고 문서와 env 설명이 일치한다
+  - public `/`, `/robots.txt`, `/sitemap.xml`, `/admin`, `/api/admin/places` 점검 결과가 남는다
+- 중단 기준
+  - 도메인/DNS 제어권이 불명확
+  - OAuth callback이나 Auth.js URL이 도메인 전환으로 더 불안정해짐
+
+### Phase D: backlog freeze (완료)
+- 목표
+  - 출시 직전까지 더 개발할 것과 여기서 멈출 것을 명확히 자른다
+- 작업
+  - 검색 URL 상태는 현재 `q/scope` 반영 범위로 유지하고 추가 확장은 보류한다
+  - 공유 telemetry는 현재 관리자 overview/source breakdown 범위로 유지하고 추천/랭킹 확장은 동결한다
+  - `bang`, `deal`, 사진 업로드, 랭킹 화면은 계속 제외 상태로 유지
+- 현실적 체크포인트
+  - 지금 당장 사용자 가치나 운영 안정성에 직접 연결되지 않으면 동결 쪽을 우선한다
+- 완료 기준
+  - 다음 cycle의 범위와 제외 항목이 문서에 명확히 적히고, search URL/telemetry는 현재 범위에서 유지로 고정된다
+
+### 예상 순서와 소요 감각
+- Phase A: 반나절 ~ 1일
+- Phase B: 반나절
+- Phase C: 반나절 이내
+- Phase D: 문서 정리 중심으로 짧게 마감
 
 ## 최근 완료 메모
 - README 포트폴리오 랜딩과 live 스크린샷 세트는 완료했다. 현재 GitHub 첫 화면에서는 제품 개요, 실데이터/배포 포인트, 핵심 화면, AI-native workflow를 짧게 확인할 수 있다.
@@ -69,7 +156,7 @@
 
 ### 부분 구현
 - 모바일 바텀시트 UX
-  - 모바일 목록/상세는 inset drawer와 접기 패널 기준으로 재정리했다. 다만 제스처 스냅 감각과 더 미세한 모션 polish는 추가 여지가 있다
+  - 모바일 목록/상세는 inset drawer와 접기 패널 기준으로 재정리했다. 현재는 기능적으로 운영 가능한 수준으로 보고, 추가 디자인/모션 polish는 현재 범위에서 제외한다
 - 검색 URL 상태
   - 검색어/검색 범위는 반영되지만 지도 중심/줌 상태까지는 아직 URL에 싣지 않음
 - 출시 준비
@@ -111,10 +198,10 @@
 ### Cycle 12: AI 검수 live 반영과 출시 마감 정리
 | 작업명 | 담당 에이전트 | 우선순위 | 상태 | 완료기준(DoD) | 의존성 |
 |---|---|---|---|---|---|
-| `AI 1차 검수` 저장 구조와 UI를 live 환경에 반영한다 | Codex | P1 | `pending` | 운영 DB에 `moderation_suggestions` migration이 적용되고, public/admin worker가 현재 코드 기준으로 재배포되며, live 관리자 큐에서 장소 등록/가격 제보/신고 카드의 AI 패널이 모두 보이고 remote smoke 결과가 `PROGRESS.md`에 남는다 | `src/db/schema.ts`, `drizzle/0010_military_wildside.sql`, `src/features/admin/**`, 배포 스크립트, 운영 DB 접근 |
+| `AI 1차 검수` 저장 구조와 UI를 live 환경에 반영한다 | Codex | P1 | `in_progress` | 운영 DB에 `moderation_suggestions` migration이 적용되고, public/admin worker가 현재 코드 기준으로 재배포되며, live 관리자 큐에서 장소 등록/가격 제보/신고 카드의 AI 패널이 모두 보이고 remote smoke 결과가 `PROGRESS.md`에 남는다. DB access가 복구되기 전까지는 known demo/admin 로그인과 mock fallback 관리자 큐가 유지돼야 한다 | `src/db/schema.ts`, `drizzle/0010_military_wildside.sql`, `src/features/admin/**`, 배포 스크립트, 운영 DB 접근/credential 복구 |
 | 모바일/운영 QA를 실사용 기준으로 다시 점검한다 | Codex | P1 | `pending` | iPhone Safari와 Android Chrome 기준으로 `현재 위치`, `이 지역 검색`, 목록/상세 시트 drag, cluster 확대/축소, 익명 쓰기 핵심 흐름, 관리자 AI 패널 확인 결과가 체크리스트 형태로 `PROGRESS.md`에 남고, 발견된 이슈는 별도 후속 작업으로 분리된다 | live public/admin URL, 모바일 실기기 또는 동등한 실사용 검증 환경, `tests/e2e/**` |
-| 운영 URL 전략을 최종 고정한다 | Codex | P1 | `pending` | `workers.dev` 유지 또는 custom domain 적용 중 하나로 운영 URL 전략이 확정되고, `NEXTAUTH_URL`, `SITE_URL`, `ADMIN_APP_URL`, canonical, robots, sitemap, admin redirect 기준이 문서/배포 설정/검증 로그에 같은 값으로 정리된다 | `docs/deploy/**`, `src/lib/site.ts`, `src/lib/env.ts`, Wrangler/Cloudflare 설정 |
-| 출시 직전 backlog를 정리해 다음 cycle 범위를 고정한다 | Codex | P2 | `pending` | 검색 URL 상태와 공유 telemetry 후속 활용에 대해 `지금 개발 / 보류 / 동결` 중 하나로 결정하고, 다음 cycle의 범위와 제외 항목이 `PLAN.md`/`PROGRESS.md`에 명시된다 | `src/features/map/**`, `src/features/telemetry/**`, `docs/project/PLAN.md`, `docs/project/PROGRESS.md` |
+| 운영 URL 전략을 최종 고정한다 | Codex | P1 | `done` | 현재 운영 URL 기준을 `workers.dev` split(public `altteulmap.altteul-lab.workers.dev`, admin `altteulmap-admin.altteul-lab.workers.dev`)으로 고정했고, `NEXTAUTH_URL`, `SITE_URL`, `ADMIN_APP_URL`, canonical, robots, sitemap, admin redirect 기준을 문서/배포 설정/검증 로그에 맞췄다. custom domain은 별도 후속 작업으로만 남긴다 | `docs/deploy/**`, `src/lib/site.ts`, `src/lib/env.ts`, Wrangler/Cloudflare 설정 |
+| 출시 직전 backlog를 정리해 다음 cycle 범위를 고정한다 | Codex | P2 | `done` | 검색 URL 상태는 현재 `q/scope` URL 반영 범위로 유지하고, 공유 telemetry는 현재 관리자 overview/source breakdown 범위로 동결하며, 프론트엔드 디자인 polish·사진 업로드·랭킹 화면·`bang`·`deal`은 현재 범위에서 계속 제외한다고 `PLAN.md`/`PROGRESS.md`에 명시한다 | `src/features/map/**`, `src/features/telemetry/**`, `docs/project/PLAN.md`, `docs/project/PROGRESS.md` |
 
 ### Cycle 7: repo-local AI workflow setup (완료)
 | 작업명 | 담당 에이전트 | 우선순위 | 상태 | 완료기준(DoD) | 의존성 |
@@ -205,5 +292,6 @@
 - 운영자 대시보드의 활동 지표는 `visit_activity` 테이블에 30분 bucket dedupe 기준으로 적재하고, 현재 `/admin` overview에서 오늘/7일 방문 수, 고유 방문자 수, DAU/WAU, 7일 재방문율, 공유 유입과 source breakdown을 노출한다.
 - 운영 검수 자동화는 1차에서 `장소 등록`, `가격 제보`, `신고` 큐에만 적용하고, `AI 1차 검수 -> 운영자 최종 확정`의 human-in-the-loop 구조를 유지한다.
 - 댓글은 현재 관리자 검수 큐가 없어 AI 검수 1차 범위에서 제외한다.
+- 프론트엔드 디자인/비주얼 polish는 현재 수준을 유지하고, 새 디자인 작업은 기능 버그가 아닌 이상 현재 범위에서 제외한다.
 - 사진 업로드는 저장 용량과 운영 비용 대비 초기 효용이 낮다고 판단해 현재 범위에서 제외한다.
 - 별도 좋아요 랭킹 화면은 현재 범위에서 제외하고, 홈의 `인기 장소` 추천 섹션만 유지한다.

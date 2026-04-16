@@ -64,6 +64,7 @@ export function TrendingPlacesSection({
             >
               <Link
                 href={`/place/${place.id}`}
+                prefetch={false}
                 className="block rounded-[1.2rem] transition hover:bg-stone-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
               >
                 <div className="flex items-start justify-between gap-3">
