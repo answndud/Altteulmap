@@ -70,7 +70,7 @@
 
 - `AI moderation rollout`: `moderation_suggestions` migration 적용 후 public/admin worker를 다시 배포하고 live 관리자 큐에서 AI 패널 노출을 확인합니다.
 - `Operational QA`: iPhone Safari, Android Chrome 기준으로 `현재 위치`, `이 지역 검색`, 목록/상세 시트 제스처, 관리자 AI 검수 패널까지 다시 점검합니다.
-- `Launch decision`: `workers.dev`를 그대로 운영할지 custom domain을 붙일지 결정한 뒤 canonical, sitemap, auth URL을 최종 고정합니다.
+- `Launch URL`: 현재 운영 URL은 `workers.dev` split(public `altteulmap.altteul-lab.workers.dev`, admin `altteulmap-admin.altteul-lab.workers.dev`)으로 고정했고, canonical/sitemap/auth URL도 이 기준으로 유지합니다. custom domain은 별도 후속 작업입니다.
 
 ## Verification
 
@@ -108,6 +108,5 @@ npm run dev
 
 ## Next
 
-- custom domain 최종 적용 여부 확정
-- 모바일 제스처와 소규모 상호작용 polish
-- 공유 telemetry를 추천/랭킹에 더 연결할지 결정
+- 모바일 실기기 QA 마감
+- 운영 DB credential 복구와 `moderation_suggestions` live migration 적용

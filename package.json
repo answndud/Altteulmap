@@ -40,6 +40,7 @@
     "cf:build:public": "npm run cf:clean && node scripts/build-public-worker.mjs",
     "cf:build:admin": "node scripts/build-admin-worker.mjs",
     "db:generate": "drizzle-kit generate",
+    "db:check:production": "node scripts/check-production-db.mjs",
     "db:push": "drizzle-kit push",
     "db:seed": "tsx src/db/seed.ts",
     "data:goodprice": "tsx scripts/import-goodprice.ts",

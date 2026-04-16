@@ -36,10 +36,8 @@ export default async function AdminPlacesPage() {
     );
   }
 
-  const [result, overview] = await Promise.all([
-    listPendingPlaces(),
-    getAdminOverview(),
-  ]);
+  const result = await listPendingPlaces();
+  const overview = await getAdminOverview();
 
   return (
     <main className="bg-stone-50 px-4 py-8 sm:px-6">

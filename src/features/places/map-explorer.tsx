@@ -29,7 +29,8 @@ import type {
   PlaceSearchScope,
 } from "@/features/places/types";
 
-const PLACE_LIST_RENDER_LIMIT = 120;
+const DESKTOP_PLACE_LIST_RENDER_LIMIT = 80;
+const MOBILE_PLACE_LIST_RENDER_LIMIT = 40;
 
 type MapExplorerProps = {
   bookmarkedPlaceIds: string[];
@@ -417,6 +418,8 @@ export function MapExplorer({
   const [isMobileListOpen, setIsMobileListOpen] = useState(false);
   const [mobileListSheetMode, setMobileListSheetMode] =
     useState<MobileSheetMode>("peek");
+  const [isDesktopViewport, setIsDesktopViewport] = useState(false);
+  const [desktopListReady, setDesktopListReady] = useState(false);
   const lastMobileListCloseAtRef = useRef(0);
   const [manualRefreshTick, setManualRefreshTick] = useState(0);
   const shouldSkipInitialFetchRef = useRef(prefetchedOnServer);
@@ -433,7 +436,12 @@ export function MapExplorer({
     zoom: searchScope === "viewport" ? viewport?.zoom ?? null : null,
   });
   const resolvedSelectedPlaceId = selectedPlaceId;
-  const displayPlaces = visiblePlaces.slice(0, PLACE_LIST_RENDER_LIMIT);
+  const displayPlaces = visiblePlaces.slice(
+    0,
+    isDesktopViewport
+      ? DESKTOP_PLACE_LIST_RENDER_LIMIT
+      : MOBILE_PLACE_LIST_RENDER_LIMIT,
+  );
   const isServerTrimmed = visiblePlaces.length < totalPlaceCount;
   const isListTrimmed = displayPlaces.length < visiblePlaces.length;
   const displayMapMarkers = useMemo(
@@ -497,6 +505,69 @@ export function MapExplorer({
     onCollapse: collapseMobileList,
     onExpand: expandMobileList,
   });
+  const shouldRenderDesktopList = isDesktopViewport && desktopListReady;
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(min-width: 1280px)");
+
+    const updateViewport = () => {
+      setIsDesktopViewport(mediaQuery.matches);
+    };
+
+    updateViewport();
+
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", updateViewport);
+    } else {
+      mediaQuery.addListener(updateViewport);
+    }
+
+    return () => {
+      if (typeof mediaQuery.removeEventListener === "function") {
+        mediaQuery.removeEventListener("change", updateViewport);
+      } else {
+        mediaQuery.removeListener(updateViewport);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isDesktopViewport || desktopListReady) {
+      return;
+    }
+
+    let cancelled = false;
+    let idleId: number | null = null;
+    let timeoutId: number | null = null;
+
+    const activateDesktopList = () => {
+      if (!cancelled) {
+        setDesktopListReady(true);
+      }
+    };
+
+    if (typeof window.requestIdleCallback === "function") {
+      idleId = window.requestIdleCallback(() => {
+        activateDesktopList();
+      }, { timeout: 500 });
+    } else {
+      timeoutId = window.setTimeout(() => {
+        activateDesktopList();
+      }, 250);
+    }
+
+    return () => {
+      cancelled = true;
+
+      if (idleId !== null && typeof window.cancelIdleCallback === "function") {
+        window.cancelIdleCallback(idleId);
+      }
+
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, [desktopListReady, isDesktopViewport]);
 
   useEffect(() => {
     if (searchScope === "viewport" && !hasViewportBounds) {
@@ -666,28 +737,36 @@ export function MapExplorer({
               </p>
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto p-3">
-            <ListStatusSummary
-              displayPlacesCount={displayPlaces.length}
-              fetchError={fetchError}
-              hasManualRefreshAction={Boolean(refreshAction)}
-              isFetchingPlaces={isFetchingPlaces}
-              isListTrimmed={isListTrimmed}
-              isServerTrimmed={isServerTrimmed}
-              totalPlaceCount={totalPlaceCount}
-              visiblePlacesCount={visiblePlaces.length}
-            />
-            <PlaceList
-              bookmarkedPlaceIds={bookmarkedPlaceIds}
-              bookmarkLoginHref={bookmarkLoginHref}
-              isLoading={isFetchingPlaces}
-              places={displayPlaces}
-              query={query}
-              searchScope={searchScope}
-              selectedPlaceId={resolvedSelectedPlaceId}
-              onSelectPlace={handlePlaceSelect}
-            />
-          </div>
+          {shouldRenderDesktopList ? (
+            <div className="flex-1 overflow-y-auto p-3">
+              <ListStatusSummary
+                displayPlacesCount={displayPlaces.length}
+                fetchError={fetchError}
+                hasManualRefreshAction={Boolean(refreshAction)}
+                isFetchingPlaces={isFetchingPlaces}
+                isListTrimmed={isListTrimmed}
+                isServerTrimmed={isServerTrimmed}
+                totalPlaceCount={totalPlaceCount}
+                visiblePlacesCount={visiblePlaces.length}
+              />
+              <PlaceList
+                bookmarkedPlaceIds={bookmarkedPlaceIds}
+                bookmarkLoginHref={bookmarkLoginHref}
+                isLoading={isFetchingPlaces}
+                places={displayPlaces}
+                query={query}
+                searchScope={searchScope}
+                selectedPlaceId={resolvedSelectedPlaceId}
+                onSelectPlace={handlePlaceSelect}
+              />
+            </div>
+          ) : (
+            <div className="flex-1 p-3">
+              <div className="rounded-[1.35rem] border border-dashed border-stone-300 bg-stone-50 px-4 py-5 text-sm text-stone-500">
+                지도를 먼저 표시하는 중입니다. 목록은 잠시 뒤 준비됩니다.
+              </div>
+            </div>
+          )}
         </section>
       </div>
 

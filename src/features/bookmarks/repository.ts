@@ -2,7 +2,7 @@ import "server-only";
 
 import { and, desc, eq } from "drizzle-orm";
 
-import { getDb, isDatabaseEnabled } from "@/db/client";
+import { getDb, isDatabaseEnabled, markDatabaseUnavailable } from "@/db/client";
 import { bookmarks, places } from "@/db/schema";
 import { mockPlaces } from "@/features/places/catalog-data";
 
@@ -256,6 +256,7 @@ export async function listBookmarks(actor: BookmarkActor | null) {
   try {
     return await listDatabaseBookmarks(actor);
   } catch (error) {
+    markDatabaseUnavailable(error);
     console.error("Failed to load bookmarks. Falling back to mock data.", error);
     return getMockBookmarks(actor);
   }
@@ -292,6 +293,7 @@ export async function setBookmark(
   try {
     return await setDatabaseBookmark(placeSlug, bookmarked, actor);
   } catch (error) {
+    markDatabaseUnavailable(error);
     console.error("Failed to update bookmark.", error);
 
     return {
@@ -312,6 +314,7 @@ export async function listBookmarkedPlaces(actor: BookmarkActor | null) {
   try {
     return await listDatabaseBookmarkedPlaces(actor);
   } catch (error) {
+    markDatabaseUnavailable(error);
     console.error(
       "Failed to load bookmarked places. Falling back to mock data.",
       error,

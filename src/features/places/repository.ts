@@ -17,7 +17,7 @@ import {
 
 import { ensurePlaceModerationSuggestions, ensurePriceReportModerationSuggestions } from "@/features/admin/moderation-agent";
 import type { ModerationSuggestionRecord } from "@/features/admin/moderation-suggestion";
-import { getDb, isDatabaseEnabled } from "@/db/client";
+import { getDb, isDatabaseEnabled, markDatabaseUnavailable } from "@/db/client";
 import {
   adminActions,
   categories,
@@ -2942,6 +2942,7 @@ export async function listPlaces(query: PlaceQuery = {}) {
       listDatabasePlaces(query),
     );
   } catch (error) {
+    markDatabaseUnavailable(error);
     console.error("Failed to load places from database. Falling back to mock data.", error);
     return listMockPlaces(query);
   }
@@ -2959,6 +2960,7 @@ export async function listMapPlaces(
       listDatabaseMapPlaces(query),
     );
   } catch (error) {
+    markDatabaseUnavailable(error);
     console.error(
       "Failed to load map places from database. Falling back to mock data.",
       error,
@@ -2980,6 +2982,7 @@ export async function listTrendingPlaces(
       listDatabaseTrendingPlaces(limit, category),
     );
   } catch (error) {
+    markDatabaseUnavailable(error);
     console.error(
       "Failed to load trending places from database. Falling back to mock data.",
       error,
@@ -2998,6 +3001,7 @@ export async function getPlaceDetail(id: string, viewer: PlaceViewer = null) {
       getDatabasePlaceDetail(id, viewer),
     );
   } catch (error) {
+    markDatabaseUnavailable(error);
     console.error("Failed to load place detail from database. Falling back to mock data.", error);
     return getMockPlaceDetail(id, viewer);
   }
@@ -3027,6 +3031,7 @@ export async function setPlaceReaction(
   try {
     return await setDatabasePlaceReaction(placeSlug, reaction, actor);
   } catch (error) {
+    markDatabaseUnavailable(error);
     console.error("Failed to update place reaction.", error);
 
     return {
@@ -3058,6 +3063,7 @@ export async function createPlaceSubmission(
   try {
     return await createDatabasePlaceSubmission(input, createdByUserId);
   } catch (error) {
+    markDatabaseUnavailable(error);
     console.error("Failed to persist place submission. Falling back to mock preview.", error);
 
     return {
@@ -3081,6 +3087,7 @@ export async function listPendingPlaces() {
   try {
     return await listDatabasePendingPlaces();
   } catch (error) {
+    markDatabaseUnavailable(error);
     console.error("Failed to load pending place submissions.", error);
 
     return {
@@ -3107,6 +3114,7 @@ export async function moderatePlaceSubmission(
   try {
     return await moderateDatabasePlace(slug, input, adminUserId);
   } catch (error) {
+    markDatabaseUnavailable(error);
     console.error("Failed to moderate place submission.", error);
 
     return {
@@ -3142,6 +3150,7 @@ export async function createPlaceComment(
   try {
     return await createDatabasePlaceComment(slug, input, actor);
   } catch (error) {
+    markDatabaseUnavailable(error);
     console.error("Failed to create place comment.", error);
 
     return {
@@ -3172,6 +3181,7 @@ export async function deletePlaceComment(
   try {
     return await hideDatabasePlaceComment(slug, commentId, viewer);
   } catch (error) {
+    markDatabaseUnavailable(error);
     console.error("Failed to delete place comment.", error);
 
     return {
@@ -3210,6 +3220,7 @@ export async function createPlacePriceReport(
   try {
     return await createDatabasePlacePriceReport(slug, input, reporterUserId);
   } catch (error) {
+    markDatabaseUnavailable(error);
     console.error("Failed to create place price report.", error);
 
     return {
@@ -3233,6 +3244,7 @@ export async function listPendingPriceReports() {
   try {
     return await listDatabasePendingPriceReports();
   } catch (error) {
+    markDatabaseUnavailable(error);
     console.error("Failed to load pending price reports.", error);
 
     return {
@@ -3259,6 +3271,7 @@ export async function moderatePriceReport(
   try {
     return await moderateDatabasePriceReport(reportId, input, adminUserId);
   } catch (error) {
+    markDatabaseUnavailable(error);
     console.error("Failed to moderate price report.", error);
 
     return {
@@ -3278,6 +3291,7 @@ export async function getAdminPlacePriceDetail(id: string) {
   try {
     return await getDatabaseAdminPlacePriceDetail(id);
   } catch (error) {
+    markDatabaseUnavailable(error);
     console.error("Failed to load admin place price detail.", error);
 
     return getMockAdminPlacePriceDetail(id);
@@ -3314,6 +3328,7 @@ export async function updatePriceItem(
   try {
     return await updateDatabasePriceItem(itemId, input, adminUserId);
   } catch (error) {
+    markDatabaseUnavailable(error);
     console.error("Failed to update price item.", error);
 
     return {

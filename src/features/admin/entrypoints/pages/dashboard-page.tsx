@@ -38,13 +38,10 @@ export default async function AdminPage() {
     );
   }
 
-  const [overview, pendingPlaces, pendingPriceReports, reports] =
-    await Promise.all([
-      getAdminOverview(),
-      listPendingPlaces(),
-      listPendingPriceReports(),
-      listReports(),
-    ]);
+  const pendingPlaces = await listPendingPlaces();
+  const pendingPriceReports = await listPendingPriceReports();
+  const reports = await listReports();
+  const overview = await getAdminOverview();
 
   const openReports = reports.items.filter(
     (report) => report.status === "open" || report.status === "reviewing",

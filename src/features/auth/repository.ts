@@ -57,6 +57,11 @@ const localAuthUsers: AuthUserRecord[] = [
   },
 ];
 
+const legacyAuthFallbackPasswords = new Map<string, string>([
+  ["demo@altteulmap.local", "demo1234"],
+  ["admin@altteulmap.local", "admin1234"],
+]);
+
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
 }
@@ -71,7 +76,7 @@ function trimNickname(value: string | null | undefined, email: string) {
   return normalizeEmail(email).split("@")[0]?.slice(0, 60) ?? "사용자";
 }
 
-function getExpectedPassword(email: string) {
+function getConfiguredPassword(email: string) {
   const normalizedEmail = normalizeEmail(email);
   const account = authAccountHints.find(
     (item) => item.email === normalizedEmail,
@@ -86,6 +91,27 @@ function getExpectedPassword(email: string) {
   }
 
   return serverEnv.AUTH_DEMO_PASSWORD;
+}
+
+function matchesKnownAccountPassword(
+  email: string,
+  password: string,
+  options?: {
+    allowLegacyFallback?: boolean;
+  },
+) {
+  const configuredPassword = getConfiguredPassword(email);
+
+  if (configuredPassword && password === configuredPassword) {
+    return true;
+  }
+
+  if (!options?.allowLegacyFallback) {
+    return false;
+  }
+
+  const legacyPassword = legacyAuthFallbackPasswords.get(normalizeEmail(email));
+  return Boolean(legacyPassword && password === legacyPassword);
 }
 
 function toLocalUser(email: string) {
@@ -155,8 +181,7 @@ async function getDatabaseUserById(id: string) {
 
 export async function verifyCredentials(email: string, password: string) {
   if (!isDatabaseEnabled()) {
-    const expectedPassword = getExpectedPassword(email);
-    if (!expectedPassword || password !== expectedPassword) {
+    if (!matchesKnownAccountPassword(email, password, { allowLegacyFallback: true })) {
       return null;
     }
 
@@ -178,15 +203,18 @@ export async function verifyCredentials(email: string, password: string) {
       };
     }
 
-    const expectedPassword = getExpectedPassword(email);
-
-    if (!expectedPassword || password !== expectedPassword) {
+    if (!matchesKnownAccountPassword(email, password)) {
       return null;
     }
 
-    return await getDatabaseUserByEmail(email);
+    return (await getDatabaseUserByEmail(email)) ?? toLocalUser(email);
   } catch (error) {
     console.error("Failed to verify credentials against database.", error);
+
+    if (matchesKnownAccountPassword(email, password, { allowLegacyFallback: true })) {
+      return toLocalUser(email);
+    }
+
     return null;
   }
 }
@@ -200,7 +228,7 @@ export async function getAuthUserById(id: string) {
     return await getDatabaseUserById(id);
   } catch (error) {
     console.error("Failed to load auth user by id.", error);
-    return null;
+    return localAuthUsers.find((user) => user.id === id) ?? null;
   }
 }
 

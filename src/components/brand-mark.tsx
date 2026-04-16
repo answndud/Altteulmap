@@ -4,6 +4,7 @@ type BrandMarkProps = {
   href?: string;
   variant?: "compact" | "hero";
   className?: string;
+  prefetch?: boolean;
 };
 
 const variantClassMap = {
@@ -45,13 +46,19 @@ export function BrandMark({
   href,
   variant = "compact",
   className,
+  prefetch = false,
 }: BrandMarkProps) {
   if (!href) {
     return <BrandMarkInner variant={variant} className={className} />;
   }
 
   return (
-    <Link href={href} aria-label="알뜰맵 홈" className="inline-flex min-w-0">
+    <Link
+      href={href}
+      prefetch={prefetch}
+      aria-label="알뜰맵 홈"
+      className="inline-flex min-w-0"
+    >
       <BrandMarkInner variant={variant} className={className} />
     </Link>
   );

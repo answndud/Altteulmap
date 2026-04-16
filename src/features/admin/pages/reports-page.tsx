@@ -69,10 +69,8 @@ export default async function AdminReportsPage({
   const params = await searchParams;
   const statusFilter = parseStatusFilter(getFirstValue(params.status));
 
-  const [result, overview] = await Promise.all([
-    listReports(),
-    getAdminOverview(),
-  ]);
+  const result = await listReports();
+  const overview = await getAdminOverview();
   const statusCounts = {
     all: result.items.length,
     open: result.items.filter((report) => report.status === "open").length,

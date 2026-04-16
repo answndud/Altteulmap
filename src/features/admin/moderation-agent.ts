@@ -58,6 +58,8 @@ const generatedAtFormatter = new Intl.DateTimeFormat("sv-SE", {
   hour12: false,
 });
 
+const moderationStorageFallbackWarnings = new Set<string>();
+
 function formatGeneratedAt(value: Date) {
   return generatedAtFormatter.format(value).replace(",", "");
 }
@@ -68,6 +70,56 @@ function clampConfidence(value: number) {
 
 function formatKrw(amount: number) {
   return new Intl.NumberFormat("ko-KR").format(amount);
+}
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return String(error);
+}
+
+function getErrorCode(error: unknown) {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    typeof error.code === "string"
+  ) {
+    return error.code;
+  }
+
+  return "";
+}
+
+function shouldFallbackModerationStorage(error: unknown) {
+  const code = getErrorCode(error);
+  const message = getErrorMessage(error);
+
+  return (
+    code === "42P01" ||
+    code === "42704" ||
+    message.includes("moderation_suggestions") ||
+    message.includes("moderation_suggestion_") ||
+    message.includes('relation "moderation_suggestions" does not exist') ||
+    message.includes("type \"moderation_suggestion")
+  );
+}
+
+function logModerationStorageFallback(scope: "read" | "write", error: unknown) {
+  const key = `${scope}:${getErrorCode(error)}:${getErrorMessage(error)}`;
+
+  if (moderationStorageFallbackWarnings.has(key)) {
+    return;
+  }
+
+  moderationStorageFallbackWarnings.add(key);
+  console.warn(
+    `[moderation-agent] Falling back to ephemeral AI moderation suggestions during ${scope}: ${getErrorMessage(
+      error,
+    )}`,
+  );
 }
 
 function toSuggestionRecord(
@@ -353,25 +405,36 @@ async function getExistingSuggestionMap(
   }
 
   const db = getDb();
-  const rows = await db
-    .select({
-      subjectType: moderationSuggestions.subjectType,
-      subjectKey: moderationSuggestions.subjectKey,
-      provider: moderationSuggestions.provider,
-      suggestedAction: moderationSuggestions.suggestedAction,
-      confidence: moderationSuggestions.confidence,
-      summary: moderationSuggestions.summary,
-      checks: moderationSuggestions.checks,
-      flags: moderationSuggestions.flags,
-      generatedAt: moderationSuggestions.updatedAt,
-    })
-    .from(moderationSuggestions)
-    .where(
-      and(
-        eq(moderationSuggestions.subjectType, subjectType),
-        inArray(moderationSuggestions.subjectKey, subjectKeys),
-      ),
-    );
+  let rows;
+
+  try {
+    rows = await db
+      .select({
+        subjectType: moderationSuggestions.subjectType,
+        subjectKey: moderationSuggestions.subjectKey,
+        provider: moderationSuggestions.provider,
+        suggestedAction: moderationSuggestions.suggestedAction,
+        confidence: moderationSuggestions.confidence,
+        summary: moderationSuggestions.summary,
+        checks: moderationSuggestions.checks,
+        flags: moderationSuggestions.flags,
+        generatedAt: moderationSuggestions.updatedAt,
+      })
+      .from(moderationSuggestions)
+      .where(
+        and(
+          eq(moderationSuggestions.subjectType, subjectType),
+          inArray(moderationSuggestions.subjectKey, subjectKeys),
+        ),
+      );
+  } catch (error) {
+    if (shouldFallbackModerationStorage(error)) {
+      logModerationStorageFallback("read", error);
+      return new Map<string, ModerationSuggestionRecord>();
+    }
+
+    throw error;
+  }
 
   return new Map(
     rows.map((row) => [
@@ -394,37 +457,47 @@ async function persistGeneratedSuggestions(
   }
 
   const db = getDb();
-  await db
-    .insert(moderationSuggestions)
-    .values(
-      suggestions.map((suggestion) => ({
-        subjectType: suggestion.subjectType,
-        subjectKey: suggestion.subjectKey,
-        provider: suggestion.provider,
-        suggestedAction: suggestion.suggestedAction,
-        confidence: suggestion.confidence,
-        summary: suggestion.summary,
-        checks: suggestion.checks,
-        flags: suggestion.flags,
-        createdAt: generatedAt,
-        updatedAt: generatedAt,
-      })),
-    )
-    .onConflictDoUpdate({
-      target: [
-        moderationSuggestions.subjectType,
-        moderationSuggestions.subjectKey,
-      ],
-      set: {
-        provider: sql`excluded.provider`,
-        suggestedAction: sql`excluded.suggested_action`,
-        confidence: sql`excluded.confidence`,
-        summary: sql`excluded.summary`,
-        checks: sql`excluded.checks`,
-        flags: sql`excluded.flags`,
-        updatedAt: generatedAt,
-      },
-    });
+
+  try {
+    await db
+      .insert(moderationSuggestions)
+      .values(
+        suggestions.map((suggestion) => ({
+          subjectType: suggestion.subjectType,
+          subjectKey: suggestion.subjectKey,
+          provider: suggestion.provider,
+          suggestedAction: suggestion.suggestedAction,
+          confidence: suggestion.confidence,
+          summary: suggestion.summary,
+          checks: suggestion.checks,
+          flags: suggestion.flags,
+          createdAt: generatedAt,
+          updatedAt: generatedAt,
+        })),
+      )
+      .onConflictDoUpdate({
+        target: [
+          moderationSuggestions.subjectType,
+          moderationSuggestions.subjectKey,
+        ],
+        set: {
+          provider: sql`excluded.provider`,
+          suggestedAction: sql`excluded.suggested_action`,
+          confidence: sql`excluded.confidence`,
+          summary: sql`excluded.summary`,
+          checks: sql`excluded.checks`,
+          flags: sql`excluded.flags`,
+          updatedAt: generatedAt,
+        },
+      });
+  } catch (error) {
+    if (shouldFallbackModerationStorage(error)) {
+      logModerationStorageFallback("write", error);
+      return;
+    }
+
+    throw error;
+  }
 }
 
 async function ensureSuggestions<T extends { subjectKey: string }>(

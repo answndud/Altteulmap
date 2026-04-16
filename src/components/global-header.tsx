@@ -60,6 +60,7 @@ export function GlobalHeader({
           <nav className="altteulmap-scroll-row min-w-0 flex-1 items-center justify-start sm:justify-end">
             <Link
               href={submitHref}
+              prefetch={false}
               className={getNavClassName(isActive(pathname, submitHref))}
             >
               <span className="sm:hidden">등록</span>
@@ -67,6 +68,7 @@ export function GlobalHeader({
             </Link>
             <Link
               href={bookmarksHref}
+              prefetch={false}
               className={getNavClassName(isActive(pathname, "/bookmarks"))}
             >
               북마크
@@ -82,6 +84,7 @@ export function GlobalHeader({
             {showAdminLink ? (
               <Link
                 href={adminHref}
+                prefetch={false}
                 data-testid="session-admin-link"
                 className={getNavClassName(
                   pathname === "/admin" || pathname.startsWith("/admin/"),
@@ -96,6 +99,7 @@ export function GlobalHeader({
             ) : !isAuthPage ? (
               <Link
                 href={loginHref}
+                prefetch={false}
                 data-testid="session-login-link"
                 className={getNavClassName(pathname === "/login")}
               >
