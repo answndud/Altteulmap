@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { isDatabaseEnabled, markDatabaseUnavailable } from "@/db/client";
 import { PLACE_SHARE_SOURCES } from "@/features/places/share";
 import { recordVisitActivity } from "@/features/telemetry/repository";
 import {
@@ -96,6 +97,24 @@ export async function POST(request: Request) {
     setPublicWriteActorCookie(response, actor, request);
     return response;
   } catch (error) {
+    markDatabaseUnavailable(error);
+
+    if (!isDatabaseEnabled()) {
+      const response = Response.json(
+        {
+          ok: true,
+          tracked: false,
+          source: "mock",
+        },
+        {
+          headers: noStoreHeaders,
+        },
+      );
+
+      setPublicWriteActorCookie(response, actor, request);
+      return response;
+    }
+
     console.error("Failed to record visit activity.", error);
 
     const response = Response.json(

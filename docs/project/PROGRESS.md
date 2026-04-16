@@ -3,6 +3,9 @@
 기준일: 2026-04-12
 
 ## 진행 현황 요약
+- telemetry 500 원인 분리 완료: `/api/telemetry/visit`가 stale DB에서도 더 이상 `500`을 내지 않고 `200 + tracked:false + source:mock`으로 degrade된다. 동시에 `src/db/client.ts`는 nested `cause`의 `message/code`까지 따라가 DB unavailable 판정을 더 정확히 하도록 보강했다
+- 지도 체감 성능 3차 보정: 데스크톱 목록 카드의 북마크/공유 버튼을 idle 이후가 아니라 `목록 준비 후 짧은 고정 지연` 뒤에 붙이도록 바꿨다. 첫 목록 렌더 시점에는 보조 액션 test id가 `0`, 1.1초 뒤에는 `80`으로 돌아오는 것을 로컬 production에서 확인했다
+- 지도 체감 성능 2차 보정: 홈 카테고리 필터를 접힌 상태 기본값으로 바꿨다. 모바일은 `전체 + 8개 + 더보기`, 데스크톱은 `전체 + 10개 + 더보기`만 먼저 렌더하고, 숨겨진 카테고리가 선택된 경우에도 해당 칩은 접힌 상태에서 계속 보이게 유지한다
 - 지도 체감 성능 1차 보정: 홈 지도 화면의 category/login/submit/admin/detail `Link` prefetch를 껐고, desktop 장소 목록은 idle 이후 지연 마운트되도록 바꿨으며, 목록 렌더 상한도 `desktop 80 / mobile 40`으로 낮췄다. `VisitTracker`는 idle 이후 `sendBeacon` 우선 전송으로 미뤄 첫 진입 네트워크를 덜 방해하게 했다. 로컬 production 기준 홈 첫 진입 fetch/xhr는 `api/places/map` 1건과 외부 네이버 수집 1건만 남았고, 기존처럼 category/login/submit prefetch가 쏟아지지 않았다
 - Phase A 운영 DB 진단 보강: `npm run db:check:production`을 추가해 현재 `DATABASE_URL`로 실제 연결, moderation schema 유무, drizzle migration table 유무를 한 번에 확인할 수 있게 했다. 현재 production credential은 여전히 `Tenant or user not found`로 실패하며, URL encoding 문제가 아니라 stale/wrong credential이라는 점을 다시 확인했다
 - Phase B 준비 보강: [mobile-qa-checklist.md](/Users/alex/project/altteulmap/docs/project/mobile-qa-checklist.md)를 추가해 iPhone Safari, Android Chrome 기준의 public/admin 실기기 확인 항목과 기록 포맷을 고정했다
@@ -54,6 +57,51 @@
 - 다음 우선순위: `Cycle 12`는 `Phase A 남은 blocker(운영 DB credential 복구 + moderation_suggestions migration) -> Phase B 운영/모바일 실기기 QA` 순서로 진행한다. 운영 URL은 현재 `workers.dev` split으로 고정했고, 검색 URL 상태/공유 telemetry는 현 범위로 동결했다
 
 ## 실행 로그
+
+### 2026-04-16 16:50 KST: telemetry route를 DB 장애 시 no-op fallback으로 전환
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/telemetry/repository.ts`에서 `recordVisitActivity`, `getVisitMetrics`를 DB 장애 circuit-aware 방식으로 감쌌다. 방문 적재나 관리자 방문 지표 조회 중 connectivity error가 나면 `markDatabaseUnavailable` 후 no-op/empty metrics로 바로 떨어진다.
+  - `/Users/alex/project/altteulmap/src/features/telemetry/api/visit-route.ts`에는 마지막 방어선으로 degraded fallback 응답을 추가했다. repository에서 예외가 다시 올라와도 DB unavailable 상태면 `500` 대신 `200`과 `{ ok: true, tracked: false, source: "mock" }`를 반환한다.
+  - `/Users/alex/project/altteulmap/src/db/client.ts`의 unavailable 판정 helper는 wrapped query error의 nested `cause.message`, `cause.code`까지 따라가도록 보강했다. 기존에는 top-level `Failed query ...`만 보고 stale DB를 놓쳐 telemetry route가 계속 `500`으로 떨어졌다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+  - `PORT=3010 npm run start` 후 local production에서 `POST http://127.0.0.1:3010/api/telemetry/visit` 확인 결과:
+    - status `200`
+    - body `{\"ok\":true,\"tracked\":false,\"source\":\"mock\"}`
+  - 같은 요청 직후 서버 로그에는 기존의 `Failed to record visit activity.` 에러가 다시 남지 않음
+- 메모
+  - 이번 수정으로 telemetry는 best-effort 보조 기능이라는 현재 정책에 맞게 동작한다. 운영 DB가 불안정해도 공개 페이지가 telemetry route 500으로 소음을 만들지 않는다.
+  - 다음 우선순위는 local/live 첫 진입 네트워크를 다시 재보면서 남은 비용이 무엇인지 확인하는 쪽이다.
+
+### 2026-04-16 16:20 KST: 데스크톱 목록 카드 보조 액션을 늦게 붙이도록 조정
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/places/map-explorer.tsx`의 `PlaceList`에 `showSecondaryActions` 제어를 추가했다. 데스크톱 첫 렌더에서는 북마크/공유 대신 가벼운 placeholder만 보이고, 선택된 카드만 즉시 액션을 유지한다.
+  - 같은 파일의 `MapExplorer`에는 `desktopCardActionsReady` 상태를 추가해, 데스크톱 목록이 준비된 뒤 900ms 뒤에만 북마크/공유 버튼을 붙이도록 바꿨다. 이전 `requestIdleCallback` 기반 접근은 너무 빨라서 실측상 바로 액션이 붙어 효과가 없었다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+  - `PORT=3010 npm run start` 후 Playwright 확인 결과:
+    - 데스크톱 첫 목록 렌더 직후 `bookmark-toggle-*`, `place-list-item-share-button-*` count는 둘 다 `0`
+    - 1.1초 뒤 같은 count는 둘 다 `80`
+- 메모
+  - 이번 단계로 데스크톱은 `지도 -> 목록 카드 본문 -> 보조 액션` 순서로 붙는다. 첫 화면에서 가장 무거운 client button 세트를 뒤로 미룬 것이 핵심이다.
+  - 다음 성능 후속은 `telemetry 500 원인 분리`가 우선이다.
+
+### 2026-04-16 16:00 KST: 지도 카테고리 필터 DOM을 접힌 기본값으로 줄임
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/map/category-filter-chips.tsx`를 추가해 카테고리 칩을 `기본 접힘 -> 더보기/접기` 패턴으로 공용화했다. 접힌 상태에서도 현재 선택된 카테고리는 사라지지 않도록 유지하고, 토글 버튼은 `button`으로 분리해 모바일 검색 form submit과 충돌하지 않게 했다.
+  - `/Users/alex/project/altteulmap/src/features/map/map-page.tsx`에서 모바일/데스크톱 카테고리 grid를 위 컴포넌트로 교체했다. 모바일은 `collapsedCount=8`, 데스크톱은 `collapsedCount=10`으로 두고, 홈 첫 화면에서 불필요한 category chip DOM을 먼저 줄였다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+  - `PORT=3010 npm run start` 후 Playwright 확인 결과:
+    - 데스크톱 기본 노출: `전체 + 10개 + 더보기 8`으로 총 12개
+    - 모바일 기본 노출: `전체 + 8개 + 더보기 10`으로 총 10개
+    - `/?category=pharmacy` 기준 숨겨진 카테고리 `약국`도 접힌 상태에서 계속 노출됨
+- 메모
+  - 이번 단계는 네트워크보다 초기 DOM 감량에 초점을 맞췄다. 첫 화면에서 바로 그릴 필요 없는 카테고리 칩을 뒤로 미뤄 `map-first` 체감을 더 맞추는 변경이다.
+  - 다음 성능 후속은 `desktop 목록 카드 액션 지연 렌더`와 `telemetry 500 원인 분리`가 우선이다.
 
 ### 2026-04-16 15:05 KST: 지도 첫 진입 prefetch/목록 렌더를 줄여 체감 성능 1차 보정
 - 완료 내용

@@ -3,9 +3,10 @@ import Link from "next/link";
 
 import { listBookmarks } from "@/features/bookmarks/repository";
 import {
-  categoryGroups,
+  categoryOptions,
   getCategoryBySlug,
 } from "@/features/categories/catalog";
+import { CategoryFilterChips } from "@/features/map/category-filter-chips";
 import { RouteResetDetails } from "@/features/map/route-reset-details";
 import { MapExplorer } from "@/features/places/map-explorer";
 import {
@@ -39,6 +40,8 @@ const desktopCategoryChipClass =
   "altteulmap-chip inline-flex w-full min-w-0 items-center justify-center border px-4 py-2 text-center text-sm leading-tight break-keep transition";
 const inactiveFilterChipClass =
   "border-stone-300 bg-white text-stone-700 hover:bg-stone-100";
+const mobileCategoryToggleChipClass = `${mobileCategoryChipClass} border-dashed border-stone-300 bg-stone-50 font-medium text-stone-600 hover:bg-stone-100`;
+const desktopCategoryToggleChipClass = `${desktopCategoryChipClass} border-dashed border-stone-300 bg-stone-50 font-medium text-stone-600 hover:bg-stone-100`;
 const mobileScopeChipClass =
   "altteulmap-chip altteulmap-scope-chip inline-flex whitespace-nowrap px-3 py-2 text-xs transition";
 const desktopScopeChipClass =
@@ -121,6 +124,20 @@ export default async function MapPage({ searchParams }: MapPageProps) {
     bookmarkResult.items.map((bookmark) => bookmark.placeId),
   );
   const selectedCategory = getCategoryBySlug(activeCategory);
+  const categoryFilterItems = categoryOptions.map((category) => ({
+    href: createHref({
+      category: category.slug,
+      query: activeQuery,
+      searchScope: activeSearchScope,
+    }),
+    name: category.name,
+    slug: category.slug,
+  }));
+  const allCategoryHref = createHref({
+    category: null,
+    query: activeQuery,
+    searchScope: activeSearchScope,
+  });
   const mobileFilterRouteKey = [
     activeCategory ?? "all",
     activeQuery ?? "all",
@@ -256,45 +273,16 @@ export default async function MapPage({ searchParams }: MapPageProps) {
                     카테고리
                   </p>
                   <div className="altteulmap-chip-grid mt-3">
-                    <Link
-                      href={createHref({
-                        category: null,
-                        query: activeQuery,
-                        searchScope: activeSearchScope,
-                      })}
-                      prefetch={false}
-                      className={`${mobileCategoryChipClass} ${
-                        !activeCategory
-                          ? "altteulmap-accent-chip"
-                          : inactiveFilterChipClass
-                      }`}
-                    >
-                      전체
-                    </Link>
-                    {categoryGroups.flatMap((group) =>
-                      group.children.map((category) => {
-                        const isActive = activeCategory === category.slug;
-
-                        return (
-                          <Link
-                            key={category.slug}
-                            href={createHref({
-                              category: category.slug,
-                              query: activeQuery,
-                              searchScope: activeSearchScope,
-                            })}
-                            prefetch={false}
-                            className={`${mobileCategoryChipClass} ${
-                              isActive
-                                ? "altteulmap-accent-chip"
-                                : inactiveFilterChipClass
-                            }`}
-                          >
-                            {category.name}
-                          </Link>
-                        );
-                      }),
-                    )}
+                    <CategoryFilterChips
+                      activeSlug={activeCategory}
+                      activeClassName="altteulmap-accent-chip"
+                      allHref={allCategoryHref}
+                      collapsedCount={8}
+                      inactiveClassName={inactiveFilterChipClass}
+                      items={categoryFilterItems}
+                      itemClassName={mobileCategoryChipClass}
+                      toggleButtonClassName={mobileCategoryToggleChipClass}
+                    />
                   </div>
                 </section>
               </RouteResetDetails>
@@ -309,45 +297,16 @@ export default async function MapPage({ searchParams }: MapPageProps) {
             <section className="min-w-0">
               <p className="text-sm font-medium text-stone-700">카테고리</p>
               <div className="altteulmap-chip-grid mt-3">
-                <Link
-                  href={createHref({
-                    category: null,
-                    query: activeQuery,
-                    searchScope: activeSearchScope,
-                  })}
-                  prefetch={false}
-                  className={`${desktopCategoryChipClass} ${
-                    !activeCategory
-                      ? "altteulmap-accent-chip"
-                      : inactiveFilterChipClass
-                  }`}
-                >
-                  전체
-                </Link>
-                {categoryGroups.flatMap((group) =>
-                  group.children.map((category) => {
-                    const isActive = activeCategory === category.slug;
-
-                    return (
-                      <Link
-                        key={category.slug}
-                        href={createHref({
-                          category: category.slug,
-                          query: activeQuery,
-                          searchScope: activeSearchScope,
-                        })}
-                        prefetch={false}
-                        className={`${desktopCategoryChipClass} ${
-                          isActive
-                            ? "altteulmap-accent-chip"
-                            : inactiveFilterChipClass
-                        }`}
-                      >
-                        {category.name}
-                      </Link>
-                    );
-                  }),
-                )}
+                <CategoryFilterChips
+                  activeSlug={activeCategory}
+                  activeClassName="altteulmap-accent-chip"
+                  allHref={allCategoryHref}
+                  collapsedCount={10}
+                  inactiveClassName={inactiveFilterChipClass}
+                  items={categoryFilterItems}
+                  itemClassName={desktopCategoryChipClass}
+                  toggleButtonClassName={desktopCategoryToggleChipClass}
+                />
               </div>
             </section>
 
