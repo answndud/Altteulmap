@@ -2,7 +2,7 @@ import "server-only";
 
 import { countDistinct, gte, sql } from "drizzle-orm";
 
-import { getDb, isDatabaseEnabled } from "@/db/client";
+import { getDb, isDatabaseEnabled, markDatabaseUnavailable } from "@/db/client";
 import { visitActivities } from "@/db/schema";
 import {
   PLACE_SHARE_SOURCES,
@@ -132,46 +132,56 @@ export async function recordVisitActivity(input: RecordVisitActivityInput) {
     return { ok: true, tracked: false, source: "database" as const };
   }
 
-  const now = new Date();
-  const db = getDb();
-  const routeGroup = getRouteGroup(normalizedPath, input.scope);
+  try {
+    const now = new Date();
+    const db = getDb();
+    const routeGroup = getRouteGroup(normalizedPath, input.scope);
 
-  await pruneOldVisitActivity(now);
+    await pruneOldVisitActivity(now);
 
-  await db
-    .insert(visitActivities)
-    .values({
-      actorKey: input.actorKey,
-      userId: input.userId ?? null,
-      visitorId: input.visitorId ?? null,
-      routeGroup,
-      routePath: normalizedPath,
-      entryRef: input.entryRef ?? null,
-      entrySource: input.entrySource ?? null,
-      visitDate: toKstDateString(now),
-      bucketStartedAt: getVisitBucketStartedAt(now),
-      hitCount: 1,
-      firstVisitedAt: now,
-      lastVisitedAt: now,
-    })
-    .onConflictDoUpdate({
-      target: [
-        visitActivities.actorKey,
-        visitActivities.routeGroup,
-        visitActivities.bucketStartedAt,
-      ],
-      set: {
-        routePath: normalizedPath,
-        entryRef:
-          sql`coalesce(${visitActivities.entryRef}, excluded.entry_ref)`,
-        entrySource:
-          sql`coalesce(${visitActivities.entrySource}, excluded.entry_source)`,
+    await db
+      .insert(visitActivities)
+      .values({
+        actorKey: input.actorKey,
         userId: input.userId ?? null,
         visitorId: input.visitorId ?? null,
-        hitCount: sql`${visitActivities.hitCount} + 1`,
+        routeGroup,
+        routePath: normalizedPath,
+        entryRef: input.entryRef ?? null,
+        entrySource: input.entrySource ?? null,
+        visitDate: toKstDateString(now),
+        bucketStartedAt: getVisitBucketStartedAt(now),
+        hitCount: 1,
+        firstVisitedAt: now,
         lastVisitedAt: now,
-      },
-    });
+      })
+      .onConflictDoUpdate({
+        target: [
+          visitActivities.actorKey,
+          visitActivities.routeGroup,
+          visitActivities.bucketStartedAt,
+        ],
+        set: {
+          routePath: normalizedPath,
+          entryRef:
+            sql`coalesce(${visitActivities.entryRef}, excluded.entry_ref)`,
+          entrySource:
+            sql`coalesce(${visitActivities.entrySource}, excluded.entry_source)`,
+          userId: input.userId ?? null,
+          visitorId: input.visitorId ?? null,
+          hitCount: sql`${visitActivities.hitCount} + 1`,
+          lastVisitedAt: now,
+        },
+      });
+  } catch (error) {
+    markDatabaseUnavailable(error);
+
+    if (!isDatabaseEnabled()) {
+      return { ok: true, tracked: false, source: "mock" as const };
+    }
+
+    throw error;
+  }
 
   return {
     ok: true,
@@ -203,98 +213,108 @@ export async function getVisitMetrics(): Promise<VisitMetrics> {
     return getEmptyVisitMetrics();
   }
 
-  const db = getDb();
-  const now = new Date();
-  const today = toKstDateString(now);
-  const last7DaysStart = getKstDateDaysAgo(now, 6);
-  const [visitsRow] = await db
-    .select({
-      todayVisits:
-        sql<number>`count(*) filter (where ${visitActivities.visitDate} = ${today})::int`,
-      last7DaysVisits:
-        sql<number>`count(*) filter (where ${visitActivities.visitDate} >= ${last7DaysStart})::int`,
-      todayUniqueVisitors:
-        sql<number>`count(distinct ${visitActivities.actorKey}) filter (where ${visitActivities.visitDate} = ${today})::int`,
-      last7DaysUniqueVisitors:
-        sql<number>`count(distinct ${visitActivities.actorKey}) filter (where ${visitActivities.visitDate} >= ${last7DaysStart})::int`,
-      todaySharedVisits:
-        sql<number>`count(*) filter (where ${visitActivities.visitDate} = ${today} and ${visitActivities.entryRef} = 'share')::int`,
-      last7DaysSharedVisits:
-        sql<number>`count(*) filter (where ${visitActivities.visitDate} >= ${last7DaysStart} and ${visitActivities.entryRef} = 'share')::int`,
-      todaySharedUniqueVisitors:
-        sql<number>`count(distinct ${visitActivities.actorKey}) filter (where ${visitActivities.visitDate} = ${today} and ${visitActivities.entryRef} = 'share')::int`,
-      last7DaysSharedUniqueVisitors:
-        sql<number>`count(distinct ${visitActivities.actorKey}) filter (where ${visitActivities.visitDate} >= ${last7DaysStart} and ${visitActivities.entryRef} = 'share')::int`,
-    })
-    .from(visitActivities);
+  try {
+    const db = getDb();
+    const now = new Date();
+    const today = toKstDateString(now);
+    const last7DaysStart = getKstDateDaysAgo(now, 6);
+    const [visitsRow] = await db
+      .select({
+        todayVisits:
+          sql<number>`count(*) filter (where ${visitActivities.visitDate} = ${today})::int`,
+        last7DaysVisits:
+          sql<number>`count(*) filter (where ${visitActivities.visitDate} >= ${last7DaysStart})::int`,
+        todayUniqueVisitors:
+          sql<number>`count(distinct ${visitActivities.actorKey}) filter (where ${visitActivities.visitDate} = ${today})::int`,
+        last7DaysUniqueVisitors:
+          sql<number>`count(distinct ${visitActivities.actorKey}) filter (where ${visitActivities.visitDate} >= ${last7DaysStart})::int`,
+        todaySharedVisits:
+          sql<number>`count(*) filter (where ${visitActivities.visitDate} = ${today} and ${visitActivities.entryRef} = 'share')::int`,
+        last7DaysSharedVisits:
+          sql<number>`count(*) filter (where ${visitActivities.visitDate} >= ${last7DaysStart} and ${visitActivities.entryRef} = 'share')::int`,
+        todaySharedUniqueVisitors:
+          sql<number>`count(distinct ${visitActivities.actorKey}) filter (where ${visitActivities.visitDate} = ${today} and ${visitActivities.entryRef} = 'share')::int`,
+        last7DaysSharedUniqueVisitors:
+          sql<number>`count(distinct ${visitActivities.actorKey}) filter (where ${visitActivities.visitDate} >= ${last7DaysStart} and ${visitActivities.entryRef} = 'share')::int`,
+      })
+      .from(visitActivities);
 
-  const returningActivity = db
-    .select({
-      actorKey: visitActivities.actorKey,
-      activeDays: countDistinct(visitActivities.visitDate).as("active_days"),
-    })
-    .from(visitActivities)
-    .where(gte(visitActivities.visitDate, last7DaysStart))
-    .groupBy(visitActivities.actorKey)
-    .as("returning_activity");
+    const returningActivity = db
+      .select({
+        actorKey: visitActivities.actorKey,
+        activeDays: countDistinct(visitActivities.visitDate).as("active_days"),
+      })
+      .from(visitActivities)
+      .where(gte(visitActivities.visitDate, last7DaysStart))
+      .groupBy(visitActivities.actorKey)
+      .as("returning_activity");
 
-  const [returningRow] = await db
-    .select({
-      returningVisitors7d:
-        sql<number>`count(*) filter (where ${returningActivity.activeDays} >= 2)::int`,
-    })
-    .from(returningActivity);
+    const [returningRow] = await db
+      .select({
+        returningVisitors7d:
+          sql<number>`count(*) filter (where ${returningActivity.activeDays} >= 2)::int`,
+      })
+      .from(returningActivity);
 
-  const shareSourceRows = await db
-    .select({
-      source: visitActivities.entrySource,
-      uniqueVisitors: sql<number>`count(distinct ${visitActivities.actorKey})::int`,
-      visits: sql<number>`count(*)::int`,
-    })
-    .from(visitActivities)
-    .where(
-      sql`${visitActivities.visitDate} >= ${last7DaysStart} and ${visitActivities.entryRef} = 'share' and ${visitActivities.entrySource} is not null`,
-    )
-    .groupBy(visitActivities.entrySource);
+    const shareSourceRows = await db
+      .select({
+        source: visitActivities.entrySource,
+        uniqueVisitors: sql<number>`count(distinct ${visitActivities.actorKey})::int`,
+        visits: sql<number>`count(*)::int`,
+      })
+      .from(visitActivities)
+      .where(
+        sql`${visitActivities.visitDate} >= ${last7DaysStart} and ${visitActivities.entryRef} = 'share' and ${visitActivities.entrySource} is not null`,
+      )
+      .groupBy(visitActivities.entrySource);
 
-  const wau = Number(visitsRow?.last7DaysUniqueVisitors ?? 0);
-  const returningVisitors7d = Number(returningRow?.returningVisitors7d ?? 0);
-  const shareSourceBySource = new Map(
-    shareSourceRows.flatMap((row) =>
-      row.source
-        ? [
-            [
-              row.source,
-              {
-                visits: Number(row.visits ?? 0),
-                uniqueVisitors: Number(row.uniqueVisitors ?? 0),
-              },
-            ] as const,
-          ]
-        : [],
-    ),
-  );
+    const wau = Number(visitsRow?.last7DaysUniqueVisitors ?? 0);
+    const returningVisitors7d = Number(returningRow?.returningVisitors7d ?? 0);
+    const shareSourceBySource = new Map(
+      shareSourceRows.flatMap((row) =>
+        row.source
+          ? [
+              [
+                row.source,
+                {
+                  visits: Number(row.visits ?? 0),
+                  uniqueVisitors: Number(row.uniqueVisitors ?? 0),
+                },
+              ] as const,
+            ]
+          : [],
+      ),
+    );
 
-  return {
-    todayVisits: Number(visitsRow?.todayVisits ?? 0),
-    last7DaysVisits: Number(visitsRow?.last7DaysVisits ?? 0),
-    todayUniqueVisitors: Number(visitsRow?.todayUniqueVisitors ?? 0),
-    last7DaysUniqueVisitors: wau,
-    todaySharedVisits: Number(visitsRow?.todaySharedVisits ?? 0),
-    last7DaysSharedVisits: Number(visitsRow?.last7DaysSharedVisits ?? 0),
-    todaySharedUniqueVisitors: Number(visitsRow?.todaySharedUniqueVisitors ?? 0),
-    last7DaysSharedUniqueVisitors: Number(
-      visitsRow?.last7DaysSharedUniqueVisitors ?? 0,
-    ),
-    dau: Number(visitsRow?.todayUniqueVisitors ?? 0),
-    wau,
-    returningVisitors7d,
-    returningVisitorRate7d:
-      wau > 0 ? Number(((returningVisitors7d / wau) * 100).toFixed(1)) : 0,
-    shareSourceBreakdown7d: PLACE_SHARE_SOURCES.map((source) => ({
-      source,
-      visits: shareSourceBySource.get(source)?.visits ?? 0,
-      uniqueVisitors: shareSourceBySource.get(source)?.uniqueVisitors ?? 0,
-    })),
-  };
+    return {
+      todayVisits: Number(visitsRow?.todayVisits ?? 0),
+      last7DaysVisits: Number(visitsRow?.last7DaysVisits ?? 0),
+      todayUniqueVisitors: Number(visitsRow?.todayUniqueVisitors ?? 0),
+      last7DaysUniqueVisitors: wau,
+      todaySharedVisits: Number(visitsRow?.todaySharedVisits ?? 0),
+      last7DaysSharedVisits: Number(visitsRow?.last7DaysSharedVisits ?? 0),
+      todaySharedUniqueVisitors: Number(visitsRow?.todaySharedUniqueVisitors ?? 0),
+      last7DaysSharedUniqueVisitors: Number(
+        visitsRow?.last7DaysSharedUniqueVisitors ?? 0,
+      ),
+      dau: Number(visitsRow?.todayUniqueVisitors ?? 0),
+      wau,
+      returningVisitors7d,
+      returningVisitorRate7d:
+        wau > 0 ? Number(((returningVisitors7d / wau) * 100).toFixed(1)) : 0,
+      shareSourceBreakdown7d: PLACE_SHARE_SOURCES.map((source) => ({
+        source,
+        visits: shareSourceBySource.get(source)?.visits ?? 0,
+        uniqueVisitors: shareSourceBySource.get(source)?.uniqueVisitors ?? 0,
+      })),
+    };
+  } catch (error) {
+    markDatabaseUnavailable(error);
+
+    if (!isDatabaseEnabled()) {
+      return getEmptyVisitMetrics();
+    }
+
+    throw error;
+  }
 }

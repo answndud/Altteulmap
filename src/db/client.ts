@@ -27,21 +27,63 @@ const globalForDb = globalThis as {
 };
 
 function getErrorMessage(error: unknown) {
-  if (error instanceof Error) {
-    return error.message;
+  const messages: string[] = [];
+  let current: unknown = error;
+
+  for (let depth = 0; depth < 4 && current; depth += 1) {
+    if (current instanceof Error) {
+      messages.push(current.message);
+    } else if (typeof current === "string") {
+      messages.push(current);
+    } else if (
+      typeof current === "object" &&
+      current !== null &&
+      "message" in current &&
+      typeof current.message === "string"
+    ) {
+      messages.push(current.message);
+    } else {
+      messages.push(String(current));
+    }
+
+    if (
+      typeof current === "object" &&
+      current !== null &&
+      "cause" in current
+    ) {
+      current = current.cause;
+      continue;
+    }
+
+    break;
   }
 
-  return String(error);
+  return messages.filter(Boolean).join(" | ");
 }
 
 function getErrorCode(error: unknown) {
-  if (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    typeof error.code === "string"
-  ) {
-    return error.code;
+  let current: unknown = error;
+
+  for (let depth = 0; depth < 4 && current; depth += 1) {
+    if (
+      typeof current === "object" &&
+      current !== null &&
+      "code" in current &&
+      typeof current.code === "string"
+    ) {
+      return current.code;
+    }
+
+    if (
+      typeof current === "object" &&
+      current !== null &&
+      "cause" in current
+    ) {
+      current = current.cause;
+      continue;
+    }
+
+    break;
   }
 
   return "";
@@ -70,17 +112,20 @@ export function isDatabaseEnabled() {
 export function shouldMarkDatabaseUnavailable(error: unknown) {
   const code = getErrorCode(error);
   const message = getErrorMessage(error);
+  const normalizedMessage = message.toLowerCase();
 
   return (
     code === "ENOTFOUND" ||
     code === "ECONNREFUSED" ||
     code === "ETIMEDOUT" ||
     code === "ECONNRESET" ||
-    message.includes("Tenant or user not found") ||
-    message.includes("connect ECONNREFUSED") ||
-    message.includes("getaddrinfo ENOTFOUND") ||
-    message.includes("timeout") ||
-    message.includes("Connection terminated unexpectedly")
+    normalizedMessage.includes("tenant or user not found") ||
+    normalizedMessage.includes("tenant/user") ||
+    normalizedMessage.includes("connect econnrefused") ||
+    normalizedMessage.includes("getaddrinfo enotfound") ||
+    normalizedMessage.includes("enotfound") ||
+    normalizedMessage.includes("timeout") ||
+    normalizedMessage.includes("connection terminated unexpectedly")
   );
 }
 

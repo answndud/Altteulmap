@@ -82,6 +82,7 @@ type PlaceListProps = {
   query: string | null;
   searchScope: PlaceSearchScope;
   compact?: boolean;
+  showSecondaryActions?: boolean;
   selectedPlaceId: string | null;
   onSelectPlace: (placeId: string) => void;
 };
@@ -195,6 +196,7 @@ function PlaceList({
   compact = false,
   query,
   searchScope,
+  showSecondaryActions = true,
   selectedPlaceId,
   onSelectPlace,
 }: PlaceListProps) {
@@ -237,11 +239,20 @@ function PlaceList({
       {places.map((place) => {
         const category = getCategoryBySlug(place.categorySlug);
         const isActive = selectedPlaceId === place.id;
+        const shouldShowSecondaryActions = showSecondaryActions || isActive;
         const itemPaddingClassName = compact ? "p-2.5" : "p-4";
         const titleSizeClassName = compact ? "text-[0.95rem]" : "text-base";
         const headerGapClassName = compact ? "gap-2" : "gap-3";
         const footerGapClassName = compact ? "mt-2" : "mt-4";
-        const sharePayload = createPlaceSharePayload(place, "list");
+        const bookmarkPlaceholderClassName = compact
+          ? "h-8 w-8 rounded-xl"
+          : "h-9 w-9 rounded-2xl";
+        const sharePlaceholderClassName = compact
+          ? "h-7 w-14 rounded-xl"
+          : "h-8 w-16 rounded-xl";
+        const sharePayload = shouldShowSecondaryActions
+          ? createPlaceSharePayload(place, "list")
+          : null;
 
         return (
           <article
@@ -284,13 +295,20 @@ function PlaceList({
                 )}
               </div>
               <div className="shrink-0">
-                <BookmarkToggleButton
-                  key={`${place.id}:${bookmarkedPlaceIds.includes(place.id) ? "on" : "off"}`}
-                  placeId={place.id}
-                  initialBookmarked={bookmarkedPlaceIds.includes(place.id)}
-                  loginHref={bookmarkLoginHref}
-                  compact
-                />
+                {shouldShowSecondaryActions ? (
+                  <BookmarkToggleButton
+                    key={`${place.id}:${bookmarkedPlaceIds.includes(place.id) ? "on" : "off"}`}
+                    placeId={place.id}
+                    initialBookmarked={bookmarkedPlaceIds.includes(place.id)}
+                    loginHref={bookmarkLoginHref}
+                    compact
+                  />
+                ) : (
+                  <span
+                    aria-hidden="true"
+                    className={`block border border-stone-200 bg-stone-100/80 ${bookmarkPlaceholderClassName}`}
+                  />
+                )}
               </div>
             </div>
             <div
@@ -326,15 +344,22 @@ function PlaceList({
                 event.stopPropagation();
               }}
             >
-              <PlaceShareButton
-                path={sharePayload.path}
-                title={sharePayload.title}
-                text={sharePayload.text}
-                className="altteulmap-button inline-flex whitespace-nowrap border border-stone-300 bg-white px-3 py-1.5 text-xs text-stone-700 transition hover:bg-stone-100"
-                messageClassName="mt-1 text-right text-[11px] text-stone-500"
-                testId={`${itemTestIdPrefix}-share-button-${place.id}`}
-                messageTestId={`${itemTestIdPrefix}-share-message-${place.id}`}
-              />
+              {sharePayload ? (
+                <PlaceShareButton
+                  path={sharePayload.path}
+                  title={sharePayload.title}
+                  text={sharePayload.text}
+                  className="altteulmap-button inline-flex whitespace-nowrap border border-stone-300 bg-white px-3 py-1.5 text-xs text-stone-700 transition hover:bg-stone-100"
+                  messageClassName="mt-1 text-right text-[11px] text-stone-500"
+                  testId={`${itemTestIdPrefix}-share-button-${place.id}`}
+                  messageTestId={`${itemTestIdPrefix}-share-message-${place.id}`}
+                />
+              ) : (
+                <span
+                  aria-hidden="true"
+                  className={`block border border-stone-200 bg-stone-100/80 ${sharePlaceholderClassName}`}
+                />
+              )}
             </div>
           </article>
         );
@@ -420,6 +445,7 @@ export function MapExplorer({
     useState<MobileSheetMode>("peek");
   const [isDesktopViewport, setIsDesktopViewport] = useState(false);
   const [desktopListReady, setDesktopListReady] = useState(false);
+  const [desktopCardActionsReady, setDesktopCardActionsReady] = useState(false);
   const lastMobileListCloseAtRef = useRef(0);
   const [manualRefreshTick, setManualRefreshTick] = useState(0);
   const shouldSkipInitialFetchRef = useRef(prefetchedOnServer);
@@ -568,6 +594,24 @@ export function MapExplorer({
       }
     };
   }, [desktopListReady, isDesktopViewport]);
+
+  useEffect(() => {
+    if (!isDesktopViewport || !desktopListReady || desktopCardActionsReady) {
+      return;
+    }
+
+    let cancelled = false;
+    const timeoutId = window.setTimeout(() => {
+      if (!cancelled) {
+        setDesktopCardActionsReady(true);
+      }
+    }, 900);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, [desktopCardActionsReady, desktopListReady, isDesktopViewport]);
 
   useEffect(() => {
     if (searchScope === "viewport" && !hasViewportBounds) {
@@ -756,6 +800,7 @@ export function MapExplorer({
                 places={displayPlaces}
                 query={query}
                 searchScope={searchScope}
+                showSecondaryActions={desktopCardActionsReady}
                 selectedPlaceId={resolvedSelectedPlaceId}
                 onSelectPlace={handlePlaceSelect}
               />
