@@ -52,6 +52,7 @@ const SEOUL_BOOTSTRAP_BOUNDS: PlaceBounds = {
   minLng: 126.7341,
   maxLng: 127.2693,
 };
+const SEOUL_BOOTSTRAP_ZOOM = 11;
 
 function getFirstValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -389,6 +390,7 @@ export default async function MapPage({ searchParams }: MapPageProps) {
             currentMapHref={currentMapHref}
             initialBounds={result.bounds}
             initialCount={result.count}
+            initialZoom={shouldPrefetchPlaces ? null : SEOUL_BOOTSTRAP_ZOOM}
             markerMode={result.markerMode}
             prefetchedOnServer={shouldPrefetchPlaces}
             mapMarkers={result.mapMarkers}

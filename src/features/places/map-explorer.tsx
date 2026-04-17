@@ -39,6 +39,7 @@ type MapExplorerProps = {
   currentMapHref: string;
   initialBounds: PlaceBounds;
   initialCount: number;
+  initialZoom?: number | null;
   mapMarkers: PlaceMapMarkerRecord[];
   markerMode: PlaceMapMarkerMode;
   prefetchedOnServer: boolean;
@@ -420,6 +421,7 @@ export function MapExplorer({
   currentMapHref,
   initialBounds,
   initialCount,
+  initialZoom = null,
   mapMarkers,
   markerMode,
   prefetchedOnServer,
@@ -449,6 +451,7 @@ export function MapExplorer({
   const lastMobileListCloseAtRef = useRef(0);
   const [manualRefreshTick, setManualRefreshTick] = useState(0);
   const shouldSkipInitialFetchRef = useRef(prefetchedOnServer);
+  const shouldIgnoreFirstViewportSyncRef = useRef(searchScope === "viewport");
   const activeBounds =
     searchScope === "viewport"
       ? roundBounds(viewport?.bounds ?? initialBounds)
@@ -459,7 +462,8 @@ export function MapExplorer({
     category,
     query,
     searchScope,
-    zoom: searchScope === "viewport" ? viewport?.zoom ?? null : null,
+    zoom:
+      searchScope === "viewport" ? viewport?.zoom ?? initialZoom ?? null : null,
   });
   const resolvedSelectedPlaceId = selectedPlaceId;
   const displayPlaces = visiblePlaces.slice(
@@ -689,6 +693,11 @@ export function MapExplorer({
   };
 
   const handleViewportChange = (nextViewport: MapViewport) => {
+    if (shouldIgnoreFirstViewportSyncRef.current) {
+      shouldIgnoreFirstViewportSyncRef.current = false;
+      return;
+    }
+
     setViewport(nextViewport);
   };
 
