@@ -186,7 +186,9 @@ test("홈에서 인기 장소 섹션이 보이고 상세 페이지로 이동할 
   const shareCall = await getLatestShareCall(page);
   expect(shareCall?.title).toContain(expectedPlaceName);
 
-  await firstCard.getByRole("link").click();
+  await firstCard
+    .locator('[data-testid^="trending-place-primary-link-"]')
+    .click();
 
   await expect(page).toHaveURL(/\/place\//);
   await expect(
