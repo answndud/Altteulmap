@@ -3,6 +3,11 @@
 기준일: 2026-04-17
 
 ## 진행 현황 요약
+- Cloudflare CI 인증을 더 단순하게 정리했다. account ID는 `wrangler.jsonc`/`wrangler.admin.jsonc`에 직접 넣고, GitHub Actions 자동 public deploy는 `CLOUDFLARE_API_TOKEN`만 secret으로 요구하도록 바꿨다
+- GitHub Actions를 `main` push 기준 public 자동 배포로 바꿨다. 이제 `main`에 push하면 `verify -> deploy-config -> deploy:check:public -> deploy:public` 순서로 public worker가 자동 배포되고, admin은 계속 수동 배포 경로로 유지된다
+- 모바일 목록 시트 drag-close 회귀를 정리했다. 목록 시트 전용 close threshold를 조금 낮추고, Playwright는 `expanded -> peek -> close` 전환 사이에 transition settle 시간을 두도록 바꿔 기존 `mobile-place-list-sheet` 숨김 실패가 다시 나지 않게 했다
+- 지도 숫자 클러스터 크기를 다시 줄였다. 개수 tier별 시각 지름을 약 20~25% 낮추고, 보이는 원형과 실제 hit box를 분리해 웹/모바일에서 덜 답답하게 보이면서도 터치 영역은 유지하도록 정리했다
+- PR CI 후속: `E2E Full`을 깨던 인기 장소 카드 selector 충돌을 고쳤다. 카드 본문 링크와 `상세 보기` 링크에 개별 test id를 부여했고, `verify`는 `lint + tsc --noEmit`만 수행하도록 줄였으며, E2E job은 `.next/cache`를 복원하고 build 전에 이를 지우지 않도록 바꿔 반복 PR에서 Next build 시간을 줄일 준비를 마쳤다
 - 전면 디자인 재설계 8차 구현을 진행했다. 관리자 대시보드/검수 큐/가격 관리 화면을 공통 `AdminPageShell` 기준으로 다시 정리했고, admin 헤더의 중복 사용자 배지를 걷어 public과 같은 디자인 언어로 맞췄다. mock 기준 admin dashboard smoke도 현재 구조에 맞게 다시 통과시켰다
 - 전면 디자인 재설계 7차 구현을 진행했다. 홈 카테고리 tray를 `상위 묶음 선택 -> 세부 업종 선택` 2단계 client interaction으로 바꿨고, 가격 제보/북마크 성공 상태도 더 명확한 피드백 박스와 상태 문구로 정리했다
 - 전면 디자인 재설계 6차 구현을 진행했다. 로그인·회원가입 폼은 전환 링크와 소셜 구획을 더 compact하게 정리했고, 회원가입은 자격증명 가입이 꺼진 환경에서 입력 필드를 아예 숨기도록 바꿨다. 장소 등록 폼은 중첩 카드 구조를 걷어내고 `장소 정보 -> 대표 가격 -> 추가 메모` 3단계 흐름으로 다시 정리했다
@@ -70,6 +75,68 @@
 - 다음 우선순위: `Cycle 12`는 `Phase A 남은 blocker(운영 DB credential 복구 + moderation_suggestions migration) -> Phase B 운영/모바일 실기기 QA` 순서로 진행한다. 운영 URL은 현재 `workers.dev` split으로 고정했고, 검색 URL 상태/공유 telemetry는 현 범위로 동결했다
 
 ## 실행 로그
+
+### 2026-04-17 12:12 KST: Cloudflare account ID를 wrangler 설정으로 이동
+- 완료 내용
+  - `/Users/alex/project/altteulmap/wrangler.jsonc`, `/Users/alex/project/altteulmap/wrangler.admin.jsonc`에 Cloudflare account ID `09ffaff2ee2810549ebc107c3a6784d8`를 직접 넣었다. 이 값은 secret이 아니라 배포 대상 account 식별자라서 CI variable로 둘 필요가 없고, worker target을 코드와 같이 고정하는 편이 운영상 단순하다.
+  - `/Users/alex/project/altteulmap/.github/workflows/ci.yml`에서는 `CLOUDFLARE_ACCOUNT_ID` env 주입을 제거했다. 이제 `main` push public 자동 배포는 `CLOUDFLARE_API_TOKEN`만 있으면 된다.
+  - `/Users/alex/project/altteulmap/docs/deploy/deploy-cloudflare.md`, `/Users/alex/project/altteulmap/docs/deploy/cloudflare-account-to-deploy.md`, `/Users/alex/project/altteulmap/docs/product/trd.md`도 같은 기준으로 수정해, GitHub 쪽 필수값에서 `CLOUDFLARE_ACCOUNT_ID`를 제거하고 `wrangler` 설정이 source of truth라는 점을 명시했다.
+- 검증 결과
+  - `git diff --check` 통과
+  - `npm run verify:quick` 통과
+  - `npx wrangler whoami`
+- 메모
+  - 로컬 `wrangler whoami` 기준 account ID는 `09ffaff2ee2810549ebc107c3a6784d8`로 확인했다.
+  - 이제 GitHub repository에는 `CLOUDFLARE_API_TOKEN`만 secret으로 추가하면 되고, `CLOUDFLARE_ACCOUNT_ID` variable은 더 이상 필요 없다.
+
+### 2026-04-17 12:02 KST: main push 기준 public 자동 배포 workflow 추가
+- 완료 내용
+  - `/Users/alex/project/altteulmap/.github/workflows/ci.yml`에서 `verify` job이 `main` push에도 돌도록 바꿨고, `push main` 전용 `deploy-public` job을 추가했다. 새 job은 `verify`와 `deploy-config`를 선행 조건으로 두고 `npm run deploy:check:public` 후 `npm run deploy:public`을 실행한다.
+  - `/Users/alex/project/altteulmap/docs/deploy/deploy-cloudflare.md`, `/Users/alex/project/altteulmap/docs/deploy/cloudflare-account-to-deploy.md`에는 `main` push 시 public worker 자동 배포, admin 수동 배포, 필요한 GitHub `vars/secrets`(`DATABASE_URL`, `AUTH_SECRET`, `NEXTAUTH_URL`, `ADMIN_APP_URL`, `SITE_URL`, `NEXT_PUBLIC_NAVER_MAP_KEY_ID`, `AUTH_KAKAO_CLIENT_ID`, `AUTH_KAKAO_CLIENT_SECRET`, `AUTH_NAVER_CLIENT_ID`, `AUTH_NAVER_CLIENT_SECRET`, `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`)를 명시했다.
+  - `/Users/alex/project/altteulmap/docs/project/PLAN.md`에도 repo 운영 기준을 `main` push public 자동 배포 기준으로 반영했다.
+- 검증 결과
+  - `git diff --check` 통과
+  - `npm run verify:quick` 통과
+- 메모
+  - 현재 workflow는 public worker만 자동 배포한다. admin은 외부 관리자 앱 분리 기준을 유지하므로 여전히 `npm run deploy:admin` 수동 배포가 필요하다.
+  - 실제 자동 배포가 성공하려면 GitHub repository `vars/secrets`에 위 목록이 모두 채워져 있어야 한다.
+
+### 2026-04-17 11:47 KST: 모바일 목록 시트 drag-close 회귀 안정화
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/places/map-explorer.tsx`에서 모바일 목록 시트 gesture에 `closeThreshold: 72`를 명시해, `peek` 상태에서 아래로 끌어 닫는 동작이 모바일 테스트 환경에서도 더 안정적으로 해석되게 했다.
+  - `/Users/alex/project/altteulmap/tests/e2e/map.mobile.spec.ts`는 `expanded -> peek` 첫 drag 뒤에 짧은 settle 시간을 추가했다. 목록 시트는 CSS transition이 있는 구조라, 실제 사용자보다 훨씬 빠른 연속 drag를 그대로 넣으면 간헐적으로 `toBeHidden()`이 흔들릴 수 있었고, 이번 수정으로 시트 snap 전환을 기다린 뒤 닫기 drag를 검증하도록 정리했다.
+- 검증 결과
+  - `git diff --check` 통과
+  - `USE_MOCK_DATA=true npx playwright test tests/e2e/map.mobile.spec.ts --project mobile-chromium` 통과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+- 메모
+  - 기존 `mobile-place-list-sheet` drag-close 실패는 더 이상 재현되지 않았다.
+
+### 2026-04-17 11:40 KST: 지도 숫자 클러스터 크기 축소
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/map/naver-map-panel.tsx`의 `getClusterMarkerVisual`을 조정해 숫자 클러스터의 시각 크기를 전반적으로 줄였다. 대형/중형/소형 tier를 각각 `70/62/54px -> 54/48/42px` 수준으로 낮추고, 내부 숫자 배지도 함께 줄여 모바일과 웹 모두에서 주변 지도를 덜 가리도록 맞췄다.
+  - 같은 파일에서 클러스터 marker는 `hitSize`와 실제 원형 크기를 분리했다. 네이버 지도 runtime icon은 더 작은 원형을 보여주되 anchor와 clickable size는 더 넓게 유지하고, preview/fallback도 같은 규칙을 쓰도록 맞춰 로딩 전후 체감 크기가 달라지지 않게 정리했다.
+  - 클러스터 shadow도 약하게 줄여 원형이 필요 이상으로 부풀어 보이지 않게 정리했다.
+- 검증 결과
+  - `git diff --check` 통과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+  - `USE_MOCK_DATA=true npx playwright test tests/e2e/map.mobile.spec.ts --project mobile-chromium`
+
+### 2026-04-17 11:28 KST: PR `E2E Full` 실패 수정과 CI 경량화 보강
+- 완료 내용
+  - `/Users/alex/project/altteulmap/tests/e2e/map.spec.ts`에서 인기 장소 카드 이동 검증이 `getByRole("link")` strict mode 충돌로 깨지던 문제를 확인했다. `/Users/alex/project/altteulmap/src/features/places/trending-places-section.tsx`에 카드 본문 링크와 `상세 보기` 링크용 test id를 분리하고, 테스트는 본문 링크만 클릭하도록 수정했다.
+  - `/Users/alex/project/altteulmap/package.json`의 `verify`를 `lint + typecheck`로 줄이고 `typecheck` 스크립트를 추가했다. 또 `build`와 `e2e:prepare`에서 `.next` 전체를 지우지 않게 바꿔 Next build cache를 살렸다.
+  - `/Users/alex/project/altteulmap/.github/workflows/ci.yml`에는 `docs/**`, `README.md` 변경 skip, `Deploy Config Check`의 무설치 실행, `E2E Full`의 `.next/cache` 복원을 추가했다. `/Users/alex/project/altteulmap/scripts/lib/load-env-files.mjs`는 `dotenv` 없이 `.env`를 읽도록 바꿔 deploy check가 `npm ci` 없이도 돌게 했다.
+- 검증 결과
+  - `npm run lint` 통과
+  - `npm run typecheck` 통과
+  - `env DATABASE_URL=... node scripts/check-cloudflare-deploy.mjs` 통과
+  - `env USE_MOCK_DATA=true ... npm run build` 통과
+  - `env USE_MOCK_DATA=true ... npx playwright test tests/e2e/map.spec.ts --grep "홈에서 인기 장소"` 통과
+- 메모
+  - 이번 변경은 PR rerun부터 효과가 난다. `Verify`의 중복 build는 바로 제거되고, `.next/cache`는 첫 run이 cache를 채운 뒤 같은 브랜치의 다음 run부터 build 시간을 줄일 수 있다.
 
 ### 2026-04-17 09:33 KST: 초기 viewport refetch 제거와 live 재배포
 - 완료 내용

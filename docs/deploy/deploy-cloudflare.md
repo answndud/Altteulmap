@@ -13,6 +13,7 @@
 - public: `https://altteulmap.altteul-lab.workers.dev`
 - admin: `https://altteulmap-admin.altteul-lab.workers.dev`
 - `NEXTAUTH_URL`, `SITE_URL`, `ADMIN_APP_URL`, canonical, robots, sitemap, admin redirect는 위 두 주소를 기준으로 유지한다.
+- GitHub Actions 기준으로는 `main` push 시 public worker만 자동 배포한다. admin worker는 여전히 수동 `deploy:admin` 경로로 유지한다.
 - custom domain은 별도 cycle에서 DNS, callback, canonical을 다시 묶어 처리할 후속 작업이다.
 
 ## 1. 배포 전 필수 확인
@@ -37,8 +38,10 @@
 - `AUTH_KAKAO_CLIENT_SECRET`
 - `AUTH_NAVER_CLIENT_ID`
 - `AUTH_NAVER_CLIENT_SECRET`
+- `CLOUDFLARE_API_TOKEN` (`main` push 자동 public deploy 또는 로컬 wrangler deploy 시)
 
 현재 코드 기준으로는 위 값들이 없으면 배포 후 로그인 또는 지도 기능이 깨질 수 있다.
+Cloudflare account ID는 현재 [wrangler.jsonc](/Users/alex/project/altteulmap/wrangler.jsonc), [wrangler.admin.jsonc](/Users/alex/project/altteulmap/wrangler.admin.jsonc)에 직접 넣어 두었으므로 GitHub variable로 따로 줄 필요는 없다.
 
 ## 3. 권장 추가 환경 변수
 - `EMAIL_FROM`
@@ -118,6 +121,11 @@ npm run deploy:admin
 - `deploy`: 현재 앱 전체 배포
 - `deploy:public`: `/admin`, `/api/admin`을 외부 관리자 앱 redirect/API stub로 전환한 public 앱 배포
 - `deploy:admin`: 별도 `apps/admin` 관리자 앱 배포
+
+자동화 기준:
+- `main` push: GitHub Actions가 `verify -> deploy:check:public -> deploy:public` 순서로 public worker를 자동 배포한다.
+- 관리자 앱은 자동 배포하지 않는다. admin 변경은 `npm run deploy:admin`을 별도로 실행한다.
+- 자동 배포를 쓰려면 GitHub repository `vars/secrets`에 `DATABASE_URL`, `AUTH_SECRET`, `NEXTAUTH_URL`, `ADMIN_APP_URL`, `SITE_URL`, `NEXT_PUBLIC_NAVER_MAP_KEY_ID`, `AUTH_KAKAO_CLIENT_ID`, `AUTH_KAKAO_CLIENT_SECRET`, `AUTH_NAVER_CLIENT_ID`, `AUTH_NAVER_CLIENT_SECRET`, `CLOUDFLARE_API_TOKEN`를 채워야 한다.
 
 관리자 분리 기준 배포 순서는 아래를 권장한다.
 1. `npm run deploy:admin`
