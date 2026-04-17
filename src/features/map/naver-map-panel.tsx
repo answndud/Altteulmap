@@ -249,12 +249,12 @@ const PLACE_MARKER_THEMES: Record<PlaceMarkerGroupKey, PlaceMarkerTheme> = {
 };
 
 const CLUSTER_MARKER_THEME = {
-  shellBackground: "rgba(255, 252, 248, 0.98)",
-  shellBorder: "rgba(180, 151, 126, 0.22)",
-  coreBackground: "#e7bf9d",
-  coreBorder: "rgba(165, 123, 89, 0.3)",
-  text: "#6f4630",
-  shadow: "0 12px 24px rgba(116, 88, 66, 0.16)",
+  background:
+    "linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(247, 242, 235, 0.94) 100%)",
+  border: "rgba(132, 104, 80, 0.16)",
+  ring: "rgba(228, 202, 178, 0.82)",
+  text: "#5d4637",
+  shadow: "0 6px 14px rgba(116, 88, 66, 0.1)",
 } as const;
 
 function getPlaceMarkerGroupKey(
@@ -302,27 +302,27 @@ function getPlaceMarkerVisual(
 function getClusterMarkerVisual(placeCount: number) {
   if (placeCount >= 100) {
     return {
-      hitSize: 60,
-      outerSize: 54,
-      innerSize: 42,
-      fontSize: 14,
+      hitSize: 52,
+      badgeSize: 38,
+      fontSize: 12,
+      ringInset: 2.5,
     };
   }
 
   if (placeCount >= 20) {
     return {
-      hitSize: 54,
-      outerSize: 48,
-      innerSize: 38,
-      fontSize: 13,
+      hitSize: 46,
+      badgeSize: 34,
+      fontSize: 11,
+      ringInset: 2.5,
     };
   }
 
   return {
-    hitSize: 48,
-    outerSize: 42,
-    innerSize: 32,
-    fontSize: 12,
+    hitSize: 40,
+    badgeSize: 30,
+    fontSize: 10,
+    ringInset: 2,
   };
 }
 
@@ -369,10 +369,8 @@ function createClusterIconHtml(placeCount: number) {
 
   return `
     <div style="width:${visual.hitSize}px;height:${visual.hitSize}px;display:flex;align-items:center;justify-content:center;">
-      <span style="display:flex;align-items:center;justify-content:center;width:${visual.outerSize}px;height:${visual.outerSize}px;border-radius:999px;background:${CLUSTER_MARKER_THEME.shellBackground};border:1px solid ${CLUSTER_MARKER_THEME.shellBorder};box-shadow:${CLUSTER_MARKER_THEME.shadow};">
-        <span style="display:flex;align-items:center;justify-content:center;width:${visual.innerSize}px;height:${visual.innerSize}px;border-radius:999px;background:${CLUSTER_MARKER_THEME.coreBackground};border:1px solid ${CLUSTER_MARKER_THEME.coreBorder};color:${CLUSTER_MARKER_THEME.text};font-size:${visual.fontSize}px;font-weight:800;line-height:1;letter-spacing:-0.02em;">
-          ${formatLikeCount(placeCount)}
-        </span>
+      <span style="display:flex;align-items:center;justify-content:center;width:${visual.badgeSize}px;height:${visual.badgeSize}px;border-radius:999px;background:${CLUSTER_MARKER_THEME.background};border:1px solid ${CLUSTER_MARKER_THEME.border};box-shadow:${CLUSTER_MARKER_THEME.shadow}, inset 0 0 0 ${visual.ringInset}px ${CLUSTER_MARKER_THEME.ring};color:${CLUSTER_MARKER_THEME.text};font-size:${visual.fontSize}px;font-weight:600;line-height:1;letter-spacing:0;font-variant-numeric:tabular-nums;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);">
+        ${formatLikeCount(placeCount)}
       </span>
     </div>
   `;
@@ -444,27 +442,21 @@ function PreviewMap({
               <span
                 className="flex items-center justify-center rounded-full"
                 style={{
-                  width: `${clusterVisual.outerSize}px`,
-                  height: `${clusterVisual.outerSize}px`,
-                  background: CLUSTER_MARKER_THEME.shellBackground,
-                  border: `1px solid ${CLUSTER_MARKER_THEME.shellBorder}`,
-                  boxShadow: CLUSTER_MARKER_THEME.shadow,
-                }}
-              >
-                <span
-                  className="flex items-center justify-center rounded-full font-extrabold"
-                  style={{
-                    width: `${clusterVisual.innerSize}px`,
-                    height: `${clusterVisual.innerSize}px`,
-                    background: CLUSTER_MARKER_THEME.coreBackground,
-                    border: `1px solid ${CLUSTER_MARKER_THEME.coreBorder}`,
-                    color: CLUSTER_MARKER_THEME.text,
+                  width: `${clusterVisual.badgeSize}px`,
+                  height: `${clusterVisual.badgeSize}px`,
+                  background: CLUSTER_MARKER_THEME.background,
+                  border: `1px solid ${CLUSTER_MARKER_THEME.border}`,
+                  boxShadow: `${CLUSTER_MARKER_THEME.shadow}, inset 0 0 0 ${clusterVisual.ringInset}px ${CLUSTER_MARKER_THEME.ring}`,
+                  color: CLUSTER_MARKER_THEME.text,
                   fontSize: `${clusterVisual.fontSize}px`,
-                  letterSpacing: "-0.02em",
+                  fontWeight: 600,
+                  letterSpacing: "0",
+                  fontVariantNumeric: "tabular-nums",
+                  backdropFilter: "blur(8px)",
+                  WebkitBackdropFilter: "blur(8px)",
                 }}
               >
-                  {formatLikeCount(marker.placeCount)}
-                </span>
+                {formatLikeCount(marker.placeCount)}
               </span>
             </button>
           );
