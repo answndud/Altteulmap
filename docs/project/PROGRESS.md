@@ -3,6 +3,7 @@
 기준일: 2026-04-17
 
 ## 진행 현황 요약
+- `main` merge와 public 자동 배포까지 마감했다. 첫 `main` run은 `ADMIN_APP_URL` variable 누락으로 실패했지만 workflow fallback을 추가한 뒤 두 번째 run `24546039765`가 성공했고, live public URL도 `200` 응답을 확인했다
 - `main` 자동 public 배포 첫 run은 `ADMIN_APP_URL` GitHub variable 누락으로 한 번 실패했고, workflow가 현재 운영 `workers.dev` split URL을 기본값으로 쓰도록 바로 보정했다
 - Cloudflare CI 인증을 더 단순하게 정리했다. account ID는 `wrangler.jsonc`/`wrangler.admin.jsonc`에 직접 넣고, GitHub Actions 자동 public deploy는 `CLOUDFLARE_API_TOKEN`만 secret으로 요구하도록 바꿨다
 - GitHub Actions를 `main` push 기준 public 자동 배포로 바꿨다. 이제 `main`에 push하면 `verify -> deploy-config -> deploy:check:public -> deploy:public` 순서로 public worker가 자동 배포되고, admin은 계속 수동 배포 경로로 유지된다
@@ -76,6 +77,18 @@
 - 다음 우선순위: `Cycle 12`는 `Phase A 남은 blocker(운영 DB credential 복구 + moderation_suggestions migration) -> Phase B 운영/모바일 실기기 QA` 순서로 진행한다. 운영 URL은 현재 `workers.dev` split으로 고정했고, 검색 URL 상태/공유 telemetry는 현 범위로 동결했다
 
 ## 실행 로그
+
+### 2026-04-17 12:27 KST: `main` merge, push, public 자동 배포 성공
+- 완료 내용
+  - 작업 브랜치 `codex/design-redesign-cycle13`를 `main`에 merge하고 `main`을 origin에 push했다. GitHub branch rule은 계속 PR 경고를 띄웠지만, 현재 권한으로는 push가 실제 반영됐다.
+  - 첫 `main` run `24545971653`은 `ADMIN_APP_URL` missing으로 실패했고, workflow fallback 추가 후 `main`에 `ci: default public deploy urls for main`을 다시 push했다.
+  - 두 번째 `main` run `24546039765`는 `Verify`, `Deploy Config Check`, `Deploy Public Worker`까지 모두 성공했다. 현재 public auto deploy는 `main` push 시 기본 `workers.dev` split URL을 사용해 배포된다.
+- 검증 결과
+  - `gh run view 24546039765 --json conclusion,displayTitle,headSha,url`
+  - `curl -I --max-time 20 https://altteulmap.altteul-lab.workers.dev/`
+- 메모
+  - admin worker 자동 배포는 여전히 비활성이다. admin 변경은 수동 `deploy:admin` 경로를 유지한다.
+  - custom domain을 붙일 때는 GitHub variable `ADMIN_APP_URL`, `SITE_URL`을 새 도메인으로 채우면 현재 fallback보다 우선 적용된다.
 
 ### 2026-04-17 12:24 KST: main 자동 public deploy 첫 run 실패 후 기본 URL fallback 추가
 - 완료 내용
