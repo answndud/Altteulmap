@@ -22,7 +22,7 @@ permissions:
 
 jobs:
   verify:
-    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
     name: Verify
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -145,3 +145,45 @@ jobs:
 
       - name: Check production deploy config
         run: node scripts/check-cloudflare-deploy.mjs
+
+  deploy-public:
+    name: Deploy Public Worker
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs:
+      - verify
+      - deploy-config
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      USE_MOCK_DATA: ${{ vars.USE_MOCK_DATA }}
+      AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+      NEXTAUTH_URL: ${{ vars.NEXTAUTH_URL }}
+      NEXT_PUBLIC_NAVER_MAP_KEY_ID: ${{ vars.NEXT_PUBLIC_NAVER_MAP_KEY_ID }}
+      AUTH_KAKAO_CLIENT_ID: ${{ vars.AUTH_KAKAO_CLIENT_ID }}
+      AUTH_KAKAO_CLIENT_SECRET: ${{ secrets.AUTH_KAKAO_CLIENT_SECRET }}
+      AUTH_NAVER_CLIENT_ID: ${{ vars.AUTH_NAVER_CLIENT_ID }}
+      AUTH_NAVER_CLIENT_SECRET: ${{ secrets.AUTH_NAVER_CLIENT_SECRET }}
+      ADMIN_APP_URL: ${{ vars.ADMIN_APP_URL }}
+      SITE_URL: ${{ vars.SITE_URL }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check public deploy config
+        run: npm run deploy:check:public
+
+      - name: Deploy public worker
+        run: npm run deploy:public

@@ -3,6 +3,7 @@
 기준일: 2026-04-17
 
 ## 진행 현황 요약
+- GitHub Actions를 `main` push 기준 public 자동 배포로 바꿨다. 이제 `main`에 push하면 `verify -> deploy-config -> deploy:check:public -> deploy:public` 순서로 public worker가 자동 배포되고, admin은 계속 수동 배포 경로로 유지된다
 - 모바일 목록 시트 drag-close 회귀를 정리했다. 목록 시트 전용 close threshold를 조금 낮추고, Playwright는 `expanded -> peek -> close` 전환 사이에 transition settle 시간을 두도록 바꿔 기존 `mobile-place-list-sheet` 숨김 실패가 다시 나지 않게 했다
 - 지도 숫자 클러스터 크기를 다시 줄였다. 개수 tier별 시각 지름을 약 20~25% 낮추고, 보이는 원형과 실제 hit box를 분리해 웹/모바일에서 덜 답답하게 보이면서도 터치 영역은 유지하도록 정리했다
 - PR CI 후속: `E2E Full`을 깨던 인기 장소 카드 selector 충돌을 고쳤다. 카드 본문 링크와 `상세 보기` 링크에 개별 test id를 부여했고, `verify`는 `lint + tsc --noEmit`만 수행하도록 줄였으며, E2E job은 `.next/cache`를 복원하고 build 전에 이를 지우지 않도록 바꿔 반복 PR에서 Next build 시간을 줄일 준비를 마쳤다
@@ -73,6 +74,18 @@
 - 다음 우선순위: `Cycle 12`는 `Phase A 남은 blocker(운영 DB credential 복구 + moderation_suggestions migration) -> Phase B 운영/모바일 실기기 QA` 순서로 진행한다. 운영 URL은 현재 `workers.dev` split으로 고정했고, 검색 URL 상태/공유 telemetry는 현 범위로 동결했다
 
 ## 실행 로그
+
+### 2026-04-17 12:02 KST: main push 기준 public 자동 배포 workflow 추가
+- 완료 내용
+  - `/Users/alex/project/altteulmap/.github/workflows/ci.yml`에서 `verify` job이 `main` push에도 돌도록 바꿨고, `push main` 전용 `deploy-public` job을 추가했다. 새 job은 `verify`와 `deploy-config`를 선행 조건으로 두고 `npm run deploy:check:public` 후 `npm run deploy:public`을 실행한다.
+  - `/Users/alex/project/altteulmap/docs/deploy/deploy-cloudflare.md`, `/Users/alex/project/altteulmap/docs/deploy/cloudflare-account-to-deploy.md`에는 `main` push 시 public worker 자동 배포, admin 수동 배포, 필요한 GitHub `vars/secrets`(`DATABASE_URL`, `AUTH_SECRET`, `NEXTAUTH_URL`, `ADMIN_APP_URL`, `SITE_URL`, `NEXT_PUBLIC_NAVER_MAP_KEY_ID`, `AUTH_KAKAO_CLIENT_ID`, `AUTH_KAKAO_CLIENT_SECRET`, `AUTH_NAVER_CLIENT_ID`, `AUTH_NAVER_CLIENT_SECRET`, `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`)를 명시했다.
+  - `/Users/alex/project/altteulmap/docs/project/PLAN.md`에도 repo 운영 기준을 `main` push public 자동 배포 기준으로 반영했다.
+- 검증 결과
+  - `git diff --check` 통과
+  - `npm run verify:quick` 통과
+- 메모
+  - 현재 workflow는 public worker만 자동 배포한다. admin은 외부 관리자 앱 분리 기준을 유지하므로 여전히 `npm run deploy:admin` 수동 배포가 필요하다.
+  - 실제 자동 배포가 성공하려면 GitHub repository `vars/secrets`에 위 목록이 모두 채워져 있어야 한다.
 
 ### 2026-04-17 11:47 KST: 모바일 목록 시트 drag-close 회귀 안정화
 - 완료 내용
