@@ -76,9 +76,9 @@ export function AdminPlaceReviewForm({
   return (
     <div
       data-testid="admin-review-form"
-      className="space-y-4 rounded-3xl border border-stone-200 bg-white p-4"
+      className="grid gap-4 rounded-[1.1rem] border border-stone-200 bg-white p-4"
     >
-      <div className="rounded-[1.25rem] border border-stone-200 bg-stone-50 px-4 py-3 text-sm leading-6 text-stone-600">
+      <div className="rounded-[0.95rem] border border-stone-200 bg-[var(--altteul-bg-subtle)]/55 px-4 py-3 text-sm leading-6 text-stone-600">
         공개 등록은 텍스트 정보만 받습니다. 승인 전에 운영자가 네이버 지도
         검색 결과와 주소를 대조해 위치를 확정해주세요.
       </div>
@@ -106,7 +106,7 @@ export function AdminPlaceReviewForm({
             onChange={(event) => setLatitude(event.target.value)}
             disabled={disabled || isPending}
             data-testid="admin-latitude"
-            className="rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900 disabled:cursor-not-allowed disabled:opacity-60"
+            className="altteulmap-input px-4 py-3 text-sm disabled:cursor-not-allowed disabled:opacity-60"
             placeholder="37.5665"
           />
         </label>
@@ -119,7 +119,7 @@ export function AdminPlaceReviewForm({
             onChange={(event) => setLongitude(event.target.value)}
             disabled={disabled || isPending}
             data-testid="admin-longitude"
-            className="rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900 disabled:cursor-not-allowed disabled:opacity-60"
+            className="altteulmap-input px-4 py-3 text-sm disabled:cursor-not-allowed disabled:opacity-60"
             placeholder="126.9780"
           />
         </label>
@@ -131,7 +131,7 @@ export function AdminPlaceReviewForm({
           onClick={() => submitDecision("approve")}
           disabled={disabled || isPending}
           data-testid="admin-approve-button"
-          className="rounded-full bg-stone-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-60"
+          className="altteulmap-accent-solid altteulmap-button px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
         >
           승인
         </button>
@@ -140,22 +140,22 @@ export function AdminPlaceReviewForm({
           onClick={() => submitDecision("reject")}
           disabled={disabled || isPending}
           data-testid="admin-reject-button"
-          className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-60"
+          className="altteulmap-button border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
         >
           반려
         </button>
       </div>
 
       {message ? (
-        <p
+        <div
           data-testid="admin-review-message"
           aria-live="polite"
-          className={`text-xs ${
+          className={`rounded-[0.95rem] border px-4 py-3 text-sm ${
             messageTone === "success"
-              ? "text-emerald-700"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
               : messageTone === "error"
-                ? "text-rose-700"
-                : "text-stone-500"
+                ? "border-rose-200 bg-rose-50 text-rose-700"
+                : "border-stone-200 bg-[var(--altteul-bg-subtle)]/55 text-stone-500"
           }`}
         >
           {isPending
@@ -163,7 +163,7 @@ export function AdminPlaceReviewForm({
               ? "승인 반영 중..."
               : "반려 반영 중..."
             : message}
-        </p>
+        </div>
       ) : null}
     </div>
   );

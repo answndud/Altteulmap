@@ -11,6 +11,23 @@ type BookmarkToggleButtonProps = {
   loginHref?: string;
 };
 
+function BookmarkIcon({ active }: { active: boolean }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="h-4 w-4 shrink-0"
+      fill={active ? "currentColor" : "none"}
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M6 4.5h12a1 1 0 0 1 1 1V21l-7-4-7 4V5.5a1 1 0 0 1 1-1Z" />
+    </svg>
+  );
+}
+
 export function BookmarkToggleButton({
   placeId,
   initialBookmarked,
@@ -21,11 +38,14 @@ export function BookmarkToggleButton({
   const router = useRouter();
   const [bookmarked, setBookmarked] = useState(initialBookmarked);
   const [message, setMessage] = useState<string | null>(null);
+  const [messageTone, setMessageTone] = useState<"success" | "error" | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const toggleBookmark = () => {
     startTransition(async () => {
       try {
+        setMessage(null);
+        setMessageTone(null);
         const nextBookmarked = !bookmarked;
         const response = await fetch(
           `/api/bookmarks/${encodeURIComponent(placeId)}`,
@@ -54,20 +74,24 @@ export function BookmarkToggleButton({
           }
 
           setMessage(result.message);
+          setMessageTone("error");
           return;
         }
 
         if (result.ok) {
           setBookmarked(result.bookmarked);
-          setMessage(null);
+          setMessage(result.message);
+          setMessageTone("success");
           router.refresh();
           return;
         }
 
         setMessage(result.message);
+        setMessageTone("error");
       } catch (error) {
         console.error("Failed to toggle bookmark.", error);
         setMessage("북마크 업데이트에 실패했습니다.");
+        setMessageTone("error");
       }
     });
   };
@@ -91,23 +115,26 @@ export function BookmarkToggleButton({
         className={`altteulmap-button inline-flex shrink-0 items-center justify-center whitespace-nowrap transition disabled:cursor-not-allowed disabled:opacity-60 ${
           compact
             ? bookmarked
-              ? "altteulmap-accent-solid px-3 py-1.5 text-xs font-medium"
-              : "border border-stone-300 bg-white px-3 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-100"
+              ? "altteulmap-accent-ghost gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--altteul-accent-text)]"
+              : "gap-1.5 border border-stone-300 bg-white px-3 py-1.5 text-xs font-medium text-stone-700 hover:bg-white"
             : bookmarked
-              ? "altteulmap-accent-solid px-4 py-2 text-sm font-medium"
-              : "border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-100"
+              ? "altteulmap-accent-ghost gap-2 px-4 py-2 text-sm font-medium text-[var(--altteul-accent-text)]"
+              : "gap-2 border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-700 hover:bg-white"
         }`}
       >
+        <BookmarkIcon active={bookmarked} />
         {isPending
-          ? "북마크 중"
+          ? "저장 중"
           : bookmarked
-            ? "북마크됨"
+            ? "저장됨"
             : "북마크"}
       </button>
       {message && !compact ? (
         <p
           data-testid={`bookmark-message-${placeId}`}
-          className="text-xs text-stone-500"
+          className={`text-xs ${
+            messageTone === "success" ? "text-emerald-700" : "text-stone-500"
+          }`}
         >
           {message}
         </p>

@@ -11,20 +11,20 @@ type AdminSummaryCardsProps = {
 
 export function AdminSummaryCards({ items }: AdminSummaryCardsProps) {
   return (
-    <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
       {items.map((item) => (
         <article
           key={item.id}
           data-testid={`admin-summary-card-${item.id}`}
-          className="rounded-[1.5rem] border border-stone-200 bg-stone-50 p-5"
+          className="altteulmap-panel-muted p-4"
         >
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-600">
+          <p className="text-[11px] font-semibold tracking-[0.16em] text-[var(--altteul-accent-text)]">
             {item.label}
           </p>
-          <h2 className="mt-3 text-3xl font-semibold text-stone-900">
+          <h2 className="mt-3 text-[1.9rem] font-semibold tracking-[-0.04em] text-stone-950">
             {item.value}
           </h2>
-          <p className="mt-3 text-sm leading-6 text-stone-600">{item.detail}</p>
+          <p className="mt-2 text-sm leading-6 text-stone-600">{item.detail}</p>
         </article>
       ))}
     </div>

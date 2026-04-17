@@ -52,14 +52,14 @@ export function AdminPriceReportReviewForm({
   };
 
   return (
-    <div data-testid="admin-price-review-form" className="space-y-3">
+    <div data-testid="admin-price-review-form" className="grid gap-3">
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
           onClick={() => submitDecision("approve")}
           disabled={disabled || isPending}
           data-testid="admin-price-approve-button"
-          className="rounded-full bg-stone-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-60"
+          className="altteulmap-accent-solid altteulmap-button px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
         >
           승인
         </button>
@@ -68,21 +68,21 @@ export function AdminPriceReportReviewForm({
           onClick={() => submitDecision("reject")}
           disabled={disabled || isPending}
           data-testid="admin-price-reject-button"
-          className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-60"
+          className="altteulmap-button border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
         >
           반려
         </button>
       </div>
       {message ? (
-        <p
+        <div
           data-testid="admin-price-review-message"
           aria-live="polite"
-          className={`text-xs ${
+          className={`rounded-[0.95rem] border px-4 py-3 text-sm ${
             messageTone === "success"
-              ? "text-emerald-700"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
               : messageTone === "error"
-                ? "text-rose-700"
-                : "text-stone-500"
+                ? "border-rose-200 bg-rose-50 text-rose-700"
+                : "border-stone-200 bg-[var(--altteul-bg-subtle)]/55 text-stone-500"
           }`}
         >
           {isPending
@@ -90,7 +90,7 @@ export function AdminPriceReportReviewForm({
               ? "승인 반영 중..."
               : "반려 반영 중..."
             : message}
-        </p>
+        </div>
       ) : null}
     </div>
   );

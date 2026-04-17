@@ -1,16 +1,20 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useFieldArray, useForm } from "react-hook-form";
-import { useState, useTransition } from "react";
+import { type ReactNode, useState, useTransition } from "react";
+import {
+  type UseFormRegister,
+  useFieldArray,
+  useForm,
+} from "react-hook-form";
 
 import { categoryGroups } from "@/features/categories/catalog";
-import { getRateLimitFeedbackMessage } from "@/lib/rate-limit-feedback";
 import {
   type PlaceSubmissionFormInput,
   type PlaceSubmissionFormValues,
   placeSubmissionFormSchema,
 } from "@/features/submission/schema";
+import { getRateLimitFeedbackMessage } from "@/lib/rate-limit-feedback";
 
 type SubmitResult = {
   ok: boolean;
@@ -46,6 +50,117 @@ const defaultValues: PlaceSubmissionFormInput = {
     },
   ],
 };
+
+type PriceItemFieldsProps = {
+  amountError?: string;
+  isPrimary?: boolean;
+  isPending: boolean;
+  labelError?: string;
+  onRemove?: () => void;
+  register: UseFormRegister<PlaceSubmissionFormInput>;
+  unitError?: string;
+  index: number;
+};
+
+type FormStepHeaderProps = {
+  step: string;
+  title: string;
+  description?: string;
+  action?: ReactNode;
+};
+
+function FormStepHeader({
+  step,
+  title,
+  description,
+  action,
+}: FormStepHeaderProps) {
+  return (
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex items-start gap-3">
+        <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[rgba(181,90,43,0.2)] bg-[rgba(181,90,43,0.08)] text-sm font-semibold text-[var(--altteul-accent-text)]">
+          {step}
+        </span>
+        <div className="grid gap-1">
+          <h2 className="text-base font-semibold text-stone-900">{title}</h2>
+          {description ? (
+            <p className="text-sm leading-6 text-stone-500">{description}</p>
+          ) : null}
+        </div>
+      </div>
+      {action}
+    </div>
+  );
+}
+
+function PriceItemFields({
+  amountError,
+  isPrimary = false,
+  isPending,
+  labelError,
+  onRemove,
+  register,
+  unitError,
+  index,
+}: PriceItemFieldsProps) {
+  const gridClassName = isPrimary
+    ? "md:grid-cols-[minmax(0,1.2fr)_minmax(0,0.9fr)_minmax(0,0.85fr)]"
+    : "md:grid-cols-[minmax(0,1.1fr)_minmax(0,0.8fr)_minmax(0,0.75fr)_auto]";
+
+  return (
+    <div className={`grid gap-3 ${gridClassName}`}>
+      <label className="grid min-w-0 gap-2 text-sm text-stone-700">
+        항목명
+        <input
+          {...register(`priceItems.${index}.label`)}
+          data-testid={`submit-price-label-${index}`}
+          className="altteulmap-input px-4 py-3.5 text-sm"
+          placeholder={isPrimary ? "예: 김치찌개, 기본 세탁" : "추가 가격 항목"}
+          disabled={isPending}
+        />
+        {labelError ? <span className="text-xs text-rose-600">{labelError}</span> : null}
+      </label>
+
+      <label className="grid min-w-0 gap-2 text-sm text-stone-700">
+        가격
+        <input
+          type="number"
+          {...register(`priceItems.${index}.amount`)}
+          data-testid={`submit-price-amount-${index}`}
+          className="altteulmap-input px-4 py-3.5 text-sm"
+          placeholder="7000"
+          disabled={isPending}
+        />
+        {amountError ? <span className="text-xs text-rose-600">{amountError}</span> : null}
+      </label>
+
+      <label className="grid min-w-0 gap-2 text-sm text-stone-700">
+        단위
+        <input
+          {...register(`priceItems.${index}.unitLabel`)}
+          data-testid={`submit-price-unit-${index}`}
+          className="altteulmap-input px-4 py-3.5 text-sm"
+          placeholder="예: 1인분, 1회"
+          disabled={isPending}
+        />
+        {unitError ? <span className="text-xs text-rose-600">{unitError}</span> : null}
+      </label>
+
+      {onRemove ? (
+        <div className="flex items-end">
+          <button
+            type="button"
+            onClick={onRemove}
+            className="altteulmap-button inline-flex h-12 items-center justify-center whitespace-nowrap px-4 text-sm font-medium text-stone-700"
+            disabled={isPending}
+          >
+            삭제
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 export function PlaceSubmitForm() {
   const [submitResult, setSubmitResult] = useState<SubmitResult | null>(null);
@@ -97,45 +212,46 @@ export function PlaceSubmitForm() {
     });
   });
 
+  const primaryPriceField = fields[0];
+  const additionalPriceFields = fields.slice(1);
+
   return (
-    <div
-      className={
-        submitResult
-          ? "grid gap-5 lg:grid-cols-[1.15fr_0.85fr]"
-          : "grid gap-6"
-      }
-    >
+    <div className={submitResult ? "grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_22rem]" : "grid gap-6"}>
       <form
         onSubmit={onSubmit}
         data-testid="place-submit-form"
-        className="rounded-[1.8rem] border border-stone-200 bg-white p-5 shadow-sm sm:p-7"
+        className="altteulmap-panel p-5 sm:p-6"
       >
-        <div className="grid gap-5">
-          <section>
-            <h2 className="text-base font-semibold text-stone-900">기본 정보</h2>
-            <div className="mt-4 grid gap-4">
+        <div className="grid gap-7">
+          <section className="grid gap-4">
+            <FormStepHeader
+              step="1"
+              title="장소 정보"
+              description="이름, 카테고리, 주소를 먼저 적어주세요."
+            />
+
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
               <label className="grid min-w-0 gap-2 text-sm text-stone-700">
                 업장/장소 이름
                 <input
                   {...register("name")}
                   data-testid="submit-name"
-                  className="altteulmap-input px-4 py-3.5 text-stone-900"
+                  className="altteulmap-input px-4 py-3.5 text-sm"
                   placeholder="예: 학교앞김밥, 성북청년밥집"
+                  disabled={isPending}
                 />
                 {errors.name ? (
-                  <span className="text-xs text-rose-600">
-                    {errors.name.message}
-                  </span>
+                  <span className="text-xs text-rose-600">{errors.name.message}</span>
                 ) : null}
               </label>
-            </div>
-            <div className="mt-4 grid gap-4 md:grid-cols-2">
+
               <label className="grid min-w-0 gap-2 text-sm text-stone-700">
                 카테고리
                 <select
                   {...register("categorySlug")}
                   data-testid="submit-category"
-                  className="altteulmap-input px-4 py-3.5 text-stone-900"
+                  className="altteulmap-input px-4 py-3.5 text-sm"
+                  disabled={isPending}
                 >
                   <option value="">카테고리 선택</option>
                   {categoryGroups.map((group) => (
@@ -154,13 +270,17 @@ export function PlaceSubmitForm() {
                   </span>
                 ) : null}
               </label>
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
               <label className="grid min-w-0 gap-2 text-sm text-stone-700">
                 지역 구분
                 <input
                   {...register("district")}
                   data-testid="submit-district"
-                  className="altteulmap-input px-4 py-3.5 text-stone-900"
+                  className="altteulmap-input px-4 py-3.5 text-sm"
                   placeholder="예: 서울 성북구"
+                  disabled={isPending}
                 />
                 {errors.district ? (
                   <span className="text-xs text-rose-600">
@@ -168,172 +288,167 @@ export function PlaceSubmitForm() {
                   </span>
                 ) : null}
               </label>
-            </div>
-            <div className="mt-4 grid gap-2">
-              <label className="grid gap-2 text-sm text-stone-700">
+
+              <label className="grid min-w-0 gap-2 text-sm text-stone-700">
                 업장 주소
                 <input
                   {...register("roadAddress")}
                   data-testid="submit-road-address"
-                  className="altteulmap-input px-4 py-3.5 text-stone-900"
+                  className="altteulmap-input px-4 py-3.5 text-sm"
                   placeholder="예: 서울 성북구 동소문로22길 31"
+                  disabled={isPending}
                 />
+                <span className="text-xs text-stone-500">
+                  도로명 주소 기준으로 적어주세요.
+                </span>
               </label>
-              {errors.roadAddress ? (
-                <p className="text-xs text-rose-600">
-                  {errors.roadAddress.message}
-                </p>
-              ) : null}
             </div>
+            {errors.roadAddress ? (
+              <p className="text-xs text-rose-600">{errors.roadAddress.message}</p>
+            ) : null}
           </section>
 
-          <section className="border-t border-stone-200 pt-5">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="text-base font-semibold text-stone-900">가격 항목</h2>
-              <button
-                type="button"
-                onClick={() =>
-                  append({
-                    label: "",
-                    amount: 0,
-                    unitLabel: "",
-                  })
-                }
-                className="altteulmap-button whitespace-nowrap border border-stone-300 px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
-              >
-                항목 추가
-              </button>
-            </div>
-            <div className="mt-4 grid gap-4">
-              {fields.map((field, index) => (
-                <div
-                  key={field.id}
-                  className="rounded-[1.35rem] border border-stone-200 bg-white p-3.5"
+          <section className="grid gap-4 border-t border-stone-200 pt-6">
+            <FormStepHeader
+              step="2"
+              title="대표 가격"
+              description="가장 먼저 보여줄 가격 1개를 먼저 적어주세요."
+              action={
+                <button
+                  type="button"
+                  onClick={() =>
+                    append({
+                      label: "",
+                      amount: 0,
+                      unitLabel: "",
+                    })
+                  }
+                  className="altteulmap-button inline-flex h-10 items-center justify-center whitespace-nowrap px-4 text-sm font-medium text-stone-700"
                 >
-                  <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.85fr)_minmax(0,0.75fr)_auto] lg:items-end">
-                    <label className="grid min-w-0 gap-2 text-sm text-stone-700">
-                      항목명
-                      <input
-                        {...register(`priceItems.${index}.label`)}
-                        data-testid={`submit-price-label-${index}`}
-                        className="altteulmap-input px-4 py-3.5 text-stone-900"
-                        placeholder="예: 김치찌개"
-                      />
-                    </label>
-                    <label className="grid min-w-0 gap-2 text-sm text-stone-700">
-                      가격
-                      <input
-                        type="number"
-                        {...register(`priceItems.${index}.amount`)}
-                        data-testid={`submit-price-amount-${index}`}
-                        className="altteulmap-input px-4 py-3.5 text-stone-900"
-                        placeholder="7000"
-                      />
-                    </label>
-                    <label className="grid min-w-0 gap-2 text-sm text-stone-700">
-                      단위
-                      <input
-                        {...register(`priceItems.${index}.unitLabel`)}
-                        data-testid={`submit-price-unit-${index}`}
-                        className="altteulmap-input px-4 py-3.5 text-stone-900"
-                        placeholder="1인분"
-                      />
-                    </label>
-                    <div className="flex items-end">
-                      <button
-                        type="button"
-                        onClick={() => remove(index)}
-                        disabled={fields.length === 1}
-                        className="altteulmap-button w-full whitespace-nowrap border border-stone-300 px-4 py-3 text-sm text-stone-700 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-50 lg:w-auto"
-                      >
-                        삭제
-                      </button>
-                    </div>
-                  </div>
-                  {errors.priceItems?.[index] ? (
-                    <div className="mt-3 grid gap-1 text-xs text-rose-600">
-                      {errors.priceItems[index]?.label ? (
-                        <span>{errors.priceItems[index]?.label?.message}</span>
-                      ) : null}
-                      {errors.priceItems[index]?.amount ? (
-                        <span>{errors.priceItems[index]?.amount?.message}</span>
-                      ) : null}
-                      {errors.priceItems[index]?.unitLabel ? (
-                        <span>
-                          {errors.priceItems[index]?.unitLabel?.message}
-                        </span>
-                      ) : null}
-                    </div>
-                  ) : null}
+                  가격 항목 추가
+                </button>
+              }
+            />
+
+            {primaryPriceField ? (
+              <PriceItemFields
+                index={0}
+                isPrimary
+                isPending={isPending}
+                register={register}
+                labelError={errors.priceItems?.[0]?.label?.message}
+                amountError={errors.priceItems?.[0]?.amount?.message}
+                unitError={errors.priceItems?.[0]?.unitLabel?.message}
+              />
+            ) : null}
+
+            {additionalPriceFields.length > 0 ? (
+              <div className="grid gap-4 border-t border-dashed border-stone-200 pt-4">
+                <div className="grid gap-1">
+                  <h3 className="text-sm font-semibold text-stone-900">추가 가격</h3>
+                  <p className="text-sm leading-6 text-stone-500">
+                    같이 보여주고 싶은 가격이 있으면 이어서 적어주세요.
+                  </p>
                 </div>
-              ))}
-            </div>
+                <div className="grid gap-4">
+                  {additionalPriceFields.map((field, offset) => {
+                    const index = offset + 1;
+
+                    return (
+                      <div
+                        key={field.id}
+                        className={`grid gap-3 ${offset > 0 ? "border-t border-stone-200 pt-4" : ""}`}
+                      >
+                        <PriceItemFields
+                          index={index}
+                          isPending={isPending}
+                          register={register}
+                          labelError={errors.priceItems?.[index]?.label?.message}
+                          amountError={errors.priceItems?.[index]?.amount?.message}
+                          unitError={errors.priceItems?.[index]?.unitLabel?.message}
+                          onRemove={() => remove(index)}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
           </section>
 
-          <section className="border-t border-stone-200 pt-5">
-            <h2 className="text-base font-semibold text-stone-900">메모</h2>
-            <label className="mt-4 grid gap-2 text-sm text-stone-700">
-              추가 메모
+          <section className="grid gap-3 border-t border-stone-200 pt-6">
+            <FormStepHeader
+              step="3"
+              title="추가 메모"
+              description="확인 시점이나 참고할 내용이 있으면 짧게 남겨주세요."
+            />
+            <label className="grid gap-2 text-sm text-stone-700">
+              메모
               <textarea
                 {...register("note")}
                 data-testid="submit-note"
                 rows={5}
-                className="altteulmap-input min-h-40 resize-y px-4 py-3.5 text-stone-900"
-                placeholder="예: 점심시간 줄이 짧고 현금 결제 손님이 많습니다."
+                className="altteulmap-input min-h-36 resize-y px-4 py-3.5 text-sm"
+                placeholder="예: 점심 기준 가격표 확인, 현장 메뉴판 확인"
+                disabled={isPending}
               />
               {errors.note ? (
-                <span className="text-xs text-rose-600">
-                  {errors.note.message}
-                </span>
+                <span className="text-xs text-rose-600">{errors.note.message}</span>
               ) : null}
             </label>
           </section>
 
-          <button
-            type="submit"
-            disabled={isPending}
-            data-testid="submit-place-button"
-            className="altteulmap-accent-solid altteulmap-button inline-flex w-full items-center justify-center whitespace-nowrap px-5 py-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
-          >
-            {isPending ? "등록 접수 중..." : "장소 등록하기"}
-          </button>
+          <div className="flex flex-col gap-3 border-t border-stone-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-stone-500">
+              운영 검토 후 지도에 반영됩니다.
+            </p>
+            <button
+              type="submit"
+              disabled={isPending}
+              data-testid="submit-place-button"
+              className="altteulmap-accent-solid altteulmap-button inline-flex w-full items-center justify-center whitespace-nowrap px-5 py-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+            >
+              {isPending ? "등록 접수 중..." : "장소 등록하기"}
+            </button>
+          </div>
         </div>
       </form>
 
       {submitResult ? (
-        <aside data-testid="submit-result">
-          <section className="rounded-[1.8rem] border border-stone-200 bg-stone-50/80 p-5">
-            <h2 className="text-lg font-semibold text-stone-900">접수 내용</h2>
-            <div className="mt-4 space-y-4">
+        <aside data-testid="submit-result" className="xl:sticky xl:top-24 xl:self-start">
+          <section className="altteulmap-panel p-5">
+            <h2 className="text-lg font-semibold text-stone-900">접수 확인</h2>
+            <div className="mt-4 grid gap-4">
               <div
                 data-testid="submit-result-message"
-                className={`rounded-2xl px-4 py-3 text-sm ${
+                className={`rounded-[1rem] px-4 py-3 text-sm ${
                   submitResult.ok
-                    ? "bg-emerald-100 text-emerald-800"
-                    : "bg-rose-100 text-rose-800"
+                    ? "border border-emerald-200 bg-emerald-50 text-emerald-800"
+                    : "border border-rose-200 bg-rose-50 text-rose-800"
                 }`}
               >
                 {submitResult.message}
               </div>
+
               {submitResult.preview ? (
-                <div className="rounded-[1.35rem] border border-stone-200 bg-white p-4">
-                  <p className="text-sm text-stone-500">장소 이름</p>
+                <div className="rounded-[1rem] border border-stone-200 bg-[var(--altteul-bg-subtle)]/45 p-4">
+                  <p className="text-xs font-medium tracking-[0.14em] text-stone-500">
+                    접수된 장소
+                  </p>
                   <p
                     data-testid="submit-result-name"
-                    className="mt-1 font-medium text-stone-900"
+                    className="mt-2 text-base font-semibold text-stone-900"
                   >
                     {submitResult.preview.name}
                   </p>
-                  <p className="mt-4 text-sm text-stone-500">주소</p>
-                  <p className="mt-1 text-sm leading-6 text-stone-700">
-                    {submitResult.preview.roadAddress} ·{" "}
-                    {submitResult.preview.district}
+                  <p className="mt-2 text-sm leading-6 text-stone-600">
+                    {submitResult.preview.roadAddress} · {submitResult.preview.district}
                   </p>
                   <div className="mt-4 grid gap-2">
                     {submitResult.preview.priceItems.map((item) => (
                       <div
                         key={`${item.label}-${item.amount}`}
-                        className="rounded-[1rem] border border-stone-200 bg-stone-50/70 px-4 py-3 text-sm text-stone-700"
+                        className="rounded-[0.9rem] border border-stone-200 bg-white px-4 py-3 text-sm text-stone-700"
                       >
                         {item.label} · {item.amount.toLocaleString("ko-KR")}원
                         {item.unitLabel ? ` / ${item.unitLabel}` : ""}

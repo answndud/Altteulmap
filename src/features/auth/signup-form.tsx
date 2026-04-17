@@ -40,6 +40,7 @@ export function SignupForm({
     nickname.trim().length > 0 &&
     password.length >= 8 &&
     passwordConfirm.length >= 8;
+  const showCredentialFields = credentialsSignupEnabled;
 
   return (
     <form
@@ -103,101 +104,111 @@ export function SignupForm({
         });
       }}
       data-testid="signup-form"
-      className="rounded-[1.8rem] border border-stone-200 bg-white p-5 shadow-sm sm:p-7"
+      className="altteulmap-panel p-5 sm:p-6"
     >
       <div className="grid gap-5">
-        <section>
-          <h1 className="text-[1.85rem] font-semibold tracking-[-0.06em] text-stone-950">
+        <div className="grid gap-1.5">
+          <h1 className="text-[1.8rem] font-semibold tracking-[-0.06em] text-stone-950">
             회원가입
           </h1>
-        </section>
+          <p className="text-sm text-stone-500">
+            북마크와 제보 내역을 계정에 연결합니다.
+          </p>
+        </div>
 
-        <section className="grid gap-4">
-          <label className="grid gap-2 text-sm text-stone-700">
-            닉네임
-            <input
-              type="text"
-              value={nickname}
-              onChange={(event) => setNickname(event.target.value)}
-              disabled={isPending || !credentialsSignupEnabled}
-              data-testid="signup-nickname"
-              className="altteulmap-input px-4 py-3.5 text-stone-900"
-              placeholder="표시 이름"
-              autoComplete="nickname"
-            />
-          </label>
+        {showCredentialFields ? (
+          <section className="grid gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="grid gap-2 text-sm text-stone-700">
+                닉네임
+                <input
+                  type="text"
+                  value={nickname}
+                  onChange={(event) => setNickname(event.target.value)}
+                  disabled={isPending}
+                  data-testid="signup-nickname"
+                  className="altteulmap-input px-4 py-3.5 text-stone-900"
+                  placeholder="표시 이름"
+                  autoComplete="nickname"
+                />
+              </label>
 
-          <label className="grid gap-2 text-sm text-stone-700">
-            이메일
-            <input
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              disabled={isPending || !credentialsSignupEnabled}
-              data-testid="signup-email"
-              className="altteulmap-input px-4 py-3.5 text-stone-900"
-              placeholder="이메일 주소"
-              autoComplete="email"
-            />
-          </label>
+              <label className="grid gap-2 text-sm text-stone-700">
+                이메일
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  disabled={isPending}
+                  data-testid="signup-email"
+                  className="altteulmap-input px-4 py-3.5 text-stone-900"
+                  placeholder="이메일 주소"
+                  autoComplete="email"
+                />
+              </label>
+            </div>
 
-          <label className="grid gap-2 text-sm text-stone-700">
-            비밀번호
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              disabled={isPending || !credentialsSignupEnabled}
-              data-testid="signup-password"
-              className="altteulmap-input px-4 py-3.5 text-stone-900"
-              placeholder="8자 이상"
-              autoComplete="new-password"
-            />
-          </label>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="grid gap-2 text-sm text-stone-700">
+                비밀번호
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  disabled={isPending}
+                  data-testid="signup-password"
+                  className="altteulmap-input px-4 py-3.5 text-stone-900"
+                  placeholder="8자 이상"
+                  autoComplete="new-password"
+                />
+              </label>
 
-          <label className="grid gap-2 text-sm text-stone-700">
-            비밀번호 확인
-            <input
-              type="password"
-              value={passwordConfirm}
-              onChange={(event) => setPasswordConfirm(event.target.value)}
-              disabled={isPending || !credentialsSignupEnabled}
-              data-testid="signup-password-confirm"
-              className="altteulmap-input px-4 py-3.5 text-stone-900"
-              placeholder="비밀번호 다시 입력"
-              autoComplete="new-password"
-            />
-          </label>
-        </section>
+              <label className="grid gap-2 text-sm text-stone-700">
+                비밀번호 확인
+                <input
+                  type="password"
+                  value={passwordConfirm}
+                  onChange={(event) => setPasswordConfirm(event.target.value)}
+                  disabled={isPending}
+                  data-testid="signup-password-confirm"
+                  className="altteulmap-input px-4 py-3.5 text-stone-900"
+                  placeholder="비밀번호 다시 입력"
+                  autoComplete="new-password"
+                />
+              </label>
+            </div>
+          </section>
+        ) : null}
 
         {message ? (
           <div
             data-testid="signup-message"
-            className="rounded-[1.25rem] border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700"
+            className="rounded-[1rem] border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700"
           >
             {message}
           </div>
         ) : null}
 
-        <button
-          type="submit"
-          disabled={isPending || !canSubmit}
-          data-testid="signup-submit"
-          className="altteulmap-accent-solid altteulmap-button whitespace-nowrap px-5 py-3.5 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {isPending ? "가입 중..." : "회원가입"}
-        </button>
+        {showCredentialFields ? (
+          <button
+            type="submit"
+            disabled={isPending || !canSubmit}
+            data-testid="signup-submit"
+            className="altteulmap-accent-solid altteulmap-button whitespace-nowrap px-5 py-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isPending ? "가입 중..." : "회원가입"}
+          </button>
+        ) : null}
 
         {hasEnabledSocialProviders ? (
           <>
-            <div className="flex items-center gap-3 text-xs uppercase tracking-[0.18em] text-stone-400">
+            <div className="flex items-center gap-3 text-xs tracking-[0.12em] text-stone-400">
               <span className="h-px flex-1 bg-stone-200" />
-              또는
+              {showCredentialFields ? "소셜로 시작" : "소셜 로그인"}
               <span className="h-px flex-1 bg-stone-200" />
             </div>
 
             <section className="grid gap-3">
-              <p className="text-sm font-medium text-stone-700">소셜 회원가입</p>
               <SocialAuthButtons
                 callbackUrl={callbackUrl}
                 providers={socialProviders}
@@ -210,8 +221,7 @@ export function SignupForm({
           </>
         ) : null}
 
-        <div className="flex items-center justify-between border-t border-stone-200 pt-4 text-sm text-stone-500">
-          <span>이미 계정이 있나요?</span>
+        <div className="flex items-center justify-center border-t border-stone-200 pt-4 text-sm text-stone-500">
           <Link
             href={loginHref}
             className="font-medium text-stone-700 transition hover:text-stone-950"
