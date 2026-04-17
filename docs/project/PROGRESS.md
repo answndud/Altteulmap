@@ -195,6 +195,20 @@
   - mock 기준 admin dashboard smoke는 통과했고, 이 범위에서는 public/admin design language 정렬과 admin shell 구조 확인 용도로 충분했다.
   - 중간에 `src/features/admin/entrypoints/**`만 먼저 바꾸면 build 시 `admin:sync`가 원본 `src/features/admin/pages/**`로 다시 덮는다는 점을 확인했고, 이후 source of truth를 `pages/**`로 고정해 수정했다.
 
+### 2026-04-18 00:11 KST: 로컬 Postgres 인증 복구 확인
+- 완료 내용
+  - 다른 프로젝트 Postgres와 충돌하던 로컬 5432 포트를 현재 프로젝트용 `altteulmap-postgres` 컨테이너로 다시 맞춘 뒤, 프로젝트 기본 로컬 DB(`postgresql://postgres:postgres@127.0.0.1:5432/altteulmap`) 기준 접속과 seed를 다시 확인했다.
+  - 디자인 변경과 직접 관련된 관리자 화면도 DB-backed 경로에서 다시 확인했다. `admin-dashboard`, `submission-admin`, `price-review`, `report-admin` E2E가 모두 통과해, 이번 admin 리디자인이 실제 queue/read/write 흐름을 깨지 않았음을 확인했다.
+- 검증 결과
+  - `docker ps --filter name=altteulmap-postgres --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'`
+  - `PGPASSWORD=postgres psql postgresql://postgres:postgres@127.0.0.1:5432/altteulmap -c 'select current_database(), current_user, 1 as ok;'`
+  - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap npm run db:push`
+  - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap npm run db:seed`
+  - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap USE_MOCK_DATA=false AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3107 AUTH_DEMO_PASSWORD=demo1234 AUTH_ADMIN_PASSWORD=admin1234 npx playwright test tests/e2e/admin-dashboard.spec.ts tests/e2e/submission-admin.spec.ts tests/e2e/price-review.spec.ts tests/e2e/report-admin.spec.ts --project chromium`
+- 메모
+  - 로컬 기준으로는 이제 `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap`를 명시했을 때 DB-backed admin E2E까지 안정적으로 돈다.
+  - `build/start`는 `.env.production.local`의 remote DB URL을 읽을 수 있으므로, 로컬 실DB 검증은 계속 shell env로 local `DATABASE_URL`을 덮어쓰는 편이 안전하다.
+
 ### 2026-04-17 10:16 KST: 전면 디자인 재설계 4차 구현
 - 완료 내용
   - `/Users/alex/project/altteulmap/src/features/map/map-page.tsx`에서 홈 상단을 다시 압축했다. 큰 hero 문구를 `동네 가격 지도` 기준의 compact heading으로 줄이고, 검색/범위/카테고리/요약 배치를 한 패널 안 toolbar 구조로 재정리했다.
