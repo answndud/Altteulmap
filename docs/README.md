@@ -6,7 +6,7 @@
 
 ## Deployment
 - [Cloudflare deploy guide](deploy/deploy-cloudflare.md)
-- [Cloudflare account to deploy](deploy/cloudflare-account-to-deploy.md)
+  - 현재 운영 배포 방식의 기준 문서이자, Cloudflare 계정 준비부터 Workers Builds 설정, 수동 fallback 배포까지 포함한 단일 배포 가이드다.
 
 ## Project Workflow
 - [PLAN](project/PLAN.md)

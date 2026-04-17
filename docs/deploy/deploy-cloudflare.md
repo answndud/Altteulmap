@@ -1,104 +1,167 @@
-# Cloudflare 배포 체크리스트
+# Cloudflare 배포 가이드
 
-기준일: 2026-03-31
+기준일: 2026-04-17
 
 ## 목적
-- Cloudflare Workers + OpenNext 기준으로 알뜰맵을 배포할 때 빠뜨리기 쉬운 설정을 한 문서에 모은다.
-- 실제 배포 전 `npm run deploy:check`로 환경 변수를 먼저 점검한다.
-- 계정 생성부터 첫 배포까지의 전체 절차는 아래 문서를 함께 본다.
-  - `cloudflare-account-to-deploy.md`
+- Cloudflare 계정 준비, Workers Builds 설정, 운영 배포, 수동 fallback 배포까지 한 문서에서 끝나게 정리한다.
+- 현재 저장소의 실제 운영 기준을 문서 하나로 고정한다.
+- 배포 전에 `npm run deploy:check*`와 smoke 명령으로 위험한 설정 누락을 먼저 잡는다.
 
 ## 현재 운영 기준
 - 현재 운영 URL은 custom domain이 아니라 `workers.dev` split이다.
 - public: `https://altteulmap.altteul-lab.workers.dev`
 - admin: `https://altteulmap-admin.altteul-lab.workers.dev`
 - `NEXTAUTH_URL`, `SITE_URL`, `ADMIN_APP_URL`, canonical, robots, sitemap, admin redirect는 위 두 주소를 기준으로 유지한다.
-- 기본 배포는 GitHub `main` push 뒤 Cloudflare Workers Builds가 맡는다. GitHub Actions는 `pull_request`/수동 실행용 CI만 담당한다.
-- 수동 터미널 배포(`deploy:public`, `deploy:admin`)는 Workers Builds가 깨졌거나 즉시 재배포가 필요할 때만 fallback으로 쓴다.
-- custom domain은 별도 cycle에서 DNS, callback, canonical을 다시 묶어 처리할 후속 작업이다.
+- 평소 배포는 GitHub `main` push 뒤 Cloudflare Workers Builds가 맡는다.
+- GitHub Actions는 `pull_request`와 `workflow_dispatch`에서만 CI를 수행한다.
+- 로컬 터미널 배포(`deploy`, `deploy:public`, `deploy:admin`)는 fallback 경로다.
+- custom domain은 DNS, callback, canonical을 다시 묶어 처리할 별도 후속 작업이다.
 
-## 1. 배포 전 필수 확인
-1. `npm run verify`
-2. `npm run db:check:production`
-3. `npm run smoke:local`
-4. `npm run smoke:remote`
-5. `USE_MOCK_DATA=false`
-6. 운영 DB 연결 문자열 준비
-7. `NEXTAUTH_URL`을 실제 배포 도메인으로 변경
-8. 관리자 앱을 분리할 경우 public 앱 `ADMIN_APP_URL`, admin 앱 `SITE_URL`까지 준비
-9. 네이버 지도 키와 OAuth callback URL을 운영 도메인 기준으로 등록
+## 빠른 요약
+1. 처음 한 번만 Cloudflare 계정, Wrangler 로그인, Workers Builds, 대시보드 변수/시크릿, OAuth callback을 맞춘다.
+2. 평소에는 `main`에 push만 하면 Cloudflare가 public/admin worker를 자동 배포한다.
+3. 성공/실패는 GitHub `Checks`에서 빠르게 보고, 실패 원인은 Cloudflare Dashboard `Builds`에서 확인한다.
+4. Workers Builds가 깨졌거나 긴급 재배포가 필요할 때만 로컬에서 `npm run deploy:*`를 쓴다.
 
-## 2. 필수 환경 변수
-- `DATABASE_URL`
-- `AUTH_SECRET`
-- `NEXTAUTH_URL`
-- `ADMIN_APP_URL` (`deploy:public` 또는 외부 관리자 앱 분리 시)
-- `SITE_URL` (`deploy:admin`으로 별도 관리자 앱을 둘 때 권장, public 홈 링크 기준)
-- `NEXT_PUBLIC_NAVER_MAP_KEY_ID`
-- `AUTH_KAKAO_CLIENT_ID`
-- `AUTH_KAKAO_CLIENT_SECRET`
-- `AUTH_NAVER_CLIENT_ID`
-- `AUTH_NAVER_CLIENT_SECRET`
-- `CLOUDFLARE_API_TOKEN` (로컬 wrangler 수동 deploy 시)
+## 1. 이 저장소 기준 전제
+- Cloudflare 배포 설정은 이미 저장소에 들어 있다.
+  - [wrangler.jsonc](/Users/alex/project/altteulmap/wrangler.jsonc)
+  - [wrangler.admin.jsonc](/Users/alex/project/altteulmap/wrangler.admin.jsonc)
+  - [open-next.config.ts](/Users/alex/project/altteulmap/open-next.config.ts)
+  - [package.json](/Users/alex/project/altteulmap/package.json)
+- 현재 앱은 Cloudflare D1이 아니라 외부 PostgreSQL `DATABASE_URL`을 쓴다.
+- 현재 앱은 Hyperdrive binding을 쓰지 않는다.
+- Cloudflare account ID는 `wrangler*.jsonc`에 직접 넣어 두었으므로 GitHub variable로 별도 관리하지 않는다.
+- public/admin은 split 배포지만, 설치와 shared 코드는 repo root lockfile 기준으로 동작한다.
 
-현재 코드 기준으로는 위 값들이 없으면 배포 후 로그인 또는 지도 기능이 깨질 수 있다.
-Cloudflare account ID는 현재 [wrangler.jsonc](/Users/alex/project/altteulmap/wrangler.jsonc), [wrangler.admin.jsonc](/Users/alex/project/altteulmap/wrangler.admin.jsonc)에 직접 넣어 두었으므로 GitHub variable로 따로 줄 필요는 없다.
+## 2. 처음 한 번만 하는 준비
 
-## 3. 권장 추가 환경 변수
-- `EMAIL_FROM`
-- `RESEND_API_KEY`
+### 2-1. Cloudflare 계정 만들기
+1. [Create account](https://developers.cloudflare.com/fundamentals/account/create-account/) 또는 [Sign up](https://dash.cloudflare.com/sign-up)으로 계정을 만든다.
+2. 이메일 인증을 끝낸다.
+3. Cloudflare Dashboard에 로그인한다.
 
-현재 앱에서 이메일 로그인은 아직 구현 전이므로 즉시 필수는 아니다.
+실무 메모:
+- 가능하면 이메일/비밀번호 방식 계정을 쓰는 편이 낫다.
+- 실제 서비스용이면 개인 메일보다 운영용 alias를 쓰는 편이 안전하다.
 
-## 4. OAuth callback URL
-- 카카오: `<NEXTAUTH_URL>/api/auth/callback/kakao`
-- 네이버: `<NEXTAUTH_URL>/api/auth/callback/naver`
+### 2-2. `workers.dev` 개념 확인
+- Cloudflare 계정마다 고유한 `workers.dev` 서브도메인을 쓸 수 있다.
+- 형식은 보통 `<worker-name>.<account-subdomain>.workers.dev`다.
+- 알뜰맵의 현재 운영 기준은 아래 두 주소다.
+  - public: `https://altteulmap.altteul-lab.workers.dev`
+  - admin: `https://altteulmap-admin.altteul-lab.workers.dev`
+- 관련 문서: [workers.dev](https://developers.cloudflare.com/workers/configuration/routing/workers-dev/)
 
-예시:
-- production: `https://altteulmap.example.com/api/auth/callback/kakao`
-- production: `https://altteulmap.example.com/api/auth/callback/naver`
+### 2-3. Wrangler 로그인
+프로젝트 루트에서 실행:
 
-## 5. Cloudflare 쪽 준비
-1. Cloudflare 계정 생성
-2. Wrangler 로그인
-3. Workers 서비스 이름 확인
-4. 필요 시 Hyperdrive 생성
-5. Workers 환경 변수 또는 secret 등록
+```bash
+npx wrangler login
+```
 
-## 5-1. Workers Builds 권장 설정
+메모:
+- 로컬 브라우저가 열리면 Cloudflare 계정으로 로그인해 권한을 허용한다.
+- 현재 운영 기본값은 Workers Builds지만, 로컬 수동 배포와 `wrangler tail`을 위해 로그인은 해두는 편이 낫다.
+- 관련 문서: [Wrangler login](https://developers.cloudflare.com/workers/wrangler/commands/general/)
 
-현재 저장소는 `apps/admin`이 별도 앱처럼 보이지만, 의존성 설치는 루트 `package-lock.json`과 루트 `node_modules`를 기준으로 동작한다.
-그래서 `altteulmap-admin`의 Root directory를 `apps/admin`으로 두면 Cloudflare 기본 설치 단계(`npm ci`)가 `apps/admin/package-lock.json`을 찾다가 실패한다.
+### 2-4. Workers Builds 연결
+Cloudflare Dashboard에서 public/admin worker를 각각 Git 연결된 Workers Builds로 구성한다.
 
-자동 배포 기준으로는 public/admin 모두 repo root(`/`)를 쓰는 구성이 안전하다.
+현재 저장소 기준 권장값:
 
-### public worker: `altteulmap`
+`altteulmap`
 - Root directory: `/`
 - Install command: `npm ci`
 - Build command: `npm run cf:build:public`
 - Deploy command: `npx opennextjs-cloudflare deploy -c wrangler.jsonc`
 
-### admin worker: `altteulmap-admin`
+`altteulmap-admin`
 - Root directory: `/`
 - Install command: `npm ci`
 - Build command: `npm run cf:build:admin`
 - Deploy command: `npx opennextjs-cloudflare deploy -c wrangler.admin.jsonc`
 
-주의:
-- `altteulmap-admin`의 Root directory를 `apps/admin`으로 두지 않는다.
-- admin 앱은 shared 코드와 루트 lockfile을 같이 쓰므로, Root directory를 하위 폴더로 제한하면 설치 단계에서 깨지기 쉽다.
-- build watch paths를 따로 줄 수는 있지만 shared 의존 범위가 넓으므로, 처음에는 비워 두는 편이 안전하다.
+중요:
+- `altteulmap-admin`의 Root directory를 `apps/admin`으로 두면 안 된다.
+- 현재 저장소는 루트 `package-lock.json`과 shared 코드 기준으로 설치되므로, `apps/admin`을 root로 두면 Cloudflare 기본 `npm ci` 단계가 깨진다.
+- build watch paths를 별도로 줄 수는 있지만 shared 의존 범위가 넓다. 처음에는 비워 두거나 넓게 잡는 편이 안전하다.
 
-## 6. 로컬 사전 점검 명령
+## 3. 환경 변수와 시크릿
+
+### 3-1. 로컬 build 변수와 Cloudflare runtime 변수의 차이
+- 로컬 수동 배포 시에는 내 컴퓨터의 shell env와 `.env*`가 build 입력값이 된다.
+- Cloudflare Workers Builds와 실제 런타임은 Dashboard의 변수/시크릿이 source of truth다.
+- 이 저장소의 배포 스크립트는 쉘에서 주입한 env를 로컬 `.env*`보다 우선 사용한다.
+
+### 3-2. 필수값
+- `DATABASE_URL`
+- `AUTH_SECRET`
+- `NEXTAUTH_URL`
+- `ADMIN_APP_URL`
+- `SITE_URL`
+- `NEXT_PUBLIC_NAVER_MAP_KEY_ID`
+- `AUTH_KAKAO_CLIENT_ID`
+- `AUTH_KAKAO_CLIENT_SECRET`
+- `AUTH_NAVER_CLIENT_ID`
+- `AUTH_NAVER_CLIENT_SECRET`
+
+설명:
+- `ADMIN_APP_URL`은 public worker가 외부 admin 앱으로 `/admin`, `/api/admin`을 넘길 때 필요하다.
+- `SITE_URL`은 admin worker의 홈 복귀 링크와 public 기준 URL에 필요하다.
+- `CLOUDFLARE_API_TOKEN`은 Workers Builds 자동 배포에는 필요 없고, 로컬 `wrangler` 수동 deploy에만 필요하다.
+
+### 3-3. 권장 추가값
+- `AUTH_DEMO_PASSWORD`
+- `AUTH_ADMIN_PASSWORD`
+- `EMAIL_FROM`
+- `RESEND_API_KEY`
+
+### 3-4. 무엇을 시크릿으로 둘지
+시크릿으로 관리:
+- `DATABASE_URL`
+- `AUTH_SECRET`
+- `AUTH_KAKAO_CLIENT_SECRET`
+- `AUTH_NAVER_CLIENT_SECRET`
+- `RESEND_API_KEY`
+
+대시보드 변수로 관리해도 되는 값:
+- `NEXT_PUBLIC_NAVER_MAP_KEY_ID`
+- `AUTH_KAKAO_CLIENT_ID`
+- `AUTH_NAVER_CLIENT_ID`
+- `SITE_URL`
+- `NEXTAUTH_URL`
+- `ADMIN_APP_URL`
+
+## 4. OAuth와 외부 콘솔 설정
+
+### 4-1. OAuth callback URL
+- 카카오: `<NEXTAUTH_URL>/api/auth/callback/kakao`
+- 네이버: `<NEXTAUTH_URL>/api/auth/callback/naver`
+
+예시:
+
+```text
+https://altteulmap.altteul-lab.workers.dev/api/auth/callback/kakao
+https://altteulmap.altteul-lab.workers.dev/api/auth/callback/naver
+```
+
+### 4-2. 네이버 지도 허용 도메인
+- `NEXT_PUBLIC_NAVER_MAP_KEY_ID`만 맞다고 끝나지 않는다.
+- NAVER Cloud Platform 지도 애플리케이션의 웹 서비스 URL 또는 허용 도메인에 실제 배포 주소도 등록해야 한다.
+- 현재 운영 기준이면 public/admin `workers.dev` 주소를 모두 확인한다.
+
+## 5. 배포 전 점검
+권장 순서:
+
 ```bash
 npm run verify
 npm run db:check:production
 npm run smoke:local
-npm run smoke:remote
 npm run deploy:check
 ```
 
-운영 URL smoke는 아래처럼 public/admin 주소를 명시하는 방식을 권장한다.
+운영 URL 기준 read-only smoke:
 
 ```bash
 SMOKE_PUBLIC_URL=https://altteulmap.<subdomain>.workers.dev \
@@ -106,11 +169,52 @@ SMOKE_ADMIN_URL=https://altteulmap-admin.<subdomain>.workers.dev \
 npm run smoke:remote
 ```
 
-이 스크립트는 public `/`, `/robots.txt`, `/sitemap.xml`, sample place canonical, public `/admin`, public `/api/admin/places`, admin `/admin`, admin `/login`을 읽기 전용으로 확인한다.
-`db:check:production`은 현재 `DATABASE_URL`로 실제 연결, moderation schema 유무, drizzle migration table 유무를 확인하고, `Tenant or user not found`가 나오면 URL encoding이 아니라 stale credential 문제라는 점까지 분리해준다.
+추가 메모:
+- `db:check:production`은 실제 `DATABASE_URL` 연결, moderation schema, drizzle migration table 유무를 확인한다.
+- `npm run deploy:check -- --preview`를 쓰면 preview 기준 URL 허용 상태만 빠르게 볼 수 있다.
+- manual split deploy를 돌릴 예정이면 `npm run deploy:check:public`, `npm run deploy:check:admin`까지 같이 본다.
 
-배포는 목적에 따라 아래를 사용한다.
+## 6. 평소 운영 배포
 
+### 6-1. 실제 배포 흐름
+1. 로컬 작업을 마치고 `main`에 반영한다.
+2. Cloudflare Workers Builds가 public/admin worker를 자동 배포한다.
+3. 필요하면 live URL smoke만 다시 확인한다.
+
+즉 평소에는:
+- GitHub에 `main` push만 하면 된다.
+- 터미널에서 매번 `npm run deploy:public`, `npm run deploy:admin`을 칠 필요는 없다.
+- GitHub Actions는 배포를 수행하지 않는다.
+
+### 6-2. GitHub Actions가 하는 일
+- `pull_request`: `Verify`, `E2E Full`
+- `workflow_dispatch`: `Verify`, `E2E Full`
+- `main` push: 아무 것도 하지 않음
+
+따라서 `main` push 뒤 GitHub Actions 탭에 새 run이 안 보여도 정상이다.
+
+### 6-3. 성공/실패 확인 위치
+빠른 상태 확인:
+- GitHub 커밋 또는 PR의 `Checks`
+- `Workers Builds: altteulmap`
+- `Workers Builds: altteulmap-admin`
+
+상세 로그 확인:
+- Cloudflare Dashboard
+- `Workers & Pages` -> 서비스 선택 -> `Builds`
+
+정리:
+- GitHub `Checks`: 성공, 실패, 진행중 상태 확인
+- Cloudflare `Builds`: 실패 원인과 상세 로그 확인
+
+## 7. 수동 fallback 배포
+
+### 7-1. 언제 쓰나
+- Cloudflare Workers Builds가 실패했을 때
+- 긴급 재배포가 필요할 때
+- public/admin 중 하나만 선택적으로 다시 배포하고 싶을 때
+
+### 7-2. 사용 명령
 ```bash
 npm run deploy
 npm run deploy:check:public
@@ -119,48 +223,88 @@ npm run deploy:check:admin
 npm run deploy:admin
 ```
 
+역할:
 - `deploy`: 현재 앱 전체 배포
-- `deploy:public`: `/admin`, `/api/admin`을 외부 관리자 앱 redirect/API stub로 전환한 public 앱 배포
-- `deploy:admin`: 별도 `apps/admin` 관리자 앱 배포
+- `deploy:public`: public 앱만 external admin stub 모드로 배포
+- `deploy:admin`: `apps/admin` 별도 관리자 앱 배포
 
-자동화 기준:
-- `main` push: Cloudflare Workers Builds가 설정된 worker를 자동 배포한다.
-- GitHub Actions는 `pull_request`/`workflow_dispatch`에서만 `verify`, `E2E Full`을 실행한다.
-- public/admin 모두 Workers Builds를 연결해 두었다면 둘 다 자동 배포된다. 하나만 자동 배포하고 싶으면 Cloudflare Dashboard에서 해당 worker의 build 연결 또는 watch paths를 조정한다.
-- 로컬 수동 배포를 쓸 때만 `CLOUDFLARE_API_TOKEN`을 준비하면 된다.
+### 7-3. split 배포 권장 순서
+1. `npm run deploy:check:admin`
+2. `npm run deploy:admin`
+3. admin worker에 `NEXTAUTH_URL=https://altteulmap-admin.<subdomain>.workers.dev`, `SITE_URL=https://altteulmap.<subdomain>.workers.dev` 확인
+4. `npm run deploy:check:public`
+5. public worker에 `ADMIN_APP_URL=https://altteulmap-admin.<subdomain>.workers.dev` 확인
+6. `npm run deploy:public`
 
-관리자 분리 기준 배포 순서는 아래를 권장한다.
-1. `npm run deploy:admin`
-2. admin Worker에 `NEXTAUTH_URL=https://altteulmap-admin.<subdomain>.workers.dev`, `SITE_URL=https://altteulmap.<subdomain>.workers.dev` 설정
-3. public Worker에 `ADMIN_APP_URL=https://altteulmap-admin.<subdomain>.workers.dev` 설정
-4. `npm run deploy:public`
+메모:
+- `deploy:public`은 `ADMIN_APP_URL` 없이 실행하면 실패한다.
+- `deploy:admin`에서 `SITE_URL`이 빠지면 관리자 헤더의 홈 링크가 admin 앱 자신을 가리킬 수 있다.
+- 수동 deploy에서는 `CLOUDFLARE_API_TOKEN`과 Wrangler 로그인 상태를 같이 확인한다.
 
-이 명령들은 `.next`, `.open-next`를 먼저 비우고 다시 OpenNext build를 만든 뒤 업로드한다.
-현재 저장소는 Cloudflare Workers Free 한도에 맞추기 위해 `webpack` build를 사용한다.
-배포/점검 스크립트는 쉘이나 CI에서 주입한 env를 로컬 `.env*`보다 우선 사용하므로, 운영 워크플로우에서 넘긴 `NEXTAUTH_URL`, `ADMIN_APP_URL`, `SITE_URL`이 로컬 파일 값에 덮이지 않는다.
+## 8. 처음 `workers.dev` 배포를 수동으로 찍어볼 때
+기본 운영은 Workers Builds지만, 첫 연결 확인이나 fallback 연습용으로 로컬 deploy를 해볼 수 있다.
 
-preview 기준으로 로컬 URL 허용 상태만 보려면:
+기본 앱 전체:
 
 ```bash
-npm run deploy:check -- --preview
+npm run deploy
 ```
 
-## 7. 첫 배포 직후 확인
-1. `/`에서 지도 렌더링
-2. `/login`에서 카카오/네이버 로그인 버튼 노출
-3. public Worker의 `/admin`이 별도 admin Worker로 이동하는지 확인
-4. public Worker의 `/api/admin/places`가 `adminUrl`이 담긴 안내 JSON을 반환하는지 확인
-5. `/robots.txt`
-6. `/sitemap.xml`
-7. 장소 상세 canonical
-8. 북마크/등록/신고 보호 라우트 동작
-9. 필요 시 `npm run smoke:remote` 재실행
+public/admin split:
 
-## 8. 주의사항
-- production에서는 `NEXTAUTH_URL`에 `localhost`를 쓰면 안 된다.
-- `deploy:public`은 `ADMIN_APP_URL` 없이 실행하면 실패하게 해두었다. public 번들은 `/admin`, `/api/admin`을 external stub 모드로 빌드하므로 외부 관리자 앱 주소가 필요하다.
-- `deploy:admin`으로 별도 관리자 앱을 둘 때 `SITE_URL`이 빠지면 관리자 헤더의 홈 링크가 admin 앱 자신을 가리킬 수 있다.
-- 네이버 지도 키와 네이버 로그인 키는 서로 다른 값이다.
-- 지도용 네이버 키는 `NEXT_PUBLIC_NAVER_MAP_KEY_ID`, 로그인용은 `AUTH_NAVER_CLIENT_ID` / `AUTH_NAVER_CLIENT_SECRET`이다.
-- 네이버 지도는 환경 변수만 맞춰도 끝나지 않는다. NAVER Cloud Platform 지도 애플리케이션 설정의 웹 서비스 URL 또는 허용 도메인에 실제 배포 주소(`https://<worker>.<subdomain>.workers.dev` 또는 custom domain)를 같이 등록해야 한다.
-- 카카오와 네이버 developer console에 등록된 callback URL이 실제 도메인과 정확히 일치해야 한다.
+```bash
+npm run deploy:admin
+npm run deploy:public
+```
+
+첫 배포 후 확인:
+- `/`
+- `/login`
+- `/robots.txt`
+- `/sitemap.xml`
+- public `/admin` redirect
+- public `/api/admin/places` 안내 JSON
+- admin `/login`
+
+실시간 로그:
+
+```bash
+npx wrangler tail
+```
+
+관련 문서: [Workers real-time logs](https://developers.cloudflare.com/workers/observability/logs/real-time-logs/)
+
+## 9. custom domain은 나중에
+- 현재 출시 범위에는 포함하지 않는다.
+- DNS 제어권, OAuth callback, canonical, sitemap, robots를 같이 다시 맞출 수 있을 때만 진행한다.
+- 관련 문서: [Custom Domains](https://developers.cloudflare.com/workers/configuration/routing/custom-domains/)
+
+custom domain으로 전환하면 같이 바꿀 것:
+- `NEXTAUTH_URL`
+- `SITE_URL`
+- `ADMIN_APP_URL`
+- 카카오 callback URL
+- 네이버 callback URL
+- NAVER Maps 허용 도메인
+- canonical과 sitemap 확인
+
+## 10. 자주 막히는 포인트
+- `NEXTAUTH_URL`이 `localhost`로 남아 있으면 OAuth callback, canonical, sitemap이 함께 꼬인다.
+- 로컬 build 변수와 Cloudflare runtime 변수를 혼동하면 로그인이나 지도만 부분적으로 깨질 수 있다.
+- `NEXT_PUBLIC_NAVER_MAP_KEY_ID`를 runtime에만 넣고 build 입력에는 안 넣으면 클라이언트 번들이 비어 있을 수 있다.
+- `altteulmap-admin` Root directory를 `apps/admin`으로 두면 `npm ci`가 실패한다.
+- 카카오/네이버 callback URL이 실제 도메인과 다르면 로그인만 실패하는 상태가 생긴다.
+- DB 문자열은 맞는데 Cloudflare에서 외부 DB 접속이 막히면 DB 방화벽, SSL, Supabase 연결 정책을 같이 확인해야 한다.
+- custom domain 전환 후에는 domain binding만 보지 말고 `NEXTAUTH_URL`, callback URL, canonical까지 같이 다시 확인해야 한다.
+
+## 참고 공식 문서
+- [Cloudflare account creation](https://developers.cloudflare.com/fundamentals/account/create-account/)
+- [Cloudflare login](https://developers.cloudflare.com/fundamentals/user-profiles/login/)
+- [Install/Update Wrangler](https://developers.cloudflare.com/workers/wrangler/install-and-update/)
+- [Wrangler login command](https://developers.cloudflare.com/workers/wrangler/commands/general/)
+- [Cloudflare Workers Next.js guide](https://developers.cloudflare.com/workers/framework-guides/web-apps/nextjs/)
+- [OpenNext get started](https://opennext.js.org/cloudflare/get-started)
+- [OpenNext env vars](https://opennext.js.org/cloudflare/howtos/env-vars)
+- [workers.dev](https://developers.cloudflare.com/workers/configuration/routing/workers-dev/)
+- [Custom Domains](https://developers.cloudflare.com/workers/configuration/routing/custom-domains/)
+- [Workers real-time logs](https://developers.cloudflare.com/workers/observability/logs/real-time-logs/)

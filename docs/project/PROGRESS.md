@@ -3,6 +3,7 @@
 기준일: 2026-04-17
 
 ## 진행 현황 요약
+- 배포 문서를 단일 기준 문서로 합쳤다. `docs/deploy/deploy-cloudflare.md`가 이제 Cloudflare 계정 준비, Workers Builds 설정, 현재 운영 배포 방식, 수동 fallback 배포까지 모두 포함하고, 중복되던 `cloudflare-account-to-deploy.md`는 제거했다
 - 배포 경로를 다시 단순화했다. GitHub Actions에서 `main` push용 `Verify`/`Deploy Public Worker`를 제거하고 PR CI만 남겼다. 이제 기본 운영 배포는 GitHub `main` push 뒤 Cloudflare Workers Builds가 맡고, 로컬 `deploy:public`/`deploy:admin`은 fallback으로만 사용한다
 - `main` merge와 live public 반영은 이미 마감했다. GitHub Actions 자동 public deploy를 한 번 도입했다가 `ADMIN_APP_URL` 누락 보정까지 확인한 뒤, 중복 비용이 커서 다시 제거하고 Cloudflare Workers Builds 단일 경로로 되돌렸다
 - 모바일 목록 시트 drag-close 회귀를 정리했다. 목록 시트 전용 close threshold를 조금 낮추고, Playwright는 `expanded -> peek -> close` 전환 사이에 transition settle 시간을 두도록 바꿔 기존 `mobile-place-list-sheet` 숨김 실패가 다시 나지 않게 했다
@@ -77,6 +78,15 @@
 - 다음 우선순위: `Cycle 12`는 `Phase A 남은 blocker(운영 DB credential 복구 + moderation_suggestions migration) -> Phase B 운영/모바일 실기기 QA` 순서로 진행한다. 운영 URL은 현재 `workers.dev` split으로 고정했고, 검색 URL 상태/공유 telemetry는 현 범위로 동결했다
 
 ## 실행 로그
+
+### 2026-04-17 13:28 KST: Cloudflare 배포 문서 통합
+- 완료 내용
+  - `/Users/alex/project/altteulmap/docs/deploy/deploy-cloudflare.md`를 Cloudflare 계정 준비, `workers.dev` 개념, Wrangler 로그인, Workers Builds 권장 설정, 환경 변수, OAuth callback, 현재 운영 배포 방식, 수동 fallback 배포, custom domain 주의사항까지 포함하는 단일 기준 문서로 재작성했다.
+  - 중복되던 `/Users/alex/project/altteulmap/docs/deploy/cloudflare-account-to-deploy.md`는 삭제했고, `/Users/alex/project/altteulmap/docs/README.md` 인덱스와 `/Users/alex/project/altteulmap/docs/project/PLAN.md`의 현재 참조도 새 단일 문서 기준으로 정리했다.
+- 검증 결과
+  - `git diff --check` 통과
+- 메모
+  - 이후 Cloudflare 관련 운영 문서는 `docs/deploy/deploy-cloudflare.md` 한 곳만 갱신하면 된다.
 
 ### 2026-04-17 13:05 KST: GitHub Actions main 배포 경로 제거
 - 완료 내용
