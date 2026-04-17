@@ -23,8 +23,8 @@ const providerClassNameMap: Record<SocialAuthProviderId, string> = {
 };
 
 const providerBadgeClassNameMap: Record<SocialAuthProviderId, string> = {
-  kakao: "bg-black/10 text-stone-900",
-  naver: "bg-white/14 text-white",
+  kakao: "bg-black/8 text-stone-900",
+  naver: "bg-white/16 text-white",
 };
 
 export function SocialAuthButtons({
@@ -50,40 +50,37 @@ export function SocialAuthButtons({
   return (
     <div className="grid gap-3">
       {enabledProviders.map((provider) => (
-          <button
-            key={provider.id}
-            type="button"
-            disabled={isBusy}
-            data-testid={`social-login-${provider.id}`}
-            onClick={() => {
-              onStart?.();
-              startTransition(() => {
-                setPendingProvider(provider.id);
-                void signIn(provider.id, { callbackUrl }).finally(() => {
-                  setPendingProvider(null);
-                });
+        <button
+          key={provider.id}
+          type="button"
+          disabled={isBusy}
+          data-testid={`social-login-${provider.id}`}
+          onClick={() => {
+            onStart?.();
+            startTransition(() => {
+              setPendingProvider(provider.id);
+              void signIn(provider.id, { callbackUrl }).finally(() => {
+                setPendingProvider(null);
               });
-            }}
-            className={`altteulmap-button altteulmap-brand-button ${providerClassNameMap[provider.id]} flex w-full items-center gap-3 px-4 py-3.5 text-left transition disabled:cursor-not-allowed disabled:opacity-60`}
+            });
+          }}
+          className={`altteulmap-button altteulmap-brand-button ${providerClassNameMap[provider.id]} flex w-full items-center gap-3 px-4 py-3 text-left transition disabled:cursor-not-allowed disabled:opacity-60`}
+        >
+          <span
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[0.8rem] text-sm font-semibold ${providerBadgeClassNameMap[provider.id]}`}
           >
-            <span
-              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[0.9rem] text-sm font-semibold ${providerBadgeClassNameMap[provider.id]}`}
-            >
-              {socialAuthProviderMonogramMap[provider.id]}
+            {socialAuthProviderMonogramMap[provider.id]}
+          </span>
+          <span className="flex min-w-0 flex-1 flex-col">
+            <span className="truncate text-sm font-semibold">
+              {pendingProvider === provider.id
+                ? `${socialAuthProviderLabelMap[provider.id]}로 이동 중...`
+                : intent === "signup"
+                  ? `${socialAuthProviderLabelMap[provider.id]}로 시작하기`
+                  : `${socialAuthProviderLabelMap[provider.id]}로 로그인`}
             </span>
-            <span className="flex min-w-0 flex-1 flex-col">
-              <span className="truncate text-sm font-semibold">
-                {pendingProvider === provider.id
-                  ? `${socialAuthProviderLabelMap[provider.id]}로 이동 중...`
-                  : intent === "signup"
-                    ? `${socialAuthProviderLabelMap[provider.id]}로 시작하기`
-                    : `${socialAuthProviderLabelMap[provider.id]}로 로그인`}
-              </span>
-            </span>
-            <span aria-hidden className="text-sm opacity-70">
-              →
-            </span>
-          </button>
+          </span>
+        </button>
       ))}
     </div>
   );

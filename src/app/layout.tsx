@@ -30,7 +30,7 @@ export default async function RootLayout({
 
   return (
     <html lang="ko" suppressHydrationWarning>
-      <body className="min-h-screen bg-stone-50 text-stone-900 antialiased">
+      <body className="min-h-screen bg-[var(--altteul-bg-canvas)] text-[var(--altteul-text-primary)] antialiased">
         <GlobalHeader user={user} adminHref={getAdminAppHref("/admin")} />
         <VisitTracker scope="public" />
         {children}

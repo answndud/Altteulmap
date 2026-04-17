@@ -12,9 +12,9 @@ import {
 } from "@/features/places/place-reaction-buttons";
 import { PlaceShareButton } from "@/features/places/place-share-button";
 import { PlacePriceReportForm } from "@/features/places/place-price-report-form";
-import { useMobileSheetGesture } from "@/features/places/use-mobile-sheet-gesture";
 import { formatKrw } from "@/features/places/queries";
 import { createPlaceSharePayload } from "@/features/places/share";
+import { useMobileSheetGesture } from "@/features/places/use-mobile-sheet-gesture";
 import type {
   PlacePreviewRecord,
   PlaceRecord,
@@ -53,16 +53,18 @@ function createLoginHref(path: string) {
 
 function LoadingState() {
   return (
-    <div className="space-y-4">
-      <div className="h-5 w-24 rounded-full bg-stone-100" />
-      <div className="h-8 w-2/3 rounded-2xl bg-stone-100" />
-      <div className="h-16 rounded-[1.5rem] bg-stone-100" />
-      <div className="h-28 rounded-[1.5rem] bg-stone-100" />
-      <div className="space-y-3">
-        <div className="h-20 rounded-[1.25rem] bg-stone-100" />
-        <div className="h-20 rounded-[1.25rem] bg-stone-100" />
-        <div className="h-20 rounded-[1.25rem] bg-stone-100" />
+    <div className="grid gap-4">
+      <div className="rounded-[1rem] bg-stone-100/90 p-5">
+        <div className="h-4 w-24 rounded-full bg-stone-200" />
+        <div className="mt-3 h-8 w-3/4 rounded-2xl bg-stone-200" />
+        <div className="mt-5 h-14 rounded-[1rem] bg-stone-200" />
       </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="h-24 rounded-[1rem] bg-stone-100" />
+        <div className="h-24 rounded-[1rem] bg-stone-100" />
+      </div>
+      <div className="h-40 rounded-[1rem] bg-stone-100" />
+      <div className="h-40 rounded-[1rem] bg-stone-100" />
     </div>
   );
 }
@@ -182,10 +184,9 @@ export function PlaceDetailSheet({
   const isBookmarked = place ? bookmarkedPlaceIds.includes(place.id) : false;
   const placePath = place ? `/place/${place.id}` : null;
   const bookmarkLoginHref = createLoginHref(currentMapHref);
-  const reportPath = place
+  const reportHref = place
     ? `/report?placeId=${place.id}&placeName=${encodeURIComponent(place.name)}`
     : null;
-  const reportHref = reportPath;
   const sharePayload = place
     ? createPlaceSharePayload(place, "detail_sheet")
     : null;
@@ -195,11 +196,19 @@ export function PlaceDetailSheet({
     place?.businessName && place.businessName !== place.name
       ? place.businessName
       : null;
-  const placeMetaItems = [
+  const verificationLabel =
+    place?.verificationStatus === "verified" ? "검증됨" : "미검증";
+  const heroMeta = [
     category?.name ?? null,
     place?.district ?? null,
+    verificationLabel,
   ].filter((item): item is string => Boolean(item));
-  const hasDetailTopMeta = placeMetaItems.length > 0 || Boolean(businessNameLabel);
+  const summaryCards = place
+    ? [
+        { label: "최근 갱신", value: place.lastPriceUpdatedAt },
+        { label: "주소", value: place.address },
+      ]
+    : [];
 
   const handleReactionUpdate = (nextState: PlaceReactionUpdate) => {
     setReactionOverrides((current) => ({
@@ -243,7 +252,7 @@ export function PlaceDetailSheet({
         type="button"
         aria-label="상세 패널 닫기"
         onClick={onClose}
-        className="pointer-events-auto absolute inset-0 bg-stone-950/30 xl:rounded-[2rem]"
+        className="pointer-events-auto absolute inset-0 bg-stone-950/30 xl:rounded-[1.125rem]"
       />
 
       <aside
@@ -253,10 +262,10 @@ export function PlaceDetailSheet({
         data-sheet-dragging={detailSheetGesture.isDragging ? "true" : "false"}
         data-sheet-mode="default"
         style={detailSheetGesture.style}
-        className="altteulmap-mobile-sheet altteulmap-mobile-sheet-detail pointer-events-auto absolute flex w-auto flex-col overflow-hidden rounded-[1.75rem] border border-stone-200 bg-white shadow-2xl xl:inset-x-auto xl:inset-y-0 xl:right-0 xl:top-0 xl:w-full xl:max-h-none xl:max-w-[25.5rem] 2xl:max-w-[26.5rem] xl:rounded-l-[2rem] xl:rounded-r-none xl:border-l xl:border-r-0"
+        className="altteulmap-mobile-sheet altteulmap-mobile-sheet-detail pointer-events-auto absolute flex w-auto flex-col overflow-hidden rounded-[1.125rem] border border-stone-200 bg-white shadow-2xl xl:inset-x-auto xl:inset-y-0 xl:right-0 xl:top-0 xl:w-full xl:max-h-none xl:max-w-[26rem] 2xl:max-w-[27rem] xl:rounded-l-[1.125rem] xl:rounded-r-none xl:border-l xl:border-r-0"
       >
-        <div className="sticky top-0 z-10 border-b border-stone-200 bg-white/95 px-4 pb-3 pt-2 backdrop-blur sm:px-5">
-          <div className="flex items-center justify-center pb-3 xl:hidden">
+        <div className="sticky top-0 z-10 border-b border-stone-200 bg-white/96 px-4 pb-2.5 pt-2 backdrop-blur sm:px-5">
+          <div className="flex items-center justify-center pb-2 xl:hidden">
             <div
               role="presentation"
               data-testid="place-detail-drag-handle"
@@ -272,25 +281,21 @@ export function PlaceDetailSheet({
           </div>
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-orange-600">
-                {category?.parentName ?? "장소 상세"}
+              <p className="altteulmap-section-kicker text-[11px]">
+                {category?.parentName ?? "장소"}
               </p>
               <h2 className="mt-1 truncate text-base font-semibold tracking-tight text-stone-900 sm:text-lg">
                 {place?.name ?? "장소 정보"}
               </h2>
-              {place?.address ? (
-                <p className="mt-1 truncate text-xs text-stone-500">
-                  {place.address}
-                </p>
-              ) : null}
             </div>
             <button
               type="button"
               onClick={onClose}
               data-testid="place-detail-close"
-              className="altteulmap-button shrink-0 whitespace-nowrap border border-stone-300 bg-white px-2.5 py-1.5 text-xs text-stone-700 transition hover:bg-stone-100 sm:px-3 sm:py-2 sm:text-sm"
+              className="altteulmap-button inline-flex h-9 w-9 shrink-0 items-center justify-center border border-stone-300 bg-white text-base text-stone-700 transition hover:bg-white sm:h-10 sm:w-10"
             >
-              닫기
+              <span aria-hidden="true">×</span>
+              <span className="sr-only">닫기</span>
             </button>
           </div>
         </div>
@@ -302,7 +307,7 @@ export function PlaceDetailSheet({
           {isLoading && !previewPlace ? <LoadingState /> : null}
 
           {!isLoading && error && !place ? (
-            <div className="rounded-[1.5rem] border border-dashed border-stone-300 bg-stone-50 p-6 text-sm leading-7 text-stone-600">
+            <div className="rounded-[1rem] border border-dashed border-stone-300 bg-[var(--altteul-bg-subtle)]/65 p-6 text-sm leading-7 text-stone-600">
               <p className="font-medium text-stone-900">{error}</p>
               <p className="mt-3">
                 잠시 후 다시 시도하거나 전체 상세 페이지에서 확인해보세요.
@@ -310,45 +315,46 @@ export function PlaceDetailSheet({
               {placePath ? (
                 <Link
                   href={placePath}
-                  className="altteulmap-button mt-4 inline-flex whitespace-nowrap border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
+                  className="altteulmap-button mt-4 inline-flex whitespace-nowrap border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-white"
                 >
-                  페이지로 보기
+                  상세 페이지로 보기
                 </Link>
               ) : null}
             </div>
           ) : null}
 
           {place ? (
-            <div className="space-y-5">
-              <section className="altteulmap-accent-panel rounded-[1.75rem] p-5">
-                {placeMetaItems.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {placeMetaItems.map((item) => (
-                      <span
-                        key={item}
-                        className="rounded-full border border-[#ddb596] bg-white/70 px-3 py-1 text-xs font-medium text-[#8f522f]"
-                      >
-                        {item}
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
+            <div className="grid gap-4">
+              <section className="altteulmap-accent-panel rounded-[1rem] p-5">
+                <div className="flex flex-wrap gap-2">
+                  {heroMeta.map((item) => (
+                    <span
+                      key={item}
+                      className="altteulmap-badge bg-white/80 px-2.5 py-1 text-[11px] font-medium text-[var(--altteul-accent-text)]"
+                    >
+                      {item}
+                    </span>
+                  ))}
+                </div>
                 {businessNameLabel ? (
-                  <p className="mt-3 text-sm text-[#8f522f]">
+                  <p className="mt-3 text-sm text-[var(--altteul-accent-text)]">
                     사업장 이름 {businessNameLabel}
                   </p>
                 ) : null}
-                <p
-                  className={`${hasDetailTopMeta ? "mt-4 " : ""}text-sm text-[#a06a48]`}
-                >
+                <p className="mt-5 text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--altteul-accent-text)]">
                   대표 가격
                 </p>
-                <p className="mt-2 text-3xl font-semibold">
+                <p className="altteulmap-price-number mt-2 text-[2rem]">
                   {formatKrw(place.representativePriceAmount)}원
                 </p>
-                <p className="mt-2 text-sm text-[#a06a48]">
+                <p className="mt-2 text-sm text-[var(--altteul-accent-text)]">
                   {place.representativePriceLabel}
                 </p>
+                {place.address ? (
+                  <p className="mt-4 text-sm leading-6 text-[var(--altteul-accent-text)]">
+                    {place.address}
+                  </p>
+                ) : null}
                 <div className="mt-4">
                   <PlaceReactionButtons
                     key={`${place.id}:${place.likeCount}:${place.dislikeCount}:${place.viewerReaction ?? "none"}`}
@@ -370,7 +376,7 @@ export function PlaceDetailSheet({
                     path={sharePayload?.path ?? `/place/${place.id}`}
                     title={sharePayload?.title ?? place.name}
                     text={sharePayload?.text}
-                    className="altteulmap-button inline-flex whitespace-nowrap border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
+                    className="altteulmap-button inline-flex items-center gap-2 whitespace-nowrap border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-white"
                     testId="place-detail-share-button"
                     messageTestId="place-detail-share-message"
                   />
@@ -385,7 +391,7 @@ export function PlaceDetailSheet({
                   {placePath ? (
                     <Link
                       href={placePath}
-                      className="altteulmap-accent-ghost altteulmap-button inline-flex whitespace-nowrap border px-4 py-2 text-sm transition"
+                      className="altteulmap-button inline-flex whitespace-nowrap border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-white"
                     >
                       페이지로 보기
                     </Link>
@@ -394,48 +400,65 @@ export function PlaceDetailSheet({
               </section>
 
               {isLoading ? (
-                <div className="rounded-[1.35rem] border border-stone-200 bg-stone-50 px-4 py-3 text-xs text-stone-500">
+                <div className="rounded-[1rem] border border-stone-200 bg-[var(--altteul-bg-subtle)]/60 px-4 py-3 text-xs text-stone-500">
                   세부 가격과 코멘트를 불러오는 중입니다.
                 </div>
               ) : null}
 
               {!isLoading && error ? (
-                <div className="rounded-[1.35rem] border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+                <div className="rounded-[1rem] border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
                   세부 정보 일부를 불러오지 못했습니다. 기본 정보만 먼저 표시합니다.
                 </div>
               ) : null}
 
               <div className="grid gap-3 sm:grid-cols-2">
-                <section className="rounded-[1.35rem] border border-stone-200 bg-stone-50 p-4">
-                  <p className="text-xs font-medium text-stone-500">최근 갱신일</p>
-                  <p className="mt-2 text-base font-semibold text-stone-900">
-                    {place.lastPriceUpdatedAt}
-                  </p>
-                </section>
-                <section className="rounded-[1.35rem] border border-stone-200 bg-stone-50 p-4">
-                  <p className="text-xs font-medium text-stone-500">지역</p>
-                  <p className="mt-2 text-base font-semibold text-stone-900">
-                    {place.district}
-                  </p>
-                </section>
+                {summaryCards.map((card) => (
+                  <section
+                    key={card.label}
+                    className="rounded-[1rem] border border-stone-200 bg-[var(--altteul-bg-subtle)]/60 p-4"
+                  >
+                    <p className="text-xs font-medium text-stone-500">{card.label}</p>
+                    <p className="mt-2 text-sm font-semibold leading-6 text-stone-900">
+                      {card.value}
+                    </p>
+                  </section>
+                ))}
               </div>
 
-              <section className="rounded-[1.5rem] border border-stone-200 bg-white p-5">
-                <h4 className="text-sm font-semibold text-stone-900">장소 소개</h4>
-                <p className="mt-3 text-sm leading-7 text-stone-600">
-                  {place.description}
-                </p>
-                <p className="mt-3 text-sm leading-7 text-stone-600">{place.note}</p>
-              </section>
+              {(place.description || place.note) && (
+                <section className="altteulmap-panel p-5">
+                  <p className="altteulmap-section-kicker text-[11px]">소개</p>
+                  {place.description ? (
+                    <p className="mt-3 text-sm leading-7 text-stone-700">
+                      {place.description}
+                    </p>
+                  ) : null}
+                  {place.note ? (
+                    <p className="mt-3 text-sm leading-7 text-stone-600">
+                      {place.note}
+                    </p>
+                  ) : null}
+                </section>
+              )}
 
-              <section className="rounded-[1.5rem] border border-stone-200 bg-white p-5">
-                <h4 className="text-sm font-semibold text-stone-900">가격 항목</h4>
+              <section className="altteulmap-panel p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="altteulmap-section-kicker text-[11px]">가격</p>
+                    <h4 className="mt-1 text-base font-semibold text-stone-900">
+                      가격 항목
+                    </h4>
+                  </div>
+                  <span className="altteulmap-badge px-3 py-1 text-xs font-medium">
+                    {placePriceItems.length}개
+                  </span>
+                </div>
                 {placePriceItems.length > 0 ? (
-                  <div className="mt-4 space-y-3">
+                  <div className="mt-4 grid gap-3">
                     {placePriceItems.map((item) => (
                       <div
                         key={item.id}
-                        className="rounded-[1.15rem] bg-stone-50 px-4 py-4"
+                        className="rounded-[1rem] border border-stone-200 bg-[var(--altteul-bg-subtle)]/55 px-4 py-4"
                       >
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                           <div className="min-w-0">
@@ -445,7 +468,7 @@ export function PlaceDetailSheet({
                             </p>
                           </div>
                           <div className="shrink-0 text-left sm:text-right">
-                            <p className="font-semibold text-stone-900">
+                            <p className="altteulmap-price-number text-lg">
                               {formatKrw(item.amount)}원
                               {item.unitLabel ? ` / ${item.unitLabel}` : ""}
                             </p>
@@ -460,6 +483,7 @@ export function PlaceDetailSheet({
                   </p>
                 )}
               </section>
+
               <PlacePriceReportForm
                 key={`${place.id}-price-form`}
                 placeId={place.id}

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AccessDeniedPanel } from "@/components/access-denied-panel";
+import { AdminPageShell } from "@/features/admin/components/admin-page-shell";
 import { AdminQueueNav } from "@/features/admin/components/admin-queue-nav";
 import { AdminPendingPriceReportCard } from "@/features/admin/components/admin-pending-price-report-card";
 import { AdminSummaryCards } from "@/features/admin/components/admin-summary-cards";
@@ -45,42 +46,30 @@ export default async function AdminPricesPage() {
   const overview = await getAdminOverview();
 
   return (
-    <main className="bg-stone-50 px-4 py-8 sm:px-6">
-      <section className="mx-auto max-w-7xl rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm sm:p-8">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-orange-600">
-              운영
-            </p>
-            <h1 className="mt-3 text-3xl font-semibold tracking-tight text-stone-900 sm:text-5xl">
-              가격 제보 검토 큐
-            </h1>
-            <p className="mt-4 max-w-3xl text-base leading-7 text-stone-600">
-              기존 장소에 추가로 들어온 가격 제보를 검토합니다. 승인하면 현재
-              가격 항목과 대표 가격이 함께 갱신됩니다. AI 1차 검수는 기존 가격과
-              차이, 메모 유무를 먼저 정리해 운영 판단을 돕습니다.
-            </p>
-          </div>
-          <Link
-            href="/api/admin/prices"
-            className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
-          >
-            응답 보기
-          </Link>
-        </div>
-
-        <div className="mt-6 flex flex-wrap gap-2">
-          <span
-            className={`rounded-full px-3 py-1 text-xs font-semibold ${
-              result.source === "database"
-                ? "bg-emerald-100 text-emerald-700"
-                : "bg-orange-100 text-orange-700"
-            }`}
-          >
-            데이터 구분: {result.source === "database" ? "실데이터" : "목업"}
-          </span>
-        </div>
-
+    <AdminPageShell
+      title="가격 제보 검토 큐"
+      description="기존 장소에 추가로 들어온 가격 제보를 검토합니다. 승인하면 현재 가격 항목과 대표 가격이 함께 갱신되고, AI 1차 검수가 기존 값과 차이를 먼저 요약합니다."
+      actions={
+        <Link
+          href="/api/admin/prices"
+          className="altteulmap-button border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-white"
+        >
+          응답 보기
+        </Link>
+      }
+      statusBadges={
+        <span
+          className={`altteulmap-badge ${
+            result.source === "database"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+              : "border-[rgba(181,90,43,0.18)] bg-[rgba(181,90,43,0.12)] text-[var(--altteul-accent-text)]"
+          }`}
+        >
+          데이터: {result.source === "database" ? "실데이터" : "목업"}
+        </span>
+      }
+    >
+      <div className="grid gap-6">
         <AdminQueueNav current="prices" stats={overview.stats} />
         <AdminSummaryCards
           items={[
@@ -106,7 +95,7 @@ export default async function AdminPricesPage() {
         />
 
         {result.items.length > 0 ? (
-          <div data-testid="admin-price-report-list" className="mt-8 grid gap-4">
+          <div data-testid="admin-price-report-list" className="grid gap-4">
             {result.items.map((report) => (
               <AdminPendingPriceReportCard
                 key={report.id}
@@ -116,12 +105,12 @@ export default async function AdminPricesPage() {
             ))}
           </div>
         ) : (
-          <div className="mt-8 rounded-[1.75rem] border border-dashed border-stone-300 bg-stone-50 p-8 text-sm leading-6 text-stone-600">
+          <div className="rounded-[1.75rem] border border-dashed border-stone-300 bg-stone-50 p-8 text-sm leading-6 text-stone-600">
             현재 검토 대기 중인 가격 제보가 없습니다.
           </div>
         )}
 
-        <section className="mt-10">
+        <section className="altteulmap-panel-muted p-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <h2 className="text-2xl font-semibold text-stone-900">
@@ -132,7 +121,7 @@ export default async function AdminPricesPage() {
                 있습니다.
               </p>
             </div>
-            <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-stone-600">
+            <span className="altteulmap-badge border-stone-200 bg-white text-stone-600">
               {recentPlaces.items.length}개 장소
             </span>
           </div>
@@ -141,9 +130,9 @@ export default async function AdminPricesPage() {
             {recentPlaces.items.slice(0, 9).map((place) => (
               <article
                 key={place.id}
-                className="rounded-[1.5rem] border border-stone-200 bg-stone-50 p-5"
+                className="rounded-[1.15rem] border border-stone-200 bg-white p-5"
               >
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-600">
+                <p className="text-[11px] tracking-[0.14em] text-[var(--altteul-accent-text)]">
                   {place.district}
                 </p>
                 <h3 className="mt-2 text-xl font-semibold text-stone-900">
@@ -158,13 +147,13 @@ export default async function AdminPricesPage() {
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Link
                     href={`/admin/prices/places/${place.id}`}
-                    className="rounded-full bg-stone-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-stone-700"
+                    className="altteulmap-button altteulmap-accent-solid px-4 py-2 text-sm"
                   >
                     가격 관리
                   </Link>
                   <Link
                     href={`/place/${place.id}`}
-                    className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
+                    className="altteulmap-button border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-white"
                   >
                     장소 보기
                   </Link>
@@ -173,7 +162,7 @@ export default async function AdminPricesPage() {
             ))}
           </div>
         </section>
-      </section>
-    </main>
+      </div>
+    </AdminPageShell>
   );
 }

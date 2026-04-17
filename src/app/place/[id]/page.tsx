@@ -6,9 +6,9 @@ import { BookmarkToggleButton } from "@/features/bookmarks/bookmark-toggle-butto
 import { listBookmarks } from "@/features/bookmarks/repository";
 import { getCategoryBySlug } from "@/features/categories/catalog";
 import { PlaceCommentsSection } from "@/features/places/place-comments-section";
+import { PlacePriceReportForm } from "@/features/places/place-price-report-form";
 import { PlaceReactionButtons } from "@/features/places/place-reaction-buttons";
 import { PlaceShareButton } from "@/features/places/place-share-button";
-import { PlacePriceReportForm } from "@/features/places/place-price-report-form";
 import { formatKrw } from "@/features/places/queries";
 import { getPlaceDetail } from "@/features/places/repository";
 import {
@@ -84,53 +84,64 @@ export default async function PlacePage({ params }: PlacePageProps) {
   }
 
   const bookmarkResult = await listBookmarks(user);
-
   const category = getCategoryBySlug(place.categorySlug);
   const isBookmarked = bookmarkResult.items.some(
     (bookmark) => bookmark.placeId === place.id,
   );
   const bookmarkLoginHref = createLoginHref(`/place/${place.id}`);
-  const reportPath = `/report?placeId=${place.id}&placeName=${encodeURIComponent(place.name)}`;
-  const reportHref = reportPath;
+  const reportHref = `/report?placeId=${place.id}&placeName=${encodeURIComponent(place.name)}`;
   const sharePayload = createPlaceSharePayload(place, "detail");
+  const verificationLabel =
+    place.verificationStatus === "verified" ? "검증됨" : "미검증";
+  const summaryItems = [
+    category?.name ?? "기타",
+    place.district,
+    verificationLabel,
+  ];
 
   return (
-    <main className="bg-stone-50 px-4 py-8 sm:px-6">
+    <main className="bg-[var(--altteul-bg-canvas)] px-4 py-6 sm:px-6 sm:py-8">
       <div className="mx-auto max-w-6xl">
         <div className="flex flex-wrap items-center gap-3">
           <Link
             href="/"
-            className="altteulmap-button inline-flex whitespace-nowrap border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
+            className="altteulmap-button inline-flex whitespace-nowrap border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-white"
           >
-            목록으로 돌아가기
+            지도로 돌아가기
           </Link>
         </div>
-        <section className="mt-6 rounded-[2rem] border border-stone-200 bg-white p-8 shadow-sm">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-orange-600">
-                {category?.parentName ?? "생활비 절감"}
+
+        <section className="altteulmap-panel mt-6 p-5 sm:p-6 lg:p-7">
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)]">
+            <section className="altteulmap-accent-panel rounded-[1rem] p-5 sm:p-6">
+              <p className="altteulmap-section-kicker">
+                {category?.parentName ?? "장소"}
               </p>
-              <h1 className="mt-3 text-3xl font-semibold tracking-tight text-stone-900 sm:text-5xl">
+              <h1 className="mt-2 text-[2rem] font-semibold tracking-[-0.06em] text-stone-950 sm:text-[2.6rem]">
                 {place.name}
               </h1>
               {place.businessName && place.businessName !== place.name ? (
-                <p className="mt-3 text-sm text-stone-500">{place.businessName}</p>
+                <p className="mt-3 text-sm text-[var(--altteul-accent-text)]">
+                  사업장 이름 {place.businessName}
+                </p>
               ) : null}
-              <p className="mt-1 text-sm text-stone-500">
-                {category?.name ?? "기타"}
+              <div className="mt-4 flex flex-wrap gap-2">
+                {summaryItems.map((item) => (
+                  <span
+                    key={item}
+                    className="altteulmap-badge bg-white/80 px-2.5 py-1 text-[11px] font-medium text-[var(--altteul-accent-text)]"
+                  >
+                    {item}
+                  </span>
+                ))}
+              </div>
+              <p className="mt-6 text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--altteul-accent-text)]">
+                대표 가격
               </p>
-              <p className="mt-1 text-sm text-stone-500">{place.address}</p>
-            </div>
-          </div>
-
-          <div className="mt-8 grid gap-4 sm:grid-cols-3">
-            <div className="altteulmap-accent-panel rounded-3xl p-6">
-              <p className="text-sm text-[#a06a48]">대표 가격</p>
-              <p className="mt-3 text-3xl font-semibold">
+              <p className="altteulmap-price-number mt-2 text-[2.4rem] sm:text-[2.8rem]">
                 {formatKrw(place.representativePriceAmount)}원
               </p>
-              <p className="mt-2 text-sm text-[#a06a48]">
+              <p className="mt-2 text-sm text-[var(--altteul-accent-text)]">
                 {place.representativePriceLabel}
               </p>
               <div className="mt-4">
@@ -142,20 +153,30 @@ export default async function PlacePage({ params }: PlacePageProps) {
                   initialViewerReaction={place.viewerReaction}
                 />
               </div>
-            </div>
-            <div className="rounded-3xl border border-stone-200 bg-stone-50 p-6">
-              <p className="text-sm text-stone-500">최근 갱신일</p>
-              <p className="mt-3 text-xl font-semibold text-stone-900">
-                {place.lastPriceUpdatedAt}
-              </p>
-              <p className="mt-2 text-sm text-stone-500">{place.district}</p>
-            </div>
-            <div className="rounded-3xl border border-stone-200 bg-stone-50 p-6">
-              <p className="text-sm text-stone-500">메모</p>
-              <p className="mt-3 text-sm leading-6 text-stone-700">
-                {place.note}
-              </p>
-              <div className="mt-4 flex flex-wrap gap-2">
+            </section>
+
+            <aside className="grid gap-3">
+              <section className="rounded-[1rem] border border-stone-200 bg-[var(--altteul-bg-subtle)]/65 p-4">
+                <p className="text-xs font-medium text-stone-500">최근 갱신</p>
+                <p className="mt-2 text-base font-semibold text-stone-900">
+                  {place.lastPriceUpdatedAt}
+                </p>
+              </section>
+              <section className="rounded-[1rem] border border-stone-200 bg-[var(--altteul-bg-subtle)]/65 p-4">
+                <p className="text-xs font-medium text-stone-500">주소</p>
+                <p className="mt-2 text-sm leading-6 text-stone-700">
+                  {place.address}
+                </p>
+              </section>
+              {(place.description || place.note) && (
+                <section className="rounded-[1rem] border border-stone-200 bg-[var(--altteul-bg-subtle)]/65 p-4">
+                  <p className="text-xs font-medium text-stone-500">메모</p>
+                  <p className="mt-2 text-sm leading-6 text-stone-700">
+                    {place.note || place.description}
+                  </p>
+                </section>
+              )}
+              <div className="flex flex-wrap gap-2">
                 <BookmarkToggleButton
                   key={`${place.id}:${isBookmarked ? "on" : "off"}`}
                   placeId={place.id}
@@ -171,48 +192,64 @@ export default async function PlacePage({ params }: PlacePageProps) {
                 />
                 <Link
                   href={reportHref}
-                  className="altteulmap-button inline-flex whitespace-nowrap border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
+                  className="altteulmap-accent-ghost altteulmap-button inline-flex whitespace-nowrap border px-4 py-2 text-sm transition"
                 >
                   신고하기
                 </Link>
               </div>
-            </div>
+            </aside>
           </div>
 
-          <div className="mt-8 grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
-            <section>
-              <h2 className="text-xl font-semibold text-stone-900">장소 소개</h2>
-              <p className="mt-4 max-w-3xl text-base leading-7 text-stone-600">
-                {place.description}
-              </p>
+          <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(19rem,0.75fr)]">
+            <section className="grid gap-5">
+              {place.description ? (
+                <section className="altteulmap-panel p-5">
+                  <p className="altteulmap-section-kicker text-[11px]">소개</p>
+                  <p className="mt-3 text-sm leading-7 text-stone-700">
+                    {place.description}
+                  </p>
+                </section>
+              ) : null}
 
-              <h2 className="mt-10 text-xl font-semibold text-stone-900">
-                가격 항목
-              </h2>
-              <div className="mt-4 grid gap-3">
-                {place.priceItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex flex-col gap-2 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <div className="min-w-0">
-                      <p className="font-medium text-stone-900">{item.label}</p>
-                      <p className="mt-1 text-sm text-stone-500">
-                        마지막 제보 {item.reportedAt}
-                      </p>
-                    </div>
-                    <div className="shrink-0 text-left sm:text-right">
-                      <p className="font-semibold text-stone-900">
-                        {formatKrw(item.amount)}원
-                        {item.unitLabel ? ` / ${item.unitLabel}` : ""}
-                      </p>
-                    </div>
+              <section className="altteulmap-panel p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="altteulmap-section-kicker text-[11px]">가격</p>
+                    <h2 className="mt-1 text-lg font-semibold text-stone-900">
+                      가격 항목
+                    </h2>
                   </div>
-                ))}
-              </div>
+                  <span className="altteulmap-badge px-3 py-1 text-xs font-medium">
+                    {place.priceItems.length}개
+                  </span>
+                </div>
+                <div className="mt-4 grid gap-3">
+                  {place.priceItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className="rounded-[1rem] border border-stone-200 bg-[var(--altteul-bg-subtle)]/55 px-4 py-4"
+                    >
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0">
+                          <p className="font-medium text-stone-900">{item.label}</p>
+                          <p className="mt-1 text-xs text-stone-500">
+                            마지막 제보 {item.reportedAt}
+                          </p>
+                        </div>
+                        <div className="shrink-0 text-left sm:text-right">
+                          <p className="altteulmap-price-number text-lg">
+                            {formatKrw(item.amount)}원
+                            {item.unitLabel ? ` / ${item.unitLabel}` : ""}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
             </section>
 
-            <aside className="space-y-8">
+            <aside className="grid gap-5">
               <PlacePriceReportForm
                 key={`${place.id}-price-form`}
                 placeId={place.id}
