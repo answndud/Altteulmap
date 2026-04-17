@@ -72,6 +72,7 @@ test("모바일에서 장소 목록 바텀시트를 열고 닫을 수 있다", a
 
   await dragSheetHandle(page, dragHandle, 140);
   await expect(sheet).toHaveAttribute("data-sheet-mode", "peek");
+  await page.waitForTimeout(220);
   await dragSheetHandle(page, dragHandle, 150);
   await expect(sheet).toBeHidden();
   await expect(openButton).toBeVisible();

@@ -504,6 +504,7 @@ export function MapExplorer({
     setIsMobileListOpen(true);
   };
   const mobileListSheetGesture = useMobileSheetGesture({
+    closeThreshold: 72,
     enabled: isMobileListOpen,
     mode: mobileListSheetMode,
     onClose: closeMobileList,
