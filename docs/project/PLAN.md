@@ -1,6 +1,6 @@
 # PLAN.md
 
-기준일: 2026-04-12  
+기준일: 2026-04-17
 목표: Altteulmap를 `지도 기반 절약 장소 탐색 + 가격 제보` 서비스 기준에서 MVP 완성도와 출시 준비 수준까지 끌어올린다.
 
 ## 운영 규칙
@@ -16,6 +16,7 @@
 - 우선순위: `지도 Read MVP -> 쓰기 데이터 축적 -> 운영 품질 -> 인증/출시 -> 확장 기능`
 - MVP 원칙: 지도 탐색과 가격 데이터 축적이 흔들리면 확장 기능은 뒤로 미룬다
 - 현재 정책: `비회원 읽기, 비회원 반응, 비회원/회원 공개 쓰기(장소 등록/댓글/신고/가격 제보), 회원 전용 북마크`를 기본값으로 유지한다
+- 2026-04-17 scope update: 사용자가 전면 디자인 재설계를 명시적으로 요청했으므로, 기존의 `프론트엔드 디자인 polish 제외` 방침은 더 이상 유효하지 않다. 이후 UI 구현은 `DESIGN.md`와 새 design cycle 기준으로만 진행한다.
 - 별도 정책 결정 전 보류:
   - 커뮤니티 `bang`
   - 핫딜 `deal`
@@ -24,19 +25,21 @@
 1. AI 검수 1차 live rollout 마감: 운영 DB `DATABASE_URL`/migration access 복구, `moderation_suggestions` 적용, public/admin persisted live 경로 확인
 2. 운영 품질/QA 후속 정리: 운영 도메인 smoke 심화, 모바일 제스처 실사용 검증, `현재 위치`/`이 지역 검색`/AI 검수 패널 실기기 확인, 지도 첫 진입 체감 성능 보정
 3. repo 상태 유지: 배포 문서, smoke 경로, Cloudflare build 설정, repo-local workflow 유지
+4. 디자인 시스템/정보 구조 전면 재정의: 라이브 UI 비판, reference review, AltteulMap 전용 `DESIGN.md` 정리, 이후 UI 구현 기준 고정
 
 ## 다음 실행 순서
 1. live `DATABASE_URL`/migration access를 복구하고 `moderation_suggestions` migration을 적용한다.
 2. public/admin worker를 현재 코드 기준으로 다시 재배포하고, live 관리자 큐에서 장소 등록/가격 제보/신고 카드의 `AI 1차 검수` 패널이 persistence 기준으로 붙는지 확인한다.
 3. `workers.dev` degraded fallback 로그인과 mock 관리자 큐도 함께 유지되는지 확인한 뒤, 운영 도메인 기준 모바일 실기기 QA로 지도/제스처/현재 위치/AI 패널을 다시 점검한다.
 4. 현재 운영 URL은 `workers.dev` split(`altteulmap.altteul-lab.workers.dev`, `altteulmap-admin.altteul-lab.workers.dev`)으로 유지하고, custom domain은 별도 cycle로 분리한다.
-5. 검색 URL 상태와 공유 telemetry는 현재 범위(`q/scope` URL 반영, 관리자 overview share breakdown)로 동결 유지한다. 프론트엔드 디자인 polish는 현재 범위에서 제외한다.
+5. 검색 URL 상태와 공유 telemetry는 현재 범위(`q/scope` URL 반영, 관리자 overview share breakdown)로 동결 유지한다. 별도 기능 확장보다 현재 사용자 경험을 재설계하는 design system work를 우선한다.
+6. 이후 UI 작업은 ad-hoc polish가 아니라 `Cycle 13`의 `DESIGN.md` 기준으로 구조적으로 진행한다.
 
 ## 현실적 실행 계획
 
 ### 원칙
 - 새 기능 추가보다 `live 반영 -> 실사용 QA -> 운영 URL 고정 -> backlog 정리` 순서로 간다.
-- 프론트엔드 디자인 polish는 현재 범위에서 제외하고, 실제로 사용자 흐름을 막는 기능 문제만 수정한다.
+- 디자인 작업은 작은 cosmetic edit가 아니라 `정보 구조 -> 토큰 -> 컴포넌트 규칙 -> 화면 구조` 순서로 다룬다.
 - 각 단계는 다음 단계의 입력값을 만들 정도까지만 진행하고, blocker가 생기면 즉시 `PROGRESS.md`에 남긴다.
 
 ### Phase A: AI 검수 live rollout
@@ -203,6 +206,12 @@
 | 운영 URL 전략을 최종 고정한다 | Codex | P1 | `done` | 현재 운영 URL 기준을 `workers.dev` split(public `altteulmap.altteul-lab.workers.dev`, admin `altteulmap-admin.altteul-lab.workers.dev`)으로 고정했고, `NEXTAUTH_URL`, `SITE_URL`, `ADMIN_APP_URL`, canonical, robots, sitemap, admin redirect 기준을 문서/배포 설정/검증 로그에 맞췄다. custom domain은 별도 후속 작업으로만 남긴다 | `docs/deploy/**`, `src/lib/site.ts`, `src/lib/env.ts`, Wrangler/Cloudflare 설정 |
 | 출시 직전 backlog를 정리해 다음 cycle 범위를 고정한다 | Codex | P2 | `done` | 검색 URL 상태는 현재 `q/scope` URL 반영 범위로 유지하고, 공유 telemetry는 현재 관리자 overview/source breakdown 범위로 동결하며, 프론트엔드 디자인 polish·사진 업로드·랭킹 화면·`bang`·`deal`은 현재 범위에서 계속 제외한다고 `PLAN.md`/`PROGRESS.md`에 명시한다 | `src/features/map/**`, `src/features/telemetry/**`, `docs/project/PLAN.md`, `docs/project/PROGRESS.md` |
 
+### Cycle 13: 디자인 시스템/IA 전면 재정의
+| 작업명 | 담당 에이전트 | 우선순위 | 상태 | 완료기준(DoD) | 의존성 |
+|---|---|---|---|---|---|
+| 라이브 UI와 현재 코드 구조를 기준으로 디자인 실패 원인을 구조적으로 진단하고, AltteulMap 전용 `DESIGN.md`를 만든다 | Codex | P1 | `done` | 라이브 사이트와 지정 reference(`impeccable`, `getdesign.md`, `awesome-design-md`)를 검토한 비판이 문서화되고, 제품 성격/시각 시스템/IA/폼 UX/컴포넌트 규칙/카피 톤/Do-Don't를 포함한 root `DESIGN.md`가 생성된다. 이후 AI coding agent가 이 문서만 읽고도 일관된 UI 구현을 시작할 수 있어야 한다 | live public URL, `src/app/**`, `src/features/**`, `docs/project/PLAN.md`, `docs/project/PROGRESS.md` |
+| 공개 앱에서 먼저 정리한 디자인 시스템을 관리자 대시보드/검수 큐까지 확장해 public/admin 언어 차이를 줄인다 | Codex | P1 | `done` | `/admin`, `/admin/places`, `/admin/prices`, `/admin/reports`, `/admin/prices/places/[id]`가 공통 `AdminPageShell`과 같은 버튼/패널/배지 규칙을 사용하고, 관리자 헤더는 중복 사용자 배지를 줄이며, mock 기준 admin dashboard smoke가 통과하고 결과가 `PROGRESS.md`에 남는다 | `DESIGN.md`, `src/components/global-header.tsx`, `src/features/admin/**`, `src/features/places/**`, `tests/e2e/admin-dashboard.spec.ts`, `docs/project/PROGRESS.md` |
+
 ### Cycle 7: repo-local AI workflow setup (완료)
 | 작업명 | 담당 에이전트 | 우선순위 | 상태 | 완료기준(DoD) | 의존성 |
 |---|---|---|---|---|---|
@@ -292,6 +301,6 @@
 - 운영자 대시보드의 활동 지표는 `visit_activity` 테이블에 30분 bucket dedupe 기준으로 적재하고, 현재 `/admin` overview에서 오늘/7일 방문 수, 고유 방문자 수, DAU/WAU, 7일 재방문율, 공유 유입과 source breakdown을 노출한다.
 - 운영 검수 자동화는 1차에서 `장소 등록`, `가격 제보`, `신고` 큐에만 적용하고, `AI 1차 검수 -> 운영자 최종 확정`의 human-in-the-loop 구조를 유지한다.
 - 댓글은 현재 관리자 검수 큐가 없어 AI 검수 1차 범위에서 제외한다.
-- 프론트엔드 디자인/비주얼 polish는 현재 수준을 유지하고, 새 디자인 작업은 기능 버그가 아닌 이상 현재 범위에서 제외한다.
+- 전면 디자인 재설계는 사용자가 명시적으로 요청한 현재 우선순위이며, 이후 UI 변경은 ad-hoc tweak가 아니라 `Cycle 13`과 root `DESIGN.md` 기준으로만 진행한다.
 - 사진 업로드는 저장 용량과 운영 비용 대비 초기 효용이 낮다고 판단해 현재 범위에서 제외한다.
 - 별도 좋아요 랭킹 화면은 현재 범위에서 제외하고, 홈의 `인기 장소` 추천 섹션만 유지한다.

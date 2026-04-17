@@ -29,18 +29,18 @@ export function AdminPendingPlaceCard({
     return (
       <article
         data-testid="admin-place-processed-card"
-        className={`rounded-[1.75rem] border p-5 ${
+        className={`rounded-[1.15rem] border p-4 ${
           isApproved
             ? "border-emerald-200 bg-emerald-50"
-            : "border-stone-300 bg-stone-100"
+            : "border-stone-300 bg-[var(--altteul-bg-subtle)]/75"
         }`}
       >
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-600">
+            <p className="text-[11px] font-semibold tracking-[0.14em] text-[var(--altteul-accent-text)]">
               {place.id}
             </p>
-            <h2 className="mt-2 text-2xl font-semibold text-stone-900">
+            <h2 className="mt-2 text-xl font-semibold text-stone-950">
               {place.name}
             </h2>
             <p className="mt-2 text-sm text-stone-600">
@@ -71,16 +71,16 @@ export function AdminPendingPlaceCard({
   return (
     <article
       data-testid="admin-place-card"
-      className="rounded-[1.75rem] border border-stone-200 bg-stone-50 p-5"
+      className="altteulmap-panel p-5"
     >
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-600">
+          <p className="text-[11px] font-semibold tracking-[0.14em] text-[var(--altteul-accent-text)]">
             {place.id}
           </p>
           <h2
             data-testid="admin-place-name"
-            className="mt-2 text-2xl font-semibold text-stone-900"
+            className="mt-2 text-xl font-semibold text-stone-950"
           >
             {place.name}
           </h2>
@@ -89,11 +89,11 @@ export function AdminPendingPlaceCard({
             {place.createdAt}
           </p>
         </div>
-        <div className="rounded-3xl bg-white px-4 py-3 text-right">
-          <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
+        <div className="altteulmap-panel-muted px-4 py-3 text-right">
+          <p className="text-[11px] tracking-[0.14em] text-stone-500">
             대표 가격
           </p>
-          <p className="mt-2 text-lg font-semibold text-stone-900">
+          <p className="altteulmap-price-number mt-2 text-lg">
             {formatKrw(place.representativePriceAmount)}원
           </p>
           <p className="text-sm text-stone-500">{place.representativePriceLabel}</p>
@@ -101,29 +101,29 @@ export function AdminPendingPlaceCard({
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="space-y-4">
-          <div className="rounded-3xl bg-white p-4 text-sm leading-6 text-stone-700">
-            <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
+        <div className="grid gap-4">
+          <div className="altteulmap-panel-muted p-4 text-sm leading-6 text-stone-700">
+            <p className="text-[11px] tracking-[0.14em] text-stone-500">
               주소
             </p>
             <p className="mt-2">{place.address}</p>
             <p className="text-stone-500">{place.district}</p>
           </div>
-          <div className="rounded-3xl bg-white p-4 text-sm leading-6 text-stone-700">
-            <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
+          <div className="altteulmap-panel-muted p-4 text-sm leading-6 text-stone-700">
+            <p className="text-[11px] tracking-[0.14em] text-stone-500">
               메모
             </p>
             <p className="mt-2">{place.note}</p>
           </div>
-          <div className="rounded-3xl bg-white p-4">
-            <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
+          <div className="altteulmap-panel-muted p-4">
+            <p className="text-[11px] tracking-[0.14em] text-stone-500">
               제출된 가격 항목
             </p>
             <div className="mt-3 grid gap-2">
               {place.priceItems.map((item) => (
                 <div
                   key={item.id}
-                  className="rounded-2xl bg-stone-50 px-4 py-3 text-sm text-stone-700"
+                  className="rounded-[0.9rem] border border-stone-200 bg-white px-4 py-3 text-sm text-stone-700"
                 >
                   {item.label} · {formatKrw(item.amount)}원
                   {item.unitLabel ? ` / ${item.unitLabel}` : ""}
@@ -133,7 +133,7 @@ export function AdminPendingPlaceCard({
           </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="grid gap-4">
           {place.moderationSuggestion ? (
             <AdminAiReviewPanel suggestion={place.moderationSuggestion} />
           ) : null}
@@ -152,7 +152,7 @@ export function AdminPendingPlaceCard({
           />
           <Link
             href={`/report?placeId=${place.id}&placeName=${encodeURIComponent(place.name)}`}
-            className="inline-flex rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
+            className="altteulmap-button inline-flex border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-white"
           >
             신고 폼으로 보기
           </Link>

@@ -62,7 +62,7 @@ export function AdminReportStatusForm({
   };
 
   return (
-    <div data-testid="admin-report-status-form" className="space-y-3">
+    <div data-testid="admin-report-status-form" className="grid gap-3">
       <div className="flex flex-wrap gap-2">
         {reportStatusOptions.map((option) => {
           const isActive = option.value === currentStatus;
@@ -74,10 +74,10 @@ export function AdminReportStatusForm({
               onClick={() => handleUpdate(option.value)}
               disabled={disabled || isPending || isActive}
               data-testid={`admin-report-status-${option.value}`}
-              className={`rounded-full px-3 py-2 text-xs font-medium transition ${
+              className={`altteulmap-button px-3 py-2 text-xs font-medium transition ${
                 isActive
-                  ? "bg-stone-900 text-white"
-                  : "border border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
+                  ? "altteulmap-accent-solid"
+                  : "border border-stone-300 bg-white text-stone-700 hover:bg-white"
               } disabled:cursor-not-allowed disabled:opacity-60`}
             >
               {option.label}
@@ -86,21 +86,21 @@ export function AdminReportStatusForm({
         })}
       </div>
       {message ? (
-        <p
+        <div
           data-testid="admin-report-status-message"
           aria-live="polite"
-          className={`text-xs ${
+          className={`rounded-[0.95rem] border px-4 py-3 text-sm ${
             messageTone === "success"
-              ? "text-emerald-700"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
               : messageTone === "error"
-                ? "text-rose-700"
-                : "text-stone-500"
+                ? "border-rose-200 bg-rose-50 text-rose-700"
+                : "border-stone-200 bg-[var(--altteul-bg-subtle)]/55 text-stone-500"
           }`}
         >
           {isPending && pendingStatus
             ? `${reportStatusMap[pendingStatus]} 상태로 반영 중...`
             : message}
-        </p>
+        </div>
       ) : null}
     </div>
   );

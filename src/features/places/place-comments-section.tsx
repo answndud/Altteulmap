@@ -81,17 +81,20 @@ export function PlaceCommentsSection({
   return (
     <section
       data-testid="place-comments-section"
-      className="rounded-[1.5rem] border border-stone-200 bg-white p-5"
+      className="altteulmap-panel p-5"
     >
       <div className="flex items-start justify-between gap-3">
-        <h4 className="text-sm font-semibold text-stone-900">사용자 코멘트</h4>
-        <span className="altteulmap-badge bg-stone-100 px-3 py-1 text-xs font-medium text-stone-600">
+        <div>
+          <p className="altteulmap-section-kicker text-[11px]">코멘트</p>
+          <h4 className="mt-1 text-base font-semibold text-stone-900">사용자 메모</h4>
+        </div>
+        <span className="altteulmap-badge px-3 py-1 text-xs font-medium">
           {comments.length}개
         </span>
       </div>
 
-      <div className="mt-4 rounded-[1.15rem] bg-stone-50 p-4">
-        <div className="space-y-3">
+      <div className="mt-4 rounded-[1rem] border border-stone-200 bg-[var(--altteul-bg-subtle)]/65 p-4">
+        <div className="grid gap-3">
           <textarea
             value={body}
             onChange={(event) => setBody(event.target.value)}
@@ -101,7 +104,10 @@ export function PlaceCommentsSection({
             className="altteulmap-input min-h-28 resize-y px-4 py-3.5 text-sm leading-6 text-stone-700 disabled:cursor-not-allowed disabled:opacity-60"
             placeholder="예: 점심시간 전에는 금방 품절돼요. 현금 결제만 가능합니다."
           />
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-stone-500">
+              짧고 구체적인 이용 팁만 남겨주세요.
+            </p>
             <button
               type="button"
               onClick={handleSubmit}
@@ -118,16 +124,16 @@ export function PlaceCommentsSection({
       {message ? <p className="mt-3 text-xs text-stone-500">{message}</p> : null}
 
       {comments.length > 0 ? (
-        <div className="mt-4 space-y-3">
+        <div className="mt-4 grid gap-3">
           {comments.map((comment) => (
             <div
               key={comment.id}
               data-testid="comment-item"
-              className="rounded-[1.15rem] bg-stone-50 px-4 py-4"
+              className="rounded-[1rem] border border-stone-200 bg-[var(--altteul-bg-subtle)]/55 px-4 py-4"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex min-w-0 flex-1 items-center gap-3">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-stone-200 text-xs font-semibold text-stone-700">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-xs font-semibold text-stone-700 ring-1 ring-stone-200">
                     {comment.authorLabel.slice(0, 2)}
                   </span>
                   <div className="min-w-0">
@@ -143,7 +149,7 @@ export function PlaceCommentsSection({
                     onClick={() => handleDelete(comment.id)}
                     disabled={isPending}
                     data-testid={`comment-delete-${comment.id}`}
-                    className="altteulmap-button whitespace-nowrap border border-stone-300 bg-white px-3 py-1.5 text-xs text-stone-700 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="altteulmap-button whitespace-nowrap border border-stone-300 bg-white px-3 py-1.5 text-xs text-stone-700 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     삭제
                   </button>
@@ -156,9 +162,9 @@ export function PlaceCommentsSection({
           ))}
         </div>
       ) : (
-        <p className="mt-4 text-sm text-stone-500">
+        <div className="mt-4 rounded-[1rem] border border-dashed border-stone-300 bg-white px-4 py-5 text-sm text-stone-500">
           아직 등록된 코멘트가 없습니다.
-        </p>
+        </div>
       )}
     </section>
   );

@@ -73,24 +73,22 @@ export function PlaceShareButton({
   };
 
   return (
-    <div className="flex flex-col items-start gap-2">
+    <div className="flex flex-col items-start gap-1.5">
       <button
         type="button"
         onClick={handleShare}
         data-testid={testId}
         className={
           className ??
-          "altteulmap-button inline-flex whitespace-nowrap border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
+          "altteulmap-button inline-flex items-center gap-2 whitespace-nowrap border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-white"
         }
       >
-        <span className="inline-flex items-center gap-2">
-          <ShareIcon />
-          공유
-        </span>
+        <ShareIcon />
+        <span>공유</span>
       </button>
       {message ? (
         <p
-          className={messageClassName ?? "text-xs text-stone-500"}
+          className={messageClassName ?? "pl-1 text-[11px] text-stone-500"}
           data-testid={messageTestId}
         >
           {message}

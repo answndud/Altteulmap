@@ -1,8 +1,19 @@
 # PROGRESS.md
 
-기준일: 2026-04-12
+기준일: 2026-04-17
 
 ## 진행 현황 요약
+- 전면 디자인 재설계 8차 구현을 진행했다. 관리자 대시보드/검수 큐/가격 관리 화면을 공통 `AdminPageShell` 기준으로 다시 정리했고, admin 헤더의 중복 사용자 배지를 걷어 public과 같은 디자인 언어로 맞췄다. mock 기준 admin dashboard smoke도 현재 구조에 맞게 다시 통과시켰다
+- 전면 디자인 재설계 7차 구현을 진행했다. 홈 카테고리 tray를 `상위 묶음 선택 -> 세부 업종 선택` 2단계 client interaction으로 바꿨고, 가격 제보/북마크 성공 상태도 더 명확한 피드백 박스와 상태 문구로 정리했다
+- 전면 디자인 재설계 6차 구현을 진행했다. 로그인·회원가입 폼은 전환 링크와 소셜 구획을 더 compact하게 정리했고, 회원가입은 자격증명 가입이 꺼진 환경에서 입력 필드를 아예 숨기도록 바꿨다. 장소 등록 폼은 중첩 카드 구조를 걷어내고 `장소 정보 -> 대표 가격 -> 추가 메모` 3단계 흐름으로 다시 정리했다
+- 전면 디자인 재설계 5차 구현을 진행했다. 전역 헤더를 더 compact하게 다듬고 인증 화면에서는 홈 복귀만 남기도록 최소화했다. 홈 `인기 장소`도 쇼케이스 카드보다 빠른 비교 레일에 가깝게 밀도를 조정했다
+- 전면 디자인 재설계 4차 구현을 진행했다. 홈 상단 shell을 `동네 가격 지도` 기준의 compact toolbar로 줄였고, 검색/범위/카테고리 요약을 한 패널 안으로 압축했다. 카테고리 drawer 내부도 그룹 카드가 아니라 `그룹 라벨 + 칩 row` 밀도 구조로 바꿔 map-first 감각을 더 올렸다
+- 전면 디자인 재설계 3차 구현을 진행했다. 북마크/공유/반응 액션을 새 버튼 규칙으로 통일했고, 지도 패널은 외부 헤더를 걷어내고 map overlay chrome 중심 구조로 바꿨다. 모바일 목록 진입 캡슐, 목록 시트 헤더, 상세 시트 닫기 affordance도 같은 톤으로 정리했다
+- 전면 디자인 재설계 2차 구현을 진행했다. 장소 상세, 가격 제보, 코멘트, 인기 장소 카드까지 price-first 구조와 새 panel system으로 다시 정리했다
+- 전면 디자인 재설계 1차 구현을 진행했다. 공용 토큰/표면 스타일을 새로 정리했고, 공개 헤더, 홈 map shell, 로그인/회원가입, 장소 등록 폼을 새 design system 초안 기준으로 다시 짰다
+- GitHub Actions CI 경량화: `Deploy Config Check`는 더 이상 `npm ci`를 요구하지 않고 `node scripts/check-cloudflare-deploy.mjs`만 실행한다. `verify`는 `lint + tsc --noEmit`로 바뀌어 PR에서 중복 app build 1회를 제거했고, `docs/**`와 `README.md`만 바뀐 경우 workflow를 건너뛴다
+- 전면 디자인 재설계 준비를 시작했다. 라이브 사이트와 현재 `src/**` UI 구조, 외부 reference(`impeccable`, `getdesign.md`, `awesome-design-md`)를 검토해 root `DESIGN.md` 초안을 추가했고, 이후 UI 구현은 이 문서를 기준으로 진행하도록 `PLAN.md`를 갱신했다
+- 지도 체감 성능 5차 보정: 홈 viewport bootstrap query를 `zoom=11`로 고정하고, map boot 직후 첫 viewport sync는 무시하도록 바꿨다. local production 기준 초기 `/api/places/map`는 `2회 -> 1회`, 첫 cluster marker count는 `31 -> 19`, total requests는 `45 -> 44`가 됐고, live public도 같은 패턴으로 `/api/places/map` 1회, total `43`, `fetch 1`로 내려왔다
 - 지도 체감 성능 4차 보정: 네이버 지도 패널을 preview-first delayed boot로 바꿨다. 자동 부팅은 최소 `900ms` 뒤에만 시작하고, preview tap/cluster/current-location/`이 지역 검색` 상호작용은 즉시 boot로 우회한다. local production 첫 `1.2s` 요청은 `45 -> 14`, 같은 구간의 네이버 지도 asset은 `26 -> 0`으로 줄었고, live public도 첫 `1.2s` 요청 `11`, map asset `0`, total `44`까지 내려왔다
 - public/admin을 현재 성능 보정 기준으로 재배포했다. live 첫 진입 요청 수는 `95 -> 51 -> 44`로 줄었고, `_rsc` prefetch flood와 telemetry `500`도 사라졌다. 현재 남은 steady-state 비용의 대부분은 여전히 네이버 지도 SDK/타일(`script 16`, `image 22`)이다
 - telemetry 500 원인 분리 완료: `/api/telemetry/visit`가 stale DB에서도 더 이상 `500`을 내지 않고 `200 + tracked:false + source:mock`으로 degrade된다. 동시에 `src/db/client.ts`는 nested `cause`의 `message/code`까지 따라가 DB unavailable 판정을 더 정확히 하도록 보강했다
@@ -59,6 +70,208 @@
 - 다음 우선순위: `Cycle 12`는 `Phase A 남은 blocker(운영 DB credential 복구 + moderation_suggestions migration) -> Phase B 운영/모바일 실기기 QA` 순서로 진행한다. 운영 URL은 현재 `workers.dev` split으로 고정했고, 검색 URL 상태/공유 telemetry는 현 범위로 동결했다
 
 ## 실행 로그
+
+### 2026-04-17 09:33 KST: 초기 viewport refetch 제거와 live 재배포
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/map/map-page.tsx`에 `SEOUL_BOOTSTRAP_ZOOM = 11`을 추가하고, 홈 기본 viewport query가 첫 fetch부터 zoom-aware marker limit를 쓰도록 `/Users/alex/project/altteulmap/src/features/places/map-explorer.tsx`로 `initialZoom`을 넘기게 했다.
+  - `/Users/alex/project/altteulmap/src/features/places/map-explorer.tsx`에서 viewport mode의 첫 map idle sync를 무시하도록 `shouldIgnoreFirstViewportSyncRef`를 추가했다. 목적은 preview-first boot 뒤 Naver map이 padded viewport를 emit하면서 `/api/places/map`를 한 번 더 치는 초기 재조회를 없애는 것이다.
+  - 그 결과 초기 `/api/places/map`는 bootstrap bounds + `zoom=11` 한 번만 호출되고, boot 직후 `zoom=11` padded viewport 재조회가 사라졌다.
+  - public worker를 다시 배포했다. 현재 live public version은 `6046dc83-f6c1-4a0d-9c5b-deb1e1b7b641`이다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+    - sandbox에서는 `next build`가 `listen EPERM 127.0.0.1`로 막혀 escalated로 재실행
+  - `PORT=3010 npm run start` 후 local production Playwright 측정:
+    - 첫 `1.2s`: total `14`, `fetch 1`, map asset `0`
+    - total `3.4s`: total `44`, `fetch 1`, `image 23`, map asset `26`
+    - `/api/places/map` 응답은 `1회`만 관측
+    - payload: `count 500`, `returnedCount 120`, `mapMarkerCount 19`, `markerMode cluster`
+  - local production interaction check:
+    - `map-current-location-button` 초기 disabled `false`
+    - `map-refresh-button` 클릭 시 status `200`
+    - mobile emulation에서 `목록 보기` 버튼과 목록 시트 open 정상
+  - `npm run deploy:public` 통과
+  - `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev SMOKE_ADMIN_URL=https://altteulmap-admin.altteul-lab.workers.dev npm run smoke:remote` 통과
+  - live public Playwright 측정:
+    - 첫 `1.2s`: total `14`, `fetch 1`, map asset `0`
+    - total `3.6s`: total `43`, `fetch 1`, `image 22`, map asset `28`
+    - `/api/places/map` 응답은 `1회`만 관측
+    - payload: `count 500`, `returnedCount 120`, `mapMarkerCount 19`, `markerMode cluster`
+  - live interaction check:
+    - `map-current-location-button` 초기 disabled `false`
+    - `map-refresh-button` 클릭 시 status `200`
+    - mobile emulation에서 `목록 보기` 버튼과 목록 시트 open 정상
+- 메모
+  - 이번 단계는 네이버 타일 자체를 줄인 것이 아니라, boot 직후 불필요한 viewport refetch와 marker 재계산을 없앤 것이다.
+  - 현재 남은 지도 비용의 대부분은 실제 visible tile 22장 수준이라, 다음 성능 후속은 fetch 중복보다 `타일 수 자체를 줄일 UX/viewport 정책`이 있는지 판단하는 단계다.
+
+### 2026-04-17 15:00 KST: GitHub Actions CI 경량화
+- 완료 내용
+  - `/Users/alex/project/altteulmap/scripts/lib/load-env-files.mjs`에서 `dotenv` 의존을 제거하고 Node만으로 `.env` 파일을 읽도록 바꿨다. 이제 `Deploy Config Check`는 패키지 설치 없이 실행 가능하다.
+  - `/Users/alex/project/altteulmap/package.json`에 `typecheck`를 추가하고 `verify`를 `lint + typecheck`로 축소했다. PR CI에서는 `Verify`가 정적 검증만 담당하고, 실제 app build는 E2E job에서만 수행한다.
+  - `/Users/alex/project/altteulmap/.github/workflows/ci.yml`에서 `Deploy Config Check`의 `npm ci`를 제거했고, `docs/**`와 `README.md`만 바뀐 경우 workflow를 건너뛰도록 `paths-ignore`를 추가했다.
+- 검증 결과
+  - `npm run lint` 통과
+  - `npm run typecheck` 통과
+  - `env DATABASE_URL=... node scripts/check-cloudflare-deploy.mjs` 통과
+- 메모
+  - 이번 변경은 GitHub Actions 경량화만 다룬다. push 후 별도로 붙는 Cloudflare Workers Builds 시간에는 직접 영향이 없다.
+
+### 2026-04-17 21:05 KST: 전면 디자인 재설계 기준 문서 작성 시작
+- 완료 내용
+  - 라이브 사이트 `https://altteulmap.altteul-lab.workers.dev/`, 현재 공개 UI 구현(`src/app/globals.css`, `src/components/global-header.tsx`, `src/features/map/map-page.tsx`, `src/features/places/map-explorer.tsx`, `src/features/submission/place-submit-form.tsx`, `src/features/auth/login-form.tsx`, `src/features/places/place-detail-sheet.tsx`)을 기준으로 현재 디자인의 약점을 정리했다.
+  - 외부 reference로 `pbakaus/impeccable`, `getdesign.md`, `VoltAgent/awesome-design-md`를 검토해 hierarchy, spacing, typography, motion, UX writing, AI-agent-friendly design doc 구조 기준을 추렸다.
+  - root `/Users/alex/project/altteulmap/DESIGN.md`를 새로 추가했다. 이 문서는 제품 성격, 토큰, IA, 맵/리스트 관계, 제출 플로우, 컴포넌트 규칙, copy tone, Do/Don't를 포함한 AltteulMap 전용 design system draft다.
+  - `/Users/alex/project/altteulmap/docs/project/PLAN.md`에 `Cycle 13: 디자인 시스템/IA 전면 재정의`를 추가하고, 기존의 `프론트엔드 디자인 polish 제외` 범위를 철회했다.
+- 검증 결과
+  - 문서 작업이라 별도 앱 실행/배포는 하지 않았다.
+  - `git diff --check`
+- 메모
+  - 현재 단계는 디자인 방향 정의다. 실제 UI 구현은 아직 시작하지 않았다.
+  - 다음 구현 세션에서는 `DESIGN.md` 기준으로 `global header -> home/map shell -> filters -> place cards/detail -> submission/auth` 순서로 바꾸는 게 맞다.
+
+### 2026-04-17 22:05 KST: 전면 디자인 재설계 1차 구현
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/app/globals.css`에서 color/radius/border/elevation/input/button/badge/chip 토큰을 다시 정의하고, `altteulmap-panel`, `altteulmap-panel-muted`, `altteulmap-section-kicker`, `altteulmap-price-number`, `altteulmap-segmented` 같은 공용 UI primitive를 추가했다.
+  - `/Users/alex/project/altteulmap/src/components/brand-mark.tsx`, `/Users/alex/project/altteulmap/src/components/global-header.tsx`, `/Users/alex/project/altteulmap/src/features/auth/sign-out-button.tsx`, `/Users/alex/project/altteulmap/src/app/layout.tsx`에서 공개 헤더와 브랜드/배경 톤을 새 시스템 기준으로 정리했다.
+  - `/Users/alex/project/altteulmap/src/features/map/map-page.tsx`를 다시 짜서 홈 상단을 `title + compact search + segmented scope + grouped category drawer` 기준의 control shell로 바꿨다. 기존의 큰 hero/card stack 대신 map-first 구조를 우선하도록 정리했다.
+  - `/Users/alex/project/altteulmap/src/features/places/map-explorer.tsx`에서 list shell과 place card 위계를 바꿨다. 가격을 먼저 보이게 하고, 검증/갱신/좋아요를 보조 배지로 내렸으며, 데스크톱/모바일 목록 헤더도 같은 언어로 맞췄다.
+  - `/Users/alex/project/altteulmap/src/app/login/page.tsx`, `/Users/alex/project/altteulmap/src/app/signup/page.tsx`, `/Users/alex/project/altteulmap/src/features/auth/login-form.tsx`, `/Users/alex/project/altteulmap/src/features/auth/signup-form.tsx`에서 인증 화면을 단일 작업 카드 중심으로 압축했다.
+  - `/Users/alex/project/altteulmap/src/app/submit/page.tsx`, `/Users/alex/project/altteulmap/src/features/submission/place-submit-form.tsx`에서 장소 등록 폼을 `장소 정보 -> 대표 가격 -> 추가 가격 -> 메모` 흐름으로 재구성했다. 대표 가격을 첫 항목으로 분리하고, 추가 가격은 뒤로 미루는 구조로 바꿨다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+  - `PORT=3010 npm run start` 후 `curl -s http://127.0.0.1:3010/`, `curl -s http://127.0.0.1:3010/login`, `curl -s http://127.0.0.1:3010/submit`로 새 구조 문구와 핵심 UI가 실제 HTML에 반영된 것 확인
+- 메모
+  - 이번 단계는 가장 영향이 큰 public surface만 먼저 바꾼 1차 구현이다.
+  - 다음 구현 우선순위는 `place detail / price report / trending cards / mobile sheet density / category filter interaction polish`다.
+
+### 2026-04-17 22:45 KST: 전면 디자인 재설계 2차 구현
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/places/place-detail-sheet.tsx`, `/Users/alex/project/altteulmap/src/app/place/[id]/page.tsx`를 다시 짜서 상세 화면을 `대표 가격 -> 핵심 메타 -> 액션 -> 가격 항목/코멘트` 순서의 price-first 구조로 정리했다.
+  - `/Users/alex/project/altteulmap/src/features/places/place-price-report-form.tsx`, `/Users/alex/project/altteulmap/src/features/places/place-comments-section.tsx`를 새 panel system 기준으로 정리해, admin form 같은 인상을 줄이고 제보/메모 입력을 더 가볍게 만들었다.
+  - `/Users/alex/project/altteulmap/src/features/places/trending-places-section.tsx`를 가격 우선 카드 구조로 다시 짜고, 검증 상태와 최근 갱신을 더 명확한 보조 메타로 내려 배치했다.
+- 검증 결과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+  - `PORT=3010 npm run start`
+  - `curl -s http://127.0.0.1:3010/ | rg -n "인기 장소|가격을 먼저 보고 동네 장소를 찾는 지도"`
+  - `curl -s http://127.0.0.1:3010/place/goodprice-14501 | rg -n "대표 가격|가격 항목|새 가격 추가|사용자 메모"`
+- 메모
+  - production start 검증 중 로컬 production DB credential이 없어서 place/trending read는 mock fallback 로그를 남겼다. UI 구조 확인에는 영향이 없었다.
+
+### 2026-04-17 23:10 KST: 전면 디자인 재설계 3차 구현
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/bookmarks/bookmark-toggle-button.tsx`, `/Users/alex/project/altteulmap/src/features/places/place-share-button.tsx`, `/Users/alex/project/altteulmap/src/features/places/place-reaction-buttons.tsx`를 새 버튼 규칙에 맞춰 다시 정리했다. 북마크는 icon + state형 버튼으로, 공유는 inline icon action으로, 반응은 segmented control 느낌의 compact action row로 바꿨다.
+  - `/Users/alex/project/altteulmap/src/features/map/naver-map-panel.tsx`에서 지도 패널 외부 헤더를 제거하고 overlay-first chrome으로 재구성했다. 주변 정보, 현재 상태, `이 지역 다시 찾기`, `현재 위치`를 map 안쪽 compact overlay로 옮겨 실제 지도 작업면 비중을 더 높였다.
+  - `/Users/alex/project/altteulmap/src/features/places/map-explorer.tsx`, `/Users/alex/project/altteulmap/src/features/places/place-detail-sheet.tsx`에서 모바일 `목록 열기` 캡슐, 목록 시트 헤더, 상세 시트 닫기 affordance를 더 compact하게 정리했다.
+  - `/Users/alex/project/altteulmap/src/app/globals.css`에 `altteulmap-map-overlay`, `altteulmap-map-overlay-subtle` 공용 스타일을 추가해 preview/runtime/fallback 지도 오버레이 언어를 통일했다.
+- 검증 결과
+  - `git diff --check` 통과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+  - `PORT=3011 npm run start`
+  - `curl -s http://127.0.0.1:3011/ | rg -n "가격을 먼저 보고 동네 장소를 찾는 지도|목록 열기|카테고리 고르기|주변 가격 보기"`
+  - `curl -s http://127.0.0.1:3011/place/goodprice-14501 | rg -n "대표 가격|새 가격 추가|사용자 메모|북마크|공유|아쉬워요|좋아요"`
+- 메모
+  - `3010` 포트는 기존 프로세스가 점유 중이라 production HTML 확인은 `3011`에서 진행했다.
+  - build/start 중 로컬 production DB credential 부재로 mock fallback 로그는 계속 남지만, lint/build 자체는 통과했다.
+
+### 2026-04-17 23:58 KST: 전면 디자인 재설계 8차 구현
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/admin/components/admin-page-shell.tsx`를 기준으로 `/Users/alex/project/altteulmap/src/features/admin/pages/dashboard-page.tsx`, `/Users/alex/project/altteulmap/src/features/admin/pages/places-page.tsx`, `/Users/alex/project/altteulmap/src/features/admin/pages/prices-page.tsx`, `/Users/alex/project/altteulmap/src/features/admin/pages/reports-page.tsx`, `/Users/alex/project/altteulmap/src/features/admin/pages/place-prices-page.tsx`를 다시 정리했다. 기존의 큰 흰색 카드 래퍼와 영문 metric 라벨을 걷어내고, public에서 쓰는 panel/button/badge 규칙을 admin에도 그대로 적용했다. `admin:sync`를 다시 태워 `/Users/alex/project/altteulmap/src/features/admin/entrypoints/pages/**`도 같은 구조로 맞췄다.
+  - `/Users/alex/project/altteulmap/src/features/admin/components/admin-summary-cards.tsx`, `/Users/alex/project/altteulmap/src/features/admin/components/admin-queue-nav.tsx`, `/Users/alex/project/altteulmap/src/features/admin/components/admin-pending-place-card.tsx`, `/Users/alex/project/altteulmap/src/features/admin/components/admin-pending-price-report-card.tsx`, `/Users/alex/project/altteulmap/src/features/admin/components/admin-report-card.tsx`, `/Users/alex/project/altteulmap/src/features/places/admin-place-review-form.tsx`, `/Users/alex/project/altteulmap/src/features/places/admin-price-item-form.tsx`, `/Users/alex/project/altteulmap/src/features/places/admin-price-report-review-form.tsx`, `/Users/alex/project/altteulmap/src/features/reports/admin-report-status-form.tsx`는 새 shell 안에서 같은 디자인 언어를 유지하도록 spacing/surface/action 구성을 맞췄다.
+  - `/Users/alex/project/altteulmap/src/components/global-header.tsx`에서 admin 경로일 때 중복 사용자 배지(`운영자`)를 숨기고 `지도`, `장소 등록`, `관리 홈`, `로그아웃` 중심의 더 짧은 헤더로 정리했다.
+  - `/Users/alex/project/altteulmap/tests/e2e/admin-dashboard.spec.ts`는 mock telemetry 숫자를 고정으로 기대하던 오래된 assertion을 걷어내고, 현재 admin dashboard shell과 주요 운영 카드가 렌더되는지 확인하는 smoke로 정리했다.
+  - `/Users/alex/project/altteulmap/docs/project/PLAN.md`에 admin surface 리디자인 완료 기준을 Cycle 13에 추가했다.
+- 검증 결과
+  - `git diff --check` 통과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+  - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap USE_MOCK_DATA=false AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3107 AUTH_DEMO_PASSWORD=demo1234 AUTH_ADMIN_PASSWORD=admin1234 npx playwright test tests/e2e/admin-dashboard.spec.ts tests/e2e/submission-admin.spec.ts tests/e2e/price-review.spec.ts tests/e2e/report-admin.spec.ts --project chromium`
+  - `USE_MOCK_DATA=true AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3107 AUTH_ADMIN_PASSWORD=admin1234 npx playwright test tests/e2e/admin-dashboard.spec.ts --project chromium` 통과
+- 메모
+  - DB-backed admin E2E는 현재 로컬 `postgres` 자격 증명 불일치(`28P01: password authentication failed`) 때문에 계속 실패했다. 이번 턴에서 깨진 것은 admin UI가 아니라 로컬 DB 연결 상태다.
+  - mock 기준 admin dashboard smoke는 통과했고, 이 범위에서는 public/admin design language 정렬과 admin shell 구조 확인 용도로 충분했다.
+  - 중간에 `src/features/admin/entrypoints/**`만 먼저 바꾸면 build 시 `admin:sync`가 원본 `src/features/admin/pages/**`로 다시 덮는다는 점을 확인했고, 이후 source of truth를 `pages/**`로 고정해 수정했다.
+
+### 2026-04-18 00:11 KST: 로컬 Postgres 인증 복구 확인
+- 완료 내용
+  - 다른 프로젝트 Postgres와 충돌하던 로컬 5432 포트를 현재 프로젝트용 `altteulmap-postgres` 컨테이너로 다시 맞춘 뒤, 프로젝트 기본 로컬 DB(`postgresql://postgres:postgres@127.0.0.1:5432/altteulmap`) 기준 접속과 seed를 다시 확인했다.
+  - 디자인 변경과 직접 관련된 관리자 화면도 DB-backed 경로에서 다시 확인했다. `admin-dashboard`, `submission-admin`, `price-review`, `report-admin` E2E가 모두 통과해, 이번 admin 리디자인이 실제 queue/read/write 흐름을 깨지 않았음을 확인했다.
+- 검증 결과
+  - `docker ps --filter name=altteulmap-postgres --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'`
+  - `PGPASSWORD=postgres psql postgresql://postgres:postgres@127.0.0.1:5432/altteulmap -c 'select current_database(), current_user, 1 as ok;'`
+  - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap npm run db:push`
+  - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap npm run db:seed`
+  - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap USE_MOCK_DATA=false AUTH_SECRET=altteulmap-local-auth-secret-change-me NEXTAUTH_URL=http://127.0.0.1:3107 AUTH_DEMO_PASSWORD=demo1234 AUTH_ADMIN_PASSWORD=admin1234 npx playwright test tests/e2e/admin-dashboard.spec.ts tests/e2e/submission-admin.spec.ts tests/e2e/price-review.spec.ts tests/e2e/report-admin.spec.ts --project chromium`
+- 메모
+  - 로컬 기준으로는 이제 `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap`를 명시했을 때 DB-backed admin E2E까지 안정적으로 돈다.
+  - `build/start`는 `.env.production.local`의 remote DB URL을 읽을 수 있으므로, 로컬 실DB 검증은 계속 shell env로 local `DATABASE_URL`을 덮어쓰는 편이 안전하다.
+
+### 2026-04-17 10:16 KST: 전면 디자인 재설계 4차 구현
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/map/map-page.tsx`에서 홈 상단을 다시 압축했다. 큰 hero 문구를 `동네 가격 지도` 기준의 compact heading으로 줄이고, 검색/범위/카테고리/요약 배치를 한 패널 안 toolbar 구조로 재정리했다.
+  - 같은 파일의 카테고리 drawer 내부도 바꿨다. 기존의 그룹별 카드 나열 대신 `전체 보기 + 현재 선택 요약 + 그룹 라벨 + 칩 row` 구조로 밀도를 높여, 카테고리 수는 유지하면서도 불필요한 카드 chrome을 걷어냈다.
+  - 데스크톱 보조 배지 문구는 `정렬`처럼 읽히지 않게 `가격 중심 카드`로 조정해 현재 제품 동작과 일치하도록 맞췄다.
+- 검증 결과
+  - `git diff --check` 통과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+  - `PORT=3012 npm run start`
+  - `curl -s http://127.0.0.1:3012/ | rg -n "동네 가격 지도|대표 가격, 최근 갱신, 검증 상태를 기준으로|전체 18개 업종|가격 중심 카드"`
+- 메모
+  - production start 검증 중 로컬 production DB credential이 없어 trending read는 mock fallback 로그를 남겼다. 홈 shell HTML 구조 확인에는 영향이 없었다.
+
+### 2026-04-17 10:22 KST: 전면 디자인 재설계 5차 구현
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/components/global-header.tsx`, `/Users/alex/project/altteulmap/src/components/brand-mark.tsx`, `/Users/alex/project/altteulmap/src/features/auth/sign-out-button.tsx`에서 전역 헤더를 더 compact하게 줄였다. 공개 화면에서는 `장소 등록`, `북마크`, `로그인/로그아웃`만 유지하고, 인증 화면에서는 홈 복귀용 `지도로`만 남겨 작업 집중도를 높였다.
+  - `/Users/alex/project/altteulmap/src/features/places/trending-places-section.tsx`를 다시 정리해 `탐색 추천` 쇼케이스보다 `빠른 비교` 레일처럼 읽히게 바꿨다. 카드 패딩과 가격 크기를 조금 줄이고, 메타를 짧은 비교 단위로 재배치했다.
+- 검증 결과
+  - `git diff --check` 통과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+  - `PORT=3013 npm run start`
+  - `curl -s http://127.0.0.1:3013/login | rg -n "지도로|로그인|장소 등록하기|북마크|운영 관리"`
+  - `curl -s http://127.0.0.1:3013/ | rg -n "빠른 비교|가격과 최근 반응을 기준으로 바로 비교할 수 있는 카드입니다.|상위 6곳|상세 보기"`
+- 메모
+  - production start 검증 중 로컬 production DB credential이 없어 trending read는 mock fallback 로그를 남겼다. 헤더/추천 HTML 구조 확인에는 영향이 없었다.
+
+### 2026-04-17 10:28 KST: 전면 디자인 재설계 6차 구현
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/auth/login-form.tsx`, `/Users/alex/project/altteulmap/src/features/auth/signup-form.tsx`, `/Users/alex/project/altteulmap/src/features/auth/social-auth-buttons.tsx`를 정리했다. 인증 폼의 상단/하단 chrome을 줄이고, 소셜 버튼 높이와 badge 비율을 더 compact하게 맞췄다.
+  - 회원가입 폼은 자격증명 가입이 비활성화된 환경에서 credential 입력 필드와 submit 버튼을 숨기고 소셜 시작 플로우만 남기도록 바꿨다. 활성화된 경우에는 2열 입력 구조로 높이를 줄였다.
+  - `/Users/alex/project/altteulmap/src/app/submit/page.tsx`, `/Users/alex/project/altteulmap/src/features/submission/place-submit-form.tsx`에서 공개 장소 등록을 다시 정리했다. 페이지 상단 카피를 줄이고, 폼 내부는 `1 장소 정보 -> 2 대표 가격 -> 3 추가 메모` 단계형 구조로 재배치했으며 대표 가격 영역의 중첩 panel/card를 걷어냈다.
+  - 접수 결과 패널도 `접수 확인` 기준으로 단순화해 결과 메시지와 preview가 더 빨리 읽히게 맞췄다.
+- 검증 결과
+  - `git diff --check` 통과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+  - `PORT=3014 npm run start`
+  - `curl -s http://127.0.0.1:3014/login | rg -n "로그인|회원가입|소셜 로그인|저장한 장소와 북마크를 이어서 봅니다"`
+  - `curl -s http://127.0.0.1:3014/signup | rg -n "회원가입|로그인|소셜로 시작|북마크와 제보 내역을 계정에 연결합니다"`
+  - `curl -s http://127.0.0.1:3014/submit | rg -n "장소 등록|이름, 주소, 대표 가격 1개부터 적으면 됩니다.|장소 정보|대표 가격|추가 메모|가격 항목 추가|접수 확인"`
+- 메모
+  - `npm run verify`의 build 단계에서 로컬 production DB credential이 없어 `places` read mock fallback 로그는 계속 남았지만, lint/build/HTML 구조 확인 자체는 정상 통과했다.
+  - 다음 리디자인 우선순위는 지도 필터 tray 세부 상호작용, 북마크/제보 success state polish, 관리자 화면의 같은 design language 적용이다.
+
+### 2026-04-17 10:35 KST: 전면 디자인 재설계 7차 구현
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/map/map-category-tray.tsx`를 새로 추가하고, `/Users/alex/project/altteulmap/src/features/map/map-page.tsx`에서 기존 서버 렌더 카테고리 나열을 이 client tray로 교체했다. 이제 카테고리 선택은 `상위 묶음 먼저 고르기 -> 세부 업종 선택` 흐름으로 읽히고, 현재 선택 카테고리도 tray 상단에서 바로 확인할 수 있다.
+  - 카테고리 summary copy도 `상위 묶음과 세부 업종으로 빠르게 좁혀 봅니다.` 기준으로 바꿔 drawer의 역할이 더 분명하게 보이도록 맞췄다.
+  - `/Users/alex/project/altteulmap/src/features/places/place-price-report-form.tsx`에서 가격 제보 결과 메시지를 작은 보조 문구가 아니라 success/error 박스로 올렸다. 성공 시 입력 필드도 초기화해서 접수 완료가 더 명확히 느껴지게 바꿨다.
+  - `/Users/alex/project/altteulmap/src/features/bookmarks/bookmark-toggle-button.tsx`에서는 완료 상태 문구를 `저장됨` 기준으로 정리하고, non-compact 문맥에서는 API 응답 메시지를 그대로 보여주도록 바꿨다.
+- 검증 결과
+  - `git diff --check` 통과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+  - `PORT=3015 npm run start`
+  - `curl -s http://127.0.0.1:3015/ | rg -n "상위 묶음과 세부 업종으로 빠르게 좁혀 봅니다.|카테고리|동네 가격 지도|현재 지도|전체 검색"`
+  - `npx playwright test tests/e2e/bookmarks.spec.ts tests/e2e/price-review.spec.ts --project chromium` 실행
+- 메모
+  - Playwright 2건은 이번 UI 변경 자체가 아니라 기존 auth test 환경 문제로 실패했다. `tests/e2e/helpers/auth.ts`가 기대하는 `baseUrl` redirect(`location.startsWith(baseUrl)`)가 현재 webServer login 응답과 맞지 않아 로그인 helper 단계에서 멈췄다.
+  - `npm run verify`의 build 단계에서 로컬 production DB credential이 없어 `places`/`trending` read mock fallback 로그는 계속 남았지만 lint/build는 정상 통과했다.
+  - 다음 리디자인 우선순위는 관리자 화면의 같은 design language 적용, `RouteResetDetails` summary affordance 개선, Playwright auth helper의 base URL 정렬이다.
 
 ### 2026-04-17 00:25 KST: 네이버 지도 preview-first delayed boot 적용과 live 재실측
 - 완료 내용

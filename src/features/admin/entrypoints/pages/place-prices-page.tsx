@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { AccessDeniedPanel } from "@/components/access-denied-panel";
+import { AdminPageShell } from "@/features/admin/components/admin-page-shell";
 import { AdminPriceItemForm } from "@/features/places/admin-price-item-form";
 import { formatKrw } from "@/features/places/queries";
 import { getAdminPlacePriceDetail } from "@/features/places/repository";
@@ -52,54 +53,44 @@ export default async function AdminPlacePricesDetailPage({
   const place = result.item;
 
   return (
-    <main className="bg-stone-50 px-4 py-8 sm:px-6">
-      <section className="mx-auto max-w-7xl rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm sm:p-8">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-orange-600">
-              운영
-            </p>
-            <h1 className="mt-3 text-3xl font-semibold tracking-tight text-stone-900 sm:text-5xl">
-              {place.name} 가격 관리
-            </h1>
-            <p className="mt-4 max-w-3xl text-base leading-7 text-stone-600">
-              대표 가격 규칙은 `대표 가격 플래그 + 검증 상태 + 최신성` 우선이며,
-              대표 플래그가 없으면 현재 활성 항목 중 최저가를 대표값으로 사용합니다.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Link
-              href="/admin/prices"
-              className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
-            >
-              가격 검토 큐
-            </Link>
-            <Link
-              href={`/place/${place.id}`}
-              className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
-            >
-              장소 보기
-            </Link>
-          </div>
-        </div>
-
-        <div className="mt-6 grid gap-4 md:grid-cols-3">
-          <div className="rounded-3xl bg-stone-900 p-6 text-white">
-            <p className="text-sm text-stone-300">현재 대표 가격</p>
-            <p className="mt-3 text-3xl font-semibold">
+    <AdminPageShell
+      title={`${place.name} 가격 관리`}
+      description="대표 가격은 `대표 플래그 + 검증 상태 + 최신성` 우선으로 계산합니다. 대표 플래그가 없으면 현재 활성 항목 중 최저가를 대표값으로 사용합니다."
+      actions={
+        <>
+          <Link
+            href="/admin/prices"
+            className="altteulmap-button border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-white"
+          >
+            가격 검토 큐
+          </Link>
+          <Link
+            href={`/place/${place.id}`}
+            className="altteulmap-button border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-white"
+          >
+            장소 보기
+          </Link>
+        </>
+      }
+    >
+      <div className="grid gap-6">
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="altteulmap-accent-solid rounded-[1.5rem] p-6 text-white">
+            <p className="text-sm text-white/72">현재 대표 가격</p>
+            <p className="altteulmap-price-number mt-3 text-[1.9rem]">
               {formatKrw(place.representativePriceAmount)}원
             </p>
-            <p className="mt-2 text-sm text-stone-300">
+            <p className="mt-2 text-sm text-white/72">
               {place.representativePriceLabel}
             </p>
           </div>
-          <div className="rounded-3xl border border-stone-200 bg-stone-50 p-6">
+          <div className="altteulmap-panel-muted p-6">
             <p className="text-sm text-stone-500">지역</p>
             <p className="mt-3 text-xl font-semibold text-stone-900">
               {place.district}
             </p>
           </div>
-          <div className="rounded-3xl border border-stone-200 bg-stone-50 p-6">
+          <div className="altteulmap-panel-muted p-6">
             <p className="text-sm text-stone-500">대표 검증 상태</p>
             <p className="mt-3 text-xl font-semibold text-stone-900">
               {place.verificationStatus === "verified" ? "검증됨" : "미검증"}
@@ -107,15 +98,15 @@ export default async function AdminPlacePricesDetailPage({
           </div>
         </div>
 
-        <div className="mt-8 grid gap-4">
+        <div className="grid gap-4">
           {place.priceItems.map((item) => (
             <article
               key={item.id}
-              className="rounded-[1.75rem] border border-stone-200 bg-stone-50 p-5"
+              className="altteulmap-panel-muted p-5"
             >
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-600">
+                  <p className="text-[11px] tracking-[0.14em] text-[var(--altteul-accent-text)]">
                     {item.id}
                   </p>
                   <h2 className="mt-2 text-xl font-semibold text-stone-900">
@@ -126,8 +117,8 @@ export default async function AdminPlacePricesDetailPage({
                     {item.verifiedReportCount}회
                   </p>
                 </div>
-                <div className="rounded-3xl bg-white px-4 py-3 text-right">
-                  <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
+                <div className="rounded-[1.15rem] border border-stone-200 bg-white px-4 py-3 text-right">
+                  <p className="text-[11px] tracking-[0.14em] text-stone-500">
                     현재 금액
                   </p>
                   <p className="mt-2 text-lg font-semibold text-stone-900">
@@ -154,7 +145,7 @@ export default async function AdminPlacePricesDetailPage({
             </article>
           ))}
         </div>
-      </section>
-    </main>
+      </div>
+    </AdminPageShell>
   );
 }

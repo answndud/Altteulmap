@@ -43,15 +43,15 @@ const navItems = [
 
 function getLinkClassName(active: boolean) {
   return active
-    ? "inline-flex items-center gap-2 rounded-full border border-stone-900 bg-stone-900 px-4 py-2 text-sm font-medium text-white"
-    : "inline-flex items-center gap-2 rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100";
+    ? "altteulmap-chip inline-flex items-center gap-2 border border-[rgba(151,70,29,0.38)] bg-[rgba(181,90,43,0.12)] px-4 py-2 text-sm font-medium text-[var(--altteul-accent-text)]"
+    : "altteulmap-chip inline-flex items-center gap-2 border border-stone-300/90 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-white";
 }
 
 export function AdminQueueNav({ current, stats }: AdminQueueNavProps) {
   return (
     <nav
       data-testid="admin-queue-nav"
-      className="mt-6 flex flex-wrap gap-2 rounded-[1.5rem] border border-stone-200 bg-stone-50 p-3"
+      className="altteulmap-segmented altteulmap-scroll-row mt-1 w-full"
     >
       {navItems.map((item) => {
         const count = item.getCount(stats);
@@ -69,7 +69,9 @@ export function AdminQueueNav({ current, stats }: AdminQueueNavProps) {
             {typeof count === "number" ? (
               <span
                 className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                  active ? "bg-white/15 text-white" : "bg-stone-100 text-stone-600"
+                  active
+                    ? "bg-white/85 text-[var(--altteul-accent-text)]"
+                    : "bg-[var(--altteul-bg-subtle)] text-stone-600"
                 }`}
               >
                 {count}

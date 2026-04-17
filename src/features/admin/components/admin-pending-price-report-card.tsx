@@ -28,18 +28,18 @@ export function AdminPendingPriceReportCard({
     return (
       <article
         data-testid="admin-price-report-processed-card"
-        className={`rounded-[1.75rem] border p-5 ${
+        className={`rounded-[1.15rem] border p-4 ${
           isApproved
             ? "border-emerald-200 bg-emerald-50"
-            : "border-stone-300 bg-stone-100"
+            : "border-stone-300 bg-[var(--altteul-bg-subtle)]/75"
         }`}
       >
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-600">
+            <p className="text-[11px] font-semibold tracking-[0.14em] text-[var(--altteul-accent-text)]">
               {report.id}
             </p>
-            <h2 className="mt-2 text-2xl font-semibold text-stone-900">
+            <h2 className="mt-2 text-xl font-semibold text-stone-950">
               {report.placeName}
             </h2>
             <p className="mt-2 text-sm text-stone-600">
@@ -68,16 +68,16 @@ export function AdminPendingPriceReportCard({
   return (
     <article
       data-testid="admin-price-report-card"
-      className="rounded-[1.75rem] border border-stone-200 bg-stone-50 p-5"
+      className="altteulmap-panel p-5"
     >
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-600">
+          <p className="text-[11px] font-semibold tracking-[0.14em] text-[var(--altteul-accent-text)]">
             {report.id}
           </p>
           <h2
             data-testid="admin-price-report-place-name"
-            className="mt-2 text-2xl font-semibold text-stone-900"
+            className="mt-2 text-xl font-semibold text-stone-950"
           >
             {report.placeName}
           </h2>
@@ -85,13 +85,13 @@ export function AdminPendingPriceReportCard({
             {report.district} · 접수 {report.createdAt}
           </p>
         </div>
-        <div className="rounded-3xl bg-white px-4 py-3 text-right">
-          <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
+        <div className="altteulmap-panel-muted px-4 py-3 text-right">
+          <p className="text-[11px] tracking-[0.14em] text-stone-500">
             제보 가격
           </p>
           <p
             data-testid="admin-price-report-amount"
-            className="mt-2 text-lg font-semibold text-stone-900"
+            className="altteulmap-price-number mt-2 text-lg"
           >
             {formatKrw(report.amount)}원
           </p>
@@ -103,9 +103,9 @@ export function AdminPendingPriceReportCard({
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="space-y-4">
-          <div className="rounded-3xl bg-white p-4 text-sm leading-6 text-stone-700">
-            <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
+        <div className="grid gap-4">
+          <div className="altteulmap-panel-muted p-4 text-sm leading-6 text-stone-700">
+            <p className="text-[11px] tracking-[0.14em] text-stone-500">
               현재 저장된 가격
             </p>
             {typeof report.existingPriceAmount === "number" ? (
@@ -130,8 +130,8 @@ export function AdminPendingPriceReportCard({
             )}
           </div>
 
-          <div className="rounded-3xl bg-white p-4 text-sm leading-6 text-stone-700">
-            <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
+          <div className="altteulmap-panel-muted p-4 text-sm leading-6 text-stone-700">
+            <p className="text-[11px] tracking-[0.14em] text-stone-500">
               제보 메모
             </p>
             <p className="mt-2">
@@ -142,13 +142,13 @@ export function AdminPendingPriceReportCard({
           <div className="flex flex-wrap gap-3">
             <Link
               href={`/place/${report.placeId}`}
-              className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
+              className="altteulmap-button border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-white"
             >
               장소 보기
             </Link>
             <Link
               href={`/admin/prices/places/${report.placeId}`}
-              className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
+              className="altteulmap-button border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-white"
             >
               현재 가격 관리
             </Link>
@@ -159,7 +159,7 @@ export function AdminPendingPriceReportCard({
           {report.moderationSuggestion ? (
             <AdminAiReviewPanel suggestion={report.moderationSuggestion} />
           ) : null}
-          <div className="rounded-3xl border border-stone-200 bg-white p-4">
+          <div className="rounded-[1.05rem] border border-stone-200 bg-white p-4">
             <p className="text-sm font-semibold text-stone-900">검토 액션</p>
             <p className="mt-2 text-sm leading-6 text-stone-600">
               승인하면 현재 가격 항목을 덮어쓰거나 새 항목으로 추가합니다.

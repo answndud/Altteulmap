@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AccessDeniedPanel } from "@/components/access-denied-panel";
+import { AdminPageShell } from "@/features/admin/components/admin-page-shell";
 import { AdminQueueNav } from "@/features/admin/components/admin-queue-nav";
 import { AdminReportCard } from "@/features/admin/components/admin-report-card";
 import { AdminSummaryCards } from "@/features/admin/components/admin-summary-cards";
@@ -88,42 +89,30 @@ export default async function AdminReportsPage({
   const resolvedCount = statusCounts.resolved + statusCounts.dismissed;
 
   return (
-    <main className="bg-stone-50 px-4 py-8 sm:px-6">
-      <section className="mx-auto max-w-7xl rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm sm:p-8">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-orange-600">
-              운영
-            </p>
-            <h1 className="mt-3 text-3xl font-semibold tracking-tight text-stone-900 sm:text-5xl">
-              신고 검토 큐
-            </h1>
-            <p className="mt-4 max-w-3xl text-base leading-7 text-stone-600">
-              공개 신고를 확인하고 현재 상태를 즉시 바꿉니다. 열린 신고를 먼저
-              처리하면서 장소 상세와 신고 폼을 같이 열어 재현할 수 있습니다. AI
-              1차 검수는 처리 완료/검토 중/기각 후보를 먼저 요약합니다.
-            </p>
-          </div>
-          <Link
-            href="/api/admin/reports"
-            className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
-          >
-            응답 보기
-          </Link>
-        </div>
-
-        <div className="mt-6 flex flex-wrap gap-2">
-          <span
-            className={`rounded-full px-3 py-1 text-xs font-semibold ${
-              result.source === "database"
-                ? "bg-emerald-100 text-emerald-700"
-                : "bg-orange-100 text-orange-700"
-            }`}
-          >
-            데이터 구분: {result.source === "database" ? "실데이터" : "목업"}
-          </span>
-        </div>
-
+    <AdminPageShell
+      title="신고 검토 큐"
+      description="공개 신고를 상태별로 좁혀 보고 즉시 처리합니다. AI 1차 검수가 처리 후보와 확인 포인트를 먼저 정리하고, 운영자는 장소 상세와 신고 폼을 함께 열어 재현할 수 있습니다."
+      actions={
+        <Link
+          href="/api/admin/reports"
+          className="altteulmap-button border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-white"
+        >
+          응답 보기
+        </Link>
+      }
+      statusBadges={
+        <span
+          className={`altteulmap-badge ${
+            result.source === "database"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+              : "border-[rgba(181,90,43,0.18)] bg-[rgba(181,90,43,0.12)] text-[var(--altteul-accent-text)]"
+          }`}
+        >
+          데이터: {result.source === "database" ? "실데이터" : "목업"}
+        </span>
+      }
+    >
+      <div className="grid gap-6">
         <AdminQueueNav current="reports" stats={overview.stats} />
         <AdminSummaryCards
           items={[
@@ -150,25 +139,25 @@ export default async function AdminReportsPage({
 
         <div
           data-testid="admin-report-filter-bar"
-          className="mt-6 flex flex-wrap gap-2"
+          className="altteulmap-segmented flex flex-wrap gap-2"
         >
           <Link
             href="/admin/reports"
             data-testid="admin-report-filter-all"
             data-active={statusFilter === "all" ? "true" : "false"}
             aria-current={statusFilter === "all" ? "page" : undefined}
-            className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium ${
+            className={`altteulmap-chip inline-flex items-center gap-2 border px-4 py-2 text-sm font-medium ${
               statusFilter === "all"
-                ? "border-stone-900 bg-stone-900 text-white"
-                : "border-stone-300 bg-white text-stone-700 transition hover:bg-stone-100"
+                ? "border-[rgba(151,70,29,0.38)] bg-[rgba(181,90,43,0.12)] text-[var(--altteul-accent-text)]"
+                : "border-stone-300 bg-white text-stone-700 transition hover:bg-white"
             }`}
           >
             <span>전체</span>
             <span
               className={`rounded-full px-2 py-0.5 text-xs ${
                 statusFilter === "all"
-                  ? "bg-white/15 text-white"
-                  : "bg-stone-100 text-stone-600"
+                  ? "bg-white/85 text-[var(--altteul-accent-text)]"
+                  : "bg-[var(--altteul-bg-subtle)] text-stone-600"
               }`}
             >
               {statusCounts.all}
@@ -184,18 +173,18 @@ export default async function AdminReportsPage({
                 data-testid={`admin-report-filter-${statusOption.value}`}
                 data-active={active ? "true" : "false"}
                 aria-current={active ? "page" : undefined}
-                className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium ${
+                className={`altteulmap-chip inline-flex items-center gap-2 border px-4 py-2 text-sm font-medium ${
                   active
-                    ? "border-stone-900 bg-stone-900 text-white"
-                    : "border-stone-300 bg-white text-stone-700 transition hover:bg-stone-100"
+                    ? "border-[rgba(151,70,29,0.38)] bg-[rgba(181,90,43,0.12)] text-[var(--altteul-accent-text)]"
+                    : "border-stone-300 bg-white text-stone-700 transition hover:bg-white"
                 }`}
               >
                 <span>{reportStatusMap[statusOption.value]}</span>
                 <span
                   className={`rounded-full px-2 py-0.5 text-xs ${
                     active
-                      ? "bg-white/15 text-white"
-                      : "bg-stone-100 text-stone-600"
+                      ? "bg-white/85 text-[var(--altteul-accent-text)]"
+                      : "bg-[var(--altteul-bg-subtle)] text-stone-600"
                   }`}
                 >
                   {statusCounts[statusOption.value]}
@@ -206,7 +195,7 @@ export default async function AdminReportsPage({
         </div>
 
         {filteredItems.length > 0 ? (
-          <div data-testid="admin-report-list" className="mt-8 grid gap-4">
+          <div data-testid="admin-report-list" className="grid gap-4">
             {filteredItems.map((report) => (
               <AdminReportCard
                 key={report.id}
@@ -218,14 +207,14 @@ export default async function AdminReportsPage({
         ) : (
           <div
             data-testid="admin-report-empty"
-            className="mt-8 rounded-[1.75rem] border border-dashed border-stone-300 bg-stone-50 p-8 text-sm leading-6 text-stone-600"
+            className="rounded-[1.75rem] border border-dashed border-stone-300 bg-stone-50 p-8 text-sm leading-6 text-stone-600"
           >
             {statusFilter === "all"
               ? "현재 접수된 신고가 없습니다."
               : `${reportStatusMap[statusFilter]} 상태의 신고가 없습니다.`}
           </div>
         )}
-      </section>
-    </main>
+      </div>
+    </AdminPageShell>
   );
 }
