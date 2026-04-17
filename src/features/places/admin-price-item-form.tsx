@@ -85,7 +85,7 @@ export function AdminPriceItemForm({
   };
 
   return (
-    <div className="space-y-4 rounded-3xl border border-stone-200 bg-white p-4">
+    <div className="grid gap-4 rounded-[1.05rem] border border-stone-200 bg-white p-4">
       <div className="grid gap-3 lg:grid-cols-[1.2fr_0.8fr_0.8fr]">
         <label className="grid gap-2 text-sm text-stone-700">
           항목명
@@ -93,7 +93,7 @@ export function AdminPriceItemForm({
             value={label}
             onChange={(event) => setLabel(event.target.value)}
             disabled={disabled || isPending}
-            className="rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900 disabled:cursor-not-allowed disabled:opacity-60"
+            className="altteulmap-input px-4 py-3 text-sm disabled:cursor-not-allowed disabled:opacity-60"
           />
         </label>
         <label className="grid gap-2 text-sm text-stone-700">
@@ -104,7 +104,7 @@ export function AdminPriceItemForm({
             value={amount}
             onChange={(event) => setAmount(event.target.value)}
             disabled={disabled || isPending}
-            className="rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900 disabled:cursor-not-allowed disabled:opacity-60"
+            className="altteulmap-input px-4 py-3 text-sm disabled:cursor-not-allowed disabled:opacity-60"
           />
         </label>
         <label className="grid gap-2 text-sm text-stone-700">
@@ -113,7 +113,7 @@ export function AdminPriceItemForm({
             value={unitLabel}
             onChange={(event) => setUnitLabel(event.target.value)}
             disabled={disabled || isPending}
-            className="rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900 disabled:cursor-not-allowed disabled:opacity-60"
+            className="altteulmap-input px-4 py-3 text-sm disabled:cursor-not-allowed disabled:opacity-60"
           />
         </label>
       </div>
@@ -129,7 +129,7 @@ export function AdminPriceItemForm({
               )
             }
             disabled={disabled || isPending}
-            className="rounded-2xl border border-stone-300 bg-white px-4 py-3 outline-none transition focus:border-stone-900 disabled:cursor-not-allowed disabled:opacity-60"
+            className="altteulmap-input px-4 py-3 text-sm disabled:cursor-not-allowed disabled:opacity-60"
           >
             <option value="verified">검증됨</option>
             <option value="unverified">미검증</option>
@@ -165,7 +165,7 @@ export function AdminPriceItemForm({
           type="button"
           onClick={() => submit({ pendingLabel: "저장" })}
           disabled={disabled || isPending}
-          className="rounded-full bg-stone-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-60"
+          className="altteulmap-accent-solid altteulmap-button px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
         >
           저장
         </button>
@@ -179,7 +179,7 @@ export function AdminPriceItemForm({
             })
           }
           disabled={disabled || isPending || !isActive}
-          className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-60"
+          className="altteulmap-button border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
         >
           대표 가격 지정
         </button>
@@ -193,25 +193,25 @@ export function AdminPriceItemForm({
             })
           }
           disabled={disabled || isPending}
-          className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-60"
+          className="altteulmap-button border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isActive ? "숨기기" : "복원"}
         </button>
       </div>
 
       {message ? (
-        <p
+        <div
           aria-live="polite"
-          className={`text-xs ${
+          className={`rounded-[0.95rem] border px-4 py-3 text-sm ${
             messageTone === "success"
-              ? "text-emerald-700"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
               : messageTone === "error"
-                ? "text-rose-700"
-                : "text-stone-500"
+                ? "border-rose-200 bg-rose-50 text-rose-700"
+                : "border-stone-200 bg-[var(--altteul-bg-subtle)]/55 text-stone-500"
           }`}
         >
           {isPending ? `${pendingLabel ?? "처리"} 반영 중...` : message}
-        </p>
+        </div>
       ) : null}
     </div>
   );

@@ -40,8 +40,8 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
   }
 
   return (
-    <main className="bg-stone-50 px-4 py-6 sm:px-6 sm:py-8">
-      <section className="mx-auto flex min-h-[calc(100dvh-8rem)] max-w-[28rem] flex-col justify-center">
+    <main className="bg-[var(--altteul-bg-canvas)] px-4 py-6 sm:px-6 sm:py-8">
+      <section className="mx-auto flex min-h-[calc(100dvh-7rem)] max-w-[26rem] flex-col justify-center">
         <SignupForm
           callbackUrl={callbackUrl}
           loginHref={loginHref}

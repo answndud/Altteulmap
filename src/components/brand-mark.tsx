@@ -10,15 +10,15 @@ type BrandMarkProps = {
 const variantClassMap = {
   compact: {
     wrapper: "gap-0.5",
-    eyebrow: "text-[0.65rem] tracking-[0.28em] text-stone-500",
-    title: "text-[1.55rem] sm:text-[1.85rem]",
+    eyebrow: "hidden",
+    title: "text-[1.22rem] font-semibold tracking-[-0.06em] sm:text-[1.42rem]",
     description: "hidden",
   },
   hero: {
-    wrapper: "gap-2.5",
-    eyebrow: "text-[0.72rem] tracking-[0.3em] text-orange-600",
-    title: "text-4xl sm:text-[4.5rem]",
-    description: "block text-sm leading-6 text-stone-500 sm:text-base",
+    wrapper: "gap-2",
+    eyebrow: "altteulmap-section-kicker",
+    title: "text-[2.2rem] font-semibold tracking-[-0.07em] text-stone-950 sm:text-[3.35rem]",
+    description: "block max-w-xl text-sm leading-6 text-stone-600 sm:text-base",
   },
 } as const;
 
@@ -30,13 +30,14 @@ function BrandMarkInner({
 
   return (
     <span className={`inline-flex min-w-0 flex-col ${classes.wrapper} ${className}`.trim()}>
+      <span className={classes.eyebrow}>동네 가격 지도</span>
       <span
-        className={`truncate font-semibold tracking-[-0.07em] text-stone-950 ${classes.title}`}
+        className={`truncate text-stone-950 ${classes.title}`}
       >
         알뜰맵
       </span>
       <span className={classes.description}>
-        동네 가격을 기록하고, 다시 찾기 쉽게 묶어 두는 지도
+        내 주변에서 다시 찾게 되는 가격과 생활 장소를 빠르게 확인하는 지도
       </span>
     </span>
   );

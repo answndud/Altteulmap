@@ -29,11 +29,11 @@ export function AdminReportCard({
   return (
     <article
       data-testid="admin-report-card"
-      className="rounded-[1.75rem] border border-stone-200 bg-stone-50 p-5"
+      className="altteulmap-panel p-5"
     >
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-600">
+          <p className="text-[11px] font-semibold tracking-[0.14em] text-[var(--altteul-accent-text)]">
             {report.id}
           </p>
           <h2
@@ -62,13 +62,13 @@ export function AdminReportCard({
           <div className="flex flex-wrap gap-3">
             <Link
               href={`/place/${report.placeId}`}
-              className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
+              className="altteulmap-button border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-white"
             >
               장소 보기
             </Link>
             <Link
               href={`/report?placeId=${report.placeId}&placeName=${encodeURIComponent(report.placeName)}`}
-              className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
+              className="altteulmap-button border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-white"
             >
               신고 재현
             </Link>

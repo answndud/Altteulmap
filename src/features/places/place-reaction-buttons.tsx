@@ -144,23 +144,26 @@ export function PlaceReactionButtons({
   const isDisliked = reactionState.viewerReaction === "dislike";
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap gap-2">
+    <div className="grid gap-2">
+      <div className="inline-flex w-fit flex-wrap gap-1 rounded-[1rem] border border-[var(--altteul-surface-border)] bg-white/88 p-1 shadow-sm">
         <button
           type="button"
           onClick={() => submitReaction("like")}
           disabled={isPending}
           aria-label="좋아요"
           data-testid="reaction-like-button"
-          className={`altteulmap-button inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl border px-3 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ${
+          className={`inline-flex min-w-[6.5rem] items-center justify-center gap-2 whitespace-nowrap rounded-[0.82rem] px-3 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ${
             isLiked
-              ? "border-[#ddb596] bg-[#fff4ea] text-[#9b5a35]"
-              : "border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
+              ? "bg-[var(--altteul-accent-soft)] text-[var(--altteul-accent-text)] shadow-sm"
+              : "text-stone-600 hover:bg-[var(--altteul-bg-subtle)]/85"
           }`}
         >
-          <span className={isLiked ? "text-[#b15f34]" : "text-stone-500"}>
+          <span
+            className={isLiked ? "text-[var(--altteul-accent-text)]" : "text-stone-500"}
+          >
             <ThumbUpIcon active={isLiked} />
           </span>
+          <span>좋아요</span>
           <span
             className="min-w-5 text-center text-sm"
             data-testid="reaction-like-count"
@@ -172,23 +175,24 @@ export function PlaceReactionButtons({
           type="button"
           onClick={() => submitReaction("dislike")}
           disabled={isPending}
-          aria-label="싫어요"
+          aria-label="아쉬워요"
           data-testid="reaction-dislike-button"
-          className={`altteulmap-button inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl border px-3 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ${
+          className={`inline-flex min-w-[6.5rem] items-center justify-center gap-2 whitespace-nowrap rounded-[0.82rem] px-3 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ${
             isDisliked
-              ? "border-rose-200 bg-rose-50 text-rose-700"
-              : "border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
+              ? "bg-stone-900 text-white shadow-sm"
+              : "text-stone-600 hover:bg-[var(--altteul-bg-subtle)]/85"
           }`}
         >
-          <span className={isDisliked ? "text-rose-600" : "text-stone-500"}>
+          <span className={isDisliked ? "text-white" : "text-stone-500"}>
             <ThumbDownIcon active={isDisliked} />
           </span>
+          <span>아쉬워요</span>
           <span className="min-w-5 text-center text-sm">
             {reactionState.dislikeCount}
           </span>
         </button>
       </div>
-      {message ? <p className="text-xs text-stone-500">{message}</p> : null}
+      {message ? <p className="pl-1 text-[11px] text-stone-500">{message}</p> : null}
     </div>
   );
 }

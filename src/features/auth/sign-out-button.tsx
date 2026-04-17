@@ -28,8 +28,8 @@ export function SignOutButton({
       data-testid="sign-out-button"
       className={`altteulmap-button whitespace-nowrap transition disabled:cursor-not-allowed disabled:opacity-60 ${
         compact
-          ? "border border-stone-300 bg-white px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-100"
-          : "border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 hover:bg-stone-100"
+          ? "border border-stone-300/90 bg-white/90 px-3 py-2 text-[13px] font-medium text-stone-700 hover:bg-white"
+          : "border border-stone-300/90 bg-white/90 px-4 py-2 text-sm text-stone-700 hover:bg-white"
       }`}
     >
       {isPending ? "로그아웃 중..." : "로그아웃"}
