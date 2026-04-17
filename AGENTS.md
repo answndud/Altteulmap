@@ -6,23 +6,36 @@
 
 ## 필수 규칙
 1. 작업을 시작하기 전에 `docs/project/PLAN.md`, `docs/project/PROGRESS.md`, `docs/product/prd.md`, `docs/product/trd.md`를 먼저 확인한다.
-2. 구현 우선순위나 범위가 바뀌면 코드보다 먼저 `docs/project/PLAN.md`를 갱신한다.
-3. 의미 있는 구현, 수정, 검증이 끝나면 `docs/project/PROGRESS.md`를 즉시 갱신한다.
-4. 세션을 마칠 때는 다음 사람이 바로 이어서 작업할 수 있을 정도로 현재 상태를 남긴다.
-5. 코드와 문서가 어긋나면 같은 작업 안에서 함께 수정한다.
-6. 새 기능을 시작할 때는 현재 계획에 없는 기능인지 먼저 확인하고, 없으면 `docs/project/PLAN.md`에 추가한 뒤 진행한다.
-7. 검증을 했으면 `docs/project/PROGRESS.md`에 어떤 명령을 돌렸는지 남긴다.
-8. 작업 중단 시점에도 미완료 상태, 남은 이슈, 다음 액션을 `docs/project/PROGRESS.md`에 적는다.
+2. `docs/project/COMPLETED.md`는 archive 문서다. 과거 맥락이 필요할 때만 읽고, 세션 시작 필수 읽기 대상으로 취급하지 않는다.
+3. active 문서인 `PLAN.md`, `PROGRESS.md`는 번호 없이 현재 작업 자체를 설명한다. 완료된 작업은 `COMPLETED.md`에만 append 순서 기준 연속 archive 번호를 부여한다.
+4. 구현 우선순위나 범위가 바뀌면 코드보다 먼저 `docs/project/PLAN.md`를 갱신한다.
+5. 의미 있는 구현, 수정, 검증이 끝나면 `docs/project/PROGRESS.md`를 즉시 갱신한다.
+6. 작업이 완료되어 active 상태를 벗어나면 `docs/project/PROGRESS.md`의 최종 상태, 검증, 결과를 정리해 `docs/project/COMPLETED.md`로 archive한다.
+7. archive는 raw copy/paste snapshot이 아니라 다시 읽기 좋은 요약형 포맷으로 작성한다.
+8. `docs/project/COMPLETED.md`는 시간 오름차순으로 유지한다. 가장 최근에 끝난 작업이 문서 맨 아래에 오도록 append한다.
+9. `docs/project/COMPLETED.md`의 각 항목에는 최소한 `배경`, `변경 내용`, `코드/문서`, `검증`, `결과`가 들어가야 한다. active 문서보다 훨씬 자세해야 한다.
+10. `PLAN.md`에는 active 계획만 남기고, `PROGRESS.md`에는 진행 중인 상태만 남긴다. 완료된 작업은 active 문서에 1건도 남기지 않는다.
+11. active 작업이 모두 끝나면 `PLAN.md`, `PROGRESS.md`의 작업 본문은 전부 비우고 `현재 active 작업 없음`만 남긴다.
+12. 세션을 마칠 때는 다음 사람이 바로 이어서 작업할 수 있을 정도로 현재 상태를 남긴다.
+13. 코드와 문서가 어긋나면 같은 작업 안에서 함께 수정한다.
+14. 새 기능을 시작할 때는 현재 계획에 없는 기능인지 먼저 확인하고, 없으면 `docs/project/PLAN.md`에 추가한 뒤 진행한다.
+15. 검증을 했으면 `docs/project/PROGRESS.md`에 어떤 명령을 돌렸는지 남긴다.
+16. 작업 중단 시점에도 미완료 상태, 남은 이슈, 다음 액션을 `docs/project/PROGRESS.md`에 적는다.
 
 ## 문서 역할
 - `docs/project/PLAN.md`
   - 앞으로 무엇을 만들지
   - 무엇이 먼저인지
-  - 어떤 범위까지 확장할지
+  - 지금 active인 작업과 완료 기준
 - `docs/project/PROGRESS.md`
-  - 지금까지 무엇을 했는지
-  - 어디까지 검증했는지
-  - 다음에 무엇부터 하면 되는지
+  - 지금 active 상태가 어떤지
+  - 현재 blocker와 최근 검증이 무엇인지
+  - 작업별 다음 액션이 무엇인지
+- `docs/project/COMPLETED.md`
+  - 완료된 작업의 상세 archive
+  - append 순서 기준 archive 번호
+  - `PROGRESS.md`에서 정리해 옮긴 종료된 실행 로그와 배포/측정 이력의 요약
+  - 더 이상 active 문서에 둘 필요가 없는 과거 결정
 - `docs/product/prd.md`
   - 제품 목표와 사용자 가치
   - MVP 범위와 우선 기능
@@ -32,8 +45,13 @@
 
 ## 작업 원칙
 - 구현과 문서화는 분리하지 않는다.
+- active 문서는 항상 짧게 유지하고, 완료된 긴 이력은 `COMPLETED.md`로 보낸다.
+- archive는 읽기 좋은 상세형으로 정리하고, 번호는 `COMPLETED.md` 안에서만 append 순서대로 사용한다.
+- 완료 archive는 `PLAN.md`가 아니라 작업 종료 시점의 `PROGRESS.md` 내용을 기준으로 정리한다.
+- `COMPLETED.md`는 오래된 작업이 위, 최신 작업이 아래에 오도록 유지한다.
+- `COMPLETED.md`는 active 문서의 축약본이 아니라, 나중에 다시 읽어도 작업 복기가 가능한 상세 문서여야 한다.
 - 문서는 나중에 정리하는 것이 아니라 작업하면서 계속 최신화한다.
-- 작업이 끝났더라도 다음 세션을 위해 마지막 상태를 남긴다.
+- 작업이 끝났더라도 다음 세션을 위해 마지막 active 상태를 남긴다.
 
 ## 로컬 AI 워크플로우
 - 이 저장소는 전역 설정이 아니라 repo-local 설정만 사용한다.
