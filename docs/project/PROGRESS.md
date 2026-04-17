@@ -3,6 +3,7 @@
 기준일: 2026-04-17
 
 ## 진행 현황 요약
+- `main` 자동 public 배포 첫 run은 `ADMIN_APP_URL` GitHub variable 누락으로 한 번 실패했고, workflow가 현재 운영 `workers.dev` split URL을 기본값으로 쓰도록 바로 보정했다
 - Cloudflare CI 인증을 더 단순하게 정리했다. account ID는 `wrangler.jsonc`/`wrangler.admin.jsonc`에 직접 넣고, GitHub Actions 자동 public deploy는 `CLOUDFLARE_API_TOKEN`만 secret으로 요구하도록 바꿨다
 - GitHub Actions를 `main` push 기준 public 자동 배포로 바꿨다. 이제 `main`에 push하면 `verify -> deploy-config -> deploy:check:public -> deploy:public` 순서로 public worker가 자동 배포되고, admin은 계속 수동 배포 경로로 유지된다
 - 모바일 목록 시트 drag-close 회귀를 정리했다. 목록 시트 전용 close threshold를 조금 낮추고, Playwright는 `expanded -> peek -> close` 전환 사이에 transition settle 시간을 두도록 바꿔 기존 `mobile-place-list-sheet` 숨김 실패가 다시 나지 않게 했다
@@ -75,6 +76,18 @@
 - 다음 우선순위: `Cycle 12`는 `Phase A 남은 blocker(운영 DB credential 복구 + moderation_suggestions migration) -> Phase B 운영/모바일 실기기 QA` 순서로 진행한다. 운영 URL은 현재 `workers.dev` split으로 고정했고, 검색 URL 상태/공유 telemetry는 현 범위로 동결했다
 
 ## 실행 로그
+
+### 2026-04-17 12:24 KST: main 자동 public deploy 첫 run 실패 후 기본 URL fallback 추가
+- 완료 내용
+  - `main` push 후 GitHub Actions run `24545971653`를 확인한 결과 `Deploy Public Worker` job의 `deploy:check:public`가 `ADMIN_APP_URL is missing`으로 실패했다. 현재 repository variable에는 `ADMIN_APP_URL`, `SITE_URL`이 비어 있었다.
+  - `/Users/alex/project/altteulmap/.github/workflows/ci.yml`의 `deploy-public` env를 수정해, `ADMIN_APP_URL`이 비어 있으면 `https://altteulmap-admin.altteul-lab.workers.dev`, `SITE_URL`이 비어 있으면 `https://altteulmap.altteul-lab.workers.dev`를 기본값으로 쓰게 했다.
+  - `/Users/alex/project/altteulmap/docs/deploy/deploy-cloudflare.md`도 같은 기준으로 갱신해, GitHub variable에 두 값이 없을 때 workflow fallback이 적용된다는 점을 반영했다.
+- 검증 결과
+  - `gh run view 24545971653 --job 71761582614 --log`
+  - `git diff --check` 통과
+- 메모
+  - 현재 운영 URL 전략이 `workers.dev` split으로 고정돼 있기 때문에, public 자동 배포는 이 fallback이 있어도 정책과 충돌하지 않는다.
+  - custom domain 전환 시에는 GitHub variable `ADMIN_APP_URL`, `SITE_URL`만 다시 채우면 된다.
 
 ### 2026-04-17 12:12 KST: Cloudflare account ID를 wrangler 설정으로 이동
 - 완료 내용

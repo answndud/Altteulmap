@@ -125,7 +125,8 @@ npm run deploy:admin
 자동화 기준:
 - `main` push: GitHub Actions가 `verify -> deploy:check:public -> deploy:public` 순서로 public worker를 자동 배포한다.
 - 관리자 앱은 자동 배포하지 않는다. admin 변경은 `npm run deploy:admin`을 별도로 실행한다.
-- 자동 배포를 쓰려면 GitHub repository `vars/secrets`에 `DATABASE_URL`, `AUTH_SECRET`, `NEXTAUTH_URL`, `ADMIN_APP_URL`, `SITE_URL`, `NEXT_PUBLIC_NAVER_MAP_KEY_ID`, `AUTH_KAKAO_CLIENT_ID`, `AUTH_KAKAO_CLIENT_SECRET`, `AUTH_NAVER_CLIENT_ID`, `AUTH_NAVER_CLIENT_SECRET`, `CLOUDFLARE_API_TOKEN`를 채워야 한다.
+- 자동 배포를 쓰려면 GitHub repository `vars/secrets`에 `DATABASE_URL`, `AUTH_SECRET`, `NEXTAUTH_URL`, `NEXT_PUBLIC_NAVER_MAP_KEY_ID`, `AUTH_KAKAO_CLIENT_ID`, `AUTH_KAKAO_CLIENT_SECRET`, `AUTH_NAVER_CLIENT_ID`, `AUTH_NAVER_CLIENT_SECRET`, `CLOUDFLARE_API_TOKEN`를 채워야 한다.
+- `ADMIN_APP_URL`, `SITE_URL` variable이 비어 있으면 workflow는 현재 운영 기본값(`https://altteulmap-admin.altteul-lab.workers.dev`, `https://altteulmap.altteul-lab.workers.dev`)을 자동으로 사용한다.
 
 관리자 분리 기준 배포 순서는 아래를 권장한다.
 1. `npm run deploy:admin`
