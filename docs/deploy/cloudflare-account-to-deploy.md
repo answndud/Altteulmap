@@ -103,14 +103,14 @@ npx wrangler login
 
 현재 저장소는 두 경로를 같이 쓴다.
 
-- 기본 운영 경로: GitHub Actions가 `main` push 시 public worker를 자동 배포한다.
-- 수동 경로: 필요하면 로컬에서 `npm run deploy`, `npm run deploy:public`, `npm run deploy:admin`으로 직접 배포한다.
+- 기본 운영 경로: GitHub에 `main` push 후 Cloudflare Workers Builds가 배포한다.
+- 수동 fallback 경로: 필요하면 로컬에서 `npm run deploy`, `npm run deploy:public`, `npm run deploy:admin`으로 직접 배포한다.
 
 현재 배포 경로는 Cloudflare Workers Free 한도 기준으로 `next build --webpack`과 clean build를 전제로 맞춰져 있다.
 - `npm run deploy`는 내부적으로 `cf:clean -> opennextjs-cloudflare build -> opennextjs-cloudflare deploy` 순서로 실행된다.
 - 직접 배포할 때는 `.next`, `.open-next`를 남긴 채 재사용하지 않는 것이 안전하다.
 
-즉 환경 변수는 로컬과 GitHub Actions/Cloudflare 양쪽이 모두 중요하다. 다만 Cloudflare account ID는 현재 저장소의 `wrangler.jsonc`, `wrangler.admin.jsonc`에 직접 넣어 두었으므로 GitHub variable로 따로 관리하지 않는다.
+즉 자동 배포 기준으로는 Cloudflare Dashboard 쪽 build/runtime 환경 변수가 중요하고, 수동 로컬 배포 기준으로는 내 컴퓨터의 `.env*`와 shell env가 중요하다. Cloudflare account ID는 현재 저장소의 `wrangler.jsonc`, `wrangler.admin.jsonc`에 직접 넣어 두었으므로 별도 variable로 관리하지 않는다.
 
 ### A. 로컬 빌드 환경 변수
 - `npm run deploy`를 실행하는 내 컴퓨터에 있어야 한다.
@@ -126,8 +126,9 @@ npx wrangler login
 
 중요:
 - 이 내용은 OpenNext 문서와 현재 저장소의 배포 방식을 합친 운영 가이드다.
-- 현재 저장소는 `Workers Builds`가 아니라 `로컬 build -> wrangler deploy` 흐름이므로, 로컬 build 변수와 Cloudflare runtime 변수 둘 다 챙겨야 한다.
-- 현재 배포/점검 스크립트는 쉘이나 CI에서 주입한 env를 로컬 `.env*`보다 우선 사용한다. 즉 워크플로우가 넘긴 운영 `NEXTAUTH_URL`, `ADMIN_APP_URL`, `SITE_URL`이 개발용 파일 값으로 다시 덮이지 않는다.
+- 현재 기본 운영 경로는 `Workers Builds`다. 따라서 자동 배포를 쓰려면 Cloudflare Dashboard에 build/runtime 환경 변수를 맞춰 둬야 한다.
+- 로컬 `wrangler deploy` fallback을 쓸 때는 로컬 build 변수와 Cloudflare runtime 변수를 둘 다 챙겨야 한다.
+- 현재 배포/점검 스크립트는 쉘에서 주입한 env를 로컬 `.env*`보다 우선 사용한다. 즉 수동 배포 시 넘긴 `NEXTAUTH_URL`, `ADMIN_APP_URL`, `SITE_URL`이 개발용 파일 값으로 다시 덮이지 않는다.
 
 공식 문서:
 - [OpenNext env vars guide](https://opennext.js.org/cloudflare/howtos/env-vars)

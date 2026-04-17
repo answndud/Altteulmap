@@ -3,10 +3,8 @@
 기준일: 2026-04-17
 
 ## 진행 현황 요약
-- `main` merge와 public 자동 배포까지 마감했다. 첫 `main` run은 `ADMIN_APP_URL` variable 누락으로 실패했지만 workflow fallback을 추가한 뒤 두 번째 run `24546039765`가 성공했고, live public URL도 `200` 응답을 확인했다
-- `main` 자동 public 배포 첫 run은 `ADMIN_APP_URL` GitHub variable 누락으로 한 번 실패했고, workflow가 현재 운영 `workers.dev` split URL을 기본값으로 쓰도록 바로 보정했다
-- Cloudflare CI 인증을 더 단순하게 정리했다. account ID는 `wrangler.jsonc`/`wrangler.admin.jsonc`에 직접 넣고, GitHub Actions 자동 public deploy는 `CLOUDFLARE_API_TOKEN`만 secret으로 요구하도록 바꿨다
-- GitHub Actions를 `main` push 기준 public 자동 배포로 바꿨다. 이제 `main`에 push하면 `verify -> deploy-config -> deploy:check:public -> deploy:public` 순서로 public worker가 자동 배포되고, admin은 계속 수동 배포 경로로 유지된다
+- 배포 경로를 다시 단순화했다. GitHub Actions에서 `main` push용 `Verify`/`Deploy Public Worker`를 제거하고 PR CI만 남겼다. 이제 기본 운영 배포는 GitHub `main` push 뒤 Cloudflare Workers Builds가 맡고, 로컬 `deploy:public`/`deploy:admin`은 fallback으로만 사용한다
+- `main` merge와 live public 반영은 이미 마감했다. GitHub Actions 자동 public deploy를 한 번 도입했다가 `ADMIN_APP_URL` 누락 보정까지 확인한 뒤, 중복 비용이 커서 다시 제거하고 Cloudflare Workers Builds 단일 경로로 되돌렸다
 - 모바일 목록 시트 drag-close 회귀를 정리했다. 목록 시트 전용 close threshold를 조금 낮추고, Playwright는 `expanded -> peek -> close` 전환 사이에 transition settle 시간을 두도록 바꿔 기존 `mobile-place-list-sheet` 숨김 실패가 다시 나지 않게 했다
 - 지도 숫자 클러스터 크기를 다시 줄였다. 개수 tier별 시각 지름을 약 20~25% 낮추고, 보이는 원형과 실제 hit box를 분리해 웹/모바일에서 덜 답답하게 보이면서도 터치 영역은 유지하도록 정리했다
 - 지도 숫자 클러스터를 다시 리디자인했다. 기존의 진하고 볼드한 이중 원형 대신 작은 유리 배지 같은 단일 원형으로 바꾸고, 숫자 weight와 내부 링 두께를 낮춰 모바일에서 지도를 덜 가리면서도 overview 구분은 유지하도록 정리했다
@@ -79,6 +77,15 @@
 - 다음 우선순위: `Cycle 12`는 `Phase A 남은 blocker(운영 DB credential 복구 + moderation_suggestions migration) -> Phase B 운영/모바일 실기기 QA` 순서로 진행한다. 운영 URL은 현재 `workers.dev` split으로 고정했고, 검색 URL 상태/공유 telemetry는 현 범위로 동결했다
 
 ## 실행 로그
+
+### 2026-04-17 13:05 KST: GitHub Actions main 배포 경로 제거
+- 완료 내용
+  - `/Users/alex/project/altteulmap/.github/workflows/ci.yml`에서 `push` trigger, `main`용 `Verify`, `Deploy Config Check`, `Deploy Public Worker` job을 제거했다. GitHub Actions는 이제 `pull_request`와 `workflow_dispatch`에서만 `Verify`, `E2E Full`을 실행한다.
+  - `/Users/alex/project/altteulmap/docs/deploy/deploy-cloudflare.md`, `/Users/alex/project/altteulmap/docs/deploy/cloudflare-account-to-deploy.md`, `/Users/alex/project/altteulmap/docs/project/PLAN.md`를 현재 운영 기준에 맞게 수정했다. 새 기본값은 `GitHub push -> Cloudflare Workers Builds 자동 배포`, 로컬 `wrangler deploy`는 fallback이다.
+- 검증 결과
+  - `git diff --check` 통과
+- 메모
+  - GitHub Actions run 시간은 이제 PR CI에만 쓰인다. `main` push에서 2분 이상 걸리던 원인은 `Verify`와 `Deploy Public Worker`가 함께 돌던 구조였고, 이 경로는 제거됐다.
 
 ### 2026-04-17 12:40 KST: 지도 숫자 클러스터 색상 재조정
 - 완료 내용

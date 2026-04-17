@@ -24,7 +24,7 @@
 ## 현재 우선순위
 1. AI 검수 1차 live rollout 마감: 운영 DB `DATABASE_URL`/migration access 복구, `moderation_suggestions` 적용, public/admin persisted live 경로 확인
 2. 운영 품질/QA 후속 정리: 운영 도메인 smoke 심화, 모바일 제스처 실사용 검증, `현재 위치`/`이 지역 검색`/AI 검수 패널 실기기 확인, 지도 첫 진입 체감 성능 보정
-3. repo 상태 유지: 배포 문서, smoke 경로, Cloudflare build 설정, `main` push 기준 public 자동 배포 workflow, repo-local workflow 유지
+3. repo 상태 유지: 배포 문서, smoke 경로, Cloudflare build 설정, PR 중심 GitHub Actions CI, Cloudflare Workers Builds 운영 경로 유지
 4. 디자인 시스템/정보 구조 전면 재정의: 라이브 UI 비판, reference review, AltteulMap 전용 `DESIGN.md` 정리, 이후 UI 구현 기준 고정
 
 ## 다음 실행 순서
@@ -34,7 +34,7 @@
 4. 현재 운영 URL은 `workers.dev` split(`altteulmap.altteul-lab.workers.dev`, `altteulmap-admin.altteul-lab.workers.dev`)으로 유지하고, custom domain은 별도 cycle로 분리한다.
 5. 검색 URL 상태와 공유 telemetry는 현재 범위(`q/scope` URL 반영, 관리자 overview share breakdown)로 동결 유지한다. 별도 기능 확장보다 현재 사용자 경험을 재설계하는 design system work를 우선한다.
 6. 이후 UI 작업은 ad-hoc polish가 아니라 `Cycle 13`의 `DESIGN.md` 기준으로 구조적으로 진행한다.
-7. GitHub Actions는 `main` push 시 최소 verify를 거친 뒤 public worker를 자동 배포하는 경로를 유지하고, admin 배포는 별도 수동 경로로 둔다.
+7. GitHub Actions는 `pull_request`/수동 실행 CI만 유지하고, `main` 배포는 Cloudflare Workers Builds에 맡긴다. 로컬 `wrangler deploy`는 fallback 경로로만 둔다.
 
 ## 현실적 실행 계획
 
