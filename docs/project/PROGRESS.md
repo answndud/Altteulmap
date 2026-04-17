@@ -9,6 +9,7 @@
 - GitHub Actions를 `main` push 기준 public 자동 배포로 바꿨다. 이제 `main`에 push하면 `verify -> deploy-config -> deploy:check:public -> deploy:public` 순서로 public worker가 자동 배포되고, admin은 계속 수동 배포 경로로 유지된다
 - 모바일 목록 시트 drag-close 회귀를 정리했다. 목록 시트 전용 close threshold를 조금 낮추고, Playwright는 `expanded -> peek -> close` 전환 사이에 transition settle 시간을 두도록 바꿔 기존 `mobile-place-list-sheet` 숨김 실패가 다시 나지 않게 했다
 - 지도 숫자 클러스터 크기를 다시 줄였다. 개수 tier별 시각 지름을 약 20~25% 낮추고, 보이는 원형과 실제 hit box를 분리해 웹/모바일에서 덜 답답하게 보이면서도 터치 영역은 유지하도록 정리했다
+- 지도 숫자 클러스터를 다시 리디자인했다. 기존의 진하고 볼드한 이중 원형 대신 작은 유리 배지 같은 단일 원형으로 바꾸고, 숫자 weight와 내부 링 두께를 낮춰 모바일에서 지도를 덜 가리면서도 overview 구분은 유지하도록 정리했다
 - PR CI 후속: `E2E Full`을 깨던 인기 장소 카드 selector 충돌을 고쳤다. 카드 본문 링크와 `상세 보기` 링크에 개별 test id를 부여했고, `verify`는 `lint + tsc --noEmit`만 수행하도록 줄였으며, E2E job은 `.next/cache`를 복원하고 build 전에 이를 지우지 않도록 바꿔 반복 PR에서 Next build 시간을 줄일 준비를 마쳤다
 - 전면 디자인 재설계 8차 구현을 진행했다. 관리자 대시보드/검수 큐/가격 관리 화면을 공통 `AdminPageShell` 기준으로 다시 정리했고, admin 헤더의 중복 사용자 배지를 걷어 public과 같은 디자인 언어로 맞췄다. mock 기준 admin dashboard smoke도 현재 구조에 맞게 다시 통과시켰다
 - 전면 디자인 재설계 7차 구현을 진행했다. 홈 카테고리 tray를 `상위 묶음 선택 -> 세부 업종 선택` 2단계 client interaction으로 바꿨고, 가격 제보/북마크 성공 상태도 더 명확한 피드백 박스와 상태 문구로 정리했다
@@ -77,6 +78,19 @@
 - 다음 우선순위: `Cycle 12`는 `Phase A 남은 blocker(운영 DB credential 복구 + moderation_suggestions migration) -> Phase B 운영/모바일 실기기 QA` 순서로 진행한다. 운영 URL은 현재 `workers.dev` split으로 고정했고, 검색 URL 상태/공유 telemetry는 현 범위로 동결했다
 
 ## 실행 로그
+
+### 2026-04-17 12:33 KST: 지도 숫자 클러스터 디자인 재설계
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/map/naver-map-panel.tsx`의 숫자 클러스터를 이중 원형 계층에서 단일 `glass badge` 구조로 바꿨다. 배경은 밝은 크림 톤 gradient, 테두리는 얇은 keyline, 내부는 두꺼운 채움 대신 얕은 inset ring만 남겨 더 가볍게 보이도록 조정했다.
+  - tier별 visible badge 크기를 다시 줄이고, 숫자 weight도 `700/800` 계열에서 `600`으로 낮췄다. count 표시는 여전히 명확하지만 모바일 basemap과 경쟁하지 않게 하는 게 목표였다.
+  - preview/fallback 클러스터와 실제 네이버 지도 icon renderer가 같은 시각 토큰과 sizing 규칙을 쓰도록 맞췄다.
+- 검증 결과
+  - `git diff --check` 통과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
+  - `USE_MOCK_DATA=true npx playwright test tests/e2e/map.mobile.spec.ts --project mobile-chromium` 통과
+- 메모
+  - 이번 단계는 클릭 hit box를 유지한 채 visible badge만 줄인 변경이라 모바일 터치성은 유지된다.
 
 ### 2026-04-17 12:27 KST: `main` merge, push, public 자동 배포 성공
 - 완료 내용
