@@ -250,11 +250,11 @@ const PLACE_MARKER_THEMES: Record<PlaceMarkerGroupKey, PlaceMarkerTheme> = {
 
 const CLUSTER_MARKER_THEME = {
   background:
-    "linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(247, 242, 235, 0.94) 100%)",
-  border: "rgba(132, 104, 80, 0.16)",
-  ring: "rgba(228, 202, 178, 0.82)",
-  text: "#5d4637",
-  shadow: "0 6px 14px rgba(116, 88, 66, 0.1)",
+    "linear-gradient(180deg, rgba(228, 236, 247, 0.97) 0%, rgba(212, 224, 240, 0.95) 100%)",
+  border: "rgba(88, 110, 143, 0.24)",
+  ring: "rgba(183, 198, 223, 0.94)",
+  text: "#334155",
+  shadow: "0 7px 16px rgba(71, 85, 105, 0.14)",
 } as const;
 
 function getPlaceMarkerGroupKey(
