@@ -10,6 +10,7 @@
 - 모바일 목록 시트 drag-close 회귀를 정리했다. 목록 시트 전용 close threshold를 조금 낮추고, Playwright는 `expanded -> peek -> close` 전환 사이에 transition settle 시간을 두도록 바꿔 기존 `mobile-place-list-sheet` 숨김 실패가 다시 나지 않게 했다
 - 지도 숫자 클러스터 크기를 다시 줄였다. 개수 tier별 시각 지름을 약 20~25% 낮추고, 보이는 원형과 실제 hit box를 분리해 웹/모바일에서 덜 답답하게 보이면서도 터치 영역은 유지하도록 정리했다
 - 지도 숫자 클러스터를 다시 리디자인했다. 기존의 진하고 볼드한 이중 원형 대신 작은 유리 배지 같은 단일 원형으로 바꾸고, 숫자 weight와 내부 링 두께를 낮춰 모바일에서 지도를 덜 가리면서도 overview 구분은 유지하도록 정리했다
+- 지도 숫자 클러스터 색을 다시 조정했다. 지나치게 흰/크림 톤이라 basemap과 구분이 약하던 문제를 줄이기 위해, 구조는 유지한 채 차가운 블루그레이 계열로 옮겨 지도 위에서 더 안정적으로 분리되게 했다
 - PR CI 후속: `E2E Full`을 깨던 인기 장소 카드 selector 충돌을 고쳤다. 카드 본문 링크와 `상세 보기` 링크에 개별 test id를 부여했고, `verify`는 `lint + tsc --noEmit`만 수행하도록 줄였으며, E2E job은 `.next/cache`를 복원하고 build 전에 이를 지우지 않도록 바꿔 반복 PR에서 Next build 시간을 줄일 준비를 마쳤다
 - 전면 디자인 재설계 8차 구현을 진행했다. 관리자 대시보드/검수 큐/가격 관리 화면을 공통 `AdminPageShell` 기준으로 다시 정리했고, admin 헤더의 중복 사용자 배지를 걷어 public과 같은 디자인 언어로 맞췄다. mock 기준 admin dashboard smoke도 현재 구조에 맞게 다시 통과시켰다
 - 전면 디자인 재설계 7차 구현을 진행했다. 홈 카테고리 tray를 `상위 묶음 선택 -> 세부 업종 선택` 2단계 client interaction으로 바꿨고, 가격 제보/북마크 성공 상태도 더 명확한 피드백 박스와 상태 문구로 정리했다
@@ -78,6 +79,15 @@
 - 다음 우선순위: `Cycle 12`는 `Phase A 남은 blocker(운영 DB credential 복구 + moderation_suggestions migration) -> Phase B 운영/모바일 실기기 QA` 순서로 진행한다. 운영 URL은 현재 `workers.dev` split으로 고정했고, 검색 URL 상태/공유 telemetry는 현 범위로 동결했다
 
 ## 실행 로그
+
+### 2026-04-17 12:40 KST: 지도 숫자 클러스터 색상 재조정
+- 완료 내용
+  - `/Users/alex/project/altteulmap/src/features/map/naver-map-panel.tsx`의 `CLUSTER_MARKER_THEME`를 흰/크림 중심 팔레트에서 블루그레이 계열로 조정했다.
+  - 구조는 직전 `glass badge` 디자인을 유지하고, background gradient, border, inset ring, text, shadow만 차가운 톤으로 바꿨다. 목적은 도로/라벨/밝은 바탕과 섞이던 문제를 줄이면서도 이전처럼 어두운 slate core로 돌아가지 않는 것이다.
+- 검증 결과
+  - `git diff --check` 통과
+  - `npm run verify:quick` 통과
+  - `npm run verify` 통과
 
 ### 2026-04-17 12:33 KST: 지도 숫자 클러스터 디자인 재설계
 - 완료 내용
