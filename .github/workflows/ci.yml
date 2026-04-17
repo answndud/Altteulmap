@@ -164,8 +164,8 @@ jobs:
       AUTH_KAKAO_CLIENT_SECRET: ${{ secrets.AUTH_KAKAO_CLIENT_SECRET }}
       AUTH_NAVER_CLIENT_ID: ${{ vars.AUTH_NAVER_CLIENT_ID }}
       AUTH_NAVER_CLIENT_SECRET: ${{ secrets.AUTH_NAVER_CLIENT_SECRET }}
-      ADMIN_APP_URL: ${{ vars.ADMIN_APP_URL }}
-      SITE_URL: ${{ vars.SITE_URL }}
+      ADMIN_APP_URL: ${{ vars.ADMIN_APP_URL || 'https://altteulmap-admin.altteul-lab.workers.dev' }}
+      SITE_URL: ${{ vars.SITE_URL || 'https://altteulmap.altteul-lab.workers.dev' }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       NEXT_TELEMETRY_DISABLED: "1"
     steps:
