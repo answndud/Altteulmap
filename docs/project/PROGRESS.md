@@ -3,6 +3,7 @@
 기준일: 2026-04-17
 
 ## 진행 현황 요약
+- Cloudflare CI 인증을 더 단순하게 정리했다. account ID는 `wrangler.jsonc`/`wrangler.admin.jsonc`에 직접 넣고, GitHub Actions 자동 public deploy는 `CLOUDFLARE_API_TOKEN`만 secret으로 요구하도록 바꿨다
 - GitHub Actions를 `main` push 기준 public 자동 배포로 바꿨다. 이제 `main`에 push하면 `verify -> deploy-config -> deploy:check:public -> deploy:public` 순서로 public worker가 자동 배포되고, admin은 계속 수동 배포 경로로 유지된다
 - 모바일 목록 시트 drag-close 회귀를 정리했다. 목록 시트 전용 close threshold를 조금 낮추고, Playwright는 `expanded -> peek -> close` 전환 사이에 transition settle 시간을 두도록 바꿔 기존 `mobile-place-list-sheet` 숨김 실패가 다시 나지 않게 했다
 - 지도 숫자 클러스터 크기를 다시 줄였다. 개수 tier별 시각 지름을 약 20~25% 낮추고, 보이는 원형과 실제 hit box를 분리해 웹/모바일에서 덜 답답하게 보이면서도 터치 영역은 유지하도록 정리했다
@@ -74,6 +75,19 @@
 - 다음 우선순위: `Cycle 12`는 `Phase A 남은 blocker(운영 DB credential 복구 + moderation_suggestions migration) -> Phase B 운영/모바일 실기기 QA` 순서로 진행한다. 운영 URL은 현재 `workers.dev` split으로 고정했고, 검색 URL 상태/공유 telemetry는 현 범위로 동결했다
 
 ## 실행 로그
+
+### 2026-04-17 12:12 KST: Cloudflare account ID를 wrangler 설정으로 이동
+- 완료 내용
+  - `/Users/alex/project/altteulmap/wrangler.jsonc`, `/Users/alex/project/altteulmap/wrangler.admin.jsonc`에 Cloudflare account ID `09ffaff2ee2810549ebc107c3a6784d8`를 직접 넣었다. 이 값은 secret이 아니라 배포 대상 account 식별자라서 CI variable로 둘 필요가 없고, worker target을 코드와 같이 고정하는 편이 운영상 단순하다.
+  - `/Users/alex/project/altteulmap/.github/workflows/ci.yml`에서는 `CLOUDFLARE_ACCOUNT_ID` env 주입을 제거했다. 이제 `main` push public 자동 배포는 `CLOUDFLARE_API_TOKEN`만 있으면 된다.
+  - `/Users/alex/project/altteulmap/docs/deploy/deploy-cloudflare.md`, `/Users/alex/project/altteulmap/docs/deploy/cloudflare-account-to-deploy.md`, `/Users/alex/project/altteulmap/docs/product/trd.md`도 같은 기준으로 수정해, GitHub 쪽 필수값에서 `CLOUDFLARE_ACCOUNT_ID`를 제거하고 `wrangler` 설정이 source of truth라는 점을 명시했다.
+- 검증 결과
+  - `git diff --check` 통과
+  - `npm run verify:quick` 통과
+  - `npx wrangler whoami`
+- 메모
+  - 로컬 `wrangler whoami` 기준 account ID는 `09ffaff2ee2810549ebc107c3a6784d8`로 확인했다.
+  - 이제 GitHub repository에는 `CLOUDFLARE_API_TOKEN`만 secret으로 추가하면 되고, `CLOUDFLARE_ACCOUNT_ID` variable은 더 이상 필요 없다.
 
 ### 2026-04-17 12:02 KST: main push 기준 public 자동 배포 workflow 추가
 - 완료 내용

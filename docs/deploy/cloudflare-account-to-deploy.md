@@ -110,7 +110,7 @@ npx wrangler login
 - `npm run deploy`는 내부적으로 `cf:clean -> opennextjs-cloudflare build -> opennextjs-cloudflare deploy` 순서로 실행된다.
 - 직접 배포할 때는 `.next`, `.open-next`를 남긴 채 재사용하지 않는 것이 안전하다.
 
-즉 환경 변수는 로컬과 GitHub Actions/Cloudflare 양쪽이 모두 중요하다.
+즉 환경 변수는 로컬과 GitHub Actions/Cloudflare 양쪽이 모두 중요하다. 다만 Cloudflare account ID는 현재 저장소의 `wrangler.jsonc`, `wrangler.admin.jsonc`에 직접 넣어 두었으므로 GitHub variable로 따로 관리하지 않는다.
 
 ### A. 로컬 빌드 환경 변수
 - `npm run deploy`를 실행하는 내 컴퓨터에 있어야 한다.
