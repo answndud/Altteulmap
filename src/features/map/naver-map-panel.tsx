@@ -254,7 +254,7 @@ const CLUSTER_MARKER_THEME = {
   coreBackground: "#e7bf9d",
   coreBorder: "rgba(165, 123, 89, 0.3)",
   text: "#6f4630",
-  shadow: "0 16px 30px rgba(116, 88, 66, 0.18)",
+  shadow: "0 12px 24px rgba(116, 88, 66, 0.16)",
 } as const;
 
 function getPlaceMarkerGroupKey(
@@ -302,24 +302,27 @@ function getPlaceMarkerVisual(
 function getClusterMarkerVisual(placeCount: number) {
   if (placeCount >= 100) {
     return {
-      outerSize: 70,
-      innerSize: 54,
-      fontSize: 16,
+      hitSize: 60,
+      outerSize: 54,
+      innerSize: 42,
+      fontSize: 14,
     };
   }
 
   if (placeCount >= 20) {
     return {
-      outerSize: 62,
-      innerSize: 48,
-      fontSize: 15,
+      hitSize: 54,
+      outerSize: 48,
+      innerSize: 38,
+      fontSize: 13,
     };
   }
 
   return {
-    outerSize: 54,
-    innerSize: 40,
-    fontSize: 14,
+    hitSize: 48,
+    outerSize: 42,
+    innerSize: 32,
+    fontSize: 12,
   };
 }
 
@@ -365,7 +368,7 @@ function createClusterIconHtml(placeCount: number) {
   const visual = getClusterMarkerVisual(placeCount);
 
   return `
-    <div style="width:${visual.outerSize}px;height:${visual.outerSize}px;display:flex;align-items:center;justify-content:center;">
+    <div style="width:${visual.hitSize}px;height:${visual.hitSize}px;display:flex;align-items:center;justify-content:center;">
       <span style="display:flex;align-items:center;justify-content:center;width:${visual.outerSize}px;height:${visual.outerSize}px;border-radius:999px;background:${CLUSTER_MARKER_THEME.shellBackground};border:1px solid ${CLUSTER_MARKER_THEME.shellBorder};box-shadow:${CLUSTER_MARKER_THEME.shadow};">
         <span style="display:flex;align-items:center;justify-content:center;width:${visual.innerSize}px;height:${visual.innerSize}px;border-radius:999px;background:${CLUSTER_MARKER_THEME.coreBackground};border:1px solid ${CLUSTER_MARKER_THEME.coreBorder};color:${CLUSTER_MARKER_THEME.text};font-size:${visual.fontSize}px;font-weight:800;line-height:1;letter-spacing:-0.02em;">
           ${formatLikeCount(placeCount)}
@@ -390,8 +393,8 @@ function createClusterMarkerIcon(
 
   return {
     content: createClusterIconHtml(placeCount),
-    size: new Size(visual.outerSize, visual.outerSize),
-    anchor: new Point(visual.outerSize / 2, visual.outerSize / 2),
+    size: new Size(visual.hitSize, visual.hitSize),
+    anchor: new Point(visual.hitSize / 2, visual.hitSize / 2),
   };
 }
 
@@ -434,6 +437,8 @@ function PreviewMap({
               style={{
                 top: `${top}%`,
                 left: `${left}%`,
+                width: `${clusterVisual.hitSize}px`,
+                height: `${clusterVisual.hitSize}px`,
               }}
             >
               <span
@@ -454,10 +459,10 @@ function PreviewMap({
                     background: CLUSTER_MARKER_THEME.coreBackground,
                     border: `1px solid ${CLUSTER_MARKER_THEME.coreBorder}`,
                     color: CLUSTER_MARKER_THEME.text,
-                    fontSize: `${clusterVisual.fontSize}px`,
-                    letterSpacing: "-0.02em",
-                  }}
-                >
+                  fontSize: `${clusterVisual.fontSize}px`,
+                  letterSpacing: "-0.02em",
+                }}
+              >
                   {formatLikeCount(marker.placeCount)}
                 </span>
               </span>
