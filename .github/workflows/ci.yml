@@ -2,9 +2,15 @@ name: CI
 
 on:
   pull_request:
+    paths-ignore:
+      - docs/**
+      - README.md
   push:
     branches:
       - main
+    paths-ignore:
+      - docs/**
+      - README.md
   workflow_dispatch:
 
 concurrency:
@@ -26,6 +32,7 @@ jobs:
       NEXTAUTH_URL: http://127.0.0.1:3107
       AUTH_DEMO_PASSWORD: demo1234
       AUTH_ADMIN_PASSWORD: admin1234
+      NEXT_TELEMETRY_DISABLED: "1"
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -68,6 +75,7 @@ jobs:
       NEXTAUTH_URL: http://127.0.0.1:3107
       AUTH_DEMO_PASSWORD: demo1234
       AUTH_ADMIN_PASSWORD: admin1234
+      NEXT_TELEMETRY_DISABLED: "1"
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -88,6 +96,14 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Restore Next.js build cache
+        uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-${{ github.ref_name }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-
 
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
@@ -116,6 +132,7 @@ jobs:
       AUTH_KAKAO_CLIENT_SECRET: ${{ secrets.AUTH_KAKAO_CLIENT_SECRET }}
       AUTH_NAVER_CLIENT_ID: ${{ vars.AUTH_NAVER_CLIENT_ID }}
       AUTH_NAVER_CLIENT_SECRET: ${{ secrets.AUTH_NAVER_CLIENT_SECRET }}
+      NEXT_TELEMETRY_DISABLED: "1"
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -126,8 +143,5 @@ jobs:
           node-version: 20
           cache: npm
 
-      - name: Install dependencies
-        run: npm ci
-
       - name: Check production deploy config
-        run: npm run deploy:check
+        run: node scripts/check-cloudflare-deploy.mjs

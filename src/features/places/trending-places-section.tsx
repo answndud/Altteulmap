@@ -65,6 +65,7 @@ export function TrendingPlacesSection({
               <Link
                 href={`/place/${place.id}`}
                 prefetch={false}
+                data-testid={`trending-place-primary-link-${place.id}`}
                 className="block rounded-[0.9rem] transition hover:bg-[var(--altteul-surface-fill-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
               >
                 <div className="flex items-start justify-between gap-3">
@@ -103,6 +104,7 @@ export function TrendingPlacesSection({
                 <Link
                   href={`/place/${place.id}`}
                   prefetch={false}
+                  data-testid={`trending-place-detail-link-${place.id}`}
                   className="text-xs font-medium text-[var(--altteul-accent-text)]"
                 >
                   상세 보기
