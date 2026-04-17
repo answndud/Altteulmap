@@ -2,6 +2,7 @@
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"main": ".open-next/worker.js",
 	"name": "altteulmap",
+	"account_id": "09ffaff2ee2810549ebc107c3a6784d8",
 	"keep_vars": true,
 	"compatibility_date": "2026-03-29",
 	"compatibility_flags": [
