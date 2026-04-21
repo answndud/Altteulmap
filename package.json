@@ -27,6 +27,8 @@
     "playwright:install": "playwright install chromium",
     "verify:quick": "npm run lint",
     "verify": "npm run lint && npm run typecheck",
+    "design:detect": "npx --yes impeccable@2.1.7 detect src/ --fast",
+    "design:detect:json": "npx --yes impeccable@2.1.7 detect src/ --fast --json",
     "smoke:local": "node scripts/smoke-local.mjs",
     "smoke:remote": "node scripts/smoke-remote.mjs",
     "readme:screenshots": "node scripts/capture-readme-screenshots.mjs",

@@ -1,6 +1,6 @@
 # PROGRESS.md
 
-기준일: 2026-04-17
+기준일: 2026-04-21
 
 ## 문서 규칙
 - 이 문서는 active 상태, blocker, 최근 검증, 다음 액션만 유지한다.
@@ -16,6 +16,7 @@
 - degraded fallback 기준 public/admin 흐름은 유지되고 있다. known demo/admin 로그인과 mock fallback 관리자 큐는 계속 열려 있어야 한다.
 - public 지도 성능 보정은 최근 단계까지 live 반영돼 있으며, 첫 `/api/places/map` 호출은 1회 상태다.
 - 실기기 QA는 아직 미완료지만, desktop/mobile emulation 기준 기본 지도 컨트롤 노출과 smoke는 확인된 상태다.
+- Impeccable 기반 디자인 개선 workflow는 `PLAN.md`에 추가됐고, 구현은 Phase 0 baseline 고정 후 홈/지도 탐색 단순화부터 순차 진행한다.
 
 ## Active Work Status
 
@@ -58,3 +59,33 @@
   - 관리자 AI 패널 실기기 확인
 - 다음 액션:
   - 운영 DB 복구 작업 마감 직후 checklist 기준으로 public/admin 실사용 QA 수행
+
+### Impeccable 기반 public/admin 디자인 개선 workflow
+- 상태: `pending`
+- 현재 기준:
+  - `.impeccable.md`가 repo-local canonical design context다.
+  - `DESIGN.md`는 더 이상 사용하지 않는다.
+  - 전역 agent 설정은 변경하지 않는다.
+- 최근 critique baseline:
+  - `npm run design:detect:json`
+    - 통과, `[]`
+  - Impeccable live detector
+    - desktop home `92`
+    - mobile home `11`
+    - place detail `12`
+    - submit `2`
+    - admin reports `6`
+    - 주요 원인: nested cards와 과한 surface depth
+- planned skill sequence:
+  - Phase 0: `critique`, `audit`, 필요 시 `shape`
+  - Phase 1: `distill -> layout -> adapt`로 홈/지도 탐색 단순화
+  - Phase 2: `harden -> clarify`로 not-found, empty, error, copy 보강
+  - Phase 3: `distill -> clarify -> adapt`로 장소 상세/쓰기 흐름 정리
+  - Phase 4: `layout -> distill -> clarify`로 관리자 큐 밀도 개선
+  - Phase 5: `polish -> audit -> verification-loop`로 최종 검증
+- 선행 조건:
+  - 코드 구현 시작 전 `PLAN.md`의 Phase 0 완료 기준을 현재 세션의 active target으로 옮긴다.
+  - 운영 DB/실기기 QA와 release gate가 충돌하지 않게 local UI batch와 live 검증 범위를 분리한다.
+- 다음 액션:
+  - 디자인 구현을 시작하면 `PROGRESS.md`에서 이 section을 `in_progress`로 바꾸고 Phase 1 홈/지도 탐색 단순화부터 진행한다.
+  - 각 phase 종료 시 `npm run design:detect:json`, 주요 screenshot 비교, 필요 시 Impeccable live detector, `npm run verify:quick`, `npm run verify` 결과를 기록한다.

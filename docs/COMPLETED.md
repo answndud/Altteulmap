@@ -24,8 +24,8 @@
   - `PLAN.md`와 `PROGRESS.md`를 운영 문서 형식으로 재정리했다.
   - `/map`에 지역/전역 검색과 `q/scope` 기반 URL 상태 반영을 추가했다.
 - 코드/문서:
-  - `docs/project/PLAN.md`
-  - `docs/project/PROGRESS.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
   - `docs/product/prd.md`
   - `docs/product/trd.md`
   - `src/app/map/page.tsx`
@@ -351,9 +351,9 @@
 - 변경 내용:
   - `PLAN.md`는 active roadmap만, `PROGRESS.md`는 진행 상태와 blocker만 남기고, 완료 이력은 `COMPLETED.md`로 분리하는 구조로 다시 정리했다.
 - 코드/문서:
-  - `docs/project/PLAN.md`
-  - `docs/project/PROGRESS.md`
-  - `docs/project/COMPLETED.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
   - `AGENTS.md`
 - 검증:
   - slimmed active 문서가 현재 blocker와 다음 액션을 바로 드러내는지, archive가 별도 문서로 분리돼도 운영 맥락이 끊기지 않는지 확인했다.
@@ -376,3 +376,96 @@
   - active 문서에서 번호 의존 없이 현재 작업을 이해할 수 있는지, archive는 `001 -> 019` 순서로 자연스럽게 append되는지 확인했다.
 - 결과:
   - active 문서는 더 가벼워졌고, archive는 append 순서만으로도 흐름을 복기할 수 있게 됐다.
+
+<a id="archive-020"></a>
+## `020` 운영 문서 경로를 `docs/` 루트로 정리
+- 완료일: `2026-04-18`
+- 배경:
+  - 운영 핵심 문서인 `PLAN.md`, `PROGRESS.md`, `COMPLETED.md`가 `docs/project/` 아래에 있고 일부 보조 문서만 같은 디렉터리에 남아 있어, 실제 진입 문서와 보조 체크리스트의 위계가 덜 분명했다.
+- 변경 내용:
+  - 운영 핵심 문서 3개를 `docs/` 루트로 이동했다.
+  - `AGENTS.md`, `README.md`, `docs/README.md`의 참조 경로를 새 위치 기준으로 갱신했다.
+  - archive 문서 안에 남아 있던 구 경로 표기도 현재 구조 기준으로 정리했다.
+- 코드/문서:
+  - `AGENTS.md`
+  - `README.md`
+  - `docs/README.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `rg -n "docs/project/(PLAN|PROGRESS|COMPLETED)\\.md|project/(PLAN|PROGRESS|COMPLETED)\\.md" -S .`
+  - `ls -la docs docs/project`
+- 결과:
+  - 운영 핵심 문서는 `docs/` 루트에서 바로 찾을 수 있게 됐고, `docs/project/`에는 `mobile-qa-checklist.md` 같은 보조 문서만 남는 구조로 정리됐다.
+
+<a id="archive-021"></a>
+## `021` Impeccable repo-local Codex App 적용
+- 완료일: `2026-04-21`
+- 배경:
+  - 앞으로 디자인과 프론트엔드 개선을 Impeccable 기준으로 진행하되, Codex App 개발 환경에서 전역 `~/.codex`나 `npm i -g` 같은 사용자 전체 설정을 바꾸지 않아야 했다.
+  - 공식 문서의 설치 안내는 `npx skills add pbakaus/impeccable`, manual ZIP, `npx impeccable detect src/`를 제시하지만, 이 저장소는 기존에도 repo-local `.agents/skills`를 사용하고 있어 Codex App 기준으로 프로젝트 안에만 배치하는 방식이 가장 안전했다.
+- 변경 내용:
+  - Impeccable v2.1.7 원본을 임시 경로로 내려받아 `.agents/skills` provider의 18개 skill만 repo-local로 추가했다.
+  - 공식 cleanup 스크립트를 1회 실행했고 deprecated skill은 없었다.
+  - 설치된 `impeccable` skill의 일회성 post-update 안내는 반복 실행되지 않도록 제거했다.
+  - cleanup 스크립트의 미사용 import를 정리해 프로젝트 lint 기준을 통과하도록 맞췄다.
+  - `.impeccable.md`를 추가해 AltteulMap의 대상 사용자, 사용 맥락, 브랜드 성격, map-first/price-first UI 원칙, 색상/타이포/레이아웃 기준을 Codex App이 바로 읽을 수 있게 했다.
+  - `npm run design:detect`, `npm run design:detect:json`을 추가해 전역 설치 없이 Impeccable detector를 실행할 수 있게 했다.
+  - detector가 발견한 `bg-black/8` anti-pattern을 카카오 브랜드에 맞는 tinted dark brown badge 색으로 교체했다.
+- 코드/문서:
+  - `.agents/skills/{adapt,animate,audit,bolder,clarify,colorize,critique,delight,distill,harden,impeccable,layout,optimize,overdrive,polish,quieter,shape,typeset}/**`
+  - `.impeccable.md`
+  - `.agents/README.md`
+  - `AGENTS.md`
+  - `package.json`
+  - `src/features/auth/social-auth-buttons.tsx`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `node .agents/skills/impeccable/scripts/cleanup-deprecated.mjs`
+    - 통과, `No deprecated Impeccable skills found. Nothing to clean up.`
+  - `node -e "JSON.parse(require('fs').readFileSync('package.json','utf8')); console.log('package.json ok')"`
+    - 통과
+  - `npm run design:detect`
+    - 1차: 네트워크 sandbox에서 `registry.npmjs.org` DNS 실패
+    - 승인 후 재실행: `social-auth-buttons.tsx`의 `bg-black/8` 1건 발견
+    - 색상 수정 후 재실행: 통과
+  - `npm run lint`
+    - 1차: Impeccable cleanup 스크립트 미사용 import warning 2건
+    - import 정리 후 재실행: 통과
+  - `npm run typecheck`
+    - 통과
+- 결과:
+  - Codex App에서 사용할 Impeccable skill과 디자인 컨텍스트가 저장소 내부에만 추가됐다.
+  - 전역 agent 설정과 전역 npm 설치는 변경하지 않았다.
+  - 앞으로 디자인 작업은 `DESIGN.md`와 `.impeccable.md`를 함께 읽고, 필요한 경우 repo-local Impeccable skill과 `npm run design:detect`로 검증할 수 있다.
+
+<a id="archive-022"></a>
+## `022` 디자인 기준을 `.impeccable.md`로 단일화
+- 완료일: `2026-04-21`
+- 배경:
+  - Impeccable repo-local 설정 이후에는 Codex App이 실제로 읽는 디자인 컨텍스트가 `.impeccable.md`에 모여 있다.
+  - 기존 `DESIGN.md`는 장문 디자인 기준으로 남아 있었지만, `.impeccable.md`와 역할이 겹쳐 다음 디자인 작업에서 기준 문서가 둘로 갈라질 수 있었다.
+- 변경 내용:
+  - `DESIGN.md`를 삭제했다.
+  - active roadmap의 UI 기준을 `.impeccable.md`와 repo-local Impeccable skill 기준으로 바꿨다.
+  - `AGENTS.md`, `.agents/README.md`, `.impeccable.md`에서 현재 워크플로우 기준의 `DESIGN.md` 참조를 제거했다.
+  - `.impeccable.md`의 `Existing Design Source` 섹션을 `Existing Product Sources`로 바꿔, 이 파일이 Codex App과 Impeccable skill의 canonical local design context임을 명확히 했다.
+- 코드/문서:
+  - 삭제: `DESIGN.md`
+  - 수정: `.impeccable.md`
+  - 수정: `.agents/README.md`
+  - 수정: `AGENTS.md`
+  - 수정: `docs/PLAN.md`
+  - 수정: `docs/PROGRESS.md`
+  - 수정: `docs/COMPLETED.md`
+- 검증:
+  - `test ! -e DESIGN.md && echo 'DESIGN.md removed'`
+  - `rg -n "DESIGN\\.md" AGENTS.md .agents/README.md .impeccable.md docs/PLAN.md docs/PROGRESS.md README.md package.json src || true`
+  - `npm run design:detect`
+  - `npm run lint`
+- 결과:
+  - 앞으로 디자인/프론트엔드 작업의 현재 기준은 `.impeccable.md` 하나로 단일화됐다.
+  - 과거 archive에는 기존 `DESIGN.md` 수립 이력이 남지만, active workflow에서는 더 이상 참조하지 않는다.
