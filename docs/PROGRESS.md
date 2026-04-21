@@ -17,6 +17,7 @@
 - public 지도 성능 보정은 최근 단계까지 live 반영돼 있으며, 첫 `/api/places/map` 호출은 1회 상태다.
 - 실기기 QA는 아직 미완료지만, desktop/mobile emulation 기준 기본 지도 컨트롤 노출과 smoke는 확인된 상태다.
 - 최근 전체 로컬 검증은 `npm run design:detect:json`, `git diff --check`, `npm run verify:quick`, `npm run verify`, `npm run build` 모두 통과했다.
+- 디자인 개선 commit `3f2fc72`는 `origin/main`에 push됐고, public 운영 URL `https://altteulmap.altteul-lab.workers.dev/`에서 새 배포 marker와 remote smoke 통과를 확인했다.
 
 ## Active Work Status
 
@@ -40,6 +41,10 @@
     - 통과, 빌드 중 production DB tenant credential 문제로 mock fallback 로그가 출력됨
   - `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev SMOKE_ADMIN_URL=https://altteulmap-admin.altteul-lab.workers.dev npm run smoke:remote`
     - 통과
+  - post-push deployment marker check
+    - `https://altteulmap.altteul-lab.workers.dev/?deployCheck=3f2fc72`: `가격이 보이는 동네 지도` 확인
+    - `https://altteulmap.altteul-lab.workers.dev/report?deployCheck=3f2fc72`: `신고할 장소를 먼저 선택해 주세요` 확인
+    - `https://altteulmap.altteul-lab.workers.dev/place/school-gimbap?deployCheck=3f2fc72`: status `404`, `이 장소를 찾을 수 없어요` 확인
   - local/live Playwright 측정
     - 홈 첫 `/api/places/map` 호출 1회
     - live public total requests `43`, `fetch 1`, `image 22`

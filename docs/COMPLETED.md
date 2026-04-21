@@ -709,3 +709,34 @@
   - Impeccable 기반 디자인 개선 workflow는 완료 상태로 archive됐다.
   - active 문서에는 완료된 디자인 작업을 남기지 않고, 다음 작업 순서를 운영 DB 복구와 모바일/운영 실기기 QA로 되돌렸다.
   - checkpoint commit `6c114b2`는 `origin/main`에 push되어 있어, 현재 디자인 변경이 마음에 들지 않으면 해당 커밋 기준으로 되돌릴 수 있다.
+
+<a id="archive-028"></a>
+## `028` Impeccable 디자인 개선 운영 public 배포 확인
+- 완료일: `2026-04-21`
+- 배경:
+  - 사용자는 Impeccable 디자인 개선 결과를 `https://altteulmap.altteul-lab.workers.dev/`에서 확인할 수 있도록 push 후 배포까지 확인해 달라고 요청했다.
+  - 운영 배포는 Cloudflare Workers Builds가 기본 경로이고, 로컬 deploy는 fallback으로만 사용한다.
+- 변경 내용:
+  - 디자인 개선 전체 변경분을 `feat: refine impeccable design workflow` commit으로 묶었다.
+  - commit `3f2fc72`를 `origin/main`에 push했다.
+  - Cloudflare Workers Builds 반영을 기다린 뒤 public 운영 URL에서 새 코드 marker를 확인했다.
+  - 기존 remote smoke로 public home, robots, sitemap, map API, sample place, login, public/admin redirect, admin login을 검증했다.
+- 코드/문서:
+  - commit `3f2fc72`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `git push origin main`
+    - 성공, `6c114b2..3f2fc72 main -> main`
+  - `npm run deploy:check:public`
+    - 통과
+    - optional `EMAIL_FROM`, `RESEND_API_KEY`는 warn 상태
+  - post-push deployment marker polling:
+    - `https://altteulmap.altteul-lab.workers.dev/?deployCheck=3f2fc72`: status `200`, `가격이 보이는 동네 지도` 확인
+    - `https://altteulmap.altteul-lab.workers.dev/report?deployCheck=3f2fc72`: status `200`, `신고할 장소를 먼저 선택해 주세요` 확인
+    - `https://altteulmap.altteul-lab.workers.dev/place/school-gimbap?deployCheck=3f2fc72`: status `404`, `이 장소를 찾을 수 없어요` 확인
+  - `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev SMOKE_ADMIN_URL=https://altteulmap-admin.altteul-lab.workers.dev npm run smoke:remote`
+    - 통과
+- 결과:
+  - 운영 public URL에서 Impeccable 디자인 개선 결과가 보이는 상태를 확인했다.
+  - 운영 DB credential blocker는 별도 active 작업으로 남아 있으며, 현재 배포 확인은 degraded fallback과 mock fallback이 유지되는 조건에서 완료했다.
