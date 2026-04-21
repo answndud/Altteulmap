@@ -14,10 +14,10 @@ export function PlaceholderScreen({
   return (
     <main className="min-h-[calc(100vh-73px)] bg-stone-50 px-4 py-12 sm:px-6">
       <section className="mx-auto max-w-4xl rounded-3xl border border-stone-200 bg-white p-8 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-orange-600">
+        <p className="text-xs font-semibold uppercase text-orange-600">
           {eyebrow}
         </p>
-        <h1 className="mt-4 text-3xl font-semibold tracking-tight text-stone-900 sm:text-4xl">
+        <h1 className="mt-4 text-3xl font-semibold text-stone-900 sm:text-4xl">
           {title}
         </h1>
         <p className="mt-4 max-w-2xl text-base leading-7 text-stone-600">

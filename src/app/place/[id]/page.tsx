@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { BookmarkToggleButton } from "@/features/bookmarks/bookmark-toggle-button";
 import { listBookmarks } from "@/features/bookmarks/repository";
 import { getCategoryBySlug } from "@/features/categories/catalog";
+import { RouteResetDetails } from "@/features/map/route-reset-details";
 import { PlaceCommentsSection } from "@/features/places/place-comments-section";
 import { PlacePriceReportForm } from "@/features/places/place-price-report-form";
 import { PlaceReactionButtons } from "@/features/places/place-reaction-buttons";
@@ -111,13 +112,13 @@ export default async function PlacePage({ params }: PlacePageProps) {
           </Link>
         </div>
 
-        <section className="altteulmap-panel mt-6 p-5 sm:p-6 lg:p-7">
+        <section className="mt-5 grid gap-5">
           <div className="grid gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)]">
             <section className="altteulmap-accent-panel rounded-[1rem] p-5 sm:p-6">
               <p className="altteulmap-section-kicker">
                 {category?.parentName ?? "장소"}
               </p>
-              <h1 className="mt-2 text-[2rem] font-semibold tracking-[-0.06em] text-stone-950 sm:text-[2.6rem]">
+              <h1 className="mt-2 break-keep text-[2rem] font-semibold leading-tight text-stone-950 sm:text-[2.6rem]">
                 {place.name}
               </h1>
               {place.businessName && place.businessName !== place.name ? (
@@ -135,7 +136,7 @@ export default async function PlacePage({ params }: PlacePageProps) {
                   </span>
                 ))}
               </div>
-              <p className="mt-6 text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--altteul-accent-text)]">
+              <p className="mt-6 text-[11px] font-medium uppercase text-[var(--altteul-accent-text)]">
                 대표 가격
               </p>
               <p className="altteulmap-price-number mt-2 text-[2.4rem] sm:text-[2.8rem]">
@@ -200,7 +201,7 @@ export default async function PlacePage({ params }: PlacePageProps) {
             </aside>
           </div>
 
-          <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(19rem,0.75fr)]">
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1.25fr)_minmax(19rem,0.75fr)]">
             <section className="grid gap-5">
               {place.description ? (
                 <section className="altteulmap-panel p-5">
@@ -223,11 +224,11 @@ export default async function PlacePage({ params }: PlacePageProps) {
                     {place.priceItems.length}개
                   </span>
                 </div>
-                <div className="mt-4 grid gap-3">
+                <div className="mt-4 divide-y divide-stone-200">
                   {place.priceItems.map((item) => (
                     <div
                       key={item.id}
-                      className="rounded-[1rem] border border-stone-200 bg-[var(--altteul-bg-subtle)]/55 px-4 py-4"
+                      className="py-4 first:pt-0 last:pb-0"
                     >
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <div className="min-w-0">
@@ -249,18 +250,66 @@ export default async function PlacePage({ params }: PlacePageProps) {
               </section>
             </section>
 
-            <aside className="grid gap-5">
-              <PlacePriceReportForm
-                key={`${place.id}-price-form`}
-                placeId={place.id}
-                suggestedItems={place.priceItems}
-              />
+            <aside className="grid content-start gap-3">
+              <RouteResetDetails
+                className="overflow-hidden rounded-[1rem] border border-stone-200 bg-[var(--altteul-bg-surface)]"
+                summaryClassName="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-left [&::-webkit-details-marker]:hidden"
+                summary={
+                  <>
+                    <div className="min-w-0">
+                      <p className="altteulmap-section-kicker text-[11px]">가격 제보</p>
+                      <h3 className="mt-1 text-base font-semibold text-stone-900">
+                        새 가격 남기기
+                      </h3>
+                      <p className="mt-1 text-sm leading-6 text-stone-500">
+                        가격표가 달라졌을 때만 열어 작성합니다.
+                      </p>
+                    </div>
+                    <span className="altteulmap-badge shrink-0 px-3 py-1 text-xs font-medium">
+                      열기
+                    </span>
+                  </>
+                }
+                bodyClassName="border-t border-stone-200 p-4"
+              >
+                <PlacePriceReportForm
+                  key={`${place.id}-price-form`}
+                  placeId={place.id}
+                  showHeader={false}
+                  surface="plain"
+                  suggestedItems={place.priceItems}
+                />
+              </RouteResetDetails>
 
-              <PlaceCommentsSection
-                key={`${place.id}-comments`}
-                placeId={place.id}
-                initialComments={place.comments}
-              />
+              <RouteResetDetails
+                className="overflow-hidden rounded-[1rem] border border-stone-200 bg-[var(--altteul-bg-surface)]"
+                summaryClassName="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-left [&::-webkit-details-marker]:hidden"
+                summary={
+                  <>
+                    <div className="min-w-0">
+                      <p className="altteulmap-section-kicker text-[11px]">코멘트</p>
+                      <h3 className="mt-1 text-base font-semibold text-stone-900">
+                        이용 메모 보기
+                      </h3>
+                      <p className="mt-1 text-sm leading-6 text-stone-500">
+                        현재 {place.comments.length}개가 등록돼 있습니다.
+                      </p>
+                    </div>
+                    <span className="altteulmap-badge shrink-0 px-3 py-1 text-xs font-medium">
+                      열기
+                    </span>
+                  </>
+                }
+                bodyClassName="border-t border-stone-200 p-4"
+              >
+                <PlaceCommentsSection
+                  key={`${place.id}-comments`}
+                  placeId={place.id}
+                  initialComments={place.comments}
+                  showHeader={false}
+                  surface="plain"
+                />
+              </RouteResetDetails>
             </aside>
           </div>
         </section>

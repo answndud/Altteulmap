@@ -469,3 +469,243 @@
 - 결과:
   - 앞으로 디자인/프론트엔드 작업의 현재 기준은 `.impeccable.md` 하나로 단일화됐다.
   - 과거 archive에는 기존 `DESIGN.md` 수립 이력이 남지만, active workflow에서는 더 이상 참조하지 않는다.
+
+<a id="archive-023"></a>
+## `023` Impeccable Phase 1 홈/지도 탐색 단순화
+- 완료일: `2026-04-21`
+- 배경:
+  - Impeccable critique 결과에서 홈/지도 화면의 가장 큰 P1 이슈는 nested cards와 과한 surface depth였다.
+  - baseline live detector는 desktop home `92`, mobile home `11` anti-pattern을 보고했고, 모바일 첫 화면에서 검색/필터가 지도를 밀어내는 문제가 있었다.
+  - 사용자는 마음에 들지 않을 경우 되돌릴 수 있도록 checkpoint commit을 push한 뒤 디자인 개선 개발에 착수해 달라고 요청했다.
+- 변경 내용:
+  - checkpoint commit `6c114b2`를 `origin/main`에 push해 디자인 변경 전 기준점을 만들었다.
+  - `distill -> layout -> adapt` 순서로 Phase 1을 진행했다.
+  - 홈 상단의 큰 `altteulmap-panel` wrapper를 제거하고, 검색/필터를 unframed toolbar로 낮췄다.
+  - 검색 input과 `검색` CTA를 같은 row에 두고, 검색 범위 label을 `보이는 지도`/`전체 지역`으로 정리했다.
+  - 카테고리 control은 compact trigger로 유지하되 중첩 panel 스타일을 줄였다.
+  - desktop list rail의 상위 card wrapper를 제거해 map/list split에서 map이 primary, list가 supporting rail로 읽히게 했다.
+  - trending section의 상위 panel wrapper를 제거하고 반복 장소 card만 유지했다.
+  - mobile map 위 `목록 열기` CTA를 viewport 안에 들어오도록 조정했다.
+  - price number와 section kicker의 letter spacing을 `0`으로 맞췄다.
+- 코드/문서:
+  - `src/features/map/map-page.tsx`
+  - `src/features/map/naver-map-panel.tsx`
+  - `src/features/places/map-explorer.tsx`
+  - `src/features/places/trending-places-section.tsx`
+  - `src/app/globals.css`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+- 검증:
+  - `npm run design:detect:json`
+    - 통과, `[]`
+  - `npm run verify:quick`
+    - 통과
+  - `npm run verify`
+    - 통과
+  - Playwright screenshot:
+    - `/tmp/altteulmap-phase1-desktop-home-after.png`
+    - `/tmp/altteulmap-phase1-mobile-home-after.png`
+  - Impeccable live detector:
+    - desktop home `92 -> 4`
+    - mobile home `11 -> 4`
+  - mobile metric:
+    - map shell `y=321`, `height=546`
+    - `목록 열기` CTA `bottom=794`, viewport `844`
+- 결과:
+  - 홈 첫 화면의 card nesting이 크게 줄었고, 모바일에서는 지도와 목록 CTA가 첫 viewport 안에서 함께 보인다.
+  - 디자인 workflow의 다음 active 대상은 Phase 2 Empty/Error/Copy hardening으로 넘어갔다.
+
+<a id="archive-024"></a>
+## `024` Impeccable Phase 2 Empty/Error/Copy hardening
+- 완료일: `2026-04-21`
+- 배경:
+  - critique 결과에서 stale place URL이 기본 Next.js 영어 404로 떨어지고, `/report` 단독 진입 시 `이름 없는 장소` fallback이 노출되는 문제가 확인됐다.
+  - 북마크 empty state도 다음 행동 없이 끝나 사용자가 다시 가격 지도로 돌아갈 경로가 약했다.
+- 변경 내용:
+  - `harden -> clarify` 순서로 Phase 2를 진행했다.
+  - `src/app/place/[id]/not-found.tsx`를 추가해 장소 상세 stale route 전용 404 화면을 만들었다.
+  - 장소 not-found 화면에 한국어 설명, `지도로 돌아가기`, `장소 등록하기` CTA를 제공했다.
+  - `/report`에서 `placeId` 또는 `placeName`이 없으면 신고 form 대신 대상 선택 안내와 복구 CTA를 보여주게 했다.
+  - `/report`의 `이름 없는 장소` fallback을 제거했다.
+  - 신고 제출 버튼 copy를 `정보 수정 요청 보내기`로 구체화했다.
+  - `/bookmarks` empty state에 `가격 지도 열기`, `장소 등록하기` CTA를 추가했다.
+  - 북마크 목록 action copy를 `상세`/`지도`에서 `가격 보기`/`지도에서 찾기`로 바꿨다.
+  - 로그인/회원가입 heading과 divider의 letter spacing을 정리했다.
+- 코드/문서:
+  - `src/app/place/[id]/not-found.tsx`
+  - `src/app/report/page.tsx`
+  - `src/features/reports/report-submit-form.tsx`
+  - `src/app/bookmarks/page.tsx`
+  - `src/features/auth/login-form.tsx`
+  - `src/features/auth/signup-form.tsx`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run design:detect:json`
+    - 통과, `[]`
+  - `npm run verify`
+    - 통과
+  - Playwright route smoke:
+    - `/place/school-gimbap` status `404`, H1 `이 장소를 찾을 수 없어요`
+    - `/report` status `200`, H1 `신고할 장소를 먼저 선택해 주세요`
+    - `/report?placeId=goodprice-14501&placeName=...` status `200`, H1 `정보 수정 요청`
+  - Playwright screenshot:
+    - `/tmp/altteulmap-phase2-place-not-found.png`
+    - `/tmp/altteulmap-phase2-report-missing-target-after.png`
+- 결과:
+  - stale route와 대상 없는 신고 흐름이 막다른 화면 대신 한국어 설명과 복구 CTA를 제공한다.
+  - 디자인 workflow의 다음 active 대상은 Phase 3 장소 상세/쓰기 흐름 정리로 넘어갔다.
+
+<a id="archive-025"></a>
+## `025` Impeccable Phase 3 장소 상세와 쓰기 흐름 정리
+- 완료일: `2026-04-21`
+- 배경:
+  - critique 결과에서 장소 상세는 대표 가격과 신뢰 정보보다 가격 제보/댓글 form이 지나치게 빨리 크게 노출되는 문제가 있었다.
+  - `/submit`은 대표 가격 입력에 기본값 `0`이 보여 잘못된 입력을 유도할 수 있었고, `가격 항목 추가` 버튼이 대표 가격 입력보다 먼저 시선을 끌었다.
+- 변경 내용:
+  - `distill -> clarify -> adapt` 순서로 Phase 3을 진행했다.
+  - 장소 상세의 전체 outer `altteulmap-panel` wrapper를 제거해 상위 nested card 구조를 줄였다.
+  - 상세 제목의 negative letter spacing을 제거하고 `break-keep`을 적용했다.
+  - 가격 항목은 card 반복 대신 divider row로 정리해 가격 리스트를 더 읽기 좋게 만들었다.
+  - 가격 제보와 댓글 form은 `RouteResetDetails`로 접어, 사용자가 열기 전에는 form component가 렌더되지 않게 했다.
+  - `PlacePriceReportForm`, `PlaceCommentsSection`에 `surface="plain"`과 `showHeader={false}` 옵션을 추가해 disclosure 내부에서 중복 header와 중첩 panel을 줄였다.
+  - `/submit` 대표 가격 amount 기본값을 `0`에서 빈 값으로 바꿨다.
+  - `/submit`의 `가격 항목 추가` 버튼을 대표 가격 입력 아래로 내려 primary input을 먼저 작성하게 했다.
+  - `/submit` heading의 negative letter spacing을 제거했다.
+- 코드/문서:
+  - `src/app/place/[id]/page.tsx`
+  - `src/features/places/place-price-report-form.tsx`
+  - `src/features/places/place-comments-section.tsx`
+  - `src/features/submission/place-submit-form.tsx`
+  - `src/app/submit/page.tsx`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run design:detect:json`
+    - 통과, `[]`
+  - `npm run verify`
+    - 통과
+  - Playwright screenshot:
+    - `/tmp/altteulmap-phase3-desktop-place-detail.png`
+    - `/tmp/altteulmap-phase3-mobile-place-detail.png`
+    - `/tmp/altteulmap-phase3-desktop-submit.png`
+    - `/tmp/altteulmap-phase3-mobile-submit.png`
+  - Impeccable live detector:
+    - desktop place detail `2`
+    - mobile place detail `2`
+    - desktop submit `2`
+    - mobile submit `2`
+  - behavior check:
+    - 장소 상세 초기 렌더에서 `place-price-report-form`, `place-comments-section`이 열기 전 렌더되지 않음
+    - `/submit` 첫 가격 amount input이 빈 값으로 표시됨
+- 결과:
+  - 장소 상세 첫 화면은 가격, 주소, 메모, 가격 항목을 먼저 읽는 구조가 됐다.
+  - 제보/댓글은 명확한 entry를 통해 필요할 때만 열리며, 쓰기 form이 읽기 task를 방해하지 않는다.
+  - 디자인 workflow의 다음 active 대상은 Phase 4 관리자 큐 밀도와 반복 패턴 개선으로 넘어갔다.
+
+<a id="archive-026"></a>
+## `026` Impeccable Phase 4 관리자 큐 밀도와 반복 패턴 개선
+- 완료일: `2026-04-21`
+- 배경:
+  - 관리자 큐는 운영자가 반복 카드와 AI 검수 패널을 빠르게 훑고 승인/반려/보류를 결정해야 하는 화면이다.
+  - 기존 화면은 outer panel과 반복 card surface가 겹쳐 밀도가 낮았고, AI 검수 근거가 항상 펼쳐져 큐 처리 속도를 떨어뜨렸다.
+  - 이 단계는 UI 밀도와 정보 위계를 조정하는 범위로 제한하고, DB schema나 moderation contract는 변경하지 않았다.
+- 변경 내용:
+  - `layout -> distill -> clarify` 순서로 Phase 4를 진행했다.
+  - 관리자 공통 shell의 outer `altteulmap-panel` wrapper를 제거해 페이지 자체가 또 하나의 카드처럼 보이지 않게 했다.
+  - 관리자 페이지 heading과 요약 수치의 letter spacing utility를 정리했다.
+  - AI 검수 패널을 summary-first 구조로 바꾸고, 권장 조치/신뢰도/flag 요약을 먼저 보이게 했다.
+  - AI evidence, checks, flags 상세는 `근거 보기`/`근거 접기` 토글 뒤에 두어 기본 큐 화면의 반복 노출을 줄였다.
+  - 신고/장소/가격 제보 카드의 보조 label letter spacing을 정리해 화면 전반의 타이포 리듬을 맞췄다.
+  - 가격 관리자 화면의 `현재 가격 관리` 섹션은 card 안 card 구조 대신 unframed border-top section으로 낮췄다.
+- 코드/문서:
+  - `src/features/admin/components/admin-page-shell.tsx`
+  - `src/features/admin/components/admin-summary-cards.tsx`
+  - `src/features/admin/components/admin-ai-review-panel.tsx`
+  - `src/features/admin/components/admin-report-card.tsx`
+  - `src/features/admin/components/admin-pending-place-card.tsx`
+  - `src/features/admin/components/admin-pending-price-report-card.tsx`
+  - `src/features/admin/pages/prices-page.tsx`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run design:detect:json`
+    - 통과, `[]`
+  - `npm run verify`
+    - 통과
+  - Playwright screenshot:
+    - `/tmp/altteulmap-phase4-admin-reports.png`
+    - `/tmp/altteulmap-phase4-admin-prices.png`
+    - `/tmp/altteulmap-phase4-admin-places.png`
+  - Playwright admin metric:
+    - `/admin/reports`: H1 `신고 검토 큐`, AI panel `3`, open evidence `0`, cards `3`, scrollHeight `1709`
+    - `/admin/prices`: H1 `가격 제보 검토 큐`, AI panel `0`, open evidence `0`, cards `0`, scrollHeight `1451`
+    - `/admin/places`: H1 `신규 장소 승인 큐`, AI panel `0`, open evidence `0`, cards `0`, scrollHeight `1000`
+  - Impeccable live detector:
+    - `/admin/reports`: `6`
+    - `/admin/prices`: `3`
+    - `/admin/places`: `3`
+- 결과:
+  - 관리자 큐는 기본 화면에서 AI 근거를 모두 펼치지 않고, 요약과 조치를 먼저 보는 구조가 됐다.
+  - live detector의 admin residual count는 남아 있지만, 대부분 실제 반복 검토 카드 구조에서 발생하는 낮은 우선순위 항목으로 판단해 이번 P1 범위에서는 예외로 기록한다.
+  - 디자인 workflow의 다음 active 대상은 Phase 5 final polish, audit, verification으로 넘어갔다.
+
+<a id="archive-027"></a>
+## `027` Impeccable 디자인 개선 최종 검증과 active 문서 정리
+- 완료일: `2026-04-21`
+- 배경:
+  - 사용자는 디자인 변경 전 checkpoint commit을 push한 뒤, Impeccable workflow 기준으로 public/admin 디자인 개선을 순차 진행하길 요청했다.
+  - Phase 1부터 Phase 4까지 홈/지도, empty/error/copy, 장소 상세/쓰기, 관리자 큐 개선을 완료했으므로 active 문서에 완료된 디자인 계획이 남지 않도록 정리해야 했다.
+- 변경 내용:
+  - `polish -> audit -> verification-loop` 기준으로 최종 검증을 수행했다.
+  - Phase 1-4 결과를 전체 흐름 기준으로 재검토했다.
+  - 최종 polish에서 `src` 전체에 남아 있던 Tailwind `tracking-*` letter-spacing 유틸을 제거해 새 디자인 기준과 맞췄다.
+  - `PLAN.md`에서 완료된 Impeccable workflow 항목과 phase 상세를 제거하고, 현재 active roadmap은 운영 DB 복구와 실기기 QA만 남겼다.
+  - `PROGRESS.md`에서 완료된 디자인 workflow 실행 로그를 제거하고, 최근 전체 로컬 검증 결과만 현재 상태 요약에 남겼다.
+  - 디자인 workflow 상세 이력은 이 archive 문서의 `023`부터 `027`까지 시간순으로 보존했다.
+- 코드/문서:
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+  - Phase 1-4에서 수정한 public/admin UI 파일 전체
+  - `src` 내 남아 있던 `tracking-*` 유틸 사용 UI 파일
+- 검증:
+  - `npm run design:detect:json`
+    - 통과, `[]`
+  - `git diff --check`
+    - 통과
+  - `rg -n "tracking-(?:tight|\[|-)" src || true`
+    - 통과, 남은 `tracking-*` 유틸 없음
+  - `npm run verify:quick`
+    - 통과
+  - `npm run verify`
+    - 통과
+  - `npm run build`
+    - 통과, 빌드 중 기존 production DB tenant credential 문제로 mock fallback 로그가 출력됨
+  - 최종 Impeccable live detector 확인:
+    - home `4`
+    - place detail `2`
+    - submit `2`
+    - report missing target: detector output 없음
+    - admin reports `6`
+    - admin prices `3`
+    - admin places `3`
+  - 최종 screenshot 세트:
+    - `/tmp/altteulmap-phase1-desktop-home-after.png`
+    - `/tmp/altteulmap-phase1-mobile-home-after.png`
+    - `/tmp/altteulmap-phase2-place-not-found.png`
+    - `/tmp/altteulmap-phase2-report-missing-target-after.png`
+    - `/tmp/altteulmap-phase3-desktop-place-detail.png`
+    - `/tmp/altteulmap-phase3-mobile-place-detail.png`
+    - `/tmp/altteulmap-phase3-desktop-submit.png`
+    - `/tmp/altteulmap-phase3-mobile-submit.png`
+    - `/tmp/altteulmap-phase4-admin-reports.png`
+    - `/tmp/altteulmap-phase4-admin-prices.png`
+    - `/tmp/altteulmap-phase4-admin-places.png`
+- 결과:
+  - Impeccable 기반 디자인 개선 workflow는 완료 상태로 archive됐다.
+  - active 문서에는 완료된 디자인 작업을 남기지 않고, 다음 작업 순서를 운영 DB 복구와 모바일/운영 실기기 QA로 되돌렸다.
+  - checkpoint commit `6c114b2`는 `origin/main`에 push되어 있어, 현재 디자인 변경이 마음에 들지 않으면 해당 커밋 기준으로 되돌릴 수 있다.

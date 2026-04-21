@@ -36,7 +36,7 @@ export function AdminPendingPriceReportCard({
       >
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-[11px] font-semibold tracking-[0.14em] text-[var(--altteul-accent-text)]">
+            <p className="text-[11px] font-semibold text-[var(--altteul-accent-text)]">
               {report.id}
             </p>
             <h2 className="mt-2 text-xl font-semibold text-stone-950">
@@ -72,7 +72,7 @@ export function AdminPendingPriceReportCard({
     >
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-[11px] font-semibold tracking-[0.14em] text-[var(--altteul-accent-text)]">
+          <p className="text-[11px] font-semibold text-[var(--altteul-accent-text)]">
             {report.id}
           </p>
           <h2
@@ -86,7 +86,7 @@ export function AdminPendingPriceReportCard({
           </p>
         </div>
         <div className="altteulmap-panel-muted px-4 py-3 text-right">
-          <p className="text-[11px] tracking-[0.14em] text-stone-500">
+          <p className="text-[11px] text-stone-500">
             제보 가격
           </p>
           <p
@@ -105,7 +105,7 @@ export function AdminPendingPriceReportCard({
       <div className="mt-4 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
         <div className="grid gap-4">
           <div className="altteulmap-panel-muted p-4 text-sm leading-6 text-stone-700">
-            <p className="text-[11px] tracking-[0.14em] text-stone-500">
+            <p className="text-[11px] text-stone-500">
               현재 저장된 가격
             </p>
             {typeof report.existingPriceAmount === "number" ? (
@@ -131,7 +131,7 @@ export function AdminPendingPriceReportCard({
           </div>
 
           <div className="altteulmap-panel-muted p-4 text-sm leading-6 text-stone-700">
-            <p className="text-[11px] tracking-[0.14em] text-stone-500">
+            <p className="text-[11px] text-stone-500">
               제보 메모
             </p>
             <p className="mt-2">

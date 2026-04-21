@@ -108,7 +108,7 @@ export function SignupForm({
     >
       <div className="grid gap-5">
         <div className="grid gap-1.5">
-          <h1 className="text-[1.8rem] font-semibold tracking-[-0.06em] text-stone-950">
+          <h1 className="text-[1.8rem] font-semibold text-stone-950">
             회원가입
           </h1>
           <p className="text-sm text-stone-500">
@@ -202,7 +202,7 @@ export function SignupForm({
 
         {hasEnabledSocialProviders ? (
           <>
-            <div className="flex items-center gap-3 text-xs tracking-[0.12em] text-stone-400">
+            <div className="flex items-center gap-3 text-xs text-stone-400">
               <span className="h-px flex-1 bg-stone-200" />
               {showCredentialFields ? "소셜로 시작" : "소셜 로그인"}
               <span className="h-px flex-1 bg-stone-200" />

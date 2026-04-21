@@ -32,7 +32,7 @@ export const metadata: Metadata = {
 };
 
 const scopeChipClassName =
-  "altteulmap-chip altteulmap-scope-chip inline-flex min-w-[8.25rem] items-center justify-center whitespace-nowrap px-3 py-2 text-xs font-medium transition sm:text-sm";
+  "altteulmap-chip altteulmap-scope-chip inline-flex min-w-[5.5rem] items-center justify-center whitespace-nowrap px-3 py-2 text-xs font-medium transition sm:text-sm";
 const SEOUL_BOOTSTRAP_BOUNDS: PlaceBounds = {
   minLat: 37.4133,
   maxLat: 37.7151,
@@ -114,10 +114,9 @@ export default async function MapPage({ searchParams }: MapPageProps) {
   );
   const selectedGroupName = selectedCategory?.parentName ?? null;
   const summaryItems = [
-    activeQuery ? `검색어 ${activeQuery}` : null,
-    selectedGroupName ? `묶음 ${selectedGroupName}` : null,
-    selectedCategory?.name ? `세부 ${selectedCategory.name}` : null,
-    activeSearchScope === "global" ? "전체 검색" : "현재 지도",
+    activeQuery ? `검색: ${activeQuery}` : null,
+    selectedGroupName && !selectedCategory?.name ? `업종: ${selectedGroupName}` : null,
+    selectedCategory?.name ? `업종: ${selectedCategory.name}` : null,
   ].filter((item): item is string => Boolean(item));
   const filterRouteKey = [
     activeCategory ?? "all",
@@ -129,37 +128,38 @@ export default async function MapPage({ searchParams }: MapPageProps) {
   });
 
   return (
-    <main className="bg-[var(--altteul-bg-canvas)] px-3 py-4 sm:px-4 sm:py-5 lg:px-5 xl:px-6">
-      <div className="mx-auto flex max-w-[96rem] flex-col gap-3 sm:gap-4">
-        <section className="altteulmap-panel p-3 sm:p-4">
+    <main className="bg-[var(--altteul-bg-canvas)] px-3 pb-4 pt-3 sm:px-4 sm:py-4 lg:px-5 xl:px-6">
+      <div className="mx-auto flex max-w-[96rem] flex-col gap-3">
+        <section className="grid gap-3 border-b border-stone-200/70 pb-3 sm:pb-4">
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
               <div className="min-w-0">
                 <p className="altteulmap-section-kicker">탐색</p>
-                <h1 className="mt-1 text-[1.45rem] font-semibold tracking-[-0.06em] text-stone-950 sm:text-[1.75rem]">
-                  동네 가격 지도
+                <h1 className="mt-1 text-xl font-semibold text-stone-950 sm:text-[1.55rem]">
+                  가격이 보이는 동네 지도
                 </h1>
                 <p className="mt-1 hidden max-w-2xl text-sm leading-6 text-stone-600 sm:block">
-                  대표 가격, 최근 갱신, 검증 상태를 기준으로 생활 장소를 빠르게
-                  비교합니다.
+                  대표 가격, 검증 상태, 최근 갱신을 기준으로 지금 갈 곳을 빠르게 비교합니다.
                 </p>
               </div>
-              <div className="flex max-w-full flex-wrap gap-2">
-                {summaryItems.map((item) => (
-                  <span
-                    key={item}
-                    className="altteulmap-badge whitespace-nowrap px-3 py-1.5 text-xs font-medium"
-                  >
-                    {item}
-                  </span>
-                ))}
-              </div>
+              {summaryItems.length > 0 ? (
+                <div className="flex max-w-full flex-wrap gap-1.5">
+                  {summaryItems.map((item) => (
+                    <span
+                      key={item}
+                      className="altteulmap-badge whitespace-nowrap px-2.5 py-1 text-[11px] font-medium sm:px-3 sm:py-1.5 sm:text-xs"
+                    >
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
             </div>
 
-            <form action="/" className="grid gap-3" data-testid="place-search-form">
-              <div className="grid gap-3 xl:grid-cols-[minmax(0,1.35fr)_auto] xl:items-end">
+            <form action="/" className="grid gap-2.5" data-testid="place-search-form">
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
                 <label className="grid min-w-0 gap-1.5">
-                  <span className="text-sm font-medium text-stone-700">
+                  <span className="sr-only">
                     장소나 서비스 검색
                   </span>
                   <input
@@ -168,77 +168,78 @@ export default async function MapPage({ searchParams }: MapPageProps) {
                     defaultValue={activeQuery ?? ""}
                     placeholder="김밥, 세탁소, 프린트, 약국"
                     data-testid="place-search-input"
-                    className="altteulmap-input h-12 px-4 text-sm"
+                    className="altteulmap-input h-11 px-4 text-sm"
                   />
                 </label>
-                <div className="flex flex-wrap items-end gap-2">
-                  <div className="grid gap-1.5">
-                    <p className="text-sm font-medium text-stone-700">범위</p>
-                    <div className="altteulmap-segmented w-fit">
-                      <label className="cursor-pointer">
-                        <input
-                          type="radio"
-                          name="scope"
-                          value="viewport"
-                          data-testid="search-scope-viewport"
-                          defaultChecked={activeSearchScope === "viewport"}
-                          className="altteulmap-scope-input sr-only"
-                        />
-                        <span className={scopeChipClassName}>현재 지도</span>
-                      </label>
-                      <label className="cursor-pointer">
-                        <input
-                          type="radio"
-                          name="scope"
-                          value="global"
-                          data-testid="search-scope-global"
-                          defaultChecked={activeSearchScope === "global"}
-                          className="altteulmap-scope-input sr-only"
-                        />
-                        <span className={scopeChipClassName}>전체 검색</span>
-                      </label>
-                    </div>
-                  </div>
-                  <button
-                    type="submit"
-                    data-testid="place-search-submit"
-                    className="altteulmap-accent-solid altteulmap-button inline-flex h-12 items-center justify-center px-5 text-sm font-medium"
+                <button
+                  type="submit"
+                  data-testid="place-search-submit"
+                  className="altteulmap-accent-solid altteulmap-button inline-flex h-11 items-center justify-center px-4 text-sm font-medium sm:px-5"
+                >
+                  검색
+                </button>
+                {activeQuery ? (
+                  <Link
+                    href={clearSearchHref}
+                    prefetch={false}
+                    className="altteulmap-button col-span-2 inline-flex h-11 items-center justify-center px-4 text-sm font-medium text-stone-700 sm:col-auto"
                   >
-                    검색
-                  </button>
-                  {activeQuery ? (
-                    <Link
-                      href={clearSearchHref}
-                      prefetch={false}
-                      className="altteulmap-button inline-flex h-12 items-center justify-center px-4 text-sm font-medium text-stone-700"
-                    >
-                      지우기
-                    </Link>
-                  ) : null}
+                    지우기
+                  </Link>
+                ) : null}
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  <span className="text-xs font-medium text-stone-600">검색 범위</span>
+                  <div className="altteulmap-segmented w-fit">
+                    <label className="cursor-pointer">
+                      <input
+                        type="radio"
+                        name="scope"
+                        value="viewport"
+                        data-testid="search-scope-viewport"
+                        defaultChecked={activeSearchScope === "viewport"}
+                        className="altteulmap-scope-input sr-only"
+                      />
+                      <span className={scopeChipClassName}>보이는 지도</span>
+                    </label>
+                    <label className="cursor-pointer">
+                      <input
+                        type="radio"
+                        name="scope"
+                        value="global"
+                        data-testid="search-scope-global"
+                        defaultChecked={activeSearchScope === "global"}
+                        className="altteulmap-scope-input sr-only"
+                      />
+                      <span className={scopeChipClassName}>전체 지역</span>
+                    </label>
+                  </div>
                 </div>
               </div>
 
-              <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start">
+              <div className="grid gap-2.5 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start">
                 <RouteResetDetails
                   key={filterRouteKey}
-                  className="altteulmap-panel w-full overflow-hidden"
-                  summaryClassName="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-medium text-stone-800 [&::-webkit-details-marker]:hidden"
+                  className="w-full overflow-hidden rounded-[1rem] border border-stone-200/80 bg-[rgba(255,253,249,0.62)]"
+                  summaryClassName="flex cursor-pointer list-none items-center justify-between gap-3 px-3.5 py-2.5 text-sm font-medium text-stone-800 [&::-webkit-details-marker]:hidden"
                   summary={
                     <>
                       <div className="min-w-0">
-                        <span>카테고리</span>
+                        <span>업종 필터</span>
                         <p className="mt-0.5 truncate text-xs font-normal text-stone-500">
                           {selectedCategory
                             ? `${selectedCategory.parentName} · ${selectedCategory.name}`
-                            : "상위 묶음과 세부 업종으로 빠르게 좁혀 봅니다."}
+                            : "전체 업종"}
                         </p>
                       </div>
                       <span className="shrink-0 text-xs font-medium text-stone-500">
-                        펼치기
+                        열기
                       </span>
                     </>
                   }
-                  bodyClassName="border-t border-stone-200 px-4 py-4"
+                  bodyClassName="border-t border-stone-200 px-3.5 py-3.5"
                 >
                   <MapCategoryTray
                     activeCategory={activeCategory}

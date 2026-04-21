@@ -7,6 +7,8 @@ import type { PlacePriceItem } from "@/features/places/types";
 
 type PlacePriceReportFormProps = {
   placeId: string;
+  showHeader?: boolean;
+  surface?: "panel" | "plain";
   suggestedItems: PlacePriceItem[];
 };
 
@@ -23,6 +25,8 @@ type PriceReportFeedback = {
 
 export function PlacePriceReportForm({
   placeId,
+  showHeader = true,
+  surface = "panel",
   suggestedItems,
 }: PlacePriceReportFormProps) {
   const [label, setLabel] = useState("");
@@ -74,20 +78,29 @@ export function PlacePriceReportForm({
       setComment("");
     });
   };
+  const rootClassName =
+    surface === "plain" ? "grid gap-4" : "altteulmap-panel p-4 sm:p-5";
+  const suggestedItemsClassName = showHeader ? "mt-4 flex flex-wrap gap-2" : "flex flex-wrap gap-2";
+  const formClassName =
+    showHeader || suggestedItems.length > 0 ? "mt-4 grid gap-4" : "grid gap-4";
 
   return (
     <section
       data-testid="place-price-report-form"
-      className="altteulmap-panel p-4 sm:p-5"
+      className={rootClassName}
     >
-      <p className="altteulmap-section-kicker text-[11px]">가격 제보</p>
-      <h4 className="mt-1 text-base font-semibold text-stone-900">새 가격 추가</h4>
-      <p className="mt-1 text-sm text-stone-500">
-        지금 보이는 대표 가격과 다르면, 확인한 항목 1개만 먼저 남겨주세요.
-      </p>
+      {showHeader ? (
+        <div>
+          <p className="altteulmap-section-kicker text-[11px]">가격 제보</p>
+          <h4 className="mt-1 text-base font-semibold text-stone-900">새 가격 추가</h4>
+          <p className="mt-1 text-sm text-stone-500">
+            지금 보이는 대표 가격과 다르면, 확인한 항목 1개만 먼저 남겨주세요.
+          </p>
+        </div>
+      ) : null}
 
       {suggestedItems.length > 0 ? (
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className={suggestedItemsClassName}>
           {suggestedItems.map((item) => (
             <button
               key={item.id}
@@ -105,7 +118,7 @@ export function PlacePriceReportForm({
         </div>
       ) : null}
 
-      <div className="mt-4 grid gap-4">
+      <div className={formClassName}>
         <div className="grid gap-4 md:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
           <label className="grid min-w-0 gap-2 text-sm text-stone-700">
             가격 항목명

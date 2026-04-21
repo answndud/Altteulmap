@@ -284,7 +284,7 @@ export function PlaceDetailSheet({
               <p className="altteulmap-section-kicker text-[11px]">
                 {category?.parentName ?? "장소"}
               </p>
-              <h2 className="mt-1 truncate text-base font-semibold tracking-tight text-stone-900 sm:text-lg">
+              <h2 className="mt-1 truncate text-base font-semibold text-stone-900 sm:text-lg">
                 {place?.name ?? "장소 정보"}
               </h2>
             </div>
@@ -341,7 +341,7 @@ export function PlaceDetailSheet({
                     사업장 이름 {businessNameLabel}
                   </p>
                 ) : null}
-                <p className="mt-5 text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--altteul-accent-text)]">
+                <p className="mt-5 text-[11px] font-medium uppercase text-[var(--altteul-accent-text)]">
                   대표 가격
                 </p>
                 <p className="altteulmap-price-number mt-2 text-[2rem]">

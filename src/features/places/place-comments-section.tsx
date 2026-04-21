@@ -8,6 +8,8 @@ import type { PlaceComment } from "@/features/places/types";
 type PlaceCommentsSectionProps = {
   placeId: string;
   initialComments: PlaceComment[];
+  showHeader?: boolean;
+  surface?: "panel" | "plain";
 };
 
 type CommentActionResponse = {
@@ -21,6 +23,8 @@ type CommentActionResponse = {
 export function PlaceCommentsSection({
   placeId,
   initialComments,
+  showHeader = true,
+  surface = "panel",
 }: PlaceCommentsSectionProps) {
   const [comments, setComments] = useState(initialComments);
   const [body, setBody] = useState("");
@@ -77,23 +81,29 @@ export function PlaceCommentsSection({
       );
     });
   };
+  const rootClassName = surface === "plain" ? "grid gap-4" : "altteulmap-panel p-5";
+  const formWrapperClassName = showHeader
+    ? "mt-4 rounded-[1rem] border border-stone-200 bg-[var(--altteul-bg-subtle)]/65 p-4"
+    : "rounded-[1rem] border border-stone-200 bg-[var(--altteul-bg-subtle)]/65 p-4";
 
   return (
     <section
       data-testid="place-comments-section"
-      className="altteulmap-panel p-5"
+      className={rootClassName}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="altteulmap-section-kicker text-[11px]">코멘트</p>
-          <h4 className="mt-1 text-base font-semibold text-stone-900">사용자 메모</h4>
+      {showHeader ? (
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="altteulmap-section-kicker text-[11px]">코멘트</p>
+            <h4 className="mt-1 text-base font-semibold text-stone-900">사용자 메모</h4>
+          </div>
+          <span className="altteulmap-badge px-3 py-1 text-xs font-medium">
+            {comments.length}개
+          </span>
         </div>
-        <span className="altteulmap-badge px-3 py-1 text-xs font-medium">
-          {comments.length}개
-        </span>
-      </div>
+      ) : null}
 
-      <div className="mt-4 rounded-[1rem] border border-stone-200 bg-[var(--altteul-bg-subtle)]/65 p-4">
+      <div className={formWrapperClassName}>
         <div className="grid gap-3">
           <textarea
             value={body}

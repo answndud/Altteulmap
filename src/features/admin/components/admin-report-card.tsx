@@ -33,7 +33,7 @@ export function AdminReportCard({
     >
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-[11px] font-semibold tracking-[0.14em] text-[var(--altteul-accent-text)]">
+          <p className="text-[11px] font-semibold text-[var(--altteul-accent-text)]">
             {report.id}
           </p>
           <h2

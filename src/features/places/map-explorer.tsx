@@ -157,13 +157,8 @@ function ListStatusSummary({
         </div>
       ) : null}
       {statusItems.length > 0 ? (
-        <div
-          className={`rounded-[1rem] border border-stone-200 bg-[var(--altteul-bg-subtle)]/70 text-stone-600 ${panelPaddingClassName}`}
-        >
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500">
-            현재 상태
-          </p>
-          <div className="mt-2 flex flex-wrap gap-2">
+        <div className={`text-stone-600 ${compact ? "" : "px-1"}`} aria-live="polite">
+          <div className="flex flex-wrap gap-2">
             {statusItems.map((item) => (
               <span key={item} className={badgeClassName}>
                 {item}
@@ -271,7 +266,7 @@ function PlaceList({
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-stone-500">
+                <p className="text-[11px] font-medium uppercase text-stone-500">
                   {priceLabel}
                 </p>
                 <p
@@ -718,7 +713,7 @@ export function MapExplorer({
 
   return (
     <div className="relative isolate">
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,2.65fr)_18rem] 2xl:grid-cols-[minmax(0,2.8fr)_19rem]">
+      <div className="grid gap-3 xl:grid-cols-[minmax(0,2.8fr)_18rem] 2xl:grid-cols-[minmax(0,3fr)_19rem]">
         <div className="relative z-0">
           <NaverMapPanel
             initialBounds={initialBounds}
@@ -737,7 +732,7 @@ export function MapExplorer({
             onViewportChange={handleViewportChange}
           />
 
-          <div className="pointer-events-none absolute inset-x-0 bottom-4 z-20 flex justify-center xl:hidden">
+          <div className="pointer-events-none absolute inset-x-0 bottom-16 z-20 flex justify-center sm:bottom-4 xl:hidden">
             <div className="altteulmap-map-overlay pointer-events-auto flex items-center gap-2 px-2.5 py-2">
               <span className="altteulmap-badge whitespace-nowrap px-3 py-1.5 text-xs font-medium">
                 {totalPlaceCount}곳
@@ -754,11 +749,11 @@ export function MapExplorer({
           </div>
         </div>
 
-        <section className="hidden max-h-[44rem] flex-col overflow-hidden rounded-[1.125rem] border border-stone-200 bg-white shadow-sm xl:flex">
-          <div className="flex items-center justify-between border-b border-stone-200 px-4 py-4">
+        <section className="hidden max-h-[44rem] flex-col overflow-hidden xl:flex">
+          <div className="flex items-center justify-between border-b border-stone-200/80 px-1 pb-3 pt-1">
             <div>
               <p className="altteulmap-section-kicker text-[11px]">목록</p>
-              <h2 className="mt-1 text-base font-semibold text-stone-900">현재 지도 결과</h2>
+              <h2 className="mt-1 text-base font-semibold text-stone-900">지도 결과</h2>
               <p className="mt-1 text-xs text-stone-500">{listDescription}</p>
             </div>
             <div className="flex items-center gap-2">
@@ -768,7 +763,7 @@ export function MapExplorer({
             </div>
           </div>
           {shouldRenderDesktopList ? (
-            <div className="flex-1 overflow-y-auto p-3">
+            <div className="flex-1 overflow-y-auto pt-3">
               <ListStatusSummary
                 displayPlacesCount={displayPlaces.length}
                 fetchError={fetchError}
@@ -792,7 +787,7 @@ export function MapExplorer({
               />
             </div>
           ) : (
-            <div className="flex-1 p-3">
+            <div className="flex-1 pt-3">
               <div className="rounded-[1rem] border border-dashed border-stone-300 bg-[var(--altteul-bg-subtle)]/70 px-4 py-5 text-sm text-stone-500">
                 지도를 먼저 표시하는 중입니다. 목록은 잠시 뒤 준비됩니다.
               </div>

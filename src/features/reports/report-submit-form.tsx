@@ -148,7 +148,7 @@ export function ReportSubmitForm({
             data-testid="report-submit-button"
             className="altteulmap-accent-solid altteulmap-button inline-flex w-full items-center justify-center whitespace-nowrap px-5 py-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
           >
-            {isPending ? "신고 접수 중..." : "신고 제출"}
+            {isPending ? "요청 보내는 중..." : "정보 수정 요청 보내기"}
           </button>
         </div>
       </form>

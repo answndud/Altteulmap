@@ -208,7 +208,7 @@ export function AdminPlaceCoordinatePicker({
   return (
     <section className="space-y-4 rounded-3xl border border-stone-200 bg-stone-50 p-4">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-600">
+        <p className="text-xs font-semibold uppercase text-orange-600">
           위치 선택
         </p>
         <h3 className="mt-2 text-lg font-semibold text-stone-900">
@@ -257,7 +257,7 @@ export function AdminPlaceCoordinatePicker({
 
       <div className="grid gap-3 rounded-3xl border border-stone-200 bg-white p-4 sm:grid-cols-2">
         <div>
-          <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
+          <p className="text-xs uppercase text-stone-500">
             현재 위도
           </p>
           <p className="mt-2 text-sm font-medium text-stone-900">
@@ -265,7 +265,7 @@ export function AdminPlaceCoordinatePicker({
           </p>
         </div>
         <div>
-          <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
+          <p className="text-xs uppercase text-stone-500">
             현재 경도
           </p>
           <p className="mt-2 text-sm font-medium text-stone-900">

@@ -29,13 +29,13 @@ export function TrendingPlacesSection({
 
   return (
     <section
-      className="altteulmap-panel p-4 sm:p-5"
+      className="border-t border-stone-200/70 pt-4 sm:pt-5"
       data-testid="trending-places-section"
     >
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="altteulmap-section-kicker">빠른 비교</p>
-          <h2 className="mt-1 text-lg font-semibold tracking-tight text-stone-900 sm:text-xl">
+          <h2 className="mt-1 text-lg font-semibold text-stone-900 sm:text-xl">
             {selectedCategoryLabel
               ? `${selectedCategoryLabel} 인기 장소`
               : "인기 장소"}
@@ -66,11 +66,11 @@ export function TrendingPlacesSection({
                 href={`/place/${place.id}`}
                 prefetch={false}
                 data-testid={`trending-place-primary-link-${place.id}`}
-                className="block rounded-[0.9rem] transition hover:bg-[var(--altteul-surface-fill-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
+                className="block transition hover:bg-[var(--altteul-surface-fill-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-stone-500">
+                    <p className="text-[11px] font-medium uppercase text-stone-500">
                       {place.representativePriceLabel}
                     </p>
                     <p className="altteulmap-price-number mt-1 text-[1.55rem]">
