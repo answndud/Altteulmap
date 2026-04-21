@@ -89,7 +89,7 @@ export function MapCategoryTray({
         </div>
 
         <div className="grid gap-2">
-          <p className="text-xs font-medium tracking-[0.14em] text-stone-500">
+          <p className="text-xs font-medium text-stone-500">
             상위 묶음 먼저 고르기
           </p>
           <div className="altteulmap-scroll-row">

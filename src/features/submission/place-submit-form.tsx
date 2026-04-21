@@ -45,7 +45,7 @@ const defaultValues: PlaceSubmissionFormInput = {
   priceItems: [
     {
       label: "",
-      amount: 0,
+      amount: undefined,
       unitLabel: "",
     },
   ],
@@ -313,21 +313,6 @@ export function PlaceSubmitForm() {
               step="2"
               title="대표 가격"
               description="가장 먼저 보여줄 가격 1개를 먼저 적어주세요."
-              action={
-                <button
-                  type="button"
-                  onClick={() =>
-                    append({
-                      label: "",
-                      amount: 0,
-                      unitLabel: "",
-                    })
-                  }
-                  className="altteulmap-button inline-flex h-10 items-center justify-center whitespace-nowrap px-4 text-sm font-medium text-stone-700"
-                >
-                  가격 항목 추가
-                </button>
-              }
             />
 
             {primaryPriceField ? (
@@ -341,6 +326,22 @@ export function PlaceSubmitForm() {
                 unitError={errors.priceItems?.[0]?.unitLabel?.message}
               />
             ) : null}
+
+            <div className="flex justify-start">
+              <button
+                type="button"
+                onClick={() =>
+                  append({
+                    label: "",
+                    amount: undefined,
+                    unitLabel: "",
+                  })
+                }
+                className="altteulmap-button inline-flex h-10 items-center justify-center whitespace-nowrap px-4 text-sm font-medium text-stone-700"
+              >
+                다른 가격도 추가하기
+              </button>
+            </div>
 
             {additionalPriceFields.length > 0 ? (
               <div className="grid gap-4 border-t border-dashed border-stone-200 pt-4">
@@ -432,7 +433,7 @@ export function PlaceSubmitForm() {
 
               {submitResult.preview ? (
                 <div className="rounded-[1rem] border border-stone-200 bg-[var(--altteul-bg-subtle)]/45 p-4">
-                  <p className="text-xs font-medium tracking-[0.14em] text-stone-500">
+                  <p className="text-xs font-medium text-stone-500">
                     접수된 장소
                   </p>
                   <p

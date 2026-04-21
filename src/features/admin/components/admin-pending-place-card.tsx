@@ -37,7 +37,7 @@ export function AdminPendingPlaceCard({
       >
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-[11px] font-semibold tracking-[0.14em] text-[var(--altteul-accent-text)]">
+            <p className="text-[11px] font-semibold text-[var(--altteul-accent-text)]">
               {place.id}
             </p>
             <h2 className="mt-2 text-xl font-semibold text-stone-950">
@@ -75,7 +75,7 @@ export function AdminPendingPlaceCard({
     >
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-[11px] font-semibold tracking-[0.14em] text-[var(--altteul-accent-text)]">
+          <p className="text-[11px] font-semibold text-[var(--altteul-accent-text)]">
             {place.id}
           </p>
           <h2
@@ -90,7 +90,7 @@ export function AdminPendingPlaceCard({
           </p>
         </div>
         <div className="altteulmap-panel-muted px-4 py-3 text-right">
-          <p className="text-[11px] tracking-[0.14em] text-stone-500">
+          <p className="text-[11px] text-stone-500">
             대표 가격
           </p>
           <p className="altteulmap-price-number mt-2 text-lg">
@@ -103,20 +103,20 @@ export function AdminPendingPlaceCard({
       <div className="mt-4 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
         <div className="grid gap-4">
           <div className="altteulmap-panel-muted p-4 text-sm leading-6 text-stone-700">
-            <p className="text-[11px] tracking-[0.14em] text-stone-500">
+            <p className="text-[11px] text-stone-500">
               주소
             </p>
             <p className="mt-2">{place.address}</p>
             <p className="text-stone-500">{place.district}</p>
           </div>
           <div className="altteulmap-panel-muted p-4 text-sm leading-6 text-stone-700">
-            <p className="text-[11px] tracking-[0.14em] text-stone-500">
+            <p className="text-[11px] text-stone-500">
               메모
             </p>
             <p className="mt-2">{place.note}</p>
           </div>
           <div className="altteulmap-panel-muted p-4">
-            <p className="text-[11px] tracking-[0.14em] text-stone-500">
+            <p className="text-[11px] text-stone-500">
               제출된 가격 항목
             </p>
             <div className="mt-3 grid gap-2">

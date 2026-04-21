@@ -25,7 +25,7 @@ export function AccessDeniedPanel({
         <p className="altteulmap-section-kicker">
           {eyebrow}
         </p>
-        <h1 className="mt-1 text-[1.85rem] font-semibold tracking-[-0.06em] text-stone-950 sm:text-[2.35rem]">
+        <h1 className="mt-1 text-[1.85rem] font-semibold text-stone-950 sm:text-[2.35rem]">
           {title}
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-600 sm:text-[0.95rem]">

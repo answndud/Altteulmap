@@ -110,7 +110,7 @@ export default async function AdminPricesPage() {
           </div>
         )}
 
-        <section className="altteulmap-panel-muted p-5">
+        <section className="border-t border-stone-200/80 pt-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <h2 className="text-2xl font-semibold text-stone-900">
@@ -126,13 +126,13 @@ export default async function AdminPricesPage() {
             </span>
           </div>
 
-          <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {recentPlaces.items.slice(0, 9).map((place) => (
               <article
                 key={place.id}
-                className="rounded-[1.15rem] border border-stone-200 bg-white p-5"
+                className="rounded-[1rem] border border-stone-200 bg-white p-4"
               >
-                <p className="text-[11px] tracking-[0.14em] text-[var(--altteul-accent-text)]">
+                <p className="text-[11px] text-[var(--altteul-accent-text)]">
                   {place.district}
                 </p>
                 <h3 className="mt-2 text-xl font-semibold text-stone-900">

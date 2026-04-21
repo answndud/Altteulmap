@@ -328,7 +328,7 @@
   color: var(--altteul-accent-text);
   font-size: 0.72rem;
   font-weight: 600;
-  letter-spacing: 0.22em;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
@@ -337,7 +337,7 @@
   font-feature-settings: "tnum" 1, "ss01" 1;
   font-variant-numeric: tabular-nums;
   font-weight: 700;
-  letter-spacing: -0.03em;
+  letter-spacing: 0;
 }
 
 .altteulmap-segmented {

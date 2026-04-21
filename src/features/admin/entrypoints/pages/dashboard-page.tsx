@@ -80,10 +80,10 @@ export default async function AdminPage() {
             data-testid="admin-metric-total-users"
             className="altteulmap-panel-muted p-5"
           >
-            <p className="text-[11px] tracking-[0.14em] text-[var(--altteul-accent-text)]">
+            <p className="text-[11px] text-[var(--altteul-accent-text)]">
               전체 계정
             </p>
-            <h2 className="mt-3 text-[1.9rem] font-semibold tracking-[-0.04em] text-stone-950">
+            <h2 className="mt-3 text-[1.9rem] font-semibold text-stone-950">
               {overview.stats.totalUsers}
             </h2>
             <p className="mt-2 text-sm leading-6 text-stone-600">
@@ -96,10 +96,10 @@ export default async function AdminPage() {
             data-testid="admin-metric-current-sessions"
             className="altteulmap-panel-muted p-5"
           >
-            <p className="text-[11px] tracking-[0.14em] text-[var(--altteul-accent-text)]">
+            <p className="text-[11px] text-[var(--altteul-accent-text)]">
               활성 세션
             </p>
-            <h2 className="mt-3 text-[1.9rem] font-semibold tracking-[-0.04em] text-stone-950">
+            <h2 className="mt-3 text-[1.9rem] font-semibold text-stone-950">
               {overview.stats.currentSessions}
             </h2>
             <p className="mt-2 text-sm leading-6 text-stone-600">
@@ -111,10 +111,10 @@ export default async function AdminPage() {
             data-testid="admin-metric-active-places"
             className="altteulmap-panel-muted p-5"
           >
-            <p className="text-[11px] tracking-[0.14em] text-[var(--altteul-accent-text)]">
+            <p className="text-[11px] text-[var(--altteul-accent-text)]">
               공개 장소
             </p>
-            <h2 className="mt-3 text-[1.9rem] font-semibold tracking-[-0.04em] text-stone-950">
+            <h2 className="mt-3 text-[1.9rem] font-semibold text-stone-950">
               {overview.stats.activePlaces}
             </h2>
             <p className="mt-2 text-sm leading-6 text-stone-600">
@@ -126,10 +126,10 @@ export default async function AdminPage() {
             data-testid="admin-metric-open-reports"
             className="altteulmap-panel-muted p-5"
           >
-            <p className="text-[11px] tracking-[0.14em] text-[var(--altteul-accent-text)]">
+            <p className="text-[11px] text-[var(--altteul-accent-text)]">
               열린 신고
             </p>
-            <h2 className="mt-3 text-[1.9rem] font-semibold tracking-[-0.04em] text-stone-950">
+            <h2 className="mt-3 text-[1.9rem] font-semibold text-stone-950">
               {overview.stats.openReports}
             </h2>
             <p className="mt-2 text-sm leading-6 text-stone-600">
@@ -140,7 +140,7 @@ export default async function AdminPage() {
 
         <div className="grid gap-4 xl:grid-cols-3">
           <article className="altteulmap-panel-muted p-5">
-            <p className="text-[11px] tracking-[0.14em] text-[var(--altteul-accent-text)]">
+            <p className="text-[11px] text-[var(--altteul-accent-text)]">
               장소 검토
             </p>
             <h2 className="mt-3 text-2xl font-semibold text-stone-950">
@@ -160,7 +160,7 @@ export default async function AdminPage() {
           </article>
 
           <article className="altteulmap-panel-muted p-5">
-            <p className="text-[11px] tracking-[0.14em] text-[var(--altteul-accent-text)]">
+            <p className="text-[11px] text-[var(--altteul-accent-text)]">
               가격 검토
             </p>
             <h2 className="mt-3 text-2xl font-semibold text-stone-950">
@@ -179,7 +179,7 @@ export default async function AdminPage() {
           </article>
 
           <article className="altteulmap-panel-muted p-5">
-            <p className="text-[11px] tracking-[0.14em] text-[var(--altteul-accent-text)]">
+            <p className="text-[11px] text-[var(--altteul-accent-text)]">
               신고 검토
             </p>
             <h2 className="mt-3 text-2xl font-semibold text-stone-950">
@@ -225,7 +225,7 @@ export default async function AdminPage() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-[11px] tracking-[0.14em] text-[var(--altteul-accent-text)]">
+                    <p className="text-[11px] text-[var(--altteul-accent-text)]">
                       {account.role === "admin" ? "운영자 계정" : "일반 계정"}
                     </p>
                     <h3 className="mt-2 text-lg font-semibold text-stone-950">
@@ -280,7 +280,7 @@ export default async function AdminPage() {
                     key={place.id}
                     className="rounded-[1.1rem] border border-stone-200 bg-white p-4"
                   >
-                    <p className="text-[11px] tracking-[0.14em] text-[var(--altteul-accent-text)]">
+                    <p className="text-[11px] text-[var(--altteul-accent-text)]">
                       접수 {place.createdAt}
                     </p>
                     <h3 className="mt-2 text-lg font-semibold text-stone-950">
@@ -326,7 +326,7 @@ export default async function AdminPage() {
                     key={report.id}
                     className="rounded-[1.1rem] border border-stone-200 bg-white p-4"
                   >
-                    <p className="text-[11px] tracking-[0.14em] text-[var(--altteul-accent-text)]">
+                    <p className="text-[11px] text-[var(--altteul-accent-text)]">
                       {report.status === "open" ? "열림" : "검토 중"} · {report.createdAt}
                     </p>
                     <h3 className="mt-2 text-lg font-semibold text-stone-950">
@@ -367,7 +367,7 @@ export default async function AdminPage() {
               data-testid="admin-metric-today-visits"
               className="rounded-[1.1rem] border border-stone-200 bg-white p-5"
             >
-              <p className="text-[11px] tracking-[0.14em] text-[var(--altteul-accent-text)]">
+              <p className="text-[11px] text-[var(--altteul-accent-text)]">
                 오늘 방문
               </p>
               <h3 className="mt-3 text-[1.7rem] font-semibold text-stone-950">
@@ -382,7 +382,7 @@ export default async function AdminPage() {
               data-testid="admin-metric-shared-visits"
               className="rounded-[1.1rem] border border-stone-200 bg-white p-5"
             >
-              <p className="text-[11px] tracking-[0.14em] text-[var(--altteul-accent-text)]">
+              <p className="text-[11px] text-[var(--altteul-accent-text)]">
                 공유 유입 7일
               </p>
               <h3 className="mt-3 text-[1.7rem] font-semibold text-stone-950">
@@ -398,7 +398,7 @@ export default async function AdminPage() {
               data-testid="admin-metric-weekly-visits"
               className="rounded-[1.1rem] border border-stone-200 bg-white p-5"
             >
-              <p className="text-[11px] tracking-[0.14em] text-[var(--altteul-accent-text)]">
+              <p className="text-[11px] text-[var(--altteul-accent-text)]">
                 전체 방문 7일
               </p>
               <h3 className="mt-3 text-[1.7rem] font-semibold text-stone-950">
@@ -413,7 +413,7 @@ export default async function AdminPage() {
               data-testid="admin-metric-dau-wau"
               className="rounded-[1.1rem] border border-stone-200 bg-white p-5"
             >
-              <p className="text-[11px] tracking-[0.14em] text-[var(--altteul-accent-text)]">
+              <p className="text-[11px] text-[var(--altteul-accent-text)]">
                 DAU / WAU
               </p>
               <h3 className="mt-3 text-[1.7rem] font-semibold text-stone-950">
@@ -428,7 +428,7 @@ export default async function AdminPage() {
               data-testid="admin-metric-returning-rate"
               className="rounded-[1.1rem] border border-stone-200 bg-white p-5"
             >
-              <p className="text-[11px] tracking-[0.14em] text-[var(--altteul-accent-text)]">
+              <p className="text-[11px] text-[var(--altteul-accent-text)]">
                 재방문율 7일
               </p>
               <h3 className="mt-3 text-[1.7rem] font-semibold text-stone-950">
@@ -464,7 +464,7 @@ export default async function AdminPage() {
                   key={item.source}
                   className="rounded-[1rem] border border-stone-200 bg-[var(--altteul-bg-subtle)] px-4 py-4"
                 >
-                  <p className="text-[11px] tracking-[0.14em] text-[var(--altteul-accent-text)]">
+                  <p className="text-[11px] text-[var(--altteul-accent-text)]">
                     {getPlaceShareSourceLabel(item.source)}
                   </p>
                   <p className="mt-3 text-2xl font-semibold text-stone-950">

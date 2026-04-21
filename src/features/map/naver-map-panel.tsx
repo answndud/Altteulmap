@@ -560,7 +560,7 @@ function NaverMapFallback({
 
   return (
     <section
-      className="altteulmap-panel relative isolate overflow-hidden"
+      className="relative isolate overflow-hidden rounded-[1.125rem] border border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-surface)]"
       data-testid="map-panel-shell"
     >
       <div className="relative isolate z-0 h-[34rem] lg:h-[43rem]">
@@ -1379,21 +1379,21 @@ function NaverMapPanelContent({
           </div>
         ) : null}
 
-        <div className="pointer-events-none absolute inset-x-4 top-4 z-10 flex items-start justify-between gap-3">
-          <div className="pointer-events-auto grid max-w-[15.5rem] gap-2 sm:max-w-[18rem]">
-            <div className="altteulmap-map-overlay px-3.5 py-3">
+        <div className="pointer-events-none absolute inset-x-3 top-3 z-10 flex items-start justify-between gap-3 sm:inset-x-4 sm:top-4">
+          <div className="pointer-events-auto grid max-w-[13.5rem] gap-2 sm:max-w-[18rem]">
+            <div className="altteulmap-map-overlay px-3 py-2.5 sm:px-3.5 sm:py-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="altteulmap-section-kicker text-[10px]">지도</p>
                   <h2 className="mt-1 text-sm font-semibold text-stone-900 sm:text-base">
-                    주변 가격 보기
+                    가격 지도
                   </h2>
                 </div>
                 <span className="altteulmap-badge shrink-0 whitespace-nowrap px-2.5 py-1 text-[11px] font-medium">
                   {placeCountLabel}
                 </span>
               </div>
-              <p className="mt-2 text-xs leading-5 text-stone-600">
+              <p className="mt-2 hidden text-xs leading-5 text-stone-600 sm:block">
                 {selectedCategoryLabel
                   ? `${selectedCategoryLabel} 카테고리 기준으로 보고 있습니다.`
                   : "대표 가격과 최근 제보를 함께 확인합니다."}

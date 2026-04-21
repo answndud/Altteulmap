@@ -106,7 +106,7 @@ export default async function AdminPlacePricesDetailPage({
             >
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                  <p className="text-[11px] tracking-[0.14em] text-[var(--altteul-accent-text)]">
+                  <p className="text-[11px] text-[var(--altteul-accent-text)]">
                     {item.id}
                   </p>
                   <h2 className="mt-2 text-xl font-semibold text-stone-900">
@@ -118,7 +118,7 @@ export default async function AdminPlacePricesDetailPage({
                   </p>
                 </div>
                 <div className="rounded-[1.15rem] border border-stone-200 bg-white px-4 py-3 text-right">
-                  <p className="text-[11px] tracking-[0.14em] text-stone-500">
+                  <p className="text-[11px] text-stone-500">
                     현재 금액
                   </p>
                   <p className="mt-2 text-lg font-semibold text-stone-900">
