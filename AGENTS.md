@@ -5,33 +5,33 @@
 - 목표는 작업이 중간에 끊겨도 다음 세션에서 바로 이어갈 수 있게 만드는 것이다.
 
 ## 필수 규칙
-1. 작업을 시작하기 전에 `docs/project/PLAN.md`, `docs/project/PROGRESS.md`, `docs/product/prd.md`, `docs/product/trd.md`를 먼저 확인한다.
-2. `docs/project/COMPLETED.md`는 archive 문서다. 과거 맥락이 필요할 때만 읽고, 세션 시작 필수 읽기 대상으로 취급하지 않는다.
+1. 작업을 시작하기 전에 `docs/PLAN.md`, `docs/PROGRESS.md`, `docs/product/prd.md`, `docs/product/trd.md`를 먼저 확인한다.
+2. `docs/COMPLETED.md`는 archive 문서다. 과거 맥락이 필요할 때만 읽고, 세션 시작 필수 읽기 대상으로 취급하지 않는다.
 3. active 문서인 `PLAN.md`, `PROGRESS.md`는 번호 없이 현재 작업 자체를 설명한다. 완료된 작업은 `COMPLETED.md`에만 append 순서 기준 연속 archive 번호를 부여한다.
-4. 구현 우선순위나 범위가 바뀌면 코드보다 먼저 `docs/project/PLAN.md`를 갱신한다.
-5. 의미 있는 구현, 수정, 검증이 끝나면 `docs/project/PROGRESS.md`를 즉시 갱신한다.
-6. 작업이 완료되어 active 상태를 벗어나면 `docs/project/PROGRESS.md`의 최종 상태, 검증, 결과를 정리해 `docs/project/COMPLETED.md`로 archive한다.
+4. 구현 우선순위나 범위가 바뀌면 코드보다 먼저 `docs/PLAN.md`를 갱신한다.
+5. 의미 있는 구현, 수정, 검증이 끝나면 `docs/PROGRESS.md`를 즉시 갱신한다.
+6. 작업이 완료되어 active 상태를 벗어나면 `docs/PROGRESS.md`의 최종 상태, 검증, 결과를 정리해 `docs/COMPLETED.md`로 archive한다.
 7. archive는 raw copy/paste snapshot이 아니라 다시 읽기 좋은 요약형 포맷으로 작성한다.
-8. `docs/project/COMPLETED.md`는 시간 오름차순으로 유지한다. 가장 최근에 끝난 작업이 문서 맨 아래에 오도록 append한다.
-9. `docs/project/COMPLETED.md`의 각 항목에는 최소한 `배경`, `변경 내용`, `코드/문서`, `검증`, `결과`가 들어가야 한다. active 문서보다 훨씬 자세해야 한다.
+8. `docs/COMPLETED.md`는 시간 오름차순으로 유지한다. 가장 최근에 끝난 작업이 문서 맨 아래에 오도록 append한다.
+9. `docs/COMPLETED.md`의 각 항목에는 최소한 `배경`, `변경 내용`, `코드/문서`, `검증`, `결과`가 들어가야 한다. active 문서보다 훨씬 자세해야 한다.
 10. `PLAN.md`에는 active 계획만 남기고, `PROGRESS.md`에는 진행 중인 상태만 남긴다. 완료된 작업은 active 문서에 1건도 남기지 않는다.
 11. active 작업이 모두 끝나면 `PLAN.md`, `PROGRESS.md`의 작업 본문은 전부 비우고 `현재 active 작업 없음`만 남긴다.
 12. 세션을 마칠 때는 다음 사람이 바로 이어서 작업할 수 있을 정도로 현재 상태를 남긴다.
 13. 코드와 문서가 어긋나면 같은 작업 안에서 함께 수정한다.
-14. 새 기능을 시작할 때는 현재 계획에 없는 기능인지 먼저 확인하고, 없으면 `docs/project/PLAN.md`에 추가한 뒤 진행한다.
-15. 검증을 했으면 `docs/project/PROGRESS.md`에 어떤 명령을 돌렸는지 남긴다.
-16. 작업 중단 시점에도 미완료 상태, 남은 이슈, 다음 액션을 `docs/project/PROGRESS.md`에 적는다.
+14. 새 기능을 시작할 때는 현재 계획에 없는 기능인지 먼저 확인하고, 없으면 `docs/PLAN.md`에 추가한 뒤 진행한다.
+15. 검증을 했으면 `docs/PROGRESS.md`에 어떤 명령을 돌렸는지 남긴다.
+16. 작업 중단 시점에도 미완료 상태, 남은 이슈, 다음 액션을 `docs/PROGRESS.md`에 적는다.
 
 ## 문서 역할
-- `docs/project/PLAN.md`
+- `docs/PLAN.md`
   - 앞으로 무엇을 만들지
   - 무엇이 먼저인지
   - 지금 active인 작업과 완료 기준
-- `docs/project/PROGRESS.md`
+- `docs/PROGRESS.md`
   - 지금 active 상태가 어떤지
   - 현재 blocker와 최근 검증이 무엇인지
   - 작업별 다음 액션이 무엇인지
-- `docs/project/COMPLETED.md`
+- `docs/COMPLETED.md`
   - 완료된 작업의 상세 archive
   - append 순서 기준 archive 번호
   - `PROGRESS.md`에서 정리해 옮긴 종료된 실행 로그와 배포/측정 이력의 요약
@@ -60,6 +60,8 @@
   - `.agents/skills/api-design/SKILL.md`
   - `.agents/skills/verification-loop/SKILL.md`
   - `.agents/skills/e2e-testing/SKILL.md`
+  - `.agents/skills/impeccable/SKILL.md`
+  - `.impeccable.md`
   - `.agents/reviewers/typescript-reviewer.md`
   - `.agents/reviewers/database-reviewer.md`
 - 적용 규칙
@@ -67,6 +69,8 @@
   - API route를 추가/수정할 때는 `api-design`을 먼저 확인한다.
   - 큰 변경 후에는 `verification-loop` 기준으로 검증한다.
   - Playwright나 브라우저 흐름을 추가할 때는 `e2e-testing`을 참고한다.
+  - 디자인/프론트엔드 UI 작업은 `.impeccable.md`를 먼저 확인하고, 필요하면 Impeccable skill(`impeccable`, `audit`, `critique`, `polish`, `typeset`, `layout`, `colorize`, `adapt` 등)을 사용한다.
+  - Impeccable CLI 검사는 전역 설치 대신 `npm run design:detect` 또는 `npm run design:detect:json`으로 실행한다.
   - TypeScript/Next.js 변경은 `typescript-reviewer` 기준으로 자체 점검한다.
   - DB 쿼리/인덱스/마이그레이션 변경은 `database-reviewer` 기준으로 자체 점검한다.
 

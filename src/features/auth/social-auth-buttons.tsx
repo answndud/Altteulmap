@@ -23,7 +23,7 @@ const providerClassNameMap: Record<SocialAuthProviderId, string> = {
 };
 
 const providerBadgeClassNameMap: Record<SocialAuthProviderId, string> = {
-  kakao: "bg-black/8 text-stone-900",
+  kakao: "bg-[#291d06]/10 text-[#291d06]",
   naver: "bg-white/16 text-white",
 };
 
