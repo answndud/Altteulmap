@@ -1,6 +1,6 @@
 # PLAN.md
 
-기준일: 2026-04-21
+기준일: 2026-04-24
 목표: Altteulmap를 `지도 기반 절약 장소 탐색 + 가격 제보` 서비스 기준에서 MVP 완성도와 출시 준비 수준까지 끌어올린다.
 
 ## 문서 규칙
@@ -20,14 +20,4 @@
   - 커뮤니티 `bang`
   - 핫딜 `deal`
 
-## Active Work
-| 상태 | 우선순위 | 작업 | 완료 기준 | 의존성 |
-|---|---|---|---|---|
-| `in_progress` | `P1` | 운영 DB를 복구하고 `AI 1차 검수` persisted live 경로를 마감한다 | 운영 DB에 `moderation_suggestions` migration이 적용되고, public/admin worker 재배포 후 live 관리자 큐에서 장소 등록/가격 제보/신고 카드의 AI 패널이 persistence 기준으로 보이며, degraded fallback 로그인과 mock 관리자 큐도 유지된다 | `src/db/schema.ts`, `drizzle/0010_military_wildside.sql`, `src/features/admin/**`, 운영 DB credential |
-| `pending` | `P1` | 모바일/운영 실기기 QA를 다시 수행한다 | iPhone Safari와 Android Chrome 기준으로 `현재 위치`, `이 지역 검색`, 목록/상세 시트 drag, cluster 확대/축소, 익명 쓰기 핵심 흐름, 관리자 AI 패널 확인 결과가 체크리스트 형태로 남고, 발견된 이슈가 후속 작업으로 분리된다 | live public/admin URL, 실기기 또는 동등한 검증 환경, `tests/e2e/**` |
-
-## 다음 실행 순서
-1. 운영 DB credential을 복구하고 `npm run db:check:production`으로 연결 상태를 다시 확인한다.
-2. `moderation_suggestions` migration 적용 후 public/admin을 재배포하고 live 관리자 AI 패널 persistence를 확인한다.
-3. iPhone Safari, Android Chrome 기준 실기기 QA를 수행한다.
-4. 추가 디자인 개선이 필요하면 `.impeccable.md`와 repo-local skill 기준으로 새 active 작업을 먼저 정의한 뒤 진행한다.
+현재 active 작업 없음

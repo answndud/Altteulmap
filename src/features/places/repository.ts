@@ -15,9 +15,16 @@ import {
   sql,
 } from "drizzle-orm";
 
+import { toAdminActionUserId } from "@/features/admin/admin-action";
 import { ensurePlaceModerationSuggestions, ensurePriceReportModerationSuggestions } from "@/features/admin/moderation-agent";
 import type { ModerationSuggestionRecord } from "@/features/admin/moderation-suggestion";
-import { getDb, isDatabaseEnabled, markDatabaseUnavailable } from "@/db/client";
+import {
+  getDb,
+  isDatabaseEnabled,
+  markDatabaseUnavailable,
+  releaseDatabaseConnection,
+  withDatabaseReadTimeout,
+} from "@/db/client";
 import {
   adminActions,
   categories,
@@ -121,8 +128,6 @@ const MAP_LIST_RESPONSE_LIMIT = 120;
 const MAP_MARKER_SUMMARY_ROW_LIMIT = 2_000;
 const MAP_PREVIEW_CACHE_TTL_MS = 12_000;
 const MAP_PREVIEW_CACHE_MAX_ENTRIES = 48;
-const DATABASE_READ_TIMEOUT_MS = 1_500;
-
 type MapPreviewCacheEntry = {
   value: PlacePreviewListResult;
   expiresAt: number;
@@ -745,40 +750,6 @@ function setCachedMapPreviewResult(
     }
 
     store.delete(oldestKey);
-  }
-}
-
-async function withDatabaseReadTimeout<T>(
-  label: string,
-  load: () => Promise<T>,
-): Promise<T> {
-  let timedOut = false;
-  let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
-  const operation = load();
-
-  void operation.catch((error) => {
-    if (timedOut) {
-      console.error(`${label} rejected after the read timeout elapsed.`, error);
-    }
-  });
-
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    timeoutHandle = setTimeout(() => {
-      timedOut = true;
-      reject(
-        new Error(
-          `${label} exceeded the ${DATABASE_READ_TIMEOUT_MS}ms database read timeout.`,
-        ),
-      );
-    }, DATABASE_READ_TIMEOUT_MS);
-  });
-
-  try {
-    return await Promise.race([operation, timeoutPromise]);
-  } finally {
-    if (timeoutHandle) {
-      clearTimeout(timeoutHandle);
-    }
   }
 }
 
@@ -2357,7 +2328,7 @@ async function updateDatabasePriceItem(
   await refreshPlacePricingSummary(existingItem.placeId, changedAt);
 
   await db.insert(adminActions).values({
-    adminUserId: adminUserId ?? null,
+    adminUserId: toAdminActionUserId(adminUserId),
     actionType: "update_price_item",
     targetType: "price_item",
     targetId: updatedItem.id,
@@ -2441,7 +2412,7 @@ async function moderateDatabasePriceReport(
       .where(eq(priceReports.id, existingReport.id));
 
     await db.insert(adminActions).values({
-      adminUserId: adminUserId ?? null,
+      adminUserId: toAdminActionUserId(adminUserId),
       actionType: "reject_price_report",
       targetType: "price_report",
       targetId: existingReport.id,
@@ -2586,7 +2557,7 @@ async function moderateDatabasePriceReport(
     .limit(1);
 
   await db.insert(adminActions).values({
-    adminUserId: adminUserId ?? null,
+    adminUserId: toAdminActionUserId(adminUserId),
     actionType: "approve_price_report",
     targetType: "price_report",
     targetId: existingReport.id,
@@ -2649,11 +2620,12 @@ async function listDatabasePendingPlaces(): Promise<PendingPlaceListResult> {
     .where(eq(places.status, "pending_review"))
     .orderBy(desc(places.createdAt));
 
-  const [categoryMap, priceItemRows] = await Promise.all([
-    loadCategoryMap(rows.map((row) => row.internalId)),
-    rows.length === 0
-      ? Promise.resolve([])
-      : db
+  const pendingPlaceIds = rows.map((row) => row.internalId);
+  const categoryMap = await loadCategoryMap(pendingPlaceIds);
+  const priceItemRows =
+    pendingPlaceIds.length === 0
+      ? []
+      : await db
           .select({
             placeId: priceItems.placeId,
             id: priceItems.id,
@@ -2664,9 +2636,8 @@ async function listDatabasePendingPlaces(): Promise<PendingPlaceListResult> {
             latestReportedAt: priceItems.latestReportedAt,
           })
           .from(priceItems)
-          .where(inArray(priceItems.placeId, rows.map((row) => row.internalId)))
-          .orderBy(asc(priceItems.amount), asc(priceItems.label)),
-  ]);
+          .where(inArray(priceItems.placeId, pendingPlaceIds))
+          .orderBy(asc(priceItems.amount), asc(priceItems.label));
 
   const priceItemsByPlaceId = new Map<string, PlacePriceItem[]>();
 
@@ -2785,7 +2756,7 @@ async function moderateDatabasePlace(
     .where(eq(priceReports.placeId, existing.id));
 
   await db.insert(adminActions).values({
-    adminUserId: adminUserId ?? null,
+    adminUserId: toAdminActionUserId(adminUserId),
     actionType:
       input.decision === "approve"
         ? "approve_place_submission"
@@ -3073,6 +3044,8 @@ export async function createPlaceSubmission(
       source: "mock" as const,
       preview: toFallbackPlacePreview(input),
     };
+  } finally {
+    releaseDatabaseConnection();
   }
 }
 
@@ -3085,7 +3058,9 @@ export async function listPendingPlaces() {
   }
 
   try {
-    return await listDatabasePendingPlaces();
+    return await withDatabaseReadTimeout("listPendingPlaces", () =>
+      listDatabasePendingPlaces(),
+    );
   } catch (error) {
     markDatabaseUnavailable(error);
     console.error("Failed to load pending place submissions.", error);
@@ -3123,6 +3098,8 @@ export async function moderatePlaceSubmission(
       source: "database" as const,
       item: null,
     };
+  } finally {
+    releaseDatabaseConnection();
   }
 }
 
@@ -3230,6 +3207,8 @@ export async function createPlacePriceReport(
       mock: false,
       item: null,
     };
+  } finally {
+    releaseDatabaseConnection();
   }
 }
 
@@ -3242,7 +3221,9 @@ export async function listPendingPriceReports() {
   }
 
   try {
-    return await listDatabasePendingPriceReports();
+    return await withDatabaseReadTimeout("listPendingPriceReports", () =>
+      listDatabasePendingPriceReports(),
+    );
   } catch (error) {
     markDatabaseUnavailable(error);
     console.error("Failed to load pending price reports.", error);
@@ -3280,6 +3261,8 @@ export async function moderatePriceReport(
       source: "database" as const,
       item: null,
     };
+  } finally {
+    releaseDatabaseConnection();
   }
 }
 
@@ -3338,5 +3321,7 @@ export async function updatePriceItem(
       item: null,
       placeId: null,
     };
+  } finally {
+    releaseDatabaseConnection();
   }
 }

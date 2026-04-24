@@ -1,6 +1,6 @@
 # Cloudflare 배포 가이드
 
-기준일: 2026-04-17
+기준일: 2026-04-21
 
 ## 목적
 - Cloudflare 계정 준비, Workers Builds 설정, 운영 배포, 수동 fallback 배포까지 한 문서에서 끝나게 정리한다.
@@ -173,6 +173,19 @@ npm run smoke:remote
 - `db:check:production`은 실제 `DATABASE_URL` 연결, moderation schema, drizzle migration table 유무를 확인한다.
 - `npm run deploy:check -- --preview`를 쓰면 preview 기준 URL 허용 상태만 빠르게 볼 수 있다.
 - manual split deploy를 돌릴 예정이면 `npm run deploy:check:public`, `npm run deploy:check:admin`까지 같이 본다.
+
+## 5-1. 운영 DB 초기 bootstrap seed
+운영 DB가 완전히 비어 있는 최초 1회에만 아래 명령으로 초기 카테고리, 운영자/데모 계정, 착한가격업소 기반 장소/가격 데이터를 적재한다.
+
+```bash
+npm run db:seed:production
+```
+
+주의:
+- `db:seed:production`은 production `DATABASE_URL`을 사용하되, 주요 앱 테이블이 모두 비어 있을 때만 기존 seed를 실행한다.
+- 하나라도 데이터가 있으면 destructive seed를 거부한다.
+- 일반 `npm run db:seed`는 기존 데이터를 삭제하고 다시 채우는 개발용 명령이므로 운영 DB에 직접 사용하지 않는다.
+- 운영 데이터가 생긴 뒤 추가 데이터가 필요하면 별도 upsert/import 스크립트를 만들어야 한다.
 
 ## 6. 평소 운영 배포
 

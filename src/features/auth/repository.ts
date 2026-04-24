@@ -2,7 +2,12 @@ import "server-only";
 
 import { and, eq } from "drizzle-orm";
 
-import { getDb, isDatabaseEnabled } from "@/db/client";
+import {
+  getDb,
+  isDatabaseEnabled,
+  markDatabaseUnavailable,
+  releaseDatabaseConnection,
+} from "@/db/client";
 import { authAccounts, users } from "@/db/schema";
 import {
   type AppUserRole,
@@ -61,6 +66,7 @@ const legacyAuthFallbackPasswords = new Map<string, string>([
   ["demo@altteulmap.local", "demo1234"],
   ["admin@altteulmap.local", "admin1234"],
 ]);
+const AUTH_DATABASE_LOOKUP_TIMEOUT_MS = 2_000;
 
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
@@ -118,6 +124,33 @@ function toLocalUser(email: string) {
   const normalizedEmail = normalizeEmail(email);
 
   return localAuthUsers.find((user) => user.email === normalizedEmail) ?? null;
+}
+
+async function withAuthDatabaseLookupTimeout<T>(
+  label: string,
+  load: () => Promise<T>,
+): Promise<T> {
+  let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutHandle = setTimeout(() => {
+      reject(
+        new Error(
+          `${label} exceeded the ${AUTH_DATABASE_LOOKUP_TIMEOUT_MS}ms database lookup timeout.`,
+        ),
+      );
+    }, AUTH_DATABASE_LOOKUP_TIMEOUT_MS);
+  });
+
+  try {
+    return await Promise.race([load(), timeoutPromise]);
+  } finally {
+    if (timeoutHandle) {
+      clearTimeout(timeoutHandle);
+    }
+
+    releaseDatabaseConnection();
+  }
 }
 
 async function getDatabaseUserByEmail(email: string) {
@@ -189,7 +222,18 @@ export async function verifyCredentials(email: string, password: string) {
   }
 
   try {
-    const credentialUser = await getDatabaseCredentialsUserByEmail(email);
+    if (matchesKnownAccountPassword(email, password)) {
+      return (
+        (await withAuthDatabaseLookupTimeout("verifyCredentials", () =>
+          getDatabaseUserByEmail(email),
+        )) ?? toLocalUser(email)
+      );
+    }
+
+    const credentialUser = await withAuthDatabaseLookupTimeout(
+      "verifyCredentials",
+      () => getDatabaseCredentialsUserByEmail(email),
+    );
 
     if (
       credentialUser?.passwordHash &&
@@ -202,13 +246,9 @@ export async function verifyCredentials(email: string, password: string) {
         role: credentialUser.role,
       };
     }
-
-    if (!matchesKnownAccountPassword(email, password)) {
-      return null;
-    }
-
-    return (await getDatabaseUserByEmail(email)) ?? toLocalUser(email);
+    return null;
   } catch (error) {
+    markDatabaseUnavailable(error);
     console.error("Failed to verify credentials against database.", error);
 
     if (matchesKnownAccountPassword(email, password, { allowLegacyFallback: true })) {

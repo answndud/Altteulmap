@@ -740,3 +740,100 @@
 - 결과:
   - 운영 public URL에서 Impeccable 디자인 개선 결과가 보이는 상태를 확인했다.
   - 운영 DB credential blocker는 별도 active 작업으로 남아 있으며, 현재 배포 확인은 degraded fallback과 mock fallback이 유지되는 조건에서 완료했다.
+
+<a id="archive-029"></a>
+## `029` 운영 DB 복구와 AI 검수 persisted live 경로 마감
+- 완료일: `2026-04-21`
+- 배경:
+  - Supabase 운영 project `altteulmap-prod`가 pause 상태였고, 운영 `DATABASE_URL` 확인 명령은 `Tenant or user not found`로 실패했다.
+  - 사용자가 Supabase dashboard에서 project restore를 완료한 뒤 운영 DB 연결, schema migration, 초기 seed, public/admin Worker 런타임 반영까지 이어서 검증해야 했다.
+  - 목표는 live 관리자 큐에서 장소 등록, 가격 제보, 신고의 AI 1차 검수 제안이 `moderation_suggestions`에 persisted 되는지 확인하고, 실제 처리 후 pending 테스트 데이터가 남지 않게 하는 것이었다.
+- 변경 내용:
+  - `db:check:production`이 Drizzle migration timestamp의 `bigint` 값을 안전하게 출력하도록 보정했다.
+  - 운영 DB가 완전히 비어 있을 때만 실행되는 guarded bootstrap seed 스크립트 `db:seed:production`을 추가했다.
+  - 운영 DB에 Drizzle migration 전체를 적용하고, `moderation_suggestions` table과 관련 enum, `drizzle.__drizzle_migrations` 존재를 확인했다.
+  - 운영 DB에 초기 카테고리, 운영자/데모 계정, 착한가격업소 기반 장소/가격 seed를 적재했다.
+  - Cloudflare public/admin Worker runtime secret에 운영 `DATABASE_URL`과 `USE_MOCK_DATA=false`를 반영하고 public/admin을 재배포했다.
+  - Cloudflare Workers에서 `postgres` client를 요청 간 재사용하면 다음 DB 호출이 timeout/hung 상태로 이어질 수 있어, read/auth/write 주요 경로가 Worker runtime에서 DB 연결을 release하도록 수정했다.
+  - known demo/admin credentials는 운영 DB hash 검증의 `scrypt` 경로보다 env password 확인을 먼저 거치고, DB lookup timeout 시 local fallback으로 로그인 가능하도록 했다.
+  - local fallback admin id가 UUID FK 컬럼에 들어가지 않도록 admin action user id를 UUID일 때만 저장하도록 정규화했다.
+  - 관리자 overview와 pending 장소 큐의 DB 조회를 순차화하고, 관리자 장소/가격/신고 list에 read timeout을 적용했다.
+- 코드/문서:
+  - `package.json`
+  - `scripts/check-production-db.mjs`
+  - `scripts/seed-production.mjs`
+  - `src/db/client.ts`
+  - `src/features/auth/repository.ts`
+  - `src/features/admin/admin-action.ts`
+  - `src/features/admin/repository.ts`
+  - `src/features/places/repository.ts`
+  - `src/features/reports/repository.ts`
+  - `docs/deploy/deploy-cloudflare.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run db:check:production`
+    - restore 전 실패, `Tenant or user not found`
+  - `npm run db:check:production`
+    - restore 후 연결 성공, `moderation_suggestions: missing`, `moderation enums: 0/2 present`, `drizzle migrations table: missing`
+  - `npx drizzle-kit migrate`
+    - 운영 DB 전체 migration 적용 성공
+  - `npm run db:check:production`
+    - 통과, `moderation_suggestions: present`, `moderation enums: 2/2 present`, `drizzle migrations table: present`
+  - `npm run db:seed:production`
+    - 운영 DB 앱 테이블 empty guard 통과 후 초기 seed 적용, `Seed complete.`
+  - 운영 DB count 확인
+    - seed 전 `categories=0`, `places=0`, `price_items=0`, `users=0`, `moderation_suggestions=0`
+    - seed 후 `categories=23`, `places=1000`, `price_items=2493`, `price_reports=4986`, `users=2`, `content_reports=0`, `moderation_suggestions=0`
+  - `npm run verify:quick`
+    - 통과
+  - `npm run verify`
+    - 통과
+  - `npm run deploy:admin`
+    - 통과, `https://altteulmap-admin.altteul-lab.workers.dev`
+  - `npm run deploy:public`
+    - 통과, `https://altteulmap.altteul-lab.workers.dev`
+  - live public map API 반복 확인
+    - 3회 연속 `source=database`, `mock=false`, `count=1000`, `items=120`
+  - live admin API 확인
+    - `/api/admin/places`, `/api/admin/prices`, `/api/admin/reports` 모두 `source=database`, `mock=false`
+  - 운영 테스트 pending 제보 생성/처리
+    - public API로 테스트 장소 `운영검증-mo8elzxp-g46m-분식`, 가격 제보 `08c99a3f-f890-434d-826c-642d5d2d4af0`, 신고 `0c1922f4-4b76-4b67-8a8c-22dcdfbd1a67` 생성
+    - 이전 직접 삽입 검증 데이터까지 포함해 장소 2건, 가격 제보 2건, 신고 2건이 관리자 큐에 표시됨
+    - 6건 모두 `moderationSuggestion` 존재 확인
+    - admin API로 장소 2건 반려, 가격 제보 2건 반려, 신고 2건 `resolved` 처리 성공
+    - DB 요약: `pending_test_places=0`, `pending_test_prices=0`, `unresolved_test_reports=0`, `suggestion_count=6`
+  - `npm run db:check:production`
+    - 최종 통과
+  - `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev SMOKE_ADMIN_URL=https://altteulmap-admin.altteul-lab.workers.dev npm run smoke:remote`
+    - 최종 통과
+  - `git diff --check`
+    - 통과
+- 결과:
+  - 운영 DB credential blocker는 해소됐다.
+  - 운영 DB는 migration과 bootstrap seed가 적용된 상태이며, public map/read 경로가 DB source로 안정 응답한다.
+  - live 관리자 큐의 AI 1차 검수 제안은 장소 등록, 가격 제보, 신고 모두 persisted storage 기준으로 생성/조회된다.
+  - 테스트 pending 데이터는 모두 처리되어 운영 DB에 미처리 `운영검증` pending/open 데이터가 남아 있지 않다.
+  - 다음 active 작업은 모바일/운영 실기기 QA다.
+
+<a id="archive-030"></a>
+## `030` 모바일/운영 실기기 QA 범위 제외와 active 문서 정리
+- 완료일: `2026-04-24`
+- 배경:
+  - 운영 DB 복구와 AI 검수 persisted live 경로가 마감된 뒤 active 작업으로는 모바일/운영 실기기 QA만 남아 있었다.
+  - 사용자는 해당 실기기 QA를 더 이상 진행하지 않아도 된다고 결정했고, 현재 변경분을 먼저 커밋해 두길 요청했다.
+- 변경 내용:
+  - `PLAN.md`에서 남아 있던 모바일/운영 실기기 QA active 항목을 제거했다.
+  - `PROGRESS.md`에서 pending 상태로 남아 있던 실기기 QA 항목과 관련 요약을 제거했다.
+  - active 작업이 모두 비었으므로 두 문서를 규칙에 맞게 `현재 active 작업 없음` 상태로 정리했다.
+- 코드/문서:
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `git diff --check`
+    - 통과
+- 결과:
+  - 현재 roadmap 기준 active 작업은 남아 있지 않다.
+  - 이후 작업이 필요해지면 새 active 작업을 먼저 정의한 뒤 진행하면 된다.
