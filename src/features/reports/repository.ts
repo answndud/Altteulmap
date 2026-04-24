@@ -4,8 +4,15 @@ import { desc, eq } from "drizzle-orm";
 
 import { ensureContentReportModerationSuggestions } from "@/features/admin/moderation-agent";
 import type { ModerationSuggestionRecord } from "@/features/admin/moderation-suggestion";
-import { getDb, isDatabaseEnabled, markDatabaseUnavailable } from "@/db/client";
+import {
+  getDb,
+  isDatabaseEnabled,
+  markDatabaseUnavailable,
+  releaseDatabaseConnection,
+  withDatabaseReadTimeout,
+} from "@/db/client";
 import { adminActions, contentReports, places } from "@/db/schema";
+import { toAdminActionUserId } from "@/features/admin/admin-action";
 import { mockReports, type MockReportRecord } from "@/features/reports/mock-data";
 import type {
   ReportModerationInput,
@@ -239,7 +246,7 @@ async function updateDatabaseReportStatus(
     .limit(1);
 
   await db.insert(adminActions).values({
-    adminUserId: adminUserId ?? null,
+    adminUserId: toAdminActionUserId(adminUserId),
     actionType: "update_content_report_status",
     targetType: "content_report",
     targetId: updatedReport.id,
@@ -270,7 +277,9 @@ export async function listReports() {
   }
 
   try {
-    return await listDatabaseReports();
+    return await withDatabaseReadTimeout("listReports", () =>
+      listDatabaseReports(),
+    );
   } catch (error) {
     markDatabaseUnavailable(error);
     console.error("Failed to load reports from database. Falling back to mock data.", error);
@@ -306,6 +315,8 @@ export async function createReportSubmission(
       source: "mock" as const,
       preview: toMockPreview(input),
     };
+  } finally {
+    releaseDatabaseConnection();
   }
 }
 
@@ -335,5 +346,7 @@ export async function updateReportStatus(
       source: "database" as const,
       item: null,
     };
+  } finally {
+    releaseDatabaseConnection();
   }
 }

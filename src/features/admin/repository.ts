@@ -2,7 +2,12 @@ import "server-only";
 
 import { and, desc, eq, gt, or, sql } from "drizzle-orm";
 
-import { getDb, isDatabaseEnabled, markDatabaseUnavailable } from "@/db/client";
+import {
+  getDb,
+  isDatabaseEnabled,
+  markDatabaseUnavailable,
+  withDatabaseReadTimeout,
+} from "@/db/client";
 import {
   authSessions,
   contentReports,
@@ -119,80 +124,69 @@ async function getDatabaseAdminOverview(): Promise<AdminOverviewResult> {
     .from(users)
     .limit(1);
 
-  const [
-    [userCountsRow],
-    [sessionCountsRow],
-    [placeCountsRow],
-    [pendingPriceReportCountsRow],
-    [openReportCountsRow],
-    recentUsersRows,
-    activeSessionUserRows,
-    visitMetrics,
-  ] = await Promise.all([
-    db
-      .select({
-        totalUsers: sql<number>`count(*)::int`,
-        adminUsers:
-          sql<number>`count(*) filter (where ${users.role} = 'admin')::int`,
-        regularUsers:
-          sql<number>`count(*) filter (where ${users.role} = 'user')::int`,
-      })
-      .from(users),
-    db
-      .select({
-        currentSessions: sql<number>`count(*)::int`,
-        activeUsers: sql<number>`count(distinct ${authSessions.userId})::int`,
-      })
-      .from(authSessions)
-      .where(gt(authSessions.expires, now)),
-    db
-      .select({
-        activePlaces:
-          sql<number>`count(*) filter (where ${places.status} = 'active')::int`,
-        pendingPlaces:
-          sql<number>`count(*) filter (where ${places.status} = 'pending_review')::int`,
-      })
-      .from(places),
-    db
-      .select({
-        pendingPriceReports: sql<number>`count(*)::int`,
-      })
-      .from(priceReports)
-      .where(eq(priceReports.reportStatus, "pending_review")),
-    db
-      .select({
-        openReports: sql<number>`count(*)::int`,
-      })
-      .from(contentReports)
-      .where(
-        and(
-          eq(contentReports.targetType, "place"),
-          or(
-            eq(contentReports.status, "open"),
-            eq(contentReports.status, "reviewing"),
-          ),
+  const [userCountsRow] = await db
+    .select({
+      totalUsers: sql<number>`count(*)::int`,
+      adminUsers:
+        sql<number>`count(*) filter (where ${users.role} = 'admin')::int`,
+      regularUsers:
+        sql<number>`count(*) filter (where ${users.role} = 'user')::int`,
+    })
+    .from(users);
+  const [sessionCountsRow] = await db
+    .select({
+      currentSessions: sql<number>`count(*)::int`,
+      activeUsers: sql<number>`count(distinct ${authSessions.userId})::int`,
+    })
+    .from(authSessions)
+    .where(gt(authSessions.expires, now));
+  const [placeCountsRow] = await db
+    .select({
+      activePlaces:
+        sql<number>`count(*) filter (where ${places.status} = 'active')::int`,
+      pendingPlaces:
+        sql<number>`count(*) filter (where ${places.status} = 'pending_review')::int`,
+    })
+    .from(places);
+  const [pendingPriceReportCountsRow] = await db
+    .select({
+      pendingPriceReports: sql<number>`count(*)::int`,
+    })
+    .from(priceReports)
+    .where(eq(priceReports.reportStatus, "pending_review"));
+  const [openReportCountsRow] = await db
+    .select({
+      openReports: sql<number>`count(*)::int`,
+    })
+    .from(contentReports)
+    .where(
+      and(
+        eq(contentReports.targetType, "place"),
+        or(
+          eq(contentReports.status, "open"),
+          eq(contentReports.status, "reviewing"),
         ),
       ),
-    db
-      .select({
-        id: users.id,
-        email: users.email,
-        nickname: users.nickname,
-        role: users.role,
-        createdAt: users.createdAt,
-      })
-      .from(users)
-      .orderBy(desc(users.createdAt))
-      .limit(6),
-    db
-      .select({
-        userId: authSessions.userId,
-      })
-      .from(authSessions)
-      .where(gt(authSessions.expires, now))
-      .groupBy(authSessions.userId),
-    getVisitMetrics(),
-  ]);
+    );
+  const recentUsersRows = await db
+    .select({
+      id: users.id,
+      email: users.email,
+      nickname: users.nickname,
+      role: users.role,
+      createdAt: users.createdAt,
+    })
+    .from(users)
+    .orderBy(desc(users.createdAt))
+    .limit(6);
+  const activeSessionUserRows = await db
+    .select({
+      userId: authSessions.userId,
+    })
+    .from(authSessions)
+    .where(gt(authSessions.expires, now))
+    .groupBy(authSessions.userId);
+  const visitMetrics = await getVisitMetrics();
 
   const activeSessionUserIds = new Set(
     activeSessionUserRows.map((row) => row.userId),
@@ -232,7 +226,9 @@ export async function getAdminOverview() {
   }
 
   try {
-    return await getDatabaseAdminOverview();
+    return await withDatabaseReadTimeout("getAdminOverview", () =>
+      getDatabaseAdminOverview(),
+    );
   } catch (error) {
     markDatabaseUnavailable(error);
     console.error("Failed to load admin overview. Falling back to mock data.", error);

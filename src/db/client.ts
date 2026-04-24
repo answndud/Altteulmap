@@ -5,26 +5,49 @@ import { getRequiredServerEnv, shouldUseMockData } from "@/lib/env";
 import * as schema from "@/db/schema";
 
 const DATABASE_UNAVAILABLE_TTL_MS = 60_000;
+const DATABASE_READ_TIMEOUT_MS = 5_000;
 
-function createDb() {
+function createPostgresClient() {
   const connectionString = getRequiredServerEnv("DATABASE_URL");
 
-  const client = postgres(connectionString, {
+  return postgres(connectionString, {
     max: 1,
     prepare: false,
     idle_timeout: 5,
   });
+}
 
+function createDb(client: ReturnType<typeof createPostgresClient>) {
   return drizzle(client, { schema });
 }
 
 type Database = ReturnType<typeof createDb>;
+type DatabaseState = {
+  client: ReturnType<typeof createPostgresClient>;
+  db: Database;
+};
 
 const globalForDb = globalThis as {
-  __altteulmapDb?: Database;
+  __altteulmapDbState?: DatabaseState;
   __altteulmapDbUnavailableUntil?: number;
   __altteulmapDbUnavailableReason?: string;
 };
+
+function createDbState(): DatabaseState {
+  const client = createPostgresClient();
+
+  return {
+    client,
+    db: createDb(client),
+  };
+}
+
+function isCloudflareWorkerRuntime() {
+  return (
+    typeof navigator !== "undefined" &&
+    navigator.userAgent === "Cloudflare-Workers"
+  );
+}
 
 function getErrorMessage(error: unknown) {
   const messages: string[] = [];
@@ -139,6 +162,62 @@ export function markDatabaseUnavailable(
 
   globalForDb.__altteulmapDbUnavailableUntil = Date.now() + ttlMs;
   globalForDb.__altteulmapDbUnavailableReason = getErrorMessage(error);
+  resetDatabaseConnection();
+}
+
+export function resetDatabaseConnection() {
+  const state = globalForDb.__altteulmapDbState;
+  globalForDb.__altteulmapDbState = undefined;
+
+  if (!state) {
+    return;
+  }
+
+  void state.client.end({ timeout: 1 }).catch((error: unknown) => {
+    console.warn("Failed to close stale database connection.", error);
+  });
+}
+
+export function releaseDatabaseConnection() {
+  if (isCloudflareWorkerRuntime()) {
+    resetDatabaseConnection();
+  }
+}
+
+export async function withDatabaseReadTimeout<T>(
+  label: string,
+  load: () => Promise<T>,
+): Promise<T> {
+  let timedOut = false;
+  let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
+  const operation = load();
+
+  void operation.catch((error) => {
+    if (timedOut) {
+      console.error(`${label} rejected after the read timeout elapsed.`, error);
+    }
+  });
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutHandle = setTimeout(() => {
+      timedOut = true;
+      reject(
+        new Error(
+          `${label} exceeded the ${DATABASE_READ_TIMEOUT_MS}ms database read timeout.`,
+        ),
+      );
+    }, DATABASE_READ_TIMEOUT_MS);
+  });
+
+  try {
+    return await Promise.race([operation, timeoutPromise]);
+  } finally {
+    if (timeoutHandle) {
+      clearTimeout(timeoutHandle);
+    }
+
+    releaseDatabaseConnection();
+  }
 }
 
 export function getDb() {
@@ -148,8 +227,8 @@ export function getDb() {
     );
   }
 
-  const db = globalForDb.__altteulmapDb ?? createDb();
-  globalForDb.__altteulmapDb = db;
+  const state = globalForDb.__altteulmapDbState ?? createDbState();
+  globalForDb.__altteulmapDbState = state;
 
-  return db;
+  return state.db;
 }

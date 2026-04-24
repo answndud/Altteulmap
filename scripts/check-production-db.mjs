@@ -75,6 +75,27 @@ function detectReservedCharacters(password) {
   return reserved.filter((character) => password.includes(character));
 }
 
+function formatMigrationCreatedAt(value) {
+  const timestamp =
+    typeof value === "number"
+      ? value
+      : typeof value === "bigint"
+        ? Number(value)
+        : Number.parseInt(String(value), 10);
+
+  if (!Number.isFinite(timestamp)) {
+    return String(value);
+  }
+
+  const date = new Date(timestamp);
+
+  if (Number.isNaN(date.getTime())) {
+    return String(value);
+  }
+
+  return date.toISOString();
+}
+
 function buildClientOptions(connection) {
   return {
     host: connection.host,
@@ -194,7 +215,7 @@ async function main() {
       printLine("latest migrations:");
       for (const migration of migrationStatus.latestMigrations) {
         printLine(
-          `- ${maskValue(migration.hash, 6, 4)} @ ${new Date(migration.created_at).toISOString()}`,
+          `- ${maskValue(migration.hash, 6, 4)} @ ${formatMigrationCreatedAt(migration.created_at)}`,
         );
       }
     }
