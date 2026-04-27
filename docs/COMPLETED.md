@@ -837,3 +837,27 @@
 - 결과:
   - 현재 roadmap 기준 active 작업은 남아 있지 않다.
   - 이후 작업이 필요해지면 새 active 작업을 먼저 정의한 뒤 진행하면 된다.
+
+<a id="archive-031"></a>
+## `031` 모바일/운영 실기기 QA 문제 없음 확인
+- 완료일: `2026-04-27`
+- 배경:
+  - 이전에는 모바일/운영 실기기 QA를 별도 진행하지 않는 것으로 active 문서를 정리했지만, 이후 사용자가 실제 실기기 QA를 수행했다.
+  - 운영 public/admin URL은 이미 운영 DB 기반으로 동작하며, 익명 쓰기와 관리자 큐 처리까지 검증된 상태였다.
+- 변경 내용:
+  - 사용자 실기기 QA 결과를 `docs/project/mobile-qa-checklist.md`에 반영했다.
+  - iPhone Safari와 Android Chrome device matrix를 `pass` 상태로 갱신했다.
+  - 체크리스트 항목은 사용자 보고 기준으로 전체 `pass` 처리했다.
+  - OS version은 전달받지 못했으므로 `미기록`으로 남겼다.
+- 코드/문서:
+  - `docs/project/mobile-qa-checklist.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - 사용자 실기기 QA 결과:
+    - iPhone Safari 문제 없음
+    - Android Chrome 문제 없음
+    - public 지도/현재 위치/지역 재검색/목록과 상세 시트/익명 쓰기 흐름 문제 없음
+    - admin 로그인/관리자 큐/AI 패널 문제 없음
+- 결과:
+  - 모바일/운영 실기기 QA 기준으로 발견된 blocker는 없다.
+  - 현재 active 작업은 계속 없는 상태이며, 다음 작업은 출시 전 마감 또는 새 기능/운영 개선을 선택해 새 active 작업으로 정의하면 된다.

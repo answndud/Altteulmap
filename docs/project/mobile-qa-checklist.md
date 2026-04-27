@@ -1,6 +1,6 @@
 # Mobile QA Checklist
 
-기준일: 2026-04-12
+기준일: 2026-04-27
 
 ## 목적
 - Phase B 실기기 QA를 iPhone Safari 1대, Android Chrome 1대 기준으로 빠르게 반복할 수 있게 한다.
@@ -19,8 +19,8 @@
 
 | Device | Browser | OS | Status | Notes |
 | --- | --- | --- | --- | --- |
-| iPhone | Safari |  | pending |  |
-| Android | Chrome |  | pending |  |
+| iPhone | Safari | 미기록 | pass | 사용자 실기기 QA 결과 문제 없음 |
+| Android | Chrome | 미기록 | pass | 사용자 실기기 QA 결과 문제 없음 |
 
 ## Public Flow
 
@@ -68,6 +68,46 @@
 - 장소 등록 카드에 `AI 1차 검수` 패널이 보인다
 - 가격 제보 카드에 `AI 1차 검수` 패널이 보인다
 - 신고 카드에 `AI 1차 검수` 패널이 보인다
+
+## Latest Result
+
+```text
+Date: 2026-04-27
+Build: live workers.dev
+Tester: user
+
+Device: iPhone / Safari / iOS version not recorded
+- First load: pass
+- Current location allow: pass
+- Current location deny: pass
+- Map refresh: pass
+- Cluster zoom: pass
+- List sheet drag: pass
+- Detail sheet drag: pass
+- Anonymous submit: pass
+- Anonymous price report: pass
+- Anonymous report: pass
+- Admin login: pass
+- Admin queues: pass
+- AI panels: pass
+- Notes: 사용자 실기기 QA 결과 문제 없음.
+
+Device: Android / Chrome / Android version not recorded
+- First load: pass
+- Current location allow: pass
+- Current location deny: pass
+- Map refresh: pass
+- Cluster zoom: pass
+- List sheet drag: pass
+- Detail sheet drag: pass
+- Anonymous submit: pass
+- Anonymous price report: pass
+- Anonymous report: pass
+- Admin login: pass
+- Admin queues: pass
+- AI panels: pass
+- Notes: 사용자 실기기 QA 결과 문제 없음.
+```
 
 ## Result Template
 
