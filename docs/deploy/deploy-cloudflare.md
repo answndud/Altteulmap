@@ -1,6 +1,6 @@
 # Cloudflare 배포 가이드
 
-기준일: 2026-04-21
+기준일: 2026-04-27
 
 ## 목적
 - Cloudflare 계정 준비, Workers Builds 설정, 운영 배포, 수동 fallback 배포까지 한 문서에서 끝나게 정리한다.
@@ -12,6 +12,8 @@
 - public: `https://altteulmap.altteul-lab.workers.dev`
 - admin: `https://altteulmap-admin.altteul-lab.workers.dev`
 - `NEXTAUTH_URL`, `SITE_URL`, `ADMIN_APP_URL`, canonical, robots, sitemap, admin redirect는 위 두 주소를 기준으로 유지한다.
+- 운영 DB는 Supabase PostgreSQL이며, `moderation_suggestions` migration과 bootstrap seed 적용이 완료된 상태다.
+- iPhone Safari와 Android Chrome 실기기 QA는 blocker 없이 통과했다.
 - 평소 배포는 GitHub `main` push 뒤 Cloudflare Workers Builds가 맡는다.
 - GitHub Actions는 `pull_request`와 `workflow_dispatch`에서만 CI를 수행한다.
 - 로컬 터미널 배포(`deploy`, `deploy:public`, `deploy:admin`)는 fallback 경로다.
@@ -173,6 +175,7 @@ npm run smoke:remote
 - `db:check:production`은 실제 `DATABASE_URL` 연결, moderation schema, drizzle migration table 유무를 확인한다.
 - `npm run deploy:check -- --preview`를 쓰면 preview 기준 URL 허용 상태만 빠르게 볼 수 있다.
 - manual split deploy를 돌릴 예정이면 `npm run deploy:check:public`, `npm run deploy:check:admin`까지 같이 본다.
+- 공개 공유 전 최종 점검은 [public share checklist](/Users/alex/project/altteulmap/docs/project/public-share-checklist.md)를 같이 확인한다.
 
 ## 5-1. 운영 DB 초기 bootstrap seed
 운영 DB가 완전히 비어 있는 최초 1회에만 아래 명령으로 초기 카테고리, 운영자/데모 계정, 착한가격업소 기반 장소/가격 데이터를 적재한다.

@@ -861,3 +861,40 @@
 - 결과:
   - 모바일/운영 실기기 QA 기준으로 발견된 blocker는 없다.
   - 현재 active 작업은 계속 없는 상태이며, 다음 작업은 출시 전 마감 또는 새 기능/운영 개선을 선택해 새 active 작업으로 정의하면 된다.
+
+<a id="archive-032"></a>
+## `032` 출시 전 마감 문서와 운영 smoke 정리
+- 완료일: `2026-04-27`
+- 배경:
+  - 모바일/운영 실기기 QA가 문제 없음으로 확인됐고, 사용자는 출시 전 마감 순서대로 진행하길 요청했다.
+  - 마감 순서는 `커밋/푸시 정리 -> 운영 smoke 재확인 -> README/배포 문서 최종 확인 -> 공개 공유용 체크리스트 정리`로 정했다.
+- 변경 내용:
+  - QA 결과와 active 문서 변경분을 `docs: record mobile qa completion` 커밋으로 정리하고 `origin/main`에 push했다.
+  - 운영 URL 기준 remote smoke를 다시 실행했다.
+  - production DB 연결과 moderation schema 상태를 다시 확인했다.
+  - README의 완료된 `AI moderation rollout`, `Operational QA` 항목을 현재 완료 상태로 갱신했다.
+  - Cloudflare 배포 가이드에 운영 DB/실기기 QA 완료 상태와 공개 공유 체크리스트 링크를 반영했다.
+  - 공개 공유 전 점검용 `docs/project/public-share-checklist.md`를 추가했다.
+  - active 문서인 `PLAN.md`, `PROGRESS.md`를 다시 `현재 active 작업 없음` 상태로 정리했다.
+- 코드/문서:
+  - `README.md`
+  - `docs/deploy/deploy-cloudflare.md`
+  - `docs/project/public-share-checklist.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `git diff --check`
+    - 통과
+  - `git commit -m "docs: record mobile qa completion"`
+    - 성공, commit `16767e2`
+  - `git push origin main`
+    - 성공, `763d03e..16767e2 main -> main`
+  - `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev SMOKE_ADMIN_URL=https://altteulmap-admin.altteul-lab.workers.dev npm run smoke:remote`
+    - 통과
+  - `npm run db:check:production`
+    - 통과, production DB connection과 moderation schema ready
+- 결과:
+  - 현재 README와 운영 문서는 live DB, AI moderation persistence, 모바일 실기기 QA 완료 상태를 반영한다.
+  - 공개 공유 전에 확인할 URL, 완료 상태, 알려야 할 제약, 후속 후보가 checklist로 분리됐다.
+  - 현재 roadmap 기준 active 작업은 남아 있지 않다.
