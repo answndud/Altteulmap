@@ -66,11 +66,13 @@
 - 구현 후에는 `lint`, `build`, `Playwright E2E`, `smoke`를 기준으로 종료했습니다.
 - repo-local hooks와 검증 스크립트로 품질 기준을 저장소 안에 고정했습니다.
 
-## Current Rollout Plan
+## Current Status
 
-- `AI moderation rollout`: `moderation_suggestions` migration 적용 후 public/admin worker를 다시 배포하고 live 관리자 큐에서 AI 패널 노출을 확인합니다.
-- `Operational QA`: iPhone Safari, Android Chrome 기준으로 `현재 위치`, `이 지역 검색`, 목록/상세 시트 제스처, 관리자 AI 검수 패널까지 다시 점검합니다.
+- `Live data`: Supabase PostgreSQL 운영 DB에 migration과 초기 seed를 적용했고, public/admin worker가 DB source로 동작합니다.
+- `AI moderation`: 장소 등록, 가격 제보, 신고 관리자 큐에서 `AI 1차 검수` 제안이 persisted storage 기준으로 생성·조회됩니다.
+- `Operational QA`: iPhone Safari와 Android Chrome 실기기 QA에서 blocker 없이 통과했습니다.
 - `Launch URL`: 현재 운영 URL은 `workers.dev` split(public `altteulmap.altteul-lab.workers.dev`, admin `altteulmap-admin.altteul-lab.workers.dev`)으로 고정했고, canonical/sitemap/auth URL도 이 기준으로 유지합니다. custom domain은 별도 후속 작업입니다.
+- `Share checklist`: 공개 공유 전 점검 항목은 [public share checklist](docs/project/public-share-checklist.md)에 정리했습니다.
 
 ## Verification
 
@@ -108,5 +110,6 @@ npm run dev
 
 ## Next
 
-- 모바일 실기기 QA 마감
-- 운영 DB credential 복구와 `moderation_suggestions` live migration 적용
+- custom domain 연결 여부 결정
+- OAuth 실제 provider callback 운영 등록
+- 이메일 발송이 필요해지는 시점에 Resend 설정 마감
