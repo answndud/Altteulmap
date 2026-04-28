@@ -103,7 +103,22 @@
     - 통과
     - local `apps/admin` install은 `405 packages in 9s`
     - Cloudflare 유사 조건에서도 Next type validation skip 확인
+  - `npm run lint`
+    - 통과
+  - `npm run typecheck`
+    - 통과
+  - `git diff --check`
+    - 통과
+  - `git commit -m "fix: reduce admin workers build overhead"`
+    - 성공, commit `d57f10a`
+  - `git push origin main`
+    - 성공, `431dfdc..d57f10a main -> main`
+  - `gh api repos/answndud/Altteulmap/commits/d57f10a/check-runs`
+    - public `Workers Builds: altteulmap` 성공, build id `db5280a8-f832-40f0-b194-e8d258db4fa9`
+    - admin `Workers Builds: altteulmap-admin` 성공, build id `550f1f05-50e0-4d68-a378-084b05b44b87`
+  - `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev SMOKE_ADMIN_URL=https://altteulmap-admin.altteul-lab.workers.dev npm run smoke:remote`
+    - 통과
 - 다음 액션:
-  - 변경분을 push해 admin Workers Builds를 다시 트리거한다.
   - Cloudflare Dashboard에서 Build cache가 켜져 있는지 확인한다.
-  - 같은 설정에서 두 번째 retry build duration을 확인해 cache hit 효과를 측정한다.
+  - `altteulmap-admin` build `550f1f05-50e0-4d68-a378-084b05b44b87`의 dashboard duration을 확인한다.
+  - Build cache enable 후 같은 설정에서 두 번째 retry build duration을 확인해 cache hit 효과를 측정한다.
