@@ -22,4 +22,13 @@
 
 ## Active 작업
 
-현재 active 작업 없음
+### Admin 배포 1분 이내 가능성 검토
+- 대상: Cloudflare Workers Builds `altteulmap-admin`
+- 목표: 현재 `2m 44s` 수준의 admin retry build를 1분 이내로 줄일 수 있는지 판단한다.
+- 검토 기준:
+  - 현재 Next/OpenNext 빌드 경로를 유지한 상태에서 추가 단축 가능한지 확인한다.
+  - Cloudflare Workers Builds 설정만으로 가능한 상한을 구분한다.
+  - 1분 이내가 필요하면 어떤 배포 전략 변경이 필요한지 정리한다.
+- 완료 기준:
+  - 1분 이내 가능/불가능 판단을 근거와 함께 남긴다.
+  - 가능한 후속 경로를 `PROGRESS.md`에 남긴다.
