@@ -954,3 +954,39 @@
   - 최초 기준 `4m 50s`와 비교해도 약 `2m 6s` 단축됐다.
   - Cloudflare UI에 별도 Install command가 없는 상태에서도 `.npmrc`, Build cache, Build watch paths로 설치/캐시/문서-only trigger 비용을 줄이는 운영 기준이 정리됐다.
   - 현재 active 작업은 남아 있지 않다.
+
+<a id="archive-034"></a>
+## `034` Admin 1분 이내 배포 검토와 최종 배포 설정 리뷰
+- 완료일: `2026-04-28`
+- 배경:
+  - `altteulmap-admin` Workers Builds retry build는 Build cache와 watch paths 적용 후 `2m 44s`까지 줄었다.
+  - 사용자는 추가로 1분 이내까지 줄일 수 있는지, 그리고 현재 방식 외에 더 개선할 배포 설정이 있는지 최종 검토를 요청했다.
+- 변경 내용:
+  - 현재 Next/OpenNext + Workers Builds 자동 배포 구조를 유지하면서 모든 code change 배포를 1분 이내로 안정화하는 것은 현실적으로 어렵다고 판단했다.
+  - Worker/SPA 구조 전환은 가능하지만, 현재 MVP 단계에서는 `2m 44s` 배포 시간이 충분하고 인증/session/API 보안 재설계 비용이 더 크므로 현 구조 유지로 결정했다.
+  - Cloudflare 공식 문서 기준으로 Build configuration, Build cache, Build watch paths, Build image 설정을 재확인했다.
+  - 현재 Cloudflare UI에는 별도 Install command 입력칸이 없으므로, 배포 문서의 Install command 안내를 제거하고 `.npmrc` 기반 install 최적화로 정리했다.
+  - Build variables 권장값으로 `NEXT_TELEMETRY_DISABLED=1`, `NODE_VERSION=20.20.2`를 추가했다.
+  - `SKIP_DEPENDENCY_INSTALL=1`은 현재 구조에서 build command 내부 수동 install이 필요해져 실패 위험이 커지므로 비권장으로 문서화했다.
+  - Non-production branch builds는 production DB/secret 노출 가능성을 먼저 검토해야 하므로, 현재 PR 검증은 GitHub Actions에 맡기고 Cloudflare preview build는 필요할 때만 켜는 것으로 정리했다.
+- 코드/문서:
+  - `docs/deploy/deploy-cloudflare.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - Cloudflare 공식 Workers Builds configuration 문서 확인
+    - build command, deploy command, non-production branch deploy command, root directory 기준 확인
+  - Cloudflare 공식 Build cache 문서 확인
+    - npm `.npm` cache와 Next.js `.next/cache` cache 지원 확인
+  - Cloudflare 공식 Build watch paths 문서 확인
+    - include `*`, exclude `docs/*` 패턴과 skip 동작 확인
+  - Cloudflare 공식 Build image 문서 확인
+    - `.node-version`, `NODE_VERSION`, `SKIP_DEPENDENCY_INSTALL` 지원 확인
+  - `git diff --check`
+    - 통과
+- 결과:
+  - 최종 권장 운영 방식은 현재 split Next/OpenNext + Workers Builds 유지다.
+  - 현재 dashboard 설정은 `Path`, `Build command`, `Deploy command`, `Non-production branch deploy command`, `Build cache`, `Build watch paths`, build variables만 관리하면 된다.
+  - 1분 이내 배포는 현 구조의 튜닝 범위가 아니라 prebuilt deploy 또는 Worker/SPA 전환이 필요할 때 재검토할 후속 후보로 남긴다.
+  - 현재 active 작업은 남아 있지 않다.

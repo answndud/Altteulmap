@@ -74,20 +74,21 @@ Cloudflare Dashboard에서 public/admin worker를 각각 Git 연결된 Workers B
 
 `altteulmap`
 - Root directory: `/`
-- Install command: `npm ci --no-audit --no-fund --prefer-offline`
 - Build command: `npm run cf:build:public`
 - Deploy command: `npx opennextjs-cloudflare deploy -c wrangler.jsonc`
+- Non-production branch deploy command: `npx wrangler versions upload`
 
 `altteulmap-admin`
 - Root directory: `apps/admin`
-- Install command: `npm ci --no-audit --no-fund --prefer-offline`
 - Build command: `npm run build`
 - Deploy command: `npx wrangler deploy`
+- Non-production branch deploy command: `npx wrangler versions upload`
 
 중요:
 - Cloudflare Workers Builds는 지정된 root directory의 Wrangler config `name`이 Dashboard Worker 이름과 같아야 한다.
 - public은 루트 `wrangler.jsonc`의 `name`이 `altteulmap`이므로 Root directory `/`를 쓴다.
 - admin은 `apps/admin/wrangler.jsonc`의 `name`이 `altteulmap-admin`이므로 Root directory `apps/admin`을 쓴다.
+- 현재 Cloudflare Workers Builds UI에는 별도 Install command 입력칸이 없으므로 install 최적화는 root/admin `.npmrc`의 `audit=false`, `fund=false`, `progress=false`, `prefer-offline=true`로 적용한다.
 - `apps/admin/package-lock.json`은 Cloudflare의 `npm ci` 통과용이다. 실제 OpenNext 빌드는 루트 `package-lock.json`과 shared 코드 기준으로 수행된다.
 - 기존 dashboard command가 남아 있어도 동작하도록 `apps/admin`은 `npm run cf:build:admin`과 `wrangler.admin.jsonc` alias도 제공한다.
 - Build cache는 public/admin worker 모두 켠다. Workers Builds cache는 npm cache(`.npm`)와 Next.js build cache(`.next/cache`)를 재사용하므로, admin retry build 시간이 길 때 가장 먼저 확인할 설정이다.
@@ -105,9 +106,22 @@ Cloudflare Dashboard에서 public/admin worker 각각 설정한다.
   - Exclude paths: `docs/*`, `README.md`
 
 admin worker 권장:
-- Install command: `npm ci --no-audit --no-fund --prefer-offline`
 - Build command: `npm run build`
 - Deploy command: `npx wrangler deploy`
+- Non-production branch deploy command: `npx wrangler versions upload`
+
+Build variables 권장:
+- `NEXT_TELEMETRY_DISABLED=1`
+- `NODE_VERSION=20.20.2`
+
+Build variables 비권장:
+- `SKIP_DEPENDENCY_INSTALL=1`
+  - Cloudflare 공식 Build image 문서 기준 자동 dependency install을 끌 수 있지만, 이 앱은 Next/OpenNext build 전에 의존성이 반드시 필요하다.
+  - 이 값을 켜면 build command 안에서 별도 install을 직접 수행해야 하므로 현재 `2m 44s` 상태에서는 이득보다 실패 위험이 크다.
+
+Non-production branch builds:
+- 현재 PR 검증은 GitHub Actions가 맡고 있으므로 Cloudflare non-production branch builds는 꼭 필요할 때만 켠다.
+- 켜는 경우 preview URL은 production worker와 같은 runtime secret/binding을 볼 수 있는지 반드시 확인한다. production DB로 쓰기 요청이 들어가지 않게 preview 전용 env 전략을 먼저 정해야 한다.
 
 주의:
 - Build cache를 처음 켠 직후 첫 build는 cache 저장 단계라 크게 빨라지지 않을 수 있다.
@@ -345,6 +359,10 @@ custom domain으로 전환하면 같이 바꿀 것:
 - [Install/Update Wrangler](https://developers.cloudflare.com/workers/wrangler/install-and-update/)
 - [Wrangler login command](https://developers.cloudflare.com/workers/wrangler/commands/general/)
 - [Cloudflare Workers Next.js guide](https://developers.cloudflare.com/workers/framework-guides/web-apps/nextjs/)
+- [Workers Builds configuration](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/)
+- [Workers Builds build caching](https://developers.cloudflare.com/workers/ci-cd/builds/build-caching/)
+- [Workers Builds watch paths](https://developers.cloudflare.com/workers/ci-cd/builds/build-watch-paths/)
+- [Workers Builds build image](https://developers.cloudflare.com/workers/ci-cd/builds/build-image/)
 - [OpenNext get started](https://opennext.js.org/cloudflare/get-started)
 - [OpenNext env vars](https://opennext.js.org/cloudflare/howtos/env-vars)
 - [workers.dev](https://developers.cloudflare.com/workers/configuration/routing/workers-dev/)
