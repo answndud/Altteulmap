@@ -3,6 +3,11 @@ import path from "node:path";
 import process from "node:process";
 
 import { loadEnvFilesWithShellPrecedence } from "./lib/load-env-files.mjs";
+import {
+  isHttpsUrl,
+  isLocalhostUrl,
+  isTruthy,
+} from "./lib/url-checks.mjs";
 
 const cwd = process.cwd();
 const target = process.argv.includes("--preview") ? "preview" : "production";
@@ -39,32 +44,6 @@ const modeRequiredVars = {
 };
 
 const optionalVars = ["EMAIL_FROM", "RESEND_API_KEY"];
-
-function isTruthy(value) {
-  return typeof value === "string" && value.trim().length > 0;
-}
-
-function isLocalhostUrl(value) {
-  try {
-    const url = new URL(value);
-
-    return (
-      url.hostname === "localhost" ||
-      url.hostname === "127.0.0.1" ||
-      url.hostname.endsWith(".localhost")
-    );
-  } catch {
-    return false;
-  }
-}
-
-function isHttpsUrl(value) {
-  try {
-    return new URL(value).protocol === "https:";
-  } catch {
-    return false;
-  }
-}
 
 function printLine(message = "") {
   process.stdout.write(`${message}\n`);

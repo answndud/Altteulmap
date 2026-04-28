@@ -1,3 +1,5 @@
+import { normalizeComparableUrl } from "./lib/url-checks.mjs";
+
 const baseUrl = process.env.SMOKE_BASE_URL ?? "http://localhost:3000";
 
 function printLine(message) {
@@ -6,12 +8,6 @@ function printLine(message) {
 
 function logStep(label, detail) {
   printLine(`- ${label}: ${detail}`);
-}
-
-function normalizeComparableUrl(value) {
-  const url = new URL(value);
-  const normalizedPath = url.pathname === "/" ? "/" : url.pathname.replace(/\/+$/, "");
-  return `${url.origin}${normalizedPath}${url.search}`;
 }
 
 function extractCanonicalHref(html) {
