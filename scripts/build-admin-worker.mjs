@@ -1,17 +1,22 @@
 import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { existsSync, renameSync, rmSync } from "node:fs";
 
 import { patchNextCloudflareRuntime } from "./patch-next-cloudflare-runtime.mjs";
 
-const projectRoot = process.cwd();
+const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+const projectRoot = path.resolve(scriptDir, "..");
 const adminAppRoot = path.join(projectRoot, "apps", "admin");
-const openNextBin = path.join(
-  projectRoot,
+const adminOpenNextBin = path.join(
+  adminAppRoot,
   "node_modules",
   ".bin",
   "opennextjs-cloudflare",
 );
+const rootOpenNextBin = path.join(projectRoot, "node_modules", ".bin", "opennextjs-cloudflare");
+const dependencyRoot = existsSync(rootOpenNextBin) ? projectRoot : adminAppRoot;
+const openNextBin = dependencyRoot === adminAppRoot ? adminOpenNextBin : rootOpenNextBin;
 
 for (const relativePath of [".next", ".next-dev", ".open-next"]) {
   rmSync(path.join(adminAppRoot, relativePath), {
@@ -20,7 +25,7 @@ for (const relativePath of [".next", ".next-dev", ".open-next"]) {
   });
 }
 
-patchNextCloudflareRuntime({ projectRoot });
+patchNextCloudflareRuntime({ projectRoot: dependencyRoot });
 
 const adminAppUrl = process.env.ADMIN_APP_URL?.trim();
 const adminPackageLockPath = path.join(adminAppRoot, "package-lock.json");
@@ -34,7 +39,7 @@ if (existsSync(adminPackageLockBackupPath)) {
 }
 
 try {
-  if (existsSync(adminPackageLockPath)) {
+  if (dependencyRoot === projectRoot && existsSync(adminPackageLockPath)) {
     renameSync(adminPackageLockPath, adminPackageLockBackupPath);
   }
 

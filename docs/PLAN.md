@@ -22,15 +22,15 @@
 
 ## Active 작업
 
-### Cloudflare admin Worker 빌드 실패 복구
-- 대상: GitHub check run `Workers Builds: altteulmap-admin` / run `73128434508`
-- 목표: `altteulmap-admin` Cloudflare Workers Builds 실패 원인을 확인하고, repo에서 수정 가능한 설정/스크립트 문제를 고친다.
+### Cloudflare admin Worker 빌드 속도 개선
+- 대상: Cloudflare Workers Builds `altteulmap-admin`
+- 목표: dashboard command 우회 없이 repo 구조와 build script를 정리해 admin 자동 배포 시간을 줄인다.
 - 우선순위:
-  - GitHub check run 메타데이터와 Cloudflare 빌드 설정 경로 확인
-  - admin Worker 로컬 빌드 재현
-  - 실패 원인에 맞는 설정 또는 스크립트 수정
-  - 수정 후 로컬 검증 및 원격 check 재확인
+  - 현재 느린 구간과 중복 설치 경로 확인
+  - `apps/admin` root 기준 Cloudflare build가 루트 의존성을 반복 설치하지 않도록 스크립트 개선
+  - 기존 successful dashboard 설정(`Path=apps/admin`, `Install=npm ci`, `Build=npm run build`, `Deploy=npx wrangler deploy`)과 호환 유지
+  - 로컬 검증 및 원격 check duration 재확인
 - 완료 기준:
-  - `npm run cf:build:admin` 또는 동일 수준의 admin Worker 빌드 검증이 통과한다.
-  - 필요한 코드/문서 변경이 반영된다.
-  - Cloudflare/GitHub check 상태를 재확인하고 결과를 `PROGRESS.md`에 남긴다.
+  - admin Worker build/deploy 경로가 통과한다.
+  - 원격 `Workers Builds: altteulmap-admin`가 성공한다.
+  - 개선 전/후 duration 또는 병목 차이를 `PROGRESS.md`에 남긴다.
