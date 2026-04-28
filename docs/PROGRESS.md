@@ -14,7 +14,7 @@
 ## Active 작업
 
 ### Cloudflare admin Worker 빌드 속도 개선
-- 상태: 구현/원격 배포 성공, dashboard duration 최종 확인 필요
+- 상태: 추가 최적화 구현 중
 - 대상 build: `https://dash.cloudflare.com/09ffaff2ee2810549ebc107c3a6784d8/workers/services/view/altteulmap-admin/production/builds/8b5f7e0c-8dea-4515-b262-32ad49e26491`
 - 현재 기준:
   - `altteulmap-admin` 자동 배포는 성공했지만 dashboard duration이 약 `4m 50s`로 길다.
@@ -41,6 +41,12 @@
   - `apps/admin/scripts/build.mjs`는 root `node_modules`가 없고 `apps/admin/node_modules`가 있는 Cloudflare 환경에서 build 동안 루트 `node_modules` symlink를 만들었다가 제거한다.
   - 이 방식으로 기존 루트 admin build/OpenNext monorepo 경로는 유지하면서 build 단계의 루트 `npm ci` 재실행을 제거했다.
   - `scripts/build-admin-worker.mjs`는 실행 cwd와 무관하게 repo root를 계산하고, root/admin dependency 위치를 모두 지원하도록 수정했다.
+  - retry build `8c01bd68-65a2-428d-bdd1-eba7e108b4a3`가 `7m 4s`로 확인되어, self-contained admin install만으로는 속도 개선이 충분하지 않음을 확인했다.
+  - root/admin `.npmrc`에 `audit=false`, `fund=false`, `progress=false`, `prefer-offline=true`를 추가해 Cloudflare npm install 부가 작업을 줄인다.
+  - `apps/admin/next.config.ts`는 Cloudflare `WORKERS_CI=1` 환경에서 Next type validation을 생략하도록 조정했다.
+  - Cloudflare 공식 Workers Builds 문서 기준 Build cache는 npm cache(`.npm`)와 Next.js cache(`.next/cache`)를 재사용하므로, admin worker에서 반드시 활성화해야 한다.
+  - Cloudflare 공식 Build watch paths 문서 기준 문서-only 변경이 build를 트리거하지 않도록 `docs/*`, `README.md` exclude를 권장 설정으로 문서화했다.
+  - 배포 문서에 `npm ci --no-audit --no-fund --prefer-offline`, Build cache enable, Build watch paths 설정을 추가했다.
 - 최근 검증:
   - `gh run view 73128434508 --repo answndud/Altteulmap` 실패: GitHub Actions run이 아니라 조회 불가.
   - `gh api repos/answndud/Altteulmap/commits/7bf8dfe/check-runs`로 external Cloudflare check 메타데이터 확인.
@@ -86,6 +92,18 @@
     - GitHub external check metadata는 Cloudflare dashboard duration을 제공하지 않고 `started_at`/`completed_at`이 check 생성/완료 시각으로만 기록됨
   - `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev SMOKE_ADMIN_URL=https://altteulmap-admin.altteul-lab.workers.dev npm run smoke:remote`
     - 통과
+  - 사용자 Cloudflare retry build 확인
+    - admin build id `8c01bd68-65a2-428d-bdd1-eba7e108b4a3`
+    - dashboard duration `7m 4s`
+    - 이전 `4m 50s` 대비 악화되어 추가 최적화 필요
+  - `WORKERS_CI=1 PATH="/opt/homebrew/opt/node@20/bin:$PATH" npm run cf:build:admin`
+    - 통과
+    - Next build에서 `Skipping validation of types` 확인
+  - 루트 `node_modules`를 임시로 숨긴 뒤 `PATH="/opt/homebrew/opt/node@20/bin:$PATH" npm ci --prefix apps/admin && WORKERS_CI=1 PATH="/opt/homebrew/opt/node@20/bin:$PATH" npm run build --prefix apps/admin`
+    - 통과
+    - local `apps/admin` install은 `405 packages in 9s`
+    - Cloudflare 유사 조건에서도 Next type validation skip 확인
 - 다음 액션:
-  - Cloudflare dashboard에서 admin build `41894ab2-48ca-43ce-81ac-781018e14f06`의 실제 duration을 확인한다.
-  - 이전 기준 `4m 50s` 대비 개선 폭을 기록한 뒤, 충분하면 이 작업을 `COMPLETED.md`로 archive하고 active 문서를 비운다.
+  - 변경분을 push해 admin Workers Builds를 다시 트리거한다.
+  - Cloudflare Dashboard에서 Build cache가 켜져 있는지 확인한다.
+  - 같은 설정에서 두 번째 retry build duration을 확인해 cache hit 효과를 측정한다.

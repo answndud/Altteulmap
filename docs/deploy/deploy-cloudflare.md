@@ -74,13 +74,13 @@ Cloudflare Dashboard에서 public/admin worker를 각각 Git 연결된 Workers B
 
 `altteulmap`
 - Root directory: `/`
-- Install command: `npm ci`
+- Install command: `npm ci --no-audit --no-fund --prefer-offline`
 - Build command: `npm run cf:build:public`
 - Deploy command: `npx opennextjs-cloudflare deploy -c wrangler.jsonc`
 
 `altteulmap-admin`
 - Root directory: `apps/admin`
-- Install command: `npm ci`
+- Install command: `npm ci --no-audit --no-fund --prefer-offline`
 - Build command: `npm run build`
 - Deploy command: `npx wrangler deploy`
 
@@ -90,7 +90,29 @@ Cloudflare Dashboard에서 public/admin worker를 각각 Git 연결된 Workers B
 - admin은 `apps/admin/wrangler.jsonc`의 `name`이 `altteulmap-admin`이므로 Root directory `apps/admin`을 쓴다.
 - `apps/admin/package-lock.json`은 Cloudflare의 `npm ci` 통과용이다. 실제 OpenNext 빌드는 루트 `package-lock.json`과 shared 코드 기준으로 수행된다.
 - 기존 dashboard command가 남아 있어도 동작하도록 `apps/admin`은 `npm run cf:build:admin`과 `wrangler.admin.jsonc` alias도 제공한다.
-- build watch paths를 별도로 줄 수는 있지만 shared 의존 범위가 넓다. 처음에는 비워 두거나 넓게 잡는 편이 안전하다.
+- Build cache는 public/admin worker 모두 켠다. Workers Builds cache는 npm cache(`.npm`)와 Next.js build cache(`.next/cache`)를 재사용하므로, admin retry build 시간이 길 때 가장 먼저 확인할 설정이다.
+- Build watch paths는 문서 변경으로 production build가 반복 트리거되지 않도록 최소한 `docs/*`, `README.md`를 exclude한다.
+- admin worker의 Build watch paths는 너무 좁히면 shared 코드 변경을 놓칠 수 있으므로 include를 비워 두고 exclude만 두는 방식부터 적용한다.
+- Cloudflare 공식 문서 기준 retry build는 retry 시점의 build 설정을 다시 적용하므로, 설정을 바꾼 뒤 같은 build를 retry해 확인할 수 있다.
+
+### 2-4-1. Workers Builds 속도 설정
+Cloudflare Dashboard에서 public/admin worker 각각 설정한다.
+
+공통:
+- Settings > Build > Build cache: `Enable`
+- Settings > Build > Build watch paths:
+  - Include paths: `*`
+  - Exclude paths: `docs/*`, `README.md`
+
+admin worker 권장:
+- Install command: `npm ci --no-audit --no-fund --prefer-offline`
+- Build command: `npm run build`
+- Deploy command: `npx wrangler deploy`
+
+주의:
+- Build cache를 처음 켠 직후 첫 build는 cache 저장 단계라 크게 빨라지지 않을 수 있다.
+- 두 번째 build부터 npm cache와 `.next/cache`가 재사용되는지 duration을 비교한다.
+- `apps/admin`은 Cloudflare `WORKERS_CI=1` 환경에서 Next type validation을 건너뛰어 deploy build 시간을 줄인다. 타입 품질은 로컬/PR의 `npm run verify`로 검증한다.
 
 ## 3. 환경 변수와 시크릿
 

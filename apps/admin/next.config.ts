@@ -9,6 +9,9 @@ const nextConfig: NextConfig = {
   experimental: {
     externalDir: true,
   },
+  typescript: {
+    ignoreBuildErrors: process.env.WORKERS_CI === "1",
+  },
 };
 
 export default nextConfig;

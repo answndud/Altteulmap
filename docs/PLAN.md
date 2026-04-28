@@ -28,6 +28,8 @@
 - 우선순위:
   - 현재 느린 구간과 중복 설치 경로 확인
   - `apps/admin` root 기준 Cloudflare build가 루트 의존성을 반복 설치하지 않도록 스크립트 개선
+  - Cloudflare Build cache와 watch paths를 적용해 retry build와 문서-only build 비용을 줄인다.
+  - Workers CI 환경에서 admin deploy build가 불필요한 타입 검증을 반복하지 않도록 조정한다.
   - 기존 successful dashboard 설정(`Path=apps/admin`, `Install=npm ci`, `Build=npm run build`, `Deploy=npx wrangler deploy`)과 호환 유지
   - 로컬 검증 및 원격 check duration 재확인
 - 완료 기준:
