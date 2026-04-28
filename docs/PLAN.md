@@ -22,17 +22,4 @@
 
 ## Active 작업
 
-### Cloudflare admin Worker 빌드 속도 개선
-- 대상: Cloudflare Workers Builds `altteulmap-admin`
-- 목표: dashboard command 우회 없이 repo 구조와 build script를 정리해 admin 자동 배포 시간을 줄인다.
-- 우선순위:
-  - 현재 느린 구간과 중복 설치 경로 확인
-  - `apps/admin` root 기준 Cloudflare build가 루트 의존성을 반복 설치하지 않도록 스크립트 개선
-  - Cloudflare Build cache와 watch paths를 적용해 retry build와 문서-only build 비용을 줄인다.
-  - Workers CI 환경에서 admin deploy build가 불필요한 타입 검증을 반복하지 않도록 조정한다.
-  - 기존 successful dashboard 설정(`Path=apps/admin`, `Install=npm ci`, `Build=npm run build`, `Deploy=npx wrangler deploy`)과 호환 유지
-  - 로컬 검증 및 원격 check duration 재확인
-- 완료 기준:
-  - admin Worker build/deploy 경로가 통과한다.
-  - 원격 `Workers Builds: altteulmap-admin`가 성공한다.
-  - 개선 전/후 duration 또는 병목 차이를 `PROGRESS.md`에 남긴다.
+현재 active 작업 없음

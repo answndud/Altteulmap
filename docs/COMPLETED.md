@@ -898,3 +898,59 @@
   - 현재 README와 운영 문서는 live DB, AI moderation persistence, 모바일 실기기 QA 완료 상태를 반영한다.
   - 공개 공유 전에 확인할 URL, 완료 상태, 알려야 할 제약, 후속 후보가 checklist로 분리됐다.
   - 현재 roadmap 기준 active 작업은 남아 있지 않다.
+
+<a id="archive-033"></a>
+## `033` Cloudflare admin Worker 빌드 속도 개선
+- 완료일: `2026-04-28`
+- 배경:
+  - `altteulmap-admin` Workers Builds는 성공하고 있었지만 dashboard duration이 약 `4m 50s`로 길었다.
+  - 루트 기준 fast command로 돌리는 방식은 Cloudflare build 환경에서 루트 `node_modules`를 보장하지 못해 실패했다.
+  - 이후 admin self-contained install/build 경로를 만들었지만, retry build `8c01bd68-65a2-428d-bdd1-eba7e108b4a3`가 `7m 4s`로 확인되어 코드 변경만으로는 병목이 해소되지 않았다.
+- 변경 내용:
+  - `apps/admin` root에서 Cloudflare 기본 build가 동작하도록 admin package dependency와 lockfile을 self-contained로 정리했다.
+  - `apps/admin/scripts/build.mjs`가 root `node_modules`가 없는 Cloudflare 환경에서 build 동안 루트 `node_modules` symlink를 임시 생성/삭제하도록 했다.
+  - `scripts/build-admin-worker.mjs`는 실행 cwd와 무관하게 repo root를 계산하고 root/admin dependency 위치를 모두 지원하도록 수정했다.
+  - root/admin `.npmrc`에 `audit=false`, `fund=false`, `progress=false`, `prefer-offline=true`를 추가해 Cloudflare 자동 `npm ci`의 부가 작업을 줄였다.
+  - `apps/admin/next.config.ts`는 Cloudflare `WORKERS_CI=1` 환경에서 Next type validation을 생략하도록 조정했다.
+  - Cloudflare Dashboard에서 Build cache를 enable하고, Build watch paths에 `docs/*`, `README.md` exclude를 추가했다.
+  - 배포 문서에 현재 UI 기준으로 가능한 설정과 Build cache/watch paths 운영 방식을 반영했다.
+- 코드/문서:
+  - `apps/admin/package.json`
+  - `apps/admin/package-lock.json`
+  - `apps/admin/scripts/build.mjs`
+  - `apps/admin/next.config.ts`
+  - `scripts/build-admin-worker.mjs`
+  - `.npmrc`
+  - `apps/admin/.npmrc`
+  - `docs/deploy/deploy-cloudflare.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `PATH="/opt/homebrew/opt/node@20/bin:$PATH" npm run cf:build:admin`
+    - 통과
+  - `WORKERS_CI=1 PATH="/opt/homebrew/opt/node@20/bin:$PATH" npm run cf:build:admin`
+    - 통과, Next build에서 `Skipping validation of types` 확인
+  - 루트 `node_modules`를 임시로 숨긴 뒤 `PATH="/opt/homebrew/opt/node@20/bin:$PATH" npm ci --prefix apps/admin && WORKERS_CI=1 PATH="/opt/homebrew/opt/node@20/bin:$PATH" npm run build --prefix apps/admin`
+    - 통과, Cloudflare 유사 조건에서 admin 단독 설치/빌드 가능 확인
+  - `npm run lint`
+    - 통과
+  - `npm run typecheck`
+    - 통과
+  - `npm run deploy:check:admin`
+    - 통과
+  - `git diff --check`
+    - 통과
+  - `git push origin main` 후 commit `d57f10a` 원격 check 확인
+    - public `Workers Builds: altteulmap` 성공, build id `db5280a8-f832-40f0-b194-e8d258db4fa9`
+    - admin `Workers Builds: altteulmap-admin` 성공, build id `550f1f05-50e0-4d68-a378-084b05b44b87`
+  - `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev SMOKE_ADMIN_URL=https://altteulmap-admin.altteul-lab.workers.dev npm run smoke:remote`
+    - 통과
+  - Cloudflare Dashboard retry build
+    - admin build id `7e58dde3-8812-4cfd-8cfc-f1401a3132ee`
+    - dashboard duration `2m 44s`
+- 결과:
+  - admin Workers Builds duration은 확인된 최악값 `7m 4s`에서 `2m 44s`로 줄었다.
+  - 최초 기준 `4m 50s`와 비교해도 약 `2m 6s` 단축됐다.
+  - Cloudflare UI에 별도 Install command가 없는 상태에서도 `.npmrc`, Build cache, Build watch paths로 설치/캐시/문서-only trigger 비용을 줄이는 운영 기준이 정리됐다.
+  - 현재 active 작업은 남아 있지 않다.
