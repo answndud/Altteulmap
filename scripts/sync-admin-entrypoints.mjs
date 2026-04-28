@@ -1,4 +1,4 @@
-import { cpSync, mkdirSync, rmSync } from "node:fs";
+import { cpSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -17,35 +17,94 @@ const destinationBase = path.join(
 );
 
 const fileMap = [
-  ["pages/dashboard-page.tsx", "pages/dashboard-page.tsx"],
-  ["pages/places-page.tsx", "pages/places-page.tsx"],
-  ["pages/prices-page.tsx", "pages/prices-page.tsx"],
-  ["pages/place-prices-page.tsx", "pages/place-prices-page.tsx"],
-  ["pages/reports-page.tsx", "pages/reports-page.tsx"],
-  ["api/places-list.ts", "api/places-list.ts"],
-  ["api/place-detail.ts", "api/place-detail.ts"],
-  ["api/prices-list.ts", "api/prices-list.ts"],
-  ["api/price-detail.ts", "api/price-detail.ts"],
-  ["api/price-item-detail.ts", "api/price-item-detail.ts"],
-  ["api/reports-list.ts", "api/reports-list.ts"],
-  ["api/report-detail.ts", "api/report-detail.ts"],
+  {
+    destination: "pages/dashboard-page.tsx",
+    source: "pages/dashboard-page.tsx",
+    exports: "default, dynamic",
+  },
+  {
+    destination: "pages/places-page.tsx",
+    source: "pages/places-page.tsx",
+    exports: "default, dynamic",
+  },
+  {
+    destination: "pages/prices-page.tsx",
+    source: "pages/prices-page.tsx",
+    exports: "default, dynamic",
+  },
+  {
+    destination: "pages/place-prices-page.tsx",
+    source: "pages/place-prices-page.tsx",
+    exports: "default, dynamic",
+  },
+  {
+    destination: "pages/reports-page.tsx",
+    source: "pages/reports-page.tsx",
+    exports: "default, dynamic",
+  },
+  {
+    destination: "api/places-list.ts",
+    source: "api/places-list.ts",
+    exports: "dynamic, GET",
+  },
+  {
+    destination: "api/place-detail.ts",
+    source: "api/place-detail.ts",
+    exports: "GET, PATCH",
+  },
+  {
+    destination: "api/prices-list.ts",
+    source: "api/prices-list.ts",
+    exports: "dynamic, GET",
+  },
+  {
+    destination: "api/price-detail.ts",
+    source: "api/price-detail.ts",
+    exports: "PATCH",
+  },
+  {
+    destination: "api/price-item-detail.ts",
+    source: "api/price-item-detail.ts",
+    exports: "PATCH",
+  },
+  {
+    destination: "api/reports-list.ts",
+    source: "api/reports-list.ts",
+    exports: "dynamic, GET",
+  },
+  {
+    destination: "api/report-detail.ts",
+    source: "api/report-detail.ts",
+    exports: "PATCH",
+  },
 ];
 
 rmSync(destinationBase, { recursive: true, force: true });
 mkdirSync(path.join(destinationBase, "pages"), { recursive: true });
 mkdirSync(path.join(destinationBase, "api"), { recursive: true });
 
-for (const [destination, embeddedSource] of fileMap) {
+for (const entrypoint of fileMap) {
   const source = path.join(
     rootDir,
     "src",
     "features",
     "admin",
     mode === "external" ? "stubs" : "",
-    embeddedSource,
+    entrypoint.source,
   );
+  const destination = path.join(destinationBase, entrypoint.destination);
 
-  cpSync(source, path.join(destinationBase, destination));
+  if (mode === "external") {
+    cpSync(source, destination);
+    continue;
+  }
+
+  const modulePath = entrypoint.source.replace(/\.(ts|tsx)$/, "");
+
+  writeFileSync(
+    destination,
+    `export { ${entrypoint.exports} } from "@/features/admin/${modulePath}";\n`,
+  );
 }
 
 process.stdout.write(`[admin:sync] mode=${mode}\n`);
