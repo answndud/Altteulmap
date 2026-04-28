@@ -25,6 +25,8 @@
 - 변경:
   - `apps/admin` root에서 Cloudflare 기본 `npm ci`가 통과하도록 `apps/admin/package-lock.json`을 추가했다.
   - `apps/admin npm run build`가 루트 의존성을 설치한 뒤 `npm run cf:build:admin`을 실행하도록 bootstrap 스크립트를 추가했다.
+  - Dashboard build command가 기존 값으로 남아 있어도 동작하도록 `apps/admin`에 `cf:build`, `cf:build:admin` script alias를 추가했다.
+  - Dashboard deploy command가 `npx opennextjs-cloudflare deploy -c wrangler.admin.jsonc`로 남아 있어도 config를 찾도록 `apps/admin/wrangler.admin.jsonc` alias를 추가했다.
   - OpenNext 내부 Next build 호출과 외부 Cloudflare build 호출이 재귀되지 않도록 `ALTTEULMAP_OPENNEXT_ADMIN_BUILD` marker를 추가했다.
   - OpenNext monorepo 감지가 `apps/admin/package-lock.json` 때문에 깨지지 않도록 admin Worker build 중 lockfile을 임시로 숨겼다가 복원한다.
   - Cloudflare Build image와 로컬 root/app root가 같은 Node 계열을 쓰도록 `.node-version`을 추가했다.
@@ -36,13 +38,21 @@
     - 통과
   - `cd apps/admin && PATH="/opt/homebrew/opt/node@20/bin:$PATH" npm ci && PATH="/opt/homebrew/opt/node@20/bin:$PATH" npm run build`
     - 통과
+  - `cd apps/admin && PATH="/opt/homebrew/opt/node@20/bin:$PATH" npm run cf:build:admin`
+    - 통과
   - `npm run deploy:check:admin`
     - 통과
   - `npm run lint`
     - 통과
+  - `PATH="/opt/homebrew/opt/node@20/bin:$PATH" npm ci && npm run lint && PATH="/opt/homebrew/opt/node@20/bin:$PATH" npm run cf:build:admin && git diff --check`
+    - 통과
   - `git diff --check`
     - 통과
+  - `git push origin main` 후 commit `8b72417` 원격 check 확인
+    - public `Workers Builds: altteulmap` 성공
+    - admin `Workers Builds: altteulmap-admin` 실패, build id `95f8889e-6612-4a13-91c8-21e751db5a0a`
+    - 실패가 시작/종료 같은 초에 기록되어 Dashboard build/deploy command 호환 문제 가능성이 높음
 - 다음 액션:
-  - 변경분을 push해 새 `Workers Builds: altteulmap-admin` check를 트리거한다.
-  - GitHub check run 결과를 확인한다.
+  - command/config alias 보완 커밋을 push해 새 `Workers Builds: altteulmap-admin` check를 다시 트리거한다.
+  - GitHub check run 결과를 재확인한다.
   - 성공하면 active 문서를 `COMPLETED.md`로 archive하고 `PLAN.md`/`PROGRESS.md`를 비운다.

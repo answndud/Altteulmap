@@ -89,6 +89,7 @@ Cloudflare Dashboard에서 public/admin worker를 각각 Git 연결된 Workers B
 - public은 루트 `wrangler.jsonc`의 `name`이 `altteulmap`이므로 Root directory `/`를 쓴다.
 - admin은 `apps/admin/wrangler.jsonc`의 `name`이 `altteulmap-admin`이므로 Root directory `apps/admin`을 쓴다.
 - `apps/admin/package-lock.json`은 Cloudflare의 `npm ci` 통과용이다. 실제 OpenNext 빌드는 루트 `package-lock.json`과 shared 코드 기준으로 수행된다.
+- 기존 dashboard command가 남아 있어도 동작하도록 `apps/admin`은 `npm run cf:build:admin`과 `wrangler.admin.jsonc` alias도 제공한다.
 - build watch paths를 별도로 줄 수는 있지만 shared 의존 범위가 넓다. 처음에는 비워 두거나 넓게 잡는 편이 안전하다.
 
 ## 3. 환경 변수와 시크릿
