@@ -14,14 +14,23 @@
 ## Active 작업
 
 ### Cloudflare admin Worker 빌드 실패 복구
-- 상태: 수정 및 로컬 검증 완료, 원격 Cloudflare check 재확인 대기
+- 상태: repo/운영 배포 복구 완료, Cloudflare Dashboard Workers Builds 설정 수정 대기
 - 대상 run: `https://github.com/answndud/Altteulmap/runs/73128434508`
+- 현재 blocker:
+  - `Workers Builds: altteulmap-admin` 원격 check는 repo build script 실행 전 설정 단계에서 계속 실패한다.
+  - Brave에서 Cloudflare Dashboard 접근 시 login + Turnstile 화면으로 리다이렉트되어 에이전트가 Dashboard 설정을 직접 수정할 수 없다.
+  - 사용자가 Cloudflare Dashboard에서 `altteulmap-admin` Workers Builds production trigger를 아래 값으로 맞춰야 한다.
+  - Root directory: `apps/admin`
+  - Install command: `npm ci`
+  - Build command: `npm run build`
+  - Deploy command: `npx wrangler deploy`
 - 확인된 사실:
   - 해당 run은 GitHub Actions가 아니라 Cloudflare 외부 check `Workers Builds: altteulmap-admin`이다.
   - 실패한 check run id는 `73128434508`, Cloudflare build id는 `80587ccc-e1a3-4127-8a4c-6e3c37cfeb81`이다.
   - 같은 커밋의 public Worker check `Workers Builds: altteulmap`은 성공했다.
   - Cloudflare 공식 Workers Builds 문서 기준, 연결된 Worker 이름은 지정된 root directory의 Wrangler config `name`과 일치해야 한다.
   - public은 루트 `wrangler.jsonc` 이름이 `altteulmap`이라 root `/`가 맞지만, admin은 `apps/admin/wrangler.jsonc` 이름이 `altteulmap-admin`이라 root `apps/admin`이 맞다.
+  - Cloudflare 공식 API/문서 기준 이 설정은 `root_directory`, `build_command`, `deploy_command` trigger 필드다.
 - 변경:
   - `apps/admin` root에서 Cloudflare 기본 `npm ci`가 통과하도록 `apps/admin/package-lock.json`을 추가했다.
   - `apps/admin npm run build`가 루트 의존성을 설치한 뒤 `npm run cf:build:admin`을 실행하도록 bootstrap 스크립트를 추가했다.
@@ -52,7 +61,17 @@
     - public `Workers Builds: altteulmap` 성공
     - admin `Workers Builds: altteulmap-admin` 실패, build id `95f8889e-6612-4a13-91c8-21e751db5a0a`
     - 실패가 시작/종료 같은 초에 기록되어 Dashboard build/deploy command 호환 문제 가능성이 높음
+  - `git push origin main` 후 commit `074cb46` 원격 check 확인
+    - public `Workers Builds: altteulmap` 성공
+    - admin `Workers Builds: altteulmap-admin` 실패, build id `e49748e7-4028-4365-9f08-7cd100af28c3`
+    - 실패가 시작/종료 같은 초에 기록되어 repo command 실행 전 Cloudflare trigger 설정 mismatch 가능성이 높음
+  - `PATH="/opt/homebrew/opt/node@20/bin:$PATH" npm run deploy:admin`
+    - 통과, `https://altteulmap-admin.altteul-lab.workers.dev`, version `5e189228-c36c-4b57-8825-26ad98b402e5`
+  - `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev SMOKE_ADMIN_URL=https://altteulmap-admin.altteul-lab.workers.dev npm run smoke:remote`
+    - 통과
+  - `npx wrangler deployments list --config wrangler.admin.jsonc`
+    - 최신 admin deployment 확인, version `5e189228-c36c-4b57-8825-26ad98b402e5`
 - 다음 액션:
-  - command/config alias 보완 커밋을 push해 새 `Workers Builds: altteulmap-admin` check를 다시 트리거한다.
-  - GitHub check run 결과를 재확인한다.
-  - 성공하면 active 문서를 `COMPLETED.md`로 archive하고 `PLAN.md`/`PROGRESS.md`를 비운다.
+  - 사용자가 Cloudflare Dashboard에서 `altteulmap-admin` Workers Builds production trigger 설정을 위 값으로 수정한다.
+  - 설정 수정 후 main에 빈 commit 또는 작은 docs commit을 push해 새 admin check를 트리거한다.
+  - 새 `Workers Builds: altteulmap-admin` check가 성공하면 active 문서를 `COMPLETED.md`로 archive하고 `PLAN.md`/`PROGRESS.md`를 비운다.
