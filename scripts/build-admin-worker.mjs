@@ -17,6 +17,7 @@ const adminOpenNextBin = path.join(
 const rootOpenNextBin = path.join(projectRoot, "node_modules", ".bin", "opennextjs-cloudflare");
 const dependencyRoot = existsSync(rootOpenNextBin) ? projectRoot : adminAppRoot;
 const openNextBin = dependencyRoot === adminAppRoot ? adminOpenNextBin : rootOpenNextBin;
+const usesRootDependencies = dependencyRoot === projectRoot;
 
 for (const relativePath of [".next", ".next-dev", ".open-next"]) {
   rmSync(path.join(adminAppRoot, relativePath), {
@@ -38,10 +39,22 @@ if (existsSync(adminPackageLockBackupPath)) {
   rmSync(adminPackageLockBackupPath, { force: true });
 }
 
-try {
-  if (dependencyRoot === projectRoot && existsSync(adminPackageLockPath)) {
-    renameSync(adminPackageLockPath, adminPackageLockBackupPath);
+function hideAdminPackageLockForRootBuild() {
+  if (!usesRootDependencies || !existsSync(adminPackageLockPath)) {
+    return;
   }
+
+  renameSync(adminPackageLockPath, adminPackageLockBackupPath);
+}
+
+function restoreAdminPackageLock() {
+  if (existsSync(adminPackageLockBackupPath)) {
+    renameSync(adminPackageLockBackupPath, adminPackageLockPath);
+  }
+}
+
+try {
+  hideAdminPackageLockForRootBuild();
 
   execFileSync(openNextBin, ["build"], {
     cwd: adminAppRoot,
@@ -54,7 +67,5 @@ try {
     stdio: "inherit",
   });
 } finally {
-  if (existsSync(adminPackageLockBackupPath)) {
-    renameSync(adminPackageLockBackupPath, adminPackageLockPath);
-  }
+  restoreAdminPackageLock();
 }
