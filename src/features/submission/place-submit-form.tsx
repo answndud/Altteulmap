@@ -8,6 +8,7 @@ import {
   useForm,
 } from "react-hook-form";
 
+import { FieldError, ResultMessage } from "@/components/form-feedback";
 import { categoryGroups } from "@/features/categories/catalog";
 import {
   type PlaceSubmissionFormInput,
@@ -118,7 +119,7 @@ function PriceItemFields({
           placeholder={isPrimary ? "예: 김치찌개, 기본 세탁" : "추가 가격 항목"}
           disabled={isPending}
         />
-        {labelError ? <span className="text-xs text-rose-600">{labelError}</span> : null}
+        <FieldError>{labelError}</FieldError>
       </label>
 
       <label className="grid min-w-0 gap-2 text-sm text-stone-700">
@@ -131,7 +132,7 @@ function PriceItemFields({
           placeholder="7000"
           disabled={isPending}
         />
-        {amountError ? <span className="text-xs text-rose-600">{amountError}</span> : null}
+        <FieldError>{amountError}</FieldError>
       </label>
 
       <label className="grid min-w-0 gap-2 text-sm text-stone-700">
@@ -143,7 +144,7 @@ function PriceItemFields({
           placeholder="예: 1인분, 1회"
           disabled={isPending}
         />
-        {unitError ? <span className="text-xs text-rose-600">{unitError}</span> : null}
+        <FieldError>{unitError}</FieldError>
       </label>
 
       {onRemove ? (
@@ -240,9 +241,7 @@ export function PlaceSubmitForm() {
                   placeholder="예: 학교앞김밥, 성북청년밥집"
                   disabled={isPending}
                 />
-                {errors.name ? (
-                  <span className="text-xs text-rose-600">{errors.name.message}</span>
-                ) : null}
+                <FieldError>{errors.name?.message}</FieldError>
               </label>
 
               <label className="grid min-w-0 gap-2 text-sm text-stone-700">
@@ -264,11 +263,7 @@ export function PlaceSubmitForm() {
                     </optgroup>
                   ))}
                 </select>
-                {errors.categorySlug ? (
-                  <span className="text-xs text-rose-600">
-                    {errors.categorySlug.message}
-                  </span>
-                ) : null}
+                <FieldError>{errors.categorySlug?.message}</FieldError>
               </label>
             </div>
 
@@ -282,11 +277,7 @@ export function PlaceSubmitForm() {
                   placeholder="예: 서울 성북구"
                   disabled={isPending}
                 />
-                {errors.district ? (
-                  <span className="text-xs text-rose-600">
-                    {errors.district.message}
-                  </span>
-                ) : null}
+                <FieldError>{errors.district?.message}</FieldError>
               </label>
 
               <label className="grid min-w-0 gap-2 text-sm text-stone-700">
@@ -303,9 +294,7 @@ export function PlaceSubmitForm() {
                 </span>
               </label>
             </div>
-            {errors.roadAddress ? (
-              <p className="text-xs text-rose-600">{errors.roadAddress.message}</p>
-            ) : null}
+            <FieldError as="p">{errors.roadAddress?.message}</FieldError>
           </section>
 
           <section className="grid gap-4 border-t border-stone-200 pt-6">
@@ -393,9 +382,7 @@ export function PlaceSubmitForm() {
                 placeholder="예: 점심 기준 가격표 확인, 현장 메뉴판 확인"
                 disabled={isPending}
               />
-              {errors.note ? (
-                <span className="text-xs text-rose-600">{errors.note.message}</span>
-              ) : null}
+              <FieldError>{errors.note?.message}</FieldError>
             </label>
           </section>
 
@@ -420,16 +407,12 @@ export function PlaceSubmitForm() {
           <section className="altteulmap-panel p-5">
             <h2 className="text-lg font-semibold text-stone-900">접수 확인</h2>
             <div className="mt-4 grid gap-4">
-              <div
-                data-testid="submit-result-message"
-                className={`rounded-[1rem] px-4 py-3 text-sm ${
-                  submitResult.ok
-                    ? "border border-emerald-200 bg-emerald-50 text-emerald-800"
-                    : "border border-rose-200 bg-rose-50 text-rose-800"
-                }`}
+              <ResultMessage
+                testId="submit-result-message"
+                isOk={submitResult.ok}
               >
                 {submitResult.message}
-              </div>
+              </ResultMessage>
 
               {submitResult.preview ? (
                 <div className="rounded-[1rem] border border-stone-200 bg-[var(--altteul-bg-subtle)]/45 p-4">
