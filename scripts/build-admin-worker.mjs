@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import path from "node:path";
-import { rmSync } from "node:fs";
+import { existsSync, renameSync, rmSync } from "node:fs";
 
 import { patchNextCloudflareRuntime } from "./patch-next-cloudflare-runtime.mjs";
 
@@ -23,13 +23,33 @@ for (const relativePath of [".next", ".next-dev", ".open-next"]) {
 patchNextCloudflareRuntime({ projectRoot });
 
 const adminAppUrl = process.env.ADMIN_APP_URL?.trim();
+const adminPackageLockPath = path.join(adminAppRoot, "package-lock.json");
+const adminPackageLockBackupPath = path.join(
+  adminAppRoot,
+  ".package-lock.json.opennext-backup",
+);
 
-execFileSync(openNextBin, ["build"], {
-  cwd: adminAppRoot,
-  env: {
-    ...process.env,
-    npm_config_workspaces: "false",
-    NEXTAUTH_URL: adminAppUrl || process.env.NEXTAUTH_URL,
-  },
-  stdio: "inherit",
-});
+if (existsSync(adminPackageLockBackupPath)) {
+  rmSync(adminPackageLockBackupPath, { force: true });
+}
+
+try {
+  if (existsSync(adminPackageLockPath)) {
+    renameSync(adminPackageLockPath, adminPackageLockBackupPath);
+  }
+
+  execFileSync(openNextBin, ["build"], {
+    cwd: adminAppRoot,
+    env: {
+      ...process.env,
+      ALTTEULMAP_OPENNEXT_ADMIN_BUILD: "1",
+      npm_config_workspaces: "false",
+      NEXTAUTH_URL: adminAppUrl || process.env.NEXTAUTH_URL,
+    },
+    stdio: "inherit",
+  });
+} finally {
+  if (existsSync(adminPackageLockBackupPath)) {
+    renameSync(adminPackageLockBackupPath, adminPackageLockPath);
+  }
+}

@@ -2,7 +2,7 @@
   "name": "altteulmap-admin",
   "private": true,
   "scripts": {
-    "build": "rm -rf .next && node ../../node_modules/next/dist/bin/next build --webpack",
+    "build": "node scripts/build.mjs",
     "dev": "node ../../node_modules/next/dist/bin/next dev --webpack -p 3001",
     "dev:clean": "rm -rf .next-dev",
     "start": "node ../../node_modules/next/dist/bin/next start -p 3001"
