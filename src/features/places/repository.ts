@@ -42,6 +42,12 @@ import {
   slugifyPlaceName,
 } from "@/features/places/normalization";
 import {
+  buildMapPreviewCacheKey,
+  getCachedMapPreviewResult,
+  invalidateMapPreviewCache,
+  setCachedMapPreviewResult,
+} from "@/features/places/map-preview-cache";
+import {
   getFilteredPlaces,
   getMapBounds,
   getPlaceById,
@@ -126,12 +132,6 @@ export type TrendingPlaceListResult = {
 
 const MAP_LIST_RESPONSE_LIMIT = 120;
 const MAP_MARKER_SUMMARY_ROW_LIMIT = 2_000;
-const MAP_PREVIEW_CACHE_TTL_MS = 12_000;
-const MAP_PREVIEW_CACHE_MAX_ENTRIES = 48;
-type MapPreviewCacheEntry = {
-  value: PlacePreviewListResult;
-  expiresAt: number;
-};
 
 const mapPlaceSelectFields = {
   internalId: places.id,
@@ -151,10 +151,6 @@ const mapPlaceSelectFields = {
   dislikeCount: places.dislikeCount,
   verifiedPriceItemCount: places.verifiedPriceItemCount,
   lastPriceUpdatedAt: places.lastPriceUpdatedAt,
-};
-
-const globalForMapPreviewCache = globalThis as {
-  __altteulmapMapPreviewCache?: Map<string, MapPreviewCacheEntry>;
 };
 
 export type PlaceDetailResult = {
@@ -684,79 +680,6 @@ function getMapTileGrid(bounds: PlaceBounds, markerLimit: number) {
   };
 }
 
-function getMapPreviewCacheStore() {
-  if (!globalForMapPreviewCache.__altteulmapMapPreviewCache) {
-    globalForMapPreviewCache.__altteulmapMapPreviewCache = new Map();
-  }
-
-  return globalForMapPreviewCache.__altteulmapMapPreviewCache;
-}
-
-function buildMapPreviewCacheKey(
-  query: PlaceQuery,
-  normalizedQuery: string | null,
-) {
-  if (!query.bounds) {
-    return null;
-  }
-
-  const markerLimit = getMapMarkerLimit(query.zoom ?? null, normalizedQuery);
-
-  return [
-    "map-preview-v2",
-    query.sort ?? "price",
-    query.category ?? "",
-    normalizedQuery?.toLowerCase() ?? "",
-    markerLimit,
-    query.bounds.minLat.toFixed(4),
-    query.bounds.maxLat.toFixed(4),
-    query.bounds.minLng.toFixed(4),
-    query.bounds.maxLng.toFixed(4),
-  ].join("|");
-}
-
-function getCachedMapPreviewResult(key: string) {
-  const store = getMapPreviewCacheStore();
-  const cached = store.get(key);
-
-  if (!cached) {
-    return null;
-  }
-
-  if (cached.expiresAt <= Date.now()) {
-    store.delete(key);
-    return null;
-  }
-
-  return cached.value;
-}
-
-function setCachedMapPreviewResult(
-  key: string,
-  value: PlacePreviewListResult,
-) {
-  const store = getMapPreviewCacheStore();
-  store.delete(key);
-  store.set(key, {
-    value,
-    expiresAt: Date.now() + MAP_PREVIEW_CACHE_TTL_MS,
-  });
-
-  while (store.size > MAP_PREVIEW_CACHE_MAX_ENTRIES) {
-    const oldestKey = store.keys().next().value;
-
-    if (!oldestKey) {
-      break;
-    }
-
-    store.delete(oldestKey);
-  }
-}
-
-function invalidateMapPreviewCache() {
-  getMapPreviewCacheStore().clear();
-}
-
 function getDatabaseMapPlaceWhereClause({
   category,
   bounds,
@@ -1281,19 +1204,16 @@ async function listDatabaseMapPlaces({
   zoom = null,
 }: PlaceQuery = {}): Promise<PlacePreviewListResult> {
   const normalizedQuery = query?.trim();
-  const cacheKey = buildMapPreviewCacheKey(
-    {
-      category,
-      sort,
-      bounds,
-      query: normalizedQuery,
-      zoom,
-    },
-    normalizedQuery ?? null,
-  );
+  const cacheKey = buildMapPreviewCacheKey({
+    bounds,
+    category,
+    markerLimit: getMapMarkerLimit(zoom, normalizedQuery ?? null),
+    normalizedQuery,
+    sort,
+  });
 
   if (cacheKey) {
-    const cached = getCachedMapPreviewResult(cacheKey);
+    const cached = getCachedMapPreviewResult<PlacePreviewListResult>(cacheKey);
 
     if (cached) {
       return {
