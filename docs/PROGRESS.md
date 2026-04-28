@@ -20,6 +20,7 @@
   - 기존 미커밋 배포 리팩터링 4개 파일은 체크포인트 커밋으로 분리했다.
   - 지도 패널 마커 시각화 로직과 장소 지도 미리보기 캐시 로직을 별도 모듈로 분리했다.
   - GoodPrice import 스크립트의 텍스트/가격/카테고리 정규화 helper를 별도 모듈로 분리했다.
+  - embedded admin entrypoint 생성 방식을 복사에서 re-export로 바꿔 page/api 구현 중복을 제거했다.
 - 현재 범위:
   - 신규 기능, DB migration, API contract 변경, 배포 방식 변경은 제외한다.
   - 리팩터링 중 발견한 동작 변경 필요 버그는 후속 작업으로 분리한다.
@@ -32,6 +33,12 @@
     - 통과
   - GoodPrice helper 분리 후 `npm run typecheck`
     - 통과
+  - admin entrypoint re-export 전환 후 `npm run lint`
+    - 통과
+  - admin entrypoint re-export 전환 후 `npm run typecheck`
+    - 통과
+  - admin entrypoint re-export 전환 후 `WORKERS_CI=1 PATH="/opt/homebrew/opt/node@20/bin:$PATH" npm run cf:build:admin`
+    - 통과
   - `WORKERS_CI=1 PATH="/opt/homebrew/opt/node@20/bin:$PATH" npm run cf:build:admin`
     - 체크포인트 배포 리팩터링 검증 통과
   - `npm run deploy:check:admin`
@@ -39,5 +46,5 @@
   - `git diff --check`
     - 체크포인트 배포 리팩터링 검증 통과
 - 다음 액션:
-  - GoodPrice helper 분리 배치를 커밋한다.
+  - admin entrypoint re-export 전환 배치를 커밋한다.
   - 운영 스크립트의 env/base URL 처리와 smoke/deploy check helper 중복을 추가로 정리한다.
