@@ -990,3 +990,44 @@
   - 현재 dashboard 설정은 `Path`, `Build command`, `Deploy command`, `Non-production branch deploy command`, `Build cache`, `Build watch paths`, build variables만 관리하면 된다.
   - 1분 이내 배포는 현 구조의 튜닝 범위가 아니라 prebuilt deploy 또는 Worker/SPA 전환이 필요할 때 재검토할 후속 후보로 남긴다.
   - 현재 active 작업은 남아 있지 않다.
+
+<a id="archive-035"></a>
+## `035` 배포 문서 명확화와 빌드 스크립트 리팩터링
+- 완료일: `2026-04-28`
+- 배경:
+  - admin Workers Builds 속도 개선 과정에서 Cloudflare 공식 문서의 `Root directory`와 Dashboard UI의 `Path` 표현이 섞여 있었다.
+  - 사용자 입장에서는 별도 `Install command` 입력칸이 없는 UI를 보고 있어, 문서가 실제 화면과 다르게 읽힐 수 있었다.
+  - 최근 추가한 admin build helper는 동작은 통과했지만, Next 내부 build와 외부 OpenNext build 준비 로직이 한 파일 안에서 조건문 중심으로 읽혀 리팩터링 여지가 있었다.
+- 변경 내용:
+  - 배포 문서를 Cloudflare Dashboard에서 보이는 필드명 기준으로 수정했다.
+  - `Root directory`는 공식 문서 용어이고 Dashboard UI에서는 `Path`에 해당한다고 명시했다.
+  - `Install command`가 없는 현재 UI 기준으로 `.npmrc` 기반 install 최적화를 설명하도록 정리했다.
+  - Build watch paths는 include `*`, exclude `docs/*`, `README.md` 기준으로 유지하되, shared 코드 변경 누락 위험을 설명했다.
+  - `SKIP_DEPENDENCY_INSTALL=1` 비권장 설명을 더 직접적으로 바꿨다.
+  - `apps/admin/scripts/build.mjs`에서 Next binary 선택, Next build 실행, root `node_modules` symlink lifecycle을 함수로 분리했다.
+  - `scripts/build-admin-worker.mjs`에서 admin lockfile 숨김/복원 로직을 함수로 분리했다.
+- 코드/문서:
+  - `docs/deploy/deploy-cloudflare.md`
+  - `apps/admin/scripts/build.mjs`
+  - `scripts/build-admin-worker.mjs`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run lint`
+    - 통과
+  - `npm run typecheck`
+    - 통과
+  - `WORKERS_CI=1 PATH="/opt/homebrew/opt/node@20/bin:$PATH" npm run cf:build:admin`
+    - 통과
+  - 루트 `node_modules`를 임시로 숨긴 뒤 `PATH="/opt/homebrew/opt/node@20/bin:$PATH" npm ci --prefix apps/admin && WORKERS_CI=1 PATH="/opt/homebrew/opt/node@20/bin:$PATH" npm run build --prefix apps/admin`
+    - 통과
+  - `npm run deploy:check:admin`
+    - 통과
+  - `git diff --check`
+    - 통과
+- 결과:
+  - 배포 문서는 현재 Cloudflare UI 기준으로 더 직접적으로 따라갈 수 있게 정리됐다.
+  - admin build helper의 분기와 cleanup 책임이 분리되어, 이후 Cloudflare build 환경 이슈가 생겼을 때 원인 추적이 쉬워졌다.
+  - observable behavior와 successful dashboard 설정은 바꾸지 않았다.
+  - 현재 active 작업은 남아 있지 않다.

@@ -16,35 +16,22 @@ function run(command, args, options = {}) {
   });
 }
 
-if (process.env.ALTTEULMAP_OPENNEXT_ADMIN_BUILD === "1") {
-  const localNextBin = path.join(
-    adminAppRoot,
-    "node_modules",
-    "next",
-    "dist",
-    "bin",
-    "next",
-  );
-  const rootNextBin = path.join(
-    projectRoot,
-    "node_modules",
-    "next",
-    "dist",
-    "bin",
-    "next",
-  );
+function resolveNextBin() {
+  const relativeNextBin = path.join("node_modules", "next", "dist", "bin", "next");
+  const rootNextBin = path.join(projectRoot, relativeNextBin);
 
+  return existsSync(rootNextBin)
+    ? rootNextBin
+    : path.join(adminAppRoot, relativeNextBin);
+}
+
+function runNextBuild() {
   rmSync(path.join(adminAppRoot, ".next"), { recursive: true, force: true });
-  run(
-    "node",
-    [
-      existsSync(rootNextBin) ? rootNextBin : localNextBin,
-      "build",
-      "--webpack",
-    ],
-    { cwd: adminAppRoot },
-  );
-} else {
+
+  run("node", [resolveNextBin(), "build", "--webpack"], { cwd: adminAppRoot });
+}
+
+function withRootNodeModules(callback) {
   const rootNodeModules = path.join(projectRoot, "node_modules");
   const localNodeModules = path.join(adminAppRoot, "node_modules");
   let createdRootNodeModulesSymlink = false;
@@ -55,9 +42,7 @@ if (process.env.ALTTEULMAP_OPENNEXT_ADMIN_BUILD === "1") {
   }
 
   try {
-    run("node", [path.join(projectRoot, "scripts", "build-admin-worker.mjs")], {
-      cwd: adminAppRoot,
-    });
+    callback();
   } finally {
     if (
       createdRootNodeModulesSymlink &&
@@ -67,4 +52,14 @@ if (process.env.ALTTEULMAP_OPENNEXT_ADMIN_BUILD === "1") {
       unlinkSync(rootNodeModules);
     }
   }
+}
+
+if (process.env.ALTTEULMAP_OPENNEXT_ADMIN_BUILD === "1") {
+  runNextBuild();
+} else {
+  withRootNodeModules(() => {
+    run("node", [path.join(projectRoot, "scripts", "build-admin-worker.mjs")], {
+      cwd: adminAppRoot,
+    });
+  });
 }

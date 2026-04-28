@@ -22,4 +22,18 @@
 
 ## Active 작업
 
-현재 active 작업 없음
+### 전체 개발 코드 동작 보존 리팩터링
+- 목표:
+  - API 응답, DB schema, route path, auth policy, Cloudflare 설정, 사용자 플로우를 바꾸지 않고 유지보수성을 개선한다.
+  - 큰 파일, 중복 구조, 운영 스크립트, 폼/상태 메시지를 작은 배치로 나눠 정리한다.
+- 우선순위:
+  - 현재 미커밋 배포 리팩터링을 먼저 재검증하고 별도 체크포인트로 분리한다.
+  - `src/features/places/repository.ts`, `src/features/map/naver-map-panel.tsx`, `scripts/import-goodprice.ts`처럼 큰 파일을 안전한 내부 helper 단위로 줄인다.
+  - public/admin route entrypoint와 admin page/stub 중복을 줄인다.
+  - 제보, 신고, 관리자 승인 폼의 validation/error/loading/success copy를 의미 변경 없이 명확하게 통일한다.
+  - build/smoke/deploy check 스크립트의 중복 helper를 Cloudflare Worker-safe 제약 안에서 정리한다.
+- 완료 기준:
+  - 각 배치 후 `npm run lint`, `npm run typecheck`를 통과한다.
+  - admin/build 관련 변경 후 `WORKERS_CI=1 PATH="/opt/homebrew/opt/node@20/bin:$PATH" npm run cf:build:admin`와 `npm run deploy:check:admin`을 통과한다.
+  - public/map/place/report 흐름을 건드린 경우 관련 smoke 또는 Playwright 검증을 통과한다.
+  - 최종적으로 active 문서를 정리하고 `docs/COMPLETED.md`에 archive한다.

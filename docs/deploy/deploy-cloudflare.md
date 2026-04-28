@@ -70,30 +70,31 @@ npx wrangler login
 ### 2-4. Workers Builds 연결
 Cloudflare Dashboard에서 public/admin worker를 각각 Git 연결된 Workers Builds로 구성한다.
 
-현재 저장소 기준 권장값:
+현재 Cloudflare UI에서 보이는 필드 기준 권장값:
 
 `altteulmap`
-- Root directory: `/`
+- Path: `/`
 - Build command: `npm run cf:build:public`
 - Deploy command: `npx opennextjs-cloudflare deploy -c wrangler.jsonc`
 - Non-production branch deploy command: `npx wrangler versions upload`
 
 `altteulmap-admin`
-- Root directory: `apps/admin`
+- Path: `apps/admin`
 - Build command: `npm run build`
 - Deploy command: `npx wrangler deploy`
 - Non-production branch deploy command: `npx wrangler versions upload`
 
 중요:
-- Cloudflare Workers Builds는 지정된 root directory의 Wrangler config `name`이 Dashboard Worker 이름과 같아야 한다.
-- public은 루트 `wrangler.jsonc`의 `name`이 `altteulmap`이므로 Root directory `/`를 쓴다.
-- admin은 `apps/admin/wrangler.jsonc`의 `name`이 `altteulmap-admin`이므로 Root directory `apps/admin`을 쓴다.
-- 현재 Cloudflare Workers Builds UI에는 별도 Install command 입력칸이 없으므로 install 최적화는 root/admin `.npmrc`의 `audit=false`, `fund=false`, `progress=false`, `prefer-offline=true`로 적용한다.
+- Cloudflare 공식 문서의 `Root directory`가 Dashboard UI의 `Path`에 해당한다.
+- Workers Builds는 `Path` 안의 Wrangler config `name`이 Dashboard Worker 이름과 같아야 한다.
+- public은 루트 `wrangler.jsonc`의 `name`이 `altteulmap`이므로 Path `/`를 쓴다.
+- admin은 `apps/admin/wrangler.jsonc`의 `name`이 `altteulmap-admin`이므로 Path `apps/admin`을 쓴다.
+- 현재 UI에는 별도 Install command 입력칸이 없다. install 최적화는 root/admin `.npmrc`의 `audit=false`, `fund=false`, `progress=false`, `prefer-offline=true`로 적용한다.
 - `apps/admin/package-lock.json`은 Cloudflare의 `npm ci` 통과용이다. 실제 OpenNext 빌드는 루트 `package-lock.json`과 shared 코드 기준으로 수행된다.
 - 기존 dashboard command가 남아 있어도 동작하도록 `apps/admin`은 `npm run cf:build:admin`과 `wrangler.admin.jsonc` alias도 제공한다.
 - Build cache는 public/admin worker 모두 켠다. Workers Builds cache는 npm cache(`.npm`)와 Next.js build cache(`.next/cache`)를 재사용하므로, admin retry build 시간이 길 때 가장 먼저 확인할 설정이다.
-- Build watch paths는 문서 변경으로 production build가 반복 트리거되지 않도록 최소한 `docs/*`, `README.md`를 exclude한다.
-- admin worker의 Build watch paths는 너무 좁히면 shared 코드 변경을 놓칠 수 있으므로 include를 비워 두고 exclude만 두는 방식부터 적용한다.
+- Build watch paths는 문서 변경으로 production build가 반복 트리거되지 않도록 `docs/*`, `README.md`를 exclude한다.
+- admin worker의 include paths를 너무 좁히면 shared 코드 변경을 놓칠 수 있다. 현재는 include `*`, exclude `docs/*`, `README.md`를 권장한다.
 - Cloudflare 공식 문서 기준 retry build는 retry 시점의 build 설정을 다시 적용하므로, 설정을 바꾼 뒤 같은 build를 retry해 확인할 수 있다.
 
 ### 2-4-1. Workers Builds 속도 설정
@@ -116,12 +117,13 @@ Build variables 권장:
 
 Build variables 비권장:
 - `SKIP_DEPENDENCY_INSTALL=1`
-  - Cloudflare 공식 Build image 문서 기준 자동 dependency install을 끌 수 있지만, 이 앱은 Next/OpenNext build 전에 의존성이 반드시 필요하다.
-  - 이 값을 켜면 build command 안에서 별도 install을 직접 수행해야 하므로 현재 `2m 44s` 상태에서는 이득보다 실패 위험이 크다.
+  - 이 값은 Cloudflare 자동 dependency install을 끈다.
+  - 이 앱은 Next/OpenNext build 전에 의존성이 반드시 필요하므로, 값을 켜면 build command 안에서 직접 install을 다시 작성해야 한다.
+  - 현재 `2m 44s` 상태에서는 이득보다 실패 위험이 크다.
 
 Non-production branch builds:
 - 현재 PR 검증은 GitHub Actions가 맡고 있으므로 Cloudflare non-production branch builds는 꼭 필요할 때만 켠다.
-- 켜는 경우 preview URL은 production worker와 같은 runtime secret/binding을 볼 수 있는지 반드시 확인한다. production DB로 쓰기 요청이 들어가지 않게 preview 전용 env 전략을 먼저 정해야 한다.
+- 켜는 경우 preview URL이 어떤 runtime secret/binding을 쓰는지 먼저 확인한다. production DB로 쓰기 요청이 들어가지 않게 preview 전용 env 전략을 정한 뒤 사용한다.
 
 주의:
 - Build cache를 처음 켠 직후 첫 build는 cache 저장 단계라 크게 빨라지지 않을 수 있다.
