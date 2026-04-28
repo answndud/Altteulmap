@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useState, useTransition } from "react";
 
+import { FieldError, ResultMessage } from "@/components/form-feedback";
 import { getRateLimitFeedbackMessage } from "@/lib/rate-limit-feedback";
 import {
   reportReasonMap,
@@ -119,11 +120,7 @@ export function ReportSubmitForm({
                 </option>
               ))}
             </select>
-            {errors.reasonType ? (
-              <span className="text-xs text-rose-600">
-                {errors.reasonType.message}
-              </span>
-            ) : null}
+            <FieldError>{errors.reasonType?.message}</FieldError>
           </label>
 
           <label className="grid gap-2 text-sm text-stone-700">
@@ -135,11 +132,7 @@ export function ReportSubmitForm({
               className="altteulmap-input min-h-44 resize-y px-4 py-3.5 text-stone-900"
               placeholder="예: 가격표는 7,500원으로 바뀌었는데 화면에는 7,000원으로 표시됩니다."
             />
-            {errors.detail ? (
-              <span className="text-xs text-rose-600">
-                {errors.detail.message}
-              </span>
-            ) : null}
+            <FieldError>{errors.detail?.message}</FieldError>
           </label>
 
           <button
@@ -158,16 +151,15 @@ export function ReportSubmitForm({
           <section className="rounded-[2rem] border border-stone-200 bg-stone-50 p-6">
             <h2 className="text-xl font-semibold text-stone-900">접수 내용</h2>
             <div className="mt-4 space-y-4">
-              <div
-                data-testid="report-result-message"
-                className={`rounded-2xl px-4 py-3 text-sm ${
-                  submitResult.ok
-                    ? "bg-emerald-100 text-emerald-800"
-                    : "bg-rose-100 text-rose-800"
-                }`}
+              <ResultMessage
+                testId="report-result-message"
+                isOk={submitResult.ok}
+                className="rounded-2xl px-4 py-3 text-sm"
+                okClassName="bg-emerald-100 text-emerald-800"
+                errorClassName="bg-rose-100 text-rose-800"
               >
                 {submitResult.message}
-              </div>
+              </ResultMessage>
               {submitResult.preview ? (
                 <div className="rounded-3xl border border-stone-200 bg-white p-5 text-sm text-stone-700">
                   <p className="text-stone-500">유형</p>
