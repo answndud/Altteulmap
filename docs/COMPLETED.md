@@ -1031,3 +1031,71 @@
   - admin build helper의 분기와 cleanup 책임이 분리되어, 이후 Cloudflare build 환경 이슈가 생겼을 때 원인 추적이 쉬워졌다.
   - observable behavior와 successful dashboard 설정은 바꾸지 않았다.
   - 현재 active 작업은 남아 있지 않다.
+
+<a id="archive-036"></a>
+## `036` 전체 개발 코드 동작 보존 리팩터링
+- 완료일: `2026-04-28`
+- 배경:
+  - 이전 작업은 배포 속도와 Cloudflare 설정 중심으로 진행됐고, 애플리케이션 코드 전반은 별도 리팩터링을 거치지 않았다.
+  - 사용자는 배포 스크립트뿐 아니라 전체 개발 관련 코드의 유지보수성을 높이는 동작 보존형 리팩터링을 요청했다.
+  - 리팩터링 범위는 API 응답, DB schema, route path, auth policy, Cloudflare 설정, 사용자 플로우를 바꾸지 않는 것으로 제한했다.
+- 변경 내용:
+  - 기존 미커밋 배포 리팩터링을 `refactor: checkpoint admin deploy build cleanup` 커밋으로 먼저 분리했다.
+  - 지도 패널의 marker theme, marker icon HTML, cluster visual 계산을 `src/features/map/naver-map-marker-visuals.ts`로 분리했다.
+  - 장소 repository 안의 지도 미리보기 cache key/store/TTL 관리 로직을 `src/features/places/map-preview-cache.ts`로 분리했다.
+  - GoodPrice import 스크립트의 텍스트 정리, 가격 파싱, stable id, 카테고리 매핑 helper를 `scripts/lib/goodprice-normalization.ts`로 분리했다.
+  - `scripts/sync-admin-entrypoints.mjs`는 embedded admin entrypoint를 source copy가 아니라 re-export 파일로 생성하도록 바꿨다.
+  - `src/features/admin/entrypoints/pages/*`, `src/features/admin/entrypoints/api/*`는 실제 구현 중복 없이 source module을 re-export하도록 정리했다.
+  - 공개 장소 등록/신고 폼에서 반복되던 field error와 result message 렌더링을 `src/components/form-feedback.tsx`로 분리했다.
+  - `scripts/check-cloudflare-deploy.mjs`, `scripts/smoke-local.mjs`, `scripts/smoke-remote.mjs`의 URL truthiness, HTTPS, localhost, canonical 비교 helper를 `scripts/lib/url-checks.mjs`로 분리했다.
+- 코드/문서:
+  - `src/features/map/naver-map-panel.tsx`
+  - `src/features/map/naver-map-marker-visuals.ts`
+  - `src/features/places/repository.ts`
+  - `src/features/places/map-preview-cache.ts`
+  - `scripts/import-goodprice.ts`
+  - `scripts/lib/goodprice-normalization.ts`
+  - `scripts/sync-admin-entrypoints.mjs`
+  - `src/features/admin/entrypoints/pages/*`
+  - `src/features/admin/entrypoints/api/*`
+  - `src/components/form-feedback.tsx`
+  - `src/features/submission/place-submit-form.tsx`
+  - `src/features/reports/report-submit-form.tsx`
+  - `scripts/check-cloudflare-deploy.mjs`
+  - `scripts/smoke-local.mjs`
+  - `scripts/smoke-remote.mjs`
+  - `scripts/lib/url-checks.mjs`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run lint`
+    - 각 코드 배치 후 통과
+  - `npm run typecheck`
+    - 각 코드 배치 후 통과
+  - `npm run verify`
+    - 통과
+  - `WORKERS_CI=1 PATH="/opt/homebrew/opt/node@20/bin:$PATH" npm run cf:build:admin`
+    - 통과
+  - `npm run deploy:check:admin`
+    - 통과
+  - `npm run deploy:check:public`
+    - 통과
+  - `git diff --check`
+    - 통과
+  - `npm run playwright:install`
+    - Chromium browser cache 설치 완료
+  - `npm run e2e:prepare && USE_MOCK_DATA=true NEXTAUTH_URL=http://127.0.0.1:3107 AUTH_SECRET=altteulmap-local-auth-secret-change-me AUTH_DEMO_PASSWORD=demo1234 AUTH_ADMIN_PASSWORD=admin1234 npm run build && USE_MOCK_DATA=true NEXTAUTH_URL=http://127.0.0.1:3107 AUTH_SECRET=altteulmap-local-auth-secret-change-me AUTH_DEMO_PASSWORD=demo1234 AUTH_ADMIN_PASSWORD=admin1234 npm run test:e2e:smoke:ci`
+    - 앱 build 통과
+    - Playwright 7개 중 5개 통과
+    - 실패 2개는 mock 모드에서 credentials signup이 비활성화되고, DB 기반 장소 승인 큐가 유지되지 않아 발생했다.
+  - `npm run test:e2e:smoke`
+    - 현재 로컬 env의 `DATABASE_URL`이 감지되어 `db:push`를 먼저 실행하다 실패했다.
+    - 리팩터링 변경과 직접 관련된 compile/build 실패는 확인되지 않았다.
+- 결과:
+  - 큰 클라이언트 지도 파일과 큰 repository 파일의 지도 관련 책임이 줄었다.
+  - GoodPrice import, admin entrypoint 생성, 폼 피드백, 운영 URL 검증 helper가 각각 source-of-truth 모듈로 분리됐다.
+  - API contract, DB schema, route path, auth policy, Cloudflare 설정, 사용자 플로우는 변경하지 않았다.
+  - 전체 리팩터링은 작은 커밋 단위로 분리됐다.
+  - 남은 검증 리스크는 DB 연결이 정상인 로컬 환경에서 `npm run test:e2e:smoke`를 다시 실행하는 것이다.
+  - 현재 active 작업은 남아 있지 않다.
