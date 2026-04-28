@@ -14,7 +14,7 @@
 ## Active 작업
 
 ### Cloudflare admin Worker 빌드 속도 개선
-- 상태: 조사 및 구현 중
+- 상태: 구현/원격 배포 성공, dashboard duration 최종 확인 필요
 - 대상 build: `https://dash.cloudflare.com/09ffaff2ee2810549ebc107c3a6784d8/workers/services/view/altteulmap-admin/production/builds/8b5f7e0c-8dea-4515-b262-32ad49e26491`
 - 현재 기준:
   - `altteulmap-admin` 자동 배포는 성공했지만 dashboard duration이 약 `4m 50s`로 길다.
@@ -76,6 +76,16 @@
     - 통과, `apps/admin` install만으로 admin OpenNext build 가능 확인
   - `PATH="/opt/homebrew/opt/node@20/bin:$PATH" npm ci && npm run lint && PATH="/opt/homebrew/opt/node@20/bin:$PATH" npm run cf:build:admin && npm run deploy:check:admin && git diff --check`
     - 통과
+  - `git commit -m "fix: speed up admin worker builds"`
+    - 성공, commit `55725dc`
+  - `git push origin main`
+    - 성공, `074cb46..55725dc main -> main`
+  - `gh api repos/answndud/Altteulmap/commits/55725dc/check-runs`
+    - public `Workers Builds: altteulmap` 성공, build id `5502cc83-c631-4df7-b43e-936f4ec4ffee`
+    - admin `Workers Builds: altteulmap-admin` 성공, build id `41894ab2-48ca-43ce-81ac-781018e14f06`
+    - GitHub external check metadata는 Cloudflare dashboard duration을 제공하지 않고 `started_at`/`completed_at`이 check 생성/완료 시각으로만 기록됨
+  - `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev SMOKE_ADMIN_URL=https://altteulmap-admin.altteul-lab.workers.dev npm run smoke:remote`
+    - 통과
 - 다음 액션:
-  - 변경분을 push해 Cloudflare `altteulmap-admin` 자동 build를 트리거한다.
-  - 원격 check success와 duration을 확인한다.
+  - Cloudflare dashboard에서 admin build `41894ab2-48ca-43ce-81ac-781018e14f06`의 실제 duration을 확인한다.
+  - 이전 기준 `4m 50s` 대비 개선 폭을 기록한 뒤, 충분하면 이 작업을 `COMPLETED.md`로 archive하고 active 문서를 비운다.
