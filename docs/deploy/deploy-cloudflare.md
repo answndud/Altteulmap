@@ -79,14 +79,16 @@ Cloudflare Dashboard에서 public/admin worker를 각각 Git 연결된 Workers B
 - Deploy command: `npx opennextjs-cloudflare deploy -c wrangler.jsonc`
 
 `altteulmap-admin`
-- Root directory: `/`
+- Root directory: `apps/admin`
 - Install command: `npm ci`
-- Build command: `npm run cf:build:admin`
-- Deploy command: `npx opennextjs-cloudflare deploy -c wrangler.admin.jsonc`
+- Build command: `npm run build`
+- Deploy command: `npx wrangler deploy`
 
 중요:
-- `altteulmap-admin`의 Root directory를 `apps/admin`으로 두면 안 된다.
-- 현재 저장소는 루트 `package-lock.json`과 shared 코드 기준으로 설치되므로, `apps/admin`을 root로 두면 Cloudflare 기본 `npm ci` 단계가 깨진다.
+- Cloudflare Workers Builds는 지정된 root directory의 Wrangler config `name`이 Dashboard Worker 이름과 같아야 한다.
+- public은 루트 `wrangler.jsonc`의 `name`이 `altteulmap`이므로 Root directory `/`를 쓴다.
+- admin은 `apps/admin/wrangler.jsonc`의 `name`이 `altteulmap-admin`이므로 Root directory `apps/admin`을 쓴다.
+- `apps/admin/package-lock.json`은 Cloudflare의 `npm ci` 통과용이다. 실제 OpenNext 빌드는 루트 `package-lock.json`과 shared 코드 기준으로 수행된다.
 - build watch paths를 별도로 줄 수는 있지만 shared 의존 범위가 넓다. 처음에는 비워 두거나 넓게 잡는 편이 안전하다.
 
 ## 3. 환경 변수와 시크릿
@@ -308,7 +310,8 @@ custom domain으로 전환하면 같이 바꿀 것:
 - `NEXTAUTH_URL`이 `localhost`로 남아 있으면 OAuth callback, canonical, sitemap이 함께 꼬인다.
 - 로컬 build 변수와 Cloudflare runtime 변수를 혼동하면 로그인이나 지도만 부분적으로 깨질 수 있다.
 - `NEXT_PUBLIC_NAVER_MAP_KEY_ID`를 runtime에만 넣고 build 입력에는 안 넣으면 클라이언트 번들이 비어 있을 수 있다.
-- `altteulmap-admin` Root directory를 `apps/admin`으로 두면 `npm ci`가 실패한다.
+- `altteulmap-admin` Root directory를 `/`로 두면 루트 `wrangler.jsonc`의 `name`이 public worker인 `altteulmap`이라 Cloudflare Workers Builds의 Worker name requirement에 걸릴 수 있다.
+- `altteulmap-admin` Root directory는 `apps/admin`이어야 하고, build command는 `npm run build`, deploy command는 `npx wrangler deploy`여야 한다.
 - 카카오/네이버 callback URL이 실제 도메인과 다르면 로그인만 실패하는 상태가 생긴다.
 - DB 문자열은 맞는데 Cloudflare에서 외부 DB 접속이 막히면 DB 방화벽, SSL, Supabase 연결 정책을 같이 확인해야 한다.
 - custom domain 전환 후에는 domain binding만 보지 말고 `NEXTAUTH_URL`, callback URL, canonical까지 같이 다시 확인해야 한다.

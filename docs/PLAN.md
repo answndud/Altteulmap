@@ -20,4 +20,17 @@
   - 커뮤니티 `bang`
   - 핫딜 `deal`
 
-현재 active 작업 없음
+## Active 작업
+
+### Cloudflare admin Worker 빌드 실패 복구
+- 대상: GitHub check run `Workers Builds: altteulmap-admin` / run `73128434508`
+- 목표: `altteulmap-admin` Cloudflare Workers Builds 실패 원인을 확인하고, repo에서 수정 가능한 설정/스크립트 문제를 고친다.
+- 우선순위:
+  - GitHub check run 메타데이터와 Cloudflare 빌드 설정 경로 확인
+  - admin Worker 로컬 빌드 재현
+  - 실패 원인에 맞는 설정 또는 스크립트 수정
+  - 수정 후 로컬 검증 및 원격 check 재확인
+- 완료 기준:
+  - `npm run cf:build:admin` 또는 동일 수준의 admin Worker 빌드 검증이 통과한다.
+  - 필요한 코드/문서 변경이 반영된다.
+  - Cloudflare/GitHub check 상태를 재확인하고 결과를 `PROGRESS.md`에 남긴다.
