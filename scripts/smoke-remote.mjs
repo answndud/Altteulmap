@@ -1,6 +1,10 @@
 import process from "node:process";
 
 import { loadEnvFilesWithShellPrecedence } from "./lib/load-env-files.mjs";
+import {
+  assertHttpsUrl,
+  normalizeComparableUrl,
+} from "./lib/url-checks.mjs";
 
 loadEnvFilesWithShellPrecedence({
   cwd: process.cwd(),
@@ -17,26 +21,6 @@ function printLine(message) {
 
 function logStep(label, detail) {
   printLine(`- ${label}: ${detail}`);
-}
-
-function normalizeComparableUrl(value) {
-  const url = new URL(value);
-  const normalizedPath = url.pathname === "/" ? "/" : url.pathname.replace(/\/+$/, "");
-  return `${url.origin}${normalizedPath}${url.search}`;
-}
-
-function assertHttpsUrl(value, label) {
-  if (!value) {
-    throw new Error(`${label} is missing`);
-  }
-
-  const url = new URL(value);
-
-  if (url.protocol !== "https:") {
-    throw new Error(`${label} must use https`);
-  }
-
-  return url.origin;
 }
 
 function extractCanonicalHref(html) {
