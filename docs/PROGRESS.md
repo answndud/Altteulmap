@@ -613,3 +613,10 @@ Next.js to Vite + React migration is active.
   - `/robots.txt` -> `200 text/plain`
   - `/sitemap.xml` -> `200 application/xml`
   - `/manifest.webmanifest` -> `200 application/manifest+json`
+- production credentials 복구:
+  - `admin@altteulmap.local/admin1234`, `demo@altteulmap.local/demo1234`가 credentials API에서 `401`을 반환하는 문제 확인
+  - production Worker에 `AUTH_ADMIN_PASSWORD`, `AUTH_DEMO_PASSWORD` secret이 없어 운영 DB hash 검증에만 의존하던 상태였음
+  - `AUTH_ADMIN_PASSWORD=admin1234`, `AUTH_DEMO_PASSWORD=demo1234`를 production Worker secret으로 명시 설정
+  - 재검증:
+    - `admin@altteulmap.local/admin1234` -> credentials login `200`, `/api/admin/places` `200`
+    - `demo@altteulmap.local/demo1234` -> credentials login `200`, `/api/admin/places` `403`
