@@ -22,4 +22,35 @@
 
 ## Active 작업
 
-현재 active 작업 없음
+Next.js 기반 앱을 Vite + React + Cloudflare Worker 구조로 동작 보존형 이관한다.
+
+현재 active 단계는 external staging/cutover 대기다. Phase 5 admin UI/API 이관, Phase 6 Vite/Worker 산출물 점검, Vite local smoke 자동화는 로컬에서 통과했다. 다음 작업은 Cloudflare Vite staging/preview Worker URL과 Kakao/Naver OAuth redirect URI 등록이 완료된 뒤 live callback과 staging smoke를 진행하는 것이다.
+
+## 목표
+- 사용자 플로우, API path/response shape, DB schema, env 이름, 운영 데이터는 바꾸지 않는다.
+- public/admin/API를 단일 Cloudflare Worker와 단일 React SPA로 통합한다.
+- 기존 credentials, Kakao, Naver 인증 의미를 보존한다.
+- 장소 상세 SSR과 장소별 OG meta는 1차 범위에서 제외하고, sitemap/robots/manifest/기본 title/description/canonical만 유지한다.
+- 마이그레이션 중 깨달은 점은 `docs/blog/next-to-vite-migration-retrospective.md`에 회고 글 형식으로 누적한다.
+
+## 우선순위
+1. Phase 0: 기준선 문서화, API contract inventory, Auth baseline 고정
+2. Phase 1: 기존 Next production 경로를 보존한 Vite/Worker 스캐폴드와 SPA fallback 검증 추가
+3. Phase 2: public UI를 React Router SPA로 이관 완료, mock Worker API 기준 parity gap 정리
+4. Phase 3: Next route handler를 Worker API로 이관하고 API contract 비교
+5. Phase 4: credentials, Kakao, Naver 인증과 세션을 Worker에서 보존 구현
+6. Phase 5: admin UI/API를 단일 앱의 `/admin/*`, `/api/admin/*`로 통합
+7. Phase 6: Cloudflare Vite/Worker 배포 설정 전환
+8. Phase 7: parity 검증 후 Next/OpenNext/admin duplicate 제거
+9. Phase 8: 완료 archive와 active 문서 정리
+
+## 완료 기준
+- `npm run lint`, `npm run typecheck`, `git diff --check` 통과
+- public/admin 핵심 Playwright smoke 통과
+- 기존 API path와 response contract 유지 확인
+- NextAuth/Auth.js cookie, session, callback, redirect baseline 대비 인증 동작 유지 확인
+- `/api/*`, `/sitemap.xml`, `/robots.txt`, `/manifest.webmanifest`, client route SPA fallback 검증 통과
+- `/admin/*` UI 보호와 `/api/admin/*` 서버 권한 검사를 별도 테스트로 확인
+- Cloudflare staging smoke 후 production cutover 가능 상태 확인
+- 기존 `.next`/`.open-next`와 새 `dist`/Worker bundle 크기, build 시간, 첫 로드 JS 크기 비교 기록
+- `docs/migration-next-to-vite-react.md`, `docs/blog/next-to-vite-migration-retrospective.md`, `docs/PROGRESS.md`, `docs/COMPLETED.md`가 작업 결과와 일치

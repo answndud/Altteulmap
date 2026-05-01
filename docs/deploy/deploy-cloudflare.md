@@ -19,6 +19,21 @@
 - 로컬 터미널 배포(`deploy`, `deploy:public`, `deploy:admin`)는 fallback 경로다.
 - custom domain은 DNS, callback, canonical을 다시 묶어 처리할 별도 후속 작업이다.
 
+## Vite/Worker 마이그레이션 배포 기준
+- 현재 production 배포 기준은 아직 Next.js/OpenNext split이다.
+- Vite + React + 단일 Worker 산출물은 migration 검증용으로 병렬 유지한다.
+- Vite 산출물 검증 명령:
+
+```bash
+npm run cf:build:vite
+npm run deploy:check:vite
+```
+
+- `deploy:check:vite`는 generated `dist/altteulmap_vite_migration/wrangler.json`, Worker entry, SPA assets를 검사한다.
+- 이 검사는 production deploy를 수행하지 않는다.
+- production cutover 전까지 root [wrangler.jsonc](/Users/alex/project/altteulmap/wrangler.jsonc)는 OpenNext public worker 기준으로 유지한다.
+- production cutover는 staging smoke, API/admin/public parity, OAuth live callback 확인 후 별도 단계에서만 진행한다.
+
 ## 빠른 요약
 1. 처음 한 번만 Cloudflare 계정, Wrangler 로그인, Workers Builds, 대시보드 변수/시크릿, OAuth callback을 맞춘다.
 2. 평소에는 `main`에 push만 하면 Cloudflare가 public/admin worker를 자동 배포한다.
