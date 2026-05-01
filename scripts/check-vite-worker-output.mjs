@@ -2,7 +2,7 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 const outputRoot = join(process.cwd(), "dist");
-const workerOutput = join(outputRoot, "altteulmap_vite_migration");
+const workerOutput = join(outputRoot, "altteulmap");
 const clientOutput = join(outputRoot, "client");
 const wranglerPath = join(workerOutput, "wrangler.json");
 const workerEntryPath = join(workerOutput, "index.mjs");
@@ -36,7 +36,7 @@ const clientIndexStats = assertFile(clientIndexPath, "client index.html");
 if (wranglerStats) {
   const wrangler = JSON.parse(readFileSync(wranglerPath, "utf8"));
 
-  if (wrangler.name !== "altteulmap-vite-migration") {
+  if (wrangler.name !== "altteulmap") {
     fail(`unexpected worker name ${JSON.stringify(wrangler.name)}`);
   }
 

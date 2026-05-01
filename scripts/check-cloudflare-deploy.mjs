@@ -3,19 +3,10 @@ import path from "node:path";
 import process from "node:process";
 
 import { loadEnvFilesWithShellPrecedence } from "./lib/load-env-files.mjs";
-import {
-  isHttpsUrl,
-  isLocalhostUrl,
-  isTruthy,
-} from "./lib/url-checks.mjs";
+import { isHttpsUrl, isLocalhostUrl, isTruthy } from "./lib/url-checks.mjs";
 
 const cwd = process.cwd();
 const target = process.argv.includes("--preview") ? "preview" : "production";
-const deploymentMode = process.argv.includes("--admin")
-  ? "admin"
-  : process.argv.includes("--public")
-    ? "public"
-    : "full";
 const envFiles =
   target === "production"
     ? [".env", ".env.production", ".env.local", ".env.production.local"]
@@ -37,13 +28,13 @@ const requiredVars = [
   "AUTH_NAVER_CLIENT_SECRET",
 ];
 
-const modeRequiredVars = {
-  full: [],
-  public: ["ADMIN_APP_URL"],
-  admin: ["SITE_URL", "ADMIN_APP_URL"],
-};
-
-const optionalVars = ["EMAIL_FROM", "RESEND_API_KEY"];
+const optionalVars = [
+  "SITE_URL",
+  "AUTH_DEMO_PASSWORD",
+  "AUTH_ADMIN_PASSWORD",
+  "EMAIL_FROM",
+  "RESEND_API_KEY",
+];
 
 function printLine(message = "") {
   process.stdout.write(`${message}\n`);
@@ -52,17 +43,6 @@ function printLine(message = "") {
 function printSection(title) {
   printLine();
   printLine(`[${title}]`);
-}
-
-function getDeploymentModeLabel(mode) {
-  switch (mode) {
-    case "public":
-      return "public-only worker";
-    case "admin":
-      return "standalone admin worker";
-    default:
-      return "full app worker";
-  }
 }
 
 function printUrlCheck(name, value, options = {}) {
@@ -88,30 +68,21 @@ function printUrlCheck(name, value, options = {}) {
 }
 
 function main() {
-  printLine(
-    `Checking Cloudflare deploy readiness for ${target} (${getDeploymentModeLabel(deploymentMode)})`,
-  );
+  printLine(`Checking Cloudflare deploy readiness for ${target} (Vite Worker)`);
 
-  const deploymentRequiredVars = [
-    ...requiredVars,
-    ...modeRequiredVars[deploymentMode],
-  ];
-  const missingRequired = deploymentRequiredVars.filter(
+  const missingRequired = requiredVars.filter(
     (name) => !isTruthy(process.env[name]),
   );
 
   printSection("Required env");
 
-  for (const name of deploymentRequiredVars) {
+  for (const name of requiredVars) {
     printLine(`${missingRequired.includes(name) ? "FAIL" : "OK  "} ${name}`);
   }
 
   printSection("Optional env");
 
-  const modeOptionalVars =
-    deploymentMode === "full" ? ["ADMIN_APP_URL", "SITE_URL"] : [];
-
-  for (const name of [...optionalVars, ...modeOptionalVars]) {
+  for (const name of optionalVars) {
     printLine(`${isTruthy(process.env[name]) ? "OK  " : "WARN"} ${name}`);
   }
 
@@ -125,51 +96,24 @@ function main() {
     printLine("WARN USE_MOCK_DATA should be false before deploy");
   }
 
-  const adminAppUrl = process.env.ADMIN_APP_URL ?? "";
-  const siteUrl = process.env.SITE_URL ?? "";
-  const nextAuthUrl =
-    deploymentMode === "admin" && isTruthy(adminAppUrl)
-      ? adminAppUrl
-      : (process.env.NEXTAUTH_URL ?? "");
-
+  const nextAuthUrl = process.env.NEXTAUTH_URL ?? "";
   const nextAuthUrlOk = printUrlCheck("NEXTAUTH_URL", nextAuthUrl);
-  let adminAppUrlOk = true;
-  let siteUrlOk = true;
+  const wranglerConfigPath = path.join(cwd, "wrangler.jsonc");
 
-  if (deploymentMode === "public") {
-    adminAppUrlOk = printUrlCheck("ADMIN_APP_URL", adminAppUrl, {
-      requireHttps: target === "production",
-    });
-
-    if (
-      isTruthy(adminAppUrl) &&
-      isTruthy(nextAuthUrl) &&
-      adminAppUrl === nextAuthUrl
-    ) {
-      printLine("WARN ADMIN_APP_URL is identical to NEXTAUTH_URL");
-    }
-  }
-
-  if (deploymentMode === "admin") {
-    siteUrlOk = printUrlCheck("SITE_URL", siteUrl, {
-      requireHttps: target === "production",
-    });
-
-    if (isTruthy(siteUrl) && isTruthy(nextAuthUrl) && siteUrl === nextAuthUrl) {
-      printLine("WARN SITE_URL is identical to NEXTAUTH_URL");
-    }
-  }
-
-  const wranglerConfigPath = path.join(
-    cwd,
-    deploymentMode === "admin" ? "wrangler.admin.jsonc" : "wrangler.jsonc",
-  );
   printLine(
-    `${fs.existsSync(wranglerConfigPath) ? "OK  " : "FAIL"} ${path.basename(wranglerConfigPath)}`,
+    `${fs.existsSync(wranglerConfigPath) ? "OK  " : "FAIL"} wrangler.jsonc`,
   );
 
-  const devVarsPath = path.join(cwd, ".dev.vars");
-  printLine(`${fs.existsSync(devVarsPath) ? "OK  " : "WARN"} .dev.vars`);
+  const distWranglerConfigPath = path.join(
+    cwd,
+    "dist",
+    "altteulmap",
+    "wrangler.json",
+  );
+
+  printLine(
+    `${fs.existsSync(distWranglerConfigPath) ? "OK  " : "WARN"} dist/altteulmap/wrangler.json`,
+  );
 
   printSection("OAuth callback reminders");
 
@@ -180,16 +124,6 @@ function main() {
     `- Naver callback: ${nextAuthUrl || "<NEXTAUTH_URL>"}/api/auth/callback/naver`,
   );
 
-  if (deploymentMode === "public") {
-    printLine(
-      `- Public /admin entrypoint: ${adminAppUrl || "<ADMIN_APP_URL>"}/admin`,
-    );
-  }
-
-  if (deploymentMode === "admin") {
-    printLine(`- Public home link: ${siteUrl || "<SITE_URL>"}/`);
-  }
-
   if (missingRequired.length > 0) {
     console.error(
       `\nDeploy check failed. Missing required env: ${missingRequired.join(", ")}`,
@@ -198,7 +132,7 @@ function main() {
     return;
   }
 
-  if (!nextAuthUrlOk || !adminAppUrlOk || !siteUrlOk) {
+  if (!nextAuthUrlOk) {
     console.error("\nDeploy check failed. Fix the invalid URL values above.");
     process.exitCode = 1;
     return;

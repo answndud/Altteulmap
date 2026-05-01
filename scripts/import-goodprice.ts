@@ -277,7 +277,7 @@ function parseCoordinatePayload(html: string) {
     .split("},")
     .map((chunk) =>
       chunk
-        .replace(/[{}\[\]]/g, "")
+        .replace(/(?:[{}]|\[|\])/g, "")
         .split(",")
         .map((value) => cleanText(value)),
     )

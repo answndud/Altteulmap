@@ -12,11 +12,11 @@ const port = Number(process.env.VITE_SMOKE_PORT ?? 3130);
 const baseUrl = `http://127.0.0.1:${port}`;
 const wranglerConfigPath = join(
   cwd,
-  "dist/altteulmap_vite_migration/wrangler.json",
+  "dist/altteulmap/wrangler.json",
 );
 const generatedDevVarsPath = join(
   cwd,
-  "dist/altteulmap_vite_migration/.dev.vars",
+  "dist/altteulmap/.dev.vars",
 );
 const workerEnvKeys = [
   "DATABASE_URL",

@@ -15,7 +15,7 @@ export default defineConfig({
   plugins: [
     react(),
     cloudflare({
-      configPath: "./wrangler.vite.jsonc",
+      configPath: "./wrangler.jsonc",
     }),
   ],
   resolve: {
