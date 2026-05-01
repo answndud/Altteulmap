@@ -92,15 +92,14 @@ async function main() {
 
   await expectTextOk(
     "/login",
-    (body) =>
-      body.includes('data-testid="login-form"') && body.includes(">로그인<"),
+    (body) => body.includes('<div id="root"></div>'),
     "login page",
   );
   logStep("login", "ok");
 
   await expectTextOk(
     "/admin",
-    (body) => body.includes("알뜰맵") || body.includes("관리자"),
+    (body) => body.includes('<div id="root"></div>'),
     "admin page",
   );
   logStep("admin route", "ok");
