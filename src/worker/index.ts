@@ -13,7 +13,7 @@ import {
 } from "@/features/reports/schema";
 import { bookmarkToggleSchema } from "@/features/bookmarks/schema";
 import { placeReactionSchema } from "@/features/places/reaction-schema";
-import { getPlaceById } from "@/features/places/queries";
+import { getFilteredPlaces, getPlaceById } from "@/features/places/queries";
 import {
   placeModerationSchema,
   placeSubmissionSchema,
@@ -2423,7 +2423,11 @@ app.get("/manifest.webmanifest", () =>
 app.get("/sitemap.xml", (c) => {
   const origin = getOrigin(c.req.raw, c.env.SITE_URL);
   const now = new Date().toISOString();
-  const paths = ["/", "/submit", "/report", "/login", "/signup"];
+  const staticPaths = ["/", "/submit", "/report", "/login", "/signup"];
+  const placePaths = getFilteredPlaces()
+    .slice(0, 120)
+    .map((place) => `/place/${place.id}`);
+  const paths = [...staticPaths, ...placePaths];
   const urls = paths
     .map(
       (path) => `
