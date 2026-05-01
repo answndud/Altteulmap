@@ -81,6 +81,15 @@ wrangler deploy --config dist/altteulmap/wrangler.json
 SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev npm run smoke:remote
 ```
 
+관리자 credentials까지 포함해 확인하려면 secret을 shell env로만 주입한다.
+
+```bash
+SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev \
+SMOKE_ADMIN_EMAIL=<admin-email> \
+SMOKE_ADMIN_PASSWORD=<admin-password> \
+npm run smoke:remote
+```
+
 수동 확인:
 - `/`
 - `/admin`
@@ -88,6 +97,8 @@ SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev npm run smoke:remote
 - `/api/categories`
 - `/api/places/map?scope=global`
 - `/api/auth/providers`
+- `/api/auth/signin/kakao` provider redirect
+- `/api/auth/signin/naver` provider redirect
 - `/api/admin/places` 비로그인 `401`
 - `/robots.txt`
 - `/sitemap.xml`

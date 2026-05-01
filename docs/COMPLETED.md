@@ -1186,3 +1186,52 @@
   - Cloudflare Dashboard Builds 설정 저장 오류가 있어 운영 배포는 현재 `npm run deploy` 또는 generated Wrangler config 기반 직접 deploy 경로를 사용한다.
   - Kakao/Naver는 authorization redirect와 state cookie까지 production smoke로 확인했다. 실제 provider 계정 callback 완료는 외부 OAuth 콘솔 redirect URI와 사용자 계정 흐름에 의존하므로 운영 수동 QA 항목으로 남긴다.
   - 모든 active migration 작업은 archive로 이동했고, `docs/PLAN.md`, `docs/PROGRESS.md`는 `현재 active 작업 없음` 상태로 정리했다.
+
+<a id="archive-038"></a>
+## `038` 운영 remote smoke 보강과 로그인 문구 정리
+- 완료일: `2026-05-01`
+- 배경:
+  - Vite + React Worker 이관 후 production smoke는 통과했지만, remote smoke는 Kakao/Naver authorization redirect를 자동 확인하지 않았다.
+  - `/login` 화면에는 “OAuth callback은 다음 Phase 4 배치에서 이관합니다.”라는 이전 마이그레이션 단계의 stale 문구가 남아 있었다.
+  - 운영자 credentials smoke는 유용하지만, 비밀번호를 코드나 문서에 고정하면 안 되므로 opt-in env 방식이 필요했다.
+- 변경 내용:
+  - `scripts/smoke-remote.mjs`가 `/api/auth/providers`에서 `kakao`, `naver` provider 존재를 확인하도록 확장했다.
+  - `scripts/smoke-remote.mjs`가 `/api/auth/signin/kakao`, `/api/auth/signin/naver`의 `302` provider redirect, redirect host, `redirect_uri`, `next-auth.state` cookie를 검증하도록 했다.
+  - `SMOKE_ADMIN_EMAIL`, `SMOKE_ADMIN_PASSWORD`가 있을 때만 credentials login 후 `/api/admin/places` 인증 접근을 확인하도록 opt-in smoke를 추가했다.
+  - `/login` 안내 문구를 현재 운영 구조에 맞춰 “이메일 로그인과 카카오/네이버 소셜 로그인 지원”으로 교체했다.
+  - 배포 가이드와 public share checklist에 OAuth redirect 자동 smoke와 실제 provider callback 수동 QA 경계를 반영했다.
+- 코드/문서:
+  - `scripts/smoke-remote.mjs`
+  - `src/client/routes/LoginRoute.tsx`
+  - `docs/deploy/deploy-cloudflare.md`
+  - `docs/project/public-share-checklist.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run verify`
+    - 통과
+  - `npm run build`
+    - 통과
+    - 산출물: Worker entry `561.75 kB`, gzip `119.88 kB`; client JS `439.51 kB`, gzip `129.20 kB`; client CSS `36.89 kB`, gzip `7.87 kB`
+  - `npm run deploy:check`
+    - 통과
+  - `npm run deploy:check:vite`
+    - 통과
+  - `git diff --check`
+    - 통과
+  - `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev npm run smoke:remote`
+    - 배포 전 통과
+    - Kakao signin provider redirect 확인
+    - Naver signin provider redirect 확인
+    - credentials/admin smoke는 env 미설정으로 skip
+  - `npm run deploy`
+    - 통과
+    - production version `c801fd01-97b1-4192-a9be-2709a9736efe`
+  - `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev npm run smoke:remote`
+    - 배포 후 통과
+    - Kakao/Naver provider redirect 확인
+- 결과:
+  - 운영 remote smoke가 public/API/admin boundary뿐 아니라 OAuth provider authorization redirect까지 자동 검증한다.
+  - 관리자 credentials 검증은 필요할 때 shell env로만 주입해 실행할 수 있다.
+  - 로그인 화면에서 마이그레이션 내부 문구가 사라져 사용자에게 현재 운영 상태와 맞는 안내가 표시된다.

@@ -24,6 +24,7 @@
 | Mobile real-device QA | pass | iPhone Safari, Android Chrome 사용자 QA 문제 없음 |
 | Anonymous write flow | pass | 장소 등록, 가격 제보, 신고 운영 검증 완료 |
 | Admin moderation flow | pass | 장소/가격/신고 큐와 AI 패널 운영 검증 완료 |
+| OAuth provider redirect | pass | `npm run smoke:remote`에서 Kakao/Naver authorization redirect 확인 |
 
 ## 공유 전 확인
 - Public URL 첫 화면이 바로 지도 중심 경험으로 열린다.
@@ -35,13 +36,13 @@
 
 ## 알려야 할 제약
 - 현재 운영 URL은 custom domain이 아니라 `workers.dev` 주소다.
-- OAuth callback은 운영 도메인 확정 뒤 provider console에서 다시 점검해야 한다.
+- Kakao/Naver authorization redirect는 자동 smoke로 확인한다. 실제 provider 계정 callback 완료는 운영 도메인 확정 뒤 provider console에서 수동 점검한다.
 - 이메일 발송은 현재 핵심 데모 범위가 아니며, 필요 시 Resend 설정을 별도 마감한다.
 - 데이터는 초기 bootstrap seed 1,000곳을 기반으로 하며, 이후 운영 데이터는 사용자 제보와 관리자 검수로 확장한다.
 
 ## 후속 후보
 - custom domain 연결
-- OAuth 실제 provider 운영 callback 재확인
+- OAuth 실제 provider 운영 callback 수동 완료 확인
 - Sentry 또는 동등한 에러 추적 연결
 - 운영 데이터 추가 import/upsert 파이프라인
 - 공개 공유 후 사용자 피드백을 `PLAN.md`의 새 active 작업으로 분리

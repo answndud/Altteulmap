@@ -137,8 +137,8 @@ export function LoginRoute() {
             </button>
 
             <div className="grid gap-2 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-xs leading-5 text-stone-500">
-              <p>이 경로는 Vite Worker credentials 로그인 검증용입니다.</p>
-              <p>카카오/네이버 OAuth callback은 다음 Phase 4 배치에서 이관합니다.</p>
+              <p>이메일 로그인과 카카오/네이버 소셜 로그인을 지원합니다.</p>
+              <p>로그인 후 북마크와 운영자 권한이 계정에 맞게 이어집니다.</p>
             </div>
 
             <div className="flex items-center justify-center border-t border-stone-200 pt-4 text-sm text-stone-500">
