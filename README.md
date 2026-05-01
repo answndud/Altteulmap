@@ -2,14 +2,14 @@
 
 > A map-first service for finding, contributing, and moderating affordable local places in Korea.
 
-![Next.js](https://img.shields.io/badge/Next.js-16-111111?logo=nextdotjs&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)
 ![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-f38020?logo=cloudflare&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-336791?logo=postgresql&logoColor=white)
 ![Playwright](https://img.shields.io/badge/Playwright-E2E-2EAD33?logo=playwright&logoColor=white)
 ![Status](https://img.shields.io/badge/Status-Live-success)
 
 - Demo: [altteulmap.altteul-lab.workers.dev](https://altteulmap.altteul-lab.workers.dev)
-- Admin: [altteulmap-admin.altteul-lab.workers.dev](https://altteulmap-admin.altteul-lab.workers.dev)
+- Admin: [altteulmap.altteul-lab.workers.dev/admin](https://altteulmap.altteul-lab.workers.dev/admin)
 - Docs: [Cloudflare deploy guide](docs/deploy/deploy-cloudflare.md)
 
 최근 유행했던 `거지맵` 서비스에서 아이디어를 얻었습니다. 다만 음식점에만 머무르지 않고, 생활 서비스까지 포함한 더 넓은 절약 지도 형태로 확장하고 싶었습니다. 여기에 공공데이터를 적극적으로 활용해 실제 운영 가능한 데이터 기반 서비스를 만들고 싶었고, 고물가와 취업난이 겹친 지금의 시대감에도 잘 맞는 주제라고 판단해 개발했습니다.
@@ -20,7 +20,7 @@
 
 - 실제 공공 데이터 1,000건을 정제해 지도 탐색 경험에 투입했습니다.
 - 장소 등록, 가격 제보, 신고는 공개 참여로 받고 `AI 1차 검수 + 운영자 최종 확정`으로 반영합니다.
-- 공개 앱과 관리자 앱을 Cloudflare Workers로 분리해 무료 플랜 제약 안에서 배포했습니다.
+- 공개 앱, 관리자 화면, API를 단일 Cloudflare Worker로 통합해 운영 표면적을 줄였습니다.
 - Playwright E2E, smoke, live deploy check까지 포함해 “보여주는 데모”보다 “운영 가능한 MVP”에 가깝게 만들었습니다.
 
 ## Highlights
@@ -28,7 +28,7 @@
 - `Map-first UX`: 첫 화면이 바로 지도이고 목록과 상세 시트가 같은 맥락에서 이어집니다.
 - `Real data import`: 행정안전부 `착한가격업소` 데이터를 직접 수집·정규화·적재했습니다.
 - `Open contribution loop`: 익명 제보를 허용하되 AI 1차 검수와 운영자 최종 확정으로 데이터 품질을 관리합니다.
-- `Public/Admin split`: 번들 크기와 운영 제약에 맞춰 public worker와 admin worker를 분리했습니다.
+- `Unified Worker`: public/admin/API를 하나의 Vite React SPA와 Worker API로 통합했습니다.
 - `Verified delivery`: lint, build, Playwright E2E, local/remote smoke, live Cloudflare deploy까지 닫았습니다.
 
 ## Screenshots
@@ -55,7 +55,7 @@
 ## Why This Repo Is Worth Opening
 
 - `서비스 관점`: 탐색, 참여, AI 1차 검수, 운영 반영까지 한 사이클이 실제로 닫혀 있습니다.
-- `엔지니어링 관점`: Cloudflare Workers 무료 플랜 제약 때문에 public/admin split, 번들 경량화, runtime smoke를 직접 정리했습니다.
+- `엔지니어링 관점`: Next/OpenNext에서 Vite + Worker API로 이관하며 번들 경량화, runtime smoke, production cutover를 직접 정리했습니다.
 - `데이터 관점`: mock이 아니라 실데이터 import와 운영용 moderation 흐름이 같이 있습니다.
 - `작업 방식 관점`: AI를 구현 보조로만 쓰지 않고 계획, 검증, 문서화, 운영 검수 초안까지 연결했습니다.
 
@@ -71,7 +71,7 @@
 - `Live data`: Supabase PostgreSQL 운영 DB에 migration과 초기 seed를 적용했고, public/admin worker가 DB source로 동작합니다.
 - `AI moderation`: 장소 등록, 가격 제보, 신고 관리자 큐에서 `AI 1차 검수` 제안이 persisted storage 기준으로 생성·조회됩니다.
 - `Operational QA`: iPhone Safari와 Android Chrome 실기기 QA에서 blocker 없이 통과했습니다.
-- `Launch URL`: 현재 운영 URL은 `workers.dev` split(public `altteulmap.altteul-lab.workers.dev`, admin `altteulmap-admin.altteul-lab.workers.dev`)으로 고정했고, canonical/sitemap/auth URL도 이 기준으로 유지합니다. custom domain은 별도 후속 작업입니다.
+- `Launch URL`: 현재 운영 URL은 `https://altteulmap.altteul-lab.workers.dev`이며, admin은 같은 Worker의 `/admin` route로 통합했습니다. custom domain은 별도 후속 작업입니다.
 - `Share checklist`: 공개 공유 전 점검 항목은 [public share checklist](docs/project/public-share-checklist.md)에 정리했습니다.
 
 ## Verification
@@ -84,15 +84,15 @@ npm run smoke:remote
 ```
 
 - GitHub Actions: `Verify`, `E2E Full`, `Deploy Config Check`
-- Cloudflare: public/admin split deploy + live `workers.dev` smoke
+- Cloudflare: unified Vite Worker deploy + live `workers.dev` smoke
 
 ## Stack
 
-- Next.js 16, React 19, Tailwind CSS 4
-- Cloudflare Workers, OpenNext, Wrangler
+- Vite 8, React 19, Tailwind CSS 4
+- Cloudflare Workers, Hono, Wrangler
 - PostgreSQL, Drizzle ORM
 - NAVER Maps JavaScript API
-- Auth.js credentials
+- Worker credentials + Kakao/Naver OAuth callback
 - Playwright, ESLint
 
 ## Run Locally
@@ -104,8 +104,8 @@ npm run db:seed
 npm run dev
 ```
 
-- App: `http://localhost:3000`
-- Admin preview: `npm run preview:admin`
+- App: `http://localhost:5173`
+- Admin: `http://localhost:5173/admin`
 - README screenshots: `npm run readme:screenshots`
 
 ## Next

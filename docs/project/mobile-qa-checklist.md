@@ -8,7 +8,7 @@
 
 ## 대상 URL
 - public: `https://altteulmap.altteul-lab.workers.dev`
-- admin: `https://altteulmap-admin.altteul-lab.workers.dev`
+- admin: `https://altteulmap.altteul-lab.workers.dev/admin`
 
 ## 기록 규칙
 - 각 항목은 `pass`, `fail`, `skip` 중 하나로 기록한다.

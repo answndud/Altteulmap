@@ -20,7 +20,7 @@ const publicUrl =
 const adminUrl =
   process.env.README_ADMIN_URL ??
   process.env.ADMIN_APP_URL ??
-  "https://altteulmap-admin.altteul-lab.workers.dev";
+  "https://altteulmap.altteul-lab.workers.dev/admin";
 fs.mkdirSync(outputDir, { recursive: true });
 
 async function waitForHomeReady(page, { mobile = false } = {}) {

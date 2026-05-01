@@ -13,8 +13,8 @@
 ## 범위 원칙
 - 우선순위: `지도 Read MVP -> 쓰기 데이터 축적 -> 운영 품질 -> 인증/출시 -> 확장 기능`
 - 현재 정책: `비회원 읽기, 비회원 반응, 비회원/회원 공개 쓰기(장소 등록/댓글/신고/가격 제보), 회원 전용 북마크`
-- 현재 운영 URL은 `workers.dev` split(public `altteulmap.altteul-lab.workers.dev`, admin `altteulmap-admin.altteul-lab.workers.dev`) 기준으로 유지한다.
-- 기본 운영 배포는 Cloudflare Workers Builds가 맡고, 로컬 `deploy:public`/`deploy:admin`은 fallback으로만 사용한다.
+- 현재 운영 URL은 public/admin/API 통합 Worker `altteulmap.altteul-lab.workers.dev` 기준으로 유지한다.
+- 기본 운영 배포는 Vite 산출물을 `wrangler deploy --config dist/altteulmap/wrangler.json`로 직접 배포하는 경로를 사용한다.
 - 이후 UI 작업은 ad-hoc polish가 아니라 `.impeccable.md`와 repo-local Impeccable skill 기준으로만 진행한다.
 - 별도 정책 결정 전 보류:
   - 커뮤니티 `bang`
@@ -24,7 +24,7 @@
 
 Next.js 기반 앱을 Vite + React + Cloudflare Worker 구조로 동작 보존형 이관한다.
 
-현재 active 단계는 external staging/cutover 대기다. Phase 5 admin UI/API 이관, Phase 6 Vite/Worker 산출물 점검, Vite local smoke 자동화는 로컬에서 통과했다. 다음 작업은 Cloudflare Vite staging/preview Worker URL과 Kakao/Naver OAuth redirect URI 등록이 완료된 뒤 live callback과 staging smoke를 진행하는 것이다.
+현재 active 단계는 Phase 7 cleanup이다. Vite + React + Worker production cutover, credentials 복구, admin live 확인이 끝났으므로 기존 Next.js/OpenNext/apps/admin 중복 코드와 배포 스크립트를 제거하고 Vite 단일 앱 기준으로 문서/스크립트를 정리한다.
 
 ## 목표
 - 사용자 플로우, API path/response shape, DB schema, env 이름, 운영 데이터는 바꾸지 않는다.

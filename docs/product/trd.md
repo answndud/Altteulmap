@@ -32,7 +32,7 @@
 - 읽기 기능은 최대한 공개하고, 쓰기 기능은 위험도에 따라 공개/인증 제한을 구분한다
 
 ### 3.2 아키텍처 원칙
-- 프론트엔드와 BFF(Backend for Frontend)를 하나의 Next.js 애플리케이션으로 통합한다.
+- 프론트엔드와 BFF(Backend for Frontend)를 하나의 Vite React SPA + Cloudflare Worker API로 통합한다.
 - 데이터 접근은 서버 경유를 원칙으로 하며 클라이언트에서 DB에 직접 접근하지 않는다.
 - 가격 검증 로직은 DB에 저장되는 원본 제보 데이터 기반으로 판정 가능해야 한다.
 - 카테고리 확장, 가격 템플릿 확장, 운영자 검토 기능을 감안해 스키마를 설계한다.
@@ -49,7 +49,7 @@
 ## 4. 권장 기술 스택
 
 ### 4.1 애플리케이션
-- 프레임워크: Next.js(App Router)
+- 프레임워크: Vite + React Router
 - 언어: TypeScript
 - 개발 런타임: Node.js LTS
 - 배포 런타임: Cloudflare Workers(workerd)
@@ -60,7 +60,7 @@
 
 ### 4.2 인프라
 - 호스팅: Cloudflare Workers
-- 배포 어댑터: `@opennextjs/cloudflare`
+- 배포 어댑터: Cloudflare Vite plugin
 - 배포/운영 도구: Wrangler + Git 연동 배포
 - 데이터베이스: Supabase PostgreSQL
 - DB 연결 계층: Cloudflare Hyperdrive 권장
@@ -70,7 +70,7 @@
 - 이메일 발송: Resend
 
 ### 4.3 인증
-- 인증 프레임워크: Auth.js
+- 인증 프레임워크: Worker signed session cookie + provider OAuth route
 - 지원 로그인:
   - 로컬 credentials
   - 카카오 OAuth
@@ -80,13 +80,12 @@
 - 지도 렌더링: 네이버 지도 JavaScript API
 - 지오코딩/역지오코딩: 네이버 지도 관련 API
 
-### 4.5 선택 이유
-- Next.js는 SSR/CSR 혼합과 SEO 대응, 서버 액션, API 라우트를 한 앱에서 처리하기 좋다.
-- Cloudflare에서 SSR Next.js는 `Workers + OpenNext` 경로가 현재 기준으로 가장 현실적인 배포 방식이다.
+- Vite React SPA는 지도 중심 UI와 클라이언트 상호작용을 단순하게 유지하기 좋다.
+- Cloudflare Worker API는 public/admin/API를 하나의 런타임으로 묶어 1인 개발 운영 표면적을 줄인다.
 - Cloudflare Workers는 전 세계 엣지 배포와 정적 자산 전달 측면에서 유리하다.
 - Supabase PostgreSQL + PostGIS는 위치 기반 검색과 저비용 운영에 적합하다.
 - Hyperdrive를 사용하면 Workers 환경에서 외부 PostgreSQL 연결을 더 안정적으로 구성하기 쉽다.
-- Auth.js는 카카오/네이버처럼 국내 OAuth 제공자를 유연하게 붙이기 쉽다.
+- Worker OAuth route는 카카오/네이버처럼 국내 OAuth 제공자를 직접 제어하기 쉽다.
 - Cloudflare + Supabase 조합도 1인 개발 기준에서 충분히 단순한 운영 구성이 가능하다.
 
 ---
@@ -95,22 +94,22 @@
 
 ### 5.1 상위 구조
 1. 웹 클라이언트
-2. Next.js 서버 레이어(BFF)
+2. Cloudflare Worker API 레이어(BFF)
 3. PostgreSQL/PostGIS
 4. 외부 인증 제공자(카카오, 네이버, 이메일)
 5. 네이버 지도 API
 6. 운영자 내부 관리 화면
 
 ### 5.2 렌더링 전략
-- 홈/지도 페이지: 서버 렌더링 + 클라이언트 하이드레이션
+- 홈/지도 페이지: Vite SPA 렌더링
 - 필터 변경/지도 이동: 클라이언트 fetch
-- 장소 상세: 서버 렌더링 우선
-- 등록/신고/북마크: 서버 액션 또는 Route Handler
+- 장소 상세: SPA route + Worker API 조회
+- 등록/신고/북마크: Worker API
 
 ### 5.3 Cloudflare 런타임 고려사항
-- SSR 애플리케이션은 Cloudflare Pages가 아니라 Workers 기준으로 설계한다.
+- 애플리케이션은 Cloudflare Pages가 아니라 Workers 기준으로 설계한다.
 - Node 전용 패키지, 장시간 연결, 네이티브 바이너리 의존 라이브러리는 도입 전 호환성 검증이 필요하다.
-- 로컬 개발은 `next dev`, 프로덕션 유사 검증은 OpenNext preview/workerd 기준으로 수행한다.
+- 로컬 개발은 `vite`, 프로덕션 유사 검증은 Vite build 산출물의 Wrangler dev/workerd 기준으로 수행한다.
 
 ### 5.4 상태 관리 전략
 - URL Search Params: 지역, 줌, 카테고리, 검색어/검색 범위
@@ -487,7 +486,7 @@
 - 운영자: 검토/병합/숨김 관리 가능
 
 ### 11.2 세션 처리
-- Auth.js 세션 쿠키 기반
+- Worker signed session cookie 기반
 - 민감 작업은 서버에서 세션 재검증
 - 운영자 권한은 DB role 컬럼 기준 판정
 
@@ -587,7 +586,7 @@
 - `CLOUDFLARE_API_TOKEN`
 
 ### 14.3 배포 전략
-- Next.js는 `@opennextjs/cloudflare`로 Workers 번들을 생성한다.
+- Vite와 Cloudflare Vite plugin으로 Workers 번들을 생성한다.
 - `wrangler.jsonc`에서 `nodejs_compat`와 assets 바인딩을 관리한다.
 - `main` 기준 Cloudflare production 배포
 - PR/브랜치 기준 preview 배포는 Git 연동 또는 CI 기반 `wrangler deploy`로 운영한다.
@@ -666,10 +665,10 @@
 ## 18. 단계별 구현 계획
 
 ### 18.1 Phase 1: 기반 구축
-- Next.js 프로젝트 세팅
-- OpenNext Cloudflare 어댑터 구성
+- Vite + React 프로젝트 세팅
+- Cloudflare Vite plugin 구성
 - Wrangler 설정 작성
-- Tailwind, Auth.js, Drizzle 구성
+- Tailwind, Worker auth route, Drizzle 구성
 - Supabase PostgreSQL 연결
 - Hyperdrive 연결 방식 확정
 - 카테고리 시드 정의
@@ -726,14 +725,14 @@
 - 대응: 단일 앱 구조 유지, ORM/스키마 명확화, 운영 도구 최소 범위 우선
 
 ### 19.6 Cloudflare 런타임 호환성
-- 리스크: 일부 Next.js 기능 또는 Node 의존 패키지가 Workers 런타임에서 바로 호환되지 않을 수 있음
+- 리스크: 일부 Node 의존 패키지가 Workers 런타임에서 바로 호환되지 않을 수 있음
 - 대응: 도입 패키지는 호환성 우선 선정, 로컬 preview를 workerd 기준으로 검증, 필요 시 단순한 HTTP 기반 라이브러리로 대체
 
 ---
 
 ## 20. 최종 기술 결정 요약
 
-알뜰맵 MVP의 권장 구현안은 `Next.js + TypeScript + Tailwind + Auth.js + Supabase PostgreSQL(PostGIS) + Drizzle + Cloudflare Workers(OpenNext) + 네이버 지도 API` 조합이다.
+알뜰맵 MVP의 권장 구현안은 `Vite + React + TypeScript + Tailwind + Hono Worker API + Supabase PostgreSQL(PostGIS) + Drizzle + Cloudflare Workers + 네이버 지도 API` 조합이다.
 
 이 구조는 다음 조건을 만족한다.
 - 1인 개발에 적합한 단일 코드베이스
@@ -760,20 +759,20 @@
 6. 대표 가격 템플릿을 카테고리별 고정 입력으로 둘지 여부
 7. 지도 클러스터링을 클라이언트만으로 충분히 처리할 수 있는지 검증
 8. Hyperdrive를 필수로 둘지, 초기에는 직접 Postgres 연결로 시작할지 결정
-9. 사용할 Auth.js 어댑터와 Workers 런타임 호환성 최종 확인
+9. Cloudflare Worker 직접 Postgres 연결과 Hyperdrive 도입 시점 결정
 
 ---
 
 ## 22. 구현 시작 체크리스트
 
-- Next.js App Router 초기화
-- `@opennextjs/cloudflare` 설치
+- Vite + React 초기화
+- Cloudflare Vite plugin 설치
 - `wrangler.jsonc` 작성
 - Tailwind 세팅
 - Drizzle + PostgreSQL 연결
 - Hyperdrive 바인딩 설정
 - PostGIS 활성화
-- Auth.js 기본 로그인 연결
+- Worker credentials/OAuth 로그인 연결
 - 카테고리 시드 작성
 - 지도 페이지 기본 뼈대 작성
 - 장소/가격 스키마 마이그레이션 작성

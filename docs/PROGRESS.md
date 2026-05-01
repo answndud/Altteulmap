@@ -620,3 +620,19 @@ Next.js to Vite + React migration is active.
   - 재검증:
     - `admin@altteulmap.local/admin1234` -> credentials login `200`, `/api/admin/places` `200`
     - `demo@altteulmap.local/demo1234` -> credentials login `200`, `/api/admin/places` `403`
+- Phase 7 cleanup 진행:
+  - Next/OpenNext production 경로 제거: `src/app`, `next.config.ts`, `open-next.config.ts`, OpenNext build scripts 제거
+  - 별도 admin app 제거: `apps/admin`, `wrangler.admin.jsonc`, admin sync/build scripts 제거
+  - Next 전용 feature/page/component 제거: NextAuth wrapper, `next/link`, `next/navigation`, `server-only` 의존 파일 제거
+  - `wrangler.jsonc`를 Vite/Worker 단일 production config로 전환하고 `wrangler.vite.jsonc` 제거
+  - build/deploy 산출물 경로를 `dist/altteulmap`으로 정리
+  - `package.json`에서 `next`, `next-auth`, `@opennextjs/cloudflare`, `server-only`, `eslint-config-next` 제거
+  - ESLint를 Next config 의존 없이 `@eslint/js` + `typescript-eslint` 기준으로 전환
+  - `docs/deploy/deploy-cloudflare.md`, README, TRD, QA checklist를 Vite 단일 Worker 운영 기준으로 갱신
+- Phase 7 cleanup 검증:
+  - `npm run typecheck` 통과
+  - `npm run lint` 통과
+  - `npm run build` 통과: generated config `dist/altteulmap/wrangler.json`, Worker entry `561.58 kB`, client JS `439.50 kB`, client CSS `36.89 kB`
+  - `npm run deploy:check:vite` 통과
+  - `npm run deploy:check` 통과
+  - `npm run smoke:vite:local` 통과: `http://127.0.0.1:3130`, sample place `goodprice-157`

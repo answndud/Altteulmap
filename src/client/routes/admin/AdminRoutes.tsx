@@ -217,7 +217,6 @@ function useAdminData<T>(load: () => Promise<T>, deps: React.DependencyList) {
     return () => {
       active = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 
   return state;

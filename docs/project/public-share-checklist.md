@@ -8,7 +8,7 @@
 
 ## 공유 URL
 - Public demo: `https://altteulmap.altteul-lab.workers.dev`
-- Admin demo: `https://altteulmap-admin.altteul-lab.workers.dev`
+- Admin demo: `https://altteulmap.altteul-lab.workers.dev/admin`
 - Repository README: [README.md](/Users/alex/project/altteulmap/README.md)
 
 ## 완료 상태

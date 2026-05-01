@@ -1,29 +1,55 @@
+import js from "@eslint/js";
 import { defineConfig, globalIgnores } from "eslint/config";
-import nextVitals from "eslint-config-next/core-web-vitals";
-import nextTs from "eslint-config-next/typescript";
+import globals from "globals";
+import tseslint from "typescript-eslint";
 
 const eslintConfig = defineConfig([
-  ...nextVitals,
-  ...nextTs,
-  // Override default ignores of eslint-config-next.
   globalIgnores([
-    // Default ignores of eslint-config-next:
+    ".agents/**",
     ".next/**",
     ".next-dev/**",
-    "apps/admin/.next/**",
-    "apps/admin/.next-dev/**",
-    "apps/admin/.open-next/**",
-    "out/**",
+    ".open-next/**",
+    "apps/admin/**",
     "build/**",
     "dist/**",
-    "next-env.d.ts",
-    "apps/admin/next-env.d.ts",
-    ".open-next/**",
     ".wrangler/**",
     "drizzle/**",
     "test-results/**",
     "playwright-report/**",
   ]),
+  js.configs.recommended,
+  ...tseslint.configs.recommended,
+  {
+    files: ["**/*.{ts,tsx,mts}"],
+    languageOptions: {
+      ecmaVersion: "latest",
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+      },
+      sourceType: "module",
+    },
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+        },
+      ],
+    },
+  },
+  {
+    files: ["**/*.{js,mjs,cjs}"],
+    languageOptions: {
+      ecmaVersion: "latest",
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+      },
+      sourceType: "module",
+    },
+  },
 ]);
 
 export default eslintConfig;
