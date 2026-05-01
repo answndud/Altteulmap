@@ -1099,3 +1099,90 @@
   - 전체 리팩터링은 작은 커밋 단위로 분리됐다.
   - 남은 검증 리스크는 DB 연결이 정상인 로컬 환경에서 `npm run test:e2e:smoke`를 다시 실행하는 것이다.
   - 현재 active 작업은 남아 있지 않다.
+
+<a id="archive-037"></a>
+## `037` Next.js에서 Vite + React Worker로 운영 아키텍처 이관
+- 완료일: `2026-05-01`
+- 배경:
+  - 알뜰맵은 작은 지도 중심 서비스인데 Next.js, OpenNext, public/admin split, Cloudflare Workers 변환 계층이 겹치며 배포와 디버깅 표면적이 커졌다.
+  - 사용자는 팀원 없이 AI agent와 개발/운영/유지보수를 해야 하므로, SSR 중심 통합 프레임워크보다 SPA + 명시적 Worker API 구조가 더 적합하다고 판단했다.
+  - 목표는 신규 기능 추가가 아니라 동작 보존형 이관이었다. API path/response shape, DB schema, env 이름, 운영 데이터, 인증 의미는 변경하지 않는 것으로 제한했다.
+- 변경 내용:
+  - `src/client`에 React Router 기반 Vite SPA를 구성하고 public route(`/`, `/place/:id`, `/submit`, `/report`, `/login`, `/signup`, `/bookmarks`)를 이관했다.
+  - `src/worker`에 Hono 기반 Cloudflare Worker API를 구성하고 기존 public read/write, telemetry, auth, OAuth, bookmark, admin moderation API를 Worker-safe repository로 분리했다.
+  - DB 접근은 Cloudflare Worker request lifecycle에 맞춰 request-local context와 명시적 close 경계로 정리했다. 이 과정에서 `Cannot perform I/O on behalf of a different request` 문제를 발견하고 수정했다.
+  - credentials login, signup, session, Kakao/Naver OAuth redirect/callback/account sync를 Worker에서 보존 구현했다. cookie 이름은 기존 `next-auth.*` 호환 이름을 유지하고 signed session payload로 전환했다.
+  - `/admin/*` UI와 `/api/admin/*` API를 단일 앱/단일 Worker로 통합했다. UI route 보호는 UX 경계로, `/api/admin/*`의 `401`/`403` 서버 권한 검사를 실제 보안 경계로 유지했다.
+  - `wrangler.jsonc`, `vite.config.mts`, npm scripts를 Vite 단일 Worker 기준으로 전환하고, Next/OpenNext/apps/admin 중복 경로와 의존성을 제거했다.
+  - 운영 public URL `https://altteulmap.altteul-lab.workers.dev`는 유지했다. legacy `altteulmap-admin` Worker는 삭제하지 않고 통합 `/admin`으로 `308` redirect하는 호환 Worker로 전환했다.
+  - sitemap은 SPA 기본 SEO 범위에 맞춰 정적 route와 장소 상세 URL 샘플을 포함하도록 보강했다. 장소 상세 SSR과 장소별 OG meta는 1차 범위에서 제외했다.
+  - 마이그레이션 중 판단과 실패 사례를 `docs/blog/next-to-vite-migration-retrospective.md`에 회고 글 형식으로 누적했다.
+- 코드/문서:
+  - `src/client/**`
+  - `src/worker/**`
+  - `index.html`
+  - `vite.config.mts`
+  - `wrangler.jsonc`
+  - `wrangler.admin-redirect.jsonc`
+  - `package.json`
+  - `package-lock.json`
+  - `eslint.config.mjs`
+  - `scripts/check-vite-worker-output.mjs`
+  - `scripts/compare-vite-contract.mjs`
+  - `scripts/smoke-vite-local.mjs`
+  - `scripts/smoke-remote.mjs`
+  - `README.md`
+  - `docs/migration-next-to-vite-react.md`
+  - `docs/blog/next-to-vite-migration-retrospective.md`
+  - `docs/deploy/deploy-cloudflare.md`
+  - `docs/product/trd.md`
+  - `docs/project/public-share-checklist.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run typecheck`
+    - 통과
+  - `npm run lint`
+    - 통과
+  - `npm run build`
+    - 통과, generated config `dist/altteulmap/wrangler.json`
+    - 최종 산출물: Worker entry `561.75 kB`, gzip `119.88 kB`; query fallback chunk `1,614.04 kB`, gzip `192.93 kB`; client JS `439.50 kB`, gzip `129.21 kB`; client CSS `36.89 kB`, gzip `7.87 kB`
+  - `npm run deploy:check:vite`
+    - 통과
+  - `npm run deploy:check`
+    - 통과
+  - `npm run smoke:vite:local`
+    - 통과, `http://127.0.0.1:3130`, sample place `goodprice-157`
+  - `CONTRACT_NEXT_BASE_URL=http://localhost:3000 CONTRACT_VITE_BASE_URL=http://localhost:3120 npm run migration:contract`
+    - Next/Vite mock contract comparison 통과
+  - `CONTRACT_NEXT_BASE_URL=http://localhost:3000 CONTRACT_VITE_BASE_URL=http://localhost:3122 CONTRACT_EXPECT_VITE_SOURCE=database npm run migration:contract`
+    - DB-backed contract comparison 통과
+  - 로컬 DB successful write smoke
+    - 가격 제보, 댓글, 반응, 신고, 댓글 삭제 성공 경로 통과 후 `npm run db:seed`로 seed 상태 복구
+  - production 직접 cutover 전 검증
+    - `npm run typecheck`, `npm run lint`, `npm run cf:build:vite`, `npm run deploy:check:vite`, `npm run smoke:vite:local`, `git diff --check` 통과
+  - production deploy
+    - 최초 Vite Worker cutover: `npx wrangler deploy --config dist/altteulmap_vite_migration/wrangler.json --name altteulmap`
+    - 최초 version `51b55a62-27fd-4d62-b5a7-fd7e5ba2261a`
+    - cleanup 이후 최종 main app 재배포 version `ffbb1aee-1026-421d-9d3f-8749b5de0161`
+  - production live smoke
+    - `/`, `/api/health`, `/api/categories`, `/api/places/map`, `/api/places/:id`, `/api/auth/session`, `/api/auth/providers`, `/api/admin/places`, `/admin`, `/robots.txt`, `/sitemap.xml`, `/manifest.webmanifest` 확인
+    - `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev npm run smoke:remote` 통과
+  - production credentials/admin 권한 검증
+    - `admin@altteulmap.local/admin1234` login `200`, `/api/admin/places` `200`
+    - `demo@altteulmap.local/demo1234` login `200`, `/api/admin/places` `403`
+  - legacy admin redirect deploy
+    - `npx wrangler deploy --config wrangler.admin-redirect.jsonc` 통과
+    - `altteulmap-admin` version `b6473658-71fa-4231-8a45-b24dbdddd626`
+    - `/`, `/admin`, `/admin/places`, `/login?callbackUrl=%2Fadmin` redirect 확인
+  - 최종 검증
+    - `npm run verify` 통과
+    - `git diff --check` 통과
+- 결과:
+  - 운영 앱은 Next.js/OpenNext 기반에서 Vite + React SPA + 단일 Cloudflare Worker API 구조로 전환됐다.
+  - public/admin/API는 `altteulmap.altteul-lab.workers.dev` 하나로 통합됐고, 기존 admin Worker URL은 통합 admin으로 redirect된다.
+  - `next`, `next-auth`, `@opennextjs/cloudflare`, `server-only`, `eslint-config-next` 의존성과 `src/app`, `apps/admin`, OpenNext 설정/스크립트가 제거됐다.
+  - Cloudflare Dashboard Builds 설정 저장 오류가 있어 운영 배포는 현재 `npm run deploy` 또는 generated Wrangler config 기반 직접 deploy 경로를 사용한다.
+  - Kakao/Naver는 authorization redirect와 state cookie까지 production smoke로 확인했다. 실제 provider 계정 callback 완료는 외부 OAuth 콘솔 redirect URI와 사용자 계정 흐름에 의존하므로 운영 수동 QA 항목으로 남긴다.
+  - 모든 active migration 작업은 archive로 이동했고, `docs/PLAN.md`, `docs/PROGRESS.md`는 `현재 active 작업 없음` 상태로 정리했다.

@@ -190,3 +190,31 @@ admin SPA를 붙일 때는 기존 Next admin 컴포넌트를 얼마나 재사용
 이 자동화는 바로 값을 했다. admin API를 병렬로 호출하자 DB 연결이 실패했다. 원인은 다시 Worker DB lifecycle이었다. 전역 singleton DB client는 순차 요청에서는 괜찮아 보였지만, 동시 요청에서는 같은 client를 공유하거나 닫는 타이밍이 겹칠 수 있었다. 수동 smoke를 순차로만 돌렸다면 발견하지 못했을 문제다.
 
 해결은 `AsyncLocalStorage` 기반 request-local DB context였다. 이제 Worker DB 접근은 `withWorkerDatabaseConnection` 또는 read timeout wrapper 안에서만 가능하고, 요청이 끝나면 그 요청의 client만 닫는다. 이 수정은 Vite 전환 과정에서 가장 중요한 운영 안정성 개선 중 하나다. 프레임워크를 바꾸는 이유가 단순히 빌드 시간을 줄이기 위해서가 아니라, 런타임 경계를 더 명확히 보기 위해서라는 점을 다시 확인했다.
+
+production cutover에서는 코드보다 운영 설정이 먼저 문제를 만들었다. Cloudflare Dashboard의 Workers Builds form은 `An internal error prevented the form from submitting` 오류로 저장되지 않았다. 사용자가 없는 서비스였고 장애를 감수할 수 있었기 때문에 staging을 따로 만들지 않고 generated Wrangler config로 직접 production Worker를 배포했다. 이 결정은 빠르게 맞았지만, 앞으로 사용자가 생긴 뒤에는 같은 방식으로 하면 안 된다. 사용자 트래픽이 생긴 뒤에는 staging Worker, smoke, DNS cutover 또는 version rollback 기준이 필요하다.
+
+첫 production smoke에서 OAuth와 credentials가 모두 작은 운영 설정 차이로 흔들렸다. Kakao/Naver signin은 Worker에 client id secret이 없어 `/login?error=kakao|naver`로 돌아왔고, admin/demo credentials는 password override secret이 없어 `401`을 반환했다. 코드는 맞아도 env binding이 빠지면 운영 기능은 실패한다. 이번 작업에서 env 이름을 바꾸지 않은 것은 맞는 결정이었지만, "기존 env 이름 유지"와 "새 Worker에 모든 secret이 실제로 연결됨"은 별개의 문제였다.
+
+Next/OpenNext 제거는 마지막에 했다. 이 순서가 중요했다. Vite route가 열린 것, DB-backed API가 통과한 것, admin이 보이는 것만으로는 기존 구조를 지우면 안 된다. production smoke와 remote smoke가 통과한 뒤에야 `src/app`, `apps/admin`, `next.config.ts`, `open-next.config.ts`, OpenNext scripts, Next-only 컴포넌트를 제거했다. 마이그레이션에서 삭제는 구현보다 더 위험한 작업이다. 삭제 후에는 되돌릴 기준이 줄어들기 때문이다.
+
+admin은 처음 계획대로 별도 앱이 아니라 통합 `/admin`으로 들어갔다. 여기서도 한 가지 운영 판단을 했다. 기존 `altteulmap-admin` Worker를 바로 삭제하지 않고 redirect-only Worker로 남겼다. 사용자가 거의 없더라도 내가 북마크하거나 문서에 남긴 old admin URL이 있을 수 있고, Cloudflare Dashboard에서 서비스가 갑자기 없어지는 것보다 명시적으로 새 위치로 보내는 편이 덜 위험하다. 작은 서비스에서도 "삭제"보다 "redirect 후 관찰"이 안전한 경우가 있다.
+
+최종 구조는 처음보다 훨씬 직접적이다.
+
+- 브라우저 UI는 Vite + React SPA다.
+- 서버 기능은 Cloudflare Worker API다.
+- DB 접근은 Worker request lifecycle 안에서만 열린다.
+- admin 보안 경계는 `/api/admin/*`의 서버 권한 검사다.
+- SEO는 1차 범위에서 sitemap, robots, manifest, 기본 meta로 제한한다.
+
+이관을 마치고 나니 "Next.js가 나빴다"는 결론은 아니다. 문제는 용도와 규모에 비해 너무 많은 계층을 한 번에 가져온 것이었다. 알뜰맵은 지도 중심 SPA이고, 데이터는 API로 읽고 쓰며, 관리자도 같은 서비스의 운영 화면이다. 이런 서비스에는 Vite + React + Worker API처럼 경계가 노골적인 구조가 더 잘 맞는다.
+
+처음부터 다시 만든다면 이렇게 시작할 것이다.
+
+- `src/client`: React Router 기반 지도/상세/제보/admin UI
+- `src/worker`: Hono API, auth, admin 권한, SEO route
+- `src/worker/repositories`: public read/write, admin, auth, telemetry 분리
+- `src/shared`: 브라우저에 들어가도 안전한 type과 schema만 배치
+- `scripts`: contract smoke, deploy check, sitemap generation
+
+가장 큰 교훈은 AI agent와 협업할수록 아키텍처를 단순하게 유지해야 한다는 점이다. agent는 많은 코드를 빠르게 바꿀 수 있지만, 런타임 경계가 흐릿하면 그 속도는 위험해진다. `client`, `worker`, `db`, `admin security boundary`가 명확하면 agent가 만든 변경도 검토하기 쉽고, 실패했을 때 원인을 좁히기 쉽다. 작은 프로젝트에서 단순한 구조는 취향이 아니라 운영 능력이다.
