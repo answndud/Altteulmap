@@ -592,3 +592,24 @@ Next.js to Vite + React migration is active.
   - `npm run deploy:check:vite` 통과
   - `npm run smoke:vite:local` 통과: `http://127.0.0.1:3130`, sample place `goodprice-157`
   - `git diff --check` 통과
+- production 직접 cutover 진행:
+  - Cloudflare Dashboard Builds 설정 저장은 `An internal error prevented the form from submitting` 오류로 실패
+  - fallback으로 `npx wrangler deploy --config dist/altteulmap_vite_migration/wrangler.json --name altteulmap` 직접 배포
+  - 배포 성공: `https://altteulmap.altteul-lab.workers.dev`, version `51b55a62-27fd-4d62-b5a7-fd7e5ba2261a`
+  - 최초 live OAuth smoke에서 Kakao/Naver signin이 `/login?error=kakao|naver`로 떨어져 production Worker에 OAuth client id binding이 없음을 확인
+  - `AUTH_KAKAO_CLIENT_ID`, `AUTH_NAVER_CLIENT_ID`를 production Worker secret으로 추가
+  - `NEXTAUTH_URL`은 기존 binding이 이미 있어 추가하지 않음
+  - 재검증 결과 Kakao/Naver signin이 provider authorization URL로 `302`되고 state cookie가 설정됨
+- production live smoke 통과:
+  - `/` -> `200 text/html`
+  - `/api/health` -> `200 application/json`
+  - `/api/categories` -> `200 application/json`
+  - `/api/places/map?scope=global` -> `200 application/json`, `source:"database"`, `mock:false`, count `1000`
+  - `/api/places/goodprice-157` -> `200 application/json`, `source:"database"`, `mock:false`
+  - `/api/auth/session` -> `200 application/json`
+  - `/api/auth/providers` -> `200 application/json`
+  - `/api/admin/places` unauthenticated -> `401 application/json`
+  - `/admin` -> `200 text/html`
+  - `/robots.txt` -> `200 text/plain`
+  - `/sitemap.xml` -> `200 application/xml`
+  - `/manifest.webmanifest` -> `200 application/manifest+json`
