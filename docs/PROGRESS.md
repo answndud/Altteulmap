@@ -639,3 +639,8 @@ Next.js to Vite + React migration is active.
   - `sitemap.xml`에 정적 경로뿐 아니라 장소 상세 URL 샘플 120개를 포함하도록 보강
   - production 재배포 성공: version `ffbb1aee-1026-421d-9d3f-8749b5de0161`
   - `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev npm run smoke:remote` 통과
+- legacy admin Worker redirect 전환:
+  - `src/worker/legacy-admin-redirect.mjs`, `wrangler.admin-redirect.jsonc`, `deploy:admin-redirect` 추가
+  - `npx wrangler deploy --config wrangler.admin-redirect.jsonc` 통과
+  - `altteulmap-admin` version `b6473658-71fa-4231-8a45-b24dbdddd626`
+  - `/`, `/admin`, `/admin/places`, `/login?callbackUrl=%2Fadmin`가 `https://altteulmap.altteul-lab.workers.dev` 기준으로 `308` redirect되는 것 확인
