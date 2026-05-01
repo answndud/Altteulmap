@@ -637,3 +637,5 @@ Next.js to Vite + React migration is active.
   - `npm run deploy:check` 통과
   - `npm run smoke:vite:local` 통과: `http://127.0.0.1:3130`, sample place `goodprice-157`
   - `sitemap.xml`에 정적 경로뿐 아니라 장소 상세 URL 샘플 120개를 포함하도록 보강
+  - production 재배포 성공: version `ffbb1aee-1026-421d-9d3f-8749b5de0161`
+  - `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev npm run smoke:remote` 통과
