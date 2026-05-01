@@ -1,4 +1,3 @@
-import { formatKrw } from "@/features/places/queries";
 import type { PlacePreviewRecord } from "@/features/places/types";
 
 export const PLACE_SHARE_SOURCES = [
@@ -19,6 +18,10 @@ type PlaceShareSummary = Pick<
   | "representativePriceAmount"
   | "representativePriceLabel"
 >;
+
+function formatKrw(amount: number) {
+  return new Intl.NumberFormat("ko-KR").format(amount);
+}
 
 export function createPlaceSharePath(
   placeId: string,

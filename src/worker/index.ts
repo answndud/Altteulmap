@@ -58,6 +58,7 @@ import {
   applyWorkerWriteHeaders,
   consumeWorkerRateLimit,
   getWorkerPublicWriteActor,
+  type WorkerPublicWriteActor,
 } from "@/worker/public-write-actor";
 import {
   recordWorkerVisitActivity,
@@ -316,9 +317,26 @@ function textResponse(body: string, contentType: string) {
   });
 }
 
-function normalizeCallbackUrl(value: string | null | undefined) {
+function normalizeCallbackUrl(
+  value: string | null | undefined,
+  origin?: string,
+) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) {
-    return "/";
+    if (!origin) {
+      return "/";
+    }
+
+    try {
+      const url = new URL(value ?? "", origin);
+
+      if (url.origin !== origin) {
+        return "/";
+      }
+
+      return normalizeCallbackUrl(`${url.pathname}${url.search}${url.hash}`);
+    } catch {
+      return "/";
+    }
   }
 
   const pathname = value.split(/[?#]/, 1)[0];
@@ -426,6 +444,13 @@ function getMockComments(placeId: string, visitorId: string | null) {
 
 function getReactionActorKey(placeId: string, request: Request) {
   return `${placeId}:${getOrCreateVisitorId(request)}`;
+}
+
+function getWorkerReactionActorKey(
+  placeId: string,
+  actor: WorkerPublicWriteActor,
+) {
+  return `${placeId}:${actor.user?.id ?? actor.visitorId ?? actor.key}`;
 }
 
 function getMockReactionSummary(placeId: string, request: Request) {
@@ -822,6 +847,36 @@ app.get("/api/auth/session", (c) => {
   return c.json(session, 200, noStoreHeaders);
 });
 
+app.post("/api/auth/signout", async (c) => {
+  const contentType = c.req.header("content-type") ?? "";
+  const body = contentType.includes("application/json")
+    ? await c.req.json().catch(() => ({}))
+    : Object.fromEntries((await c.req.formData()).entries());
+  const origin = getOrigin(c.req.raw, c.env.NEXTAUTH_URL ?? c.env.SITE_URL);
+  const shouldReturnJson =
+    body.json === "true" ||
+    c.req.header("accept")?.includes("application/json") === true;
+  const callbackUrl = normalizeCallbackUrl(
+    typeof body.callbackUrl === "string" ? body.callbackUrl : "/",
+    origin,
+  );
+  const response = shouldReturnJson
+    ? c.json({ url: callbackUrl }, 200, noStoreHeaders)
+    : c.redirect(new URL(callbackUrl, origin).toString());
+
+  appendCookie(response, c.req.raw, {
+    name: AUTH_SESSION_COOKIE_NAME,
+    value: "",
+    maxAge: 0,
+  });
+  appendCookie(response, c.req.raw, {
+    name: AUTH_CALLBACK_COOKIE_NAME,
+    value: callbackUrl,
+  });
+
+  return response;
+});
+
 app.get("/api/auth/providers", (c) => {
   const origin = getOrigin(c.req.raw, c.env.NEXTAUTH_URL ?? c.env.SITE_URL);
   const providers: Record<string, unknown> = {
@@ -1119,33 +1174,35 @@ app.post("/api/auth/callback/credentials", async (c) => {
   const body = contentType.includes("application/json")
     ? await c.req.json().catch(() => ({}))
     : Object.fromEntries((await c.req.formData()).entries());
+  const origin = getOrigin(c.req.raw, c.env.NEXTAUTH_URL ?? c.env.SITE_URL);
   const email = typeof body.email === "string" ? body.email : "";
   const password = typeof body.password === "string" ? body.password : "";
+  const shouldReturnJson =
+    body.json === "true" ||
+    c.req.header("accept")?.includes("application/json") === true;
   const callbackUrl = normalizeCallbackUrl(
     typeof body.callbackUrl === "string" ? body.callbackUrl : "/",
+    origin,
   );
   const user = await runWorkerDatabaseRoute(c.env, () =>
     verifyWorkerCredentials(c.env, email, password),
   );
 
   if (!user) {
-    return c.json(
-      {
-        url: `${getOrigin(c.req.raw, c.env.NEXTAUTH_URL ?? c.env.SITE_URL)}/api/auth/error?error=CredentialsSignin&provider=credentials`,
-      },
-      401,
-      noStoreHeaders,
-    );
+    const errorUrl = `${origin}/api/auth/error?error=CredentialsSignin&provider=credentials`;
+
+    if (!shouldReturnJson) {
+      return c.redirect(errorUrl);
+    }
+
+    return c.json({ url: errorUrl }, 401, noStoreHeaders);
   }
 
   const session = createSession(user);
-  const response = c.json(
-    {
-      url: callbackUrl,
-    },
-    200,
-    noStoreHeaders,
-  );
+  const redirectUrl = new URL(callbackUrl, origin).toString();
+  const response = shouldReturnJson
+    ? c.json({ url: callbackUrl }, 200, noStoreHeaders)
+    : c.redirect(redirectUrl);
 
   appendCookie(response, c.req.raw, {
     name: AUTH_SESSION_COOKIE_NAME,
@@ -1619,7 +1676,7 @@ app.put("/api/places/:id/reaction", async (c) => {
     );
   }
 
-  const { actorKey } = getMockReactionSummary(placeId, c.req.raw);
+  const actorKey = getWorkerReactionActorKey(placeId, actor);
 
   if (parsed.data.reaction) {
     mockReactionStore.set(actorKey, parsed.data.reaction);

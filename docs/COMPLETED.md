@@ -1235,3 +1235,76 @@
   - 운영 remote smoke가 public/API/admin boundary뿐 아니라 OAuth provider authorization redirect까지 자동 검증한다.
   - 관리자 credentials 검증은 필요할 때 shell env로만 주입해 실행할 수 있다.
   - 로그인 화면에서 마이그레이션 내부 문구가 사라져 사용자에게 현재 운영 상태와 맞는 안내가 표시된다.
+
+<a id="archive-039"></a>
+## `039` Vite 이관 후 기능/디자인 parity 복구
+- 완료일: `2026-05-01`
+- 배경:
+  - Vite + React 이관 후 운영 홈에서 네이버 지도가 “지도 설정이 아직 준비되지 않아 임시 미리보기”로 표시됐다.
+  - Next.js 시절의 지도 탐색 UI, 가격 중심 목록, 상세 시트, 공유/북마크/반응, 인기 장소, 헤더 세션 액션, admin 승인 큐 일부가 Vite 화면에서 빠지거나 빈약해졌다.
+  - 캡처 없이 코드, DOM, API, smoke/E2E 기준으로 기능과 디자인 parity를 복구했다.
+- 변경 내용:
+  - Vite config가 `.env.production.local` 등 Vite mode env를 읽도록 `loadEnv` 기반으로 수정해 `NEXT_PUBLIC_NAVER_MAP_KEY_ID`가 production client bundle에 주입되게 했다.
+  - 홈 지도 화면에 기존 수준의 검색 범위 선택, 그룹형 업종 필터, 가격 우선 목록 카드, 북마크, 공유, 좋아요 count 동기화, 상세 시트, 인기 장소 섹션을 복구했다.
+  - 공유 payload helper가 서버용 `queries.ts`와 mock catalog를 client bundle로 끌어오던 문제를 제거해 client JS를 약 `1.9MB`에서 약 `459KB`로 줄였다.
+  - 상세 페이지에 공유 CTA와 test id를 복구했다.
+  - 헤더에 session badge, admin link, sign out button을 복구하고 Worker에 `/api/auth/signout`을 추가했다.
+  - credentials callback은 NextAuth 호환 form POST `302`와 SPA용 `json=true` `200` 응답을 모두 지원하도록 수정했다.
+  - mock reaction actor key가 요청마다 달라져 비회원 반응 취소가 누적되던 문제를 수정했다.
+  - admin dashboard metric/testable overview와 신규 장소 승인 큐의 pending list, AI 검수 패널, 좌표 입력, 승인 버튼 식별자를 복구했다.
+  - 로컬 E2E가 Vite preview Worker에도 DB/auth env를 전달하도록 generated `.dev.vars`를 빌드 후 생성하게 했다.
+  - 회원가입/admin 문구에서 마이그레이션 내부 용어를 제거했다.
+- 코드/문서:
+  - `vite.config.mts`
+  - `scripts/run-local-e2e.mjs`
+  - `src/client/App.tsx`
+  - `src/client/routes/MapRoute.tsx`
+  - `src/client/routes/PlaceDetailRoute.tsx`
+  - `src/client/routes/SignupRoute.tsx`
+  - `src/client/routes/admin/AdminRoutes.tsx`
+  - `src/client/styles.css`
+  - `src/features/places/share.ts`
+  - `src/worker/index.ts`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run lint`
+    - 통과
+  - `npm run typecheck`
+    - 통과
+  - `npm run build`
+    - 통과
+    - 최종 산출물: Worker entry `563.33 kB`, gzip `120.08 kB`; client JS `459.25 kB`, gzip `133.22 kB`; client CSS `41.26 kB`, gzip `8.43 kB`
+  - production env injection check
+    - `NEXT_PUBLIC_NAVER_MAP_KEY_ID` length `10`
+    - built client bundle에 key 주입 확인
+    - `process.env.NEXT_PUBLIC_NAVER_MAP_KEY_ID` reference 잔존 없음
+  - `npm run smoke:vite:local`
+    - 통과
+  - `npm run test:e2e:smoke`
+    - 통과
+    - `7 passed`
+    - 지도 API, 지도 검색/상세 시트/비회원 좋아요/공유/닫기, 인기 장소/상세 공유, 회원가입 자동 로그인, 공개 장소 등록 폼, 장소 등록 후 admin 승인과 홈 검색 노출, admin dashboard 세션/지표 흐름 확인
+  - `npm run verify`
+    - 통과
+  - `npm run deploy:check`
+    - 통과
+    - optional `EMAIL_FROM`, `RESEND_API_KEY`는 미설정 warning
+  - `git diff --check`
+    - 통과
+  - `npm run deploy`
+    - 통과
+    - production version `22e46eb5-1de7-4dc1-833e-a1bf1df4aafe`
+  - `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev npm run smoke:remote`
+    - 통과
+    - home, robots, sitemap, map API, place page, login, admin route, admin API boundary, Kakao/Naver provider redirect 확인
+  - production headless DOM check
+    - `map-panel-shell` 1개 확인
+    - “지도 설정이 아직 준비되지 않아 임시 미리보기” 문구 미노출
+    - “지도 설정이 아직 준비되지 않아 현재 위치를 사용할 수 없습니다.” 문구 미노출
+- 결과:
+  - 운영 배포 URL에서 네이버 지도 fallback이 사라지고 production key가 정상 주입된다.
+  - Vite public 홈은 Next 시절의 핵심 지도/검색/카테고리/목록/상세/공유/인기 장소 흐름을 다시 제공한다.
+  - admin과 auth의 주요 운영 흐름이 E2E 기준으로 복구됐다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.

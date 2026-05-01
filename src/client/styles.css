@@ -146,6 +146,45 @@ select {
   background-color: var(--altteul-surface-fill-hover);
 }
 
+.altteulmap-scope-chip {
+  border: 1px solid var(--altteul-surface-border);
+  background-color: rgba(255, 253, 249, 0.98);
+  color: var(--altteul-text-secondary);
+}
+
+.altteulmap-scope-input:hover + .altteulmap-scope-chip {
+  border-color: var(--altteul-surface-border-strong);
+  background-color: var(--altteul-surface-fill-hover);
+}
+
+.altteulmap-scope-input:checked + .altteulmap-scope-chip {
+  border-color: var(--altteul-accent-hover);
+  background-color: var(--altteul-accent);
+  box-shadow: 0 8px 18px rgba(181, 90, 43, 0.14);
+  color: #fff;
+}
+
+.altteulmap-scope-input:focus-visible + .altteulmap-scope-chip {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--altteul-focus-ring);
+}
+
+.altteulmap-scope-input:checked:focus-visible + .altteulmap-scope-chip {
+  box-shadow:
+    0 0 0 3px var(--altteul-focus-ring),
+    0 8px 18px rgba(181, 90, 43, 0.14);
+}
+
+.altteulmap-chip-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.625rem;
+}
+
+.altteulmap-chip-grid > * {
+  min-width: 0;
+}
+
 .altteulmap-badge {
   border-radius: 999px;
   border: 1px solid rgba(183, 169, 150, 0.66);
@@ -258,6 +297,18 @@ select {
 .altteulmap-button.altteulmap-brand-kakao:hover {
   border-color: rgba(82, 66, 0, 0.18);
   background-color: #f2da00;
+}
+
+@media (min-width: 640px) {
+  .altteulmap-chip-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .altteulmap-chip-grid {
+    grid-template-columns: repeat(auto-fit, minmax(7.75rem, 1fr));
+  }
 }
 
 .altteulmap-button.altteulmap-brand-naver {
