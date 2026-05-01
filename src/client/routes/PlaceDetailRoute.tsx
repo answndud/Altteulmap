@@ -6,6 +6,8 @@ import { getCategoryBySlug } from "@/features/categories/catalog";
 import { RouteResetDetails } from "@/features/map/route-reset-details";
 import { PlaceCommentsSection } from "@/features/places/place-comments-section";
 import { PlacePriceReportForm } from "@/features/places/place-price-report-form";
+import { PlaceShareButton } from "@/features/places/place-share-button";
+import { createPlaceSharePayload } from "@/features/places/share";
 import type { PlaceReactionType } from "@/features/places/types";
 import type { PlaceRecord } from "@/features/places/types";
 
@@ -131,6 +133,7 @@ export function PlaceDetailRoute() {
 
   const place = state.data.item;
   const category = getCategoryBySlug(place.categorySlug);
+  const sharePayload = createPlaceSharePayload(place, "detail");
   const verificationLabel =
     place.verificationStatus === "verified" ? "검증됨" : "미검증";
   const summaryItems = [category?.name ?? "기타", place.district, verificationLabel];
@@ -205,6 +208,15 @@ export function PlaceDetailRoute() {
                   initialDislikeCount={place.dislikeCount}
                   initialViewerReaction={place.viewerReaction}
                   onUpdate={handleReactionUpdate}
+                />
+              </div>
+              <div className="mt-3">
+                <PlaceShareButton
+                  path={sharePayload.path}
+                  title={sharePayload.title}
+                  text={sharePayload.text}
+                  testId="place-page-share-button"
+                  messageTestId="place-page-share-message"
                 />
               </div>
             </section>

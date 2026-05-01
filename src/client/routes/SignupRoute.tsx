@@ -186,8 +186,8 @@ export function SignupRoute() {
             </button>
 
             <div className="grid gap-2 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-xs leading-5 text-stone-500">
-              <p>운영 DB 쓰기는 Phase 4 인증 이관에서 연결합니다.</p>
-              <p>현재 route는 기존 입력 검증과 local failure contract를 고정합니다.</p>
+              <p>회원가입 후 같은 계정으로 북마크와 제보 내역을 이어서 관리할 수 있습니다.</p>
+              <p>입력한 비밀번호는 안전하게 해시 처리되어 저장됩니다.</p>
             </div>
 
             <div className="flex items-center justify-center border-t border-stone-200 pt-4 text-sm text-stone-500">
