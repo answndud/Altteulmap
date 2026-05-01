@@ -632,7 +632,8 @@ Next.js to Vite + React migration is active.
 - Phase 7 cleanup 검증:
   - `npm run typecheck` 통과
   - `npm run lint` 통과
-  - `npm run build` 통과: generated config `dist/altteulmap/wrangler.json`, Worker entry `561.58 kB`, client JS `439.50 kB`, client CSS `36.89 kB`
+  - `npm run build` 통과: generated config `dist/altteulmap/wrangler.json`, Worker entry `561.75 kB`, client JS `439.50 kB`, client CSS `36.89 kB`
   - `npm run deploy:check:vite` 통과
   - `npm run deploy:check` 통과
   - `npm run smoke:vite:local` 통과: `http://127.0.0.1:3130`, sample place `goodprice-157`
+  - `sitemap.xml`에 정적 경로뿐 아니라 장소 상세 URL 샘플 120개를 포함하도록 보강
