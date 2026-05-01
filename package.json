@@ -12,6 +12,7 @@
     "preview": "npm run build && wrangler dev --config dist/altteulmap/wrangler.json",
     "preview:vite": "npm run preview",
     "deploy": "npm run build && wrangler deploy --config dist/altteulmap/wrangler.json",
+    "deploy:admin-redirect": "wrangler deploy --config wrangler.admin-redirect.jsonc",
     "deploy:vite": "npm run deploy",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
