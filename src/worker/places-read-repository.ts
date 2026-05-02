@@ -320,46 +320,49 @@ function getPlaceOnlyMapMarkers(
     .map(toMapPlaceMarkerRecord);
 }
 
-function getMapTileGrid(bounds: PlaceBounds, markerLimit: number) {
-  const latSpan = Math.max(bounds.maxLat - bounds.minLat, 0.0001);
-  const lngSpan = Math.max(bounds.maxLng - bounds.minLng, 0.0001);
-  const aspectRatio = Math.max(lngSpan / latSpan, 0.65);
-  const columnCount = Math.max(
-    1,
-    Math.round(Math.sqrt(markerLimit * aspectRatio)),
-  );
-  const rowCount = Math.max(1, Math.ceil(markerLimit / columnCount));
+function getStableClusterCellSize(
+  zoom: number | null,
+  query: string | null,
+) {
+  if (query?.trim()) {
+    return { latSpan: 0.018, lngSpan: 0.025 };
+  }
 
-  return {
-    columnCount,
-    latSpan,
-    lngSpan,
-    rowCount,
-  };
+  if (!zoom || zoom <= 10) {
+    return { latSpan: 0.11, lngSpan: 0.14 };
+  }
+
+  if (zoom <= 11) {
+    return { latSpan: 0.075, lngSpan: 0.1 };
+  }
+
+  if (zoom <= 12) {
+    return { latSpan: 0.055, lngSpan: 0.075 };
+  }
+
+  if (zoom <= 13) {
+    return { latSpan: 0.04, lngSpan: 0.055 };
+  }
+
+  if (zoom <= 14) {
+    return { latSpan: 0.028, lngSpan: 0.038 };
+  }
+
+  return { latSpan: 0.018, lngSpan: 0.025 };
 }
 
 function getClusterOnlyMapMarkers(
   items: PlacePreviewRecord[],
-  bounds: PlaceBounds,
+  _bounds: PlaceBounds,
   query: string | null,
   zoom: number | null,
 ): PlaceMapMarkerRecord[] {
-  const markerLimit = getMapMarkerLimit(zoom, query);
-  const { columnCount, latSpan, lngSpan, rowCount } = getMapTileGrid(
-    bounds,
-    markerLimit,
-  );
+  const { latSpan, lngSpan } = getStableClusterCellSize(zoom, query);
   const cells = new Map<string, PlacePreviewRecord[]>();
 
   for (const place of items) {
-    const rowIndex = Math.min(
-      rowCount - 1,
-      Math.floor(((place.latitude - bounds.minLat) / latSpan) * rowCount),
-    );
-    const columnIndex = Math.min(
-      columnCount - 1,
-      Math.floor(((place.longitude - bounds.minLng) / lngSpan) * columnCount),
-    );
+    const rowIndex = Math.floor(place.latitude / latSpan);
+    const columnIndex = Math.floor(place.longitude / lngSpan);
     const cellKey = `${rowIndex}:${columnIndex}`;
     const bucket = cells.get(cellKey) ?? [];
 
@@ -367,20 +370,24 @@ function getClusterOnlyMapMarkers(
     cells.set(cellKey, bucket);
   }
 
-  return [...cells.entries()].map(([cellKey, bucket]) => {
-    return {
-      kind: "cluster",
-      id: `cluster:${cellKey}:${bucket.length}`,
-      latitude:
-        bucket.reduce((sum, place) => sum + place.latitude, 0) / bucket.length,
-      longitude:
-        bucket.reduce((sum, place) => sum + place.longitude, 0) / bucket.length,
-      bounds: getBoundsFromPlaces(bucket),
-      placeCount: bucket.length,
-      previewPlaces:
-        bucket.length <= MAP_CLUSTER_PREVIEW_PLACE_LIMIT ? bucket : undefined,
-    };
-  });
+  return [...cells.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([cellKey, bucket]) => {
+      return {
+        kind: "cluster",
+        id: `cluster:${cellKey}`,
+        latitude:
+          bucket.reduce((sum, place) => sum + place.latitude, 0) /
+          bucket.length,
+        longitude:
+          bucket.reduce((sum, place) => sum + place.longitude, 0) /
+          bucket.length,
+        bounds: getBoundsFromPlaces(bucket),
+        placeCount: bucket.length,
+        previewPlaces:
+          bucket.length <= MAP_CLUSTER_PREVIEW_PLACE_LIMIT ? bucket : undefined,
+      };
+    });
 }
 
 function getDatabaseMapPlaceWhereClause({
