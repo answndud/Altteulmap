@@ -42,6 +42,9 @@ Next.js 기능 parity 회귀를 복구한다.
   - PRD/TRD/테스트 기대를 “가격 필터 미노출, 대표 가격 노출”로 일관되게 맞춘다.
 - 디자인/지도 품질 복구
   - 실제 Naver 지도 렌더링이 운영 환경에서 `지도 설정이 아직 준비되지 않아 임시 미리보기` 상태로 떨어지지 않는지 확인한다.
+  - 숫자 클러스터는 지도 위에서 숫자가 읽히는 마커로 표시되어야 하고, 클릭 시 클러스터 bounds로 확대/이동해야 한다.
+  - 클러스터 클릭 또는 충분한 줌인 이후에는 새 viewport 기준으로 `/api/places/map`을 재조회해 클러스터가 개별 장소 마커로 분할되어야 한다.
+  - 클러스터 클릭 경로는 실제 Naver 지도와 임시 preview fallback 모두에서 최소한의 동작이 보존되어야 한다.
   - 주요 public 화면(`/`, `/map`, `/place/:id`, `/submit`, `/login`, `/bookmarks`)과 admin 화면(`/admin`, `/admin/prices`, `/admin/reports`, `/admin/places`)의 정보 밀도, 여백, 버튼 위계, 모바일 터치 타겟을 점검한다.
   - 디자인 수정은 기능 contract를 바꾸지 않고, Next 시절보다 빈약해진 UI를 복구하는 범위로 제한한다.
 
@@ -76,5 +79,6 @@ Next.js 기능 parity 회귀를 복구한다.
 - `npm run test:e2e:full`이 통과한다.
 - 가격 필터 관련 spec의 기대 동작이 코드/문서와 일치한다.
 - 실제 Naver 지도 렌더링, OAuth live callback, admin 처리 플로우, 주요 화면 디자인 수동 QA가 완료된다.
+- 숫자 클러스터 표시, 클릭 확대, viewport 재조회, 개별 장소 마커 분할이 자동/수동 검증된다.
 - 운영 배포와 remote smoke가 통과한다.
 - 완료 후 `docs/PROGRESS.md` 결과를 `docs/COMPLETED.md`에 archive하고, `PLAN.md`, `PROGRESS.md`는 `현재 active 작업 없음`으로 정리한다.

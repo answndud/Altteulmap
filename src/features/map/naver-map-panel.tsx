@@ -43,6 +43,7 @@ type NaverMapPanelProps = {
   activePlaceId?: string | null;
   focusPlacesKey?: string | null;
   onSelectPlace?: (place: PlacePreviewRecord) => void;
+  onClusterFocusViewport?: (viewport: MapViewport) => void;
   onViewportChange?: (viewport: MapViewport) => void;
 };
 
@@ -181,6 +182,20 @@ function isPlaceInsideViewport(
     place.longitude >= viewport.bounds.minLng - padding &&
     place.longitude <= viewport.bounds.maxLng + padding
   );
+}
+
+function getClusterViewport(
+  marker: ClusterDisplayMarker,
+  zoom: number,
+): MapViewport {
+  return {
+    bounds: marker.bounds,
+    center: {
+      lat: marker.latitude,
+      lng: marker.longitude,
+    },
+    zoom,
+  };
 }
 
 function PreviewMap({
@@ -332,6 +347,7 @@ function NaverMapFallback({
   selectedCategoryLabel,
   activePlaceId,
   onSelectPlace,
+  onClusterFocusViewport,
 }: {
   isLoading?: boolean;
   mapMarkers: PlaceMapMarkerRecord[];
@@ -339,6 +355,7 @@ function NaverMapFallback({
   selectedCategoryLabel: string | null;
   activePlaceId?: string | null;
   onSelectPlace: (place: PlacePreviewRecord) => void;
+  onClusterFocusViewport?: (viewport: MapViewport) => void;
 }) {
   const displayMarkers = useMemo(
     () => getDisplayMarkers(mapMarkers, activePlaceId ?? null),
@@ -355,6 +372,9 @@ function NaverMapFallback({
           markers={displayMarkers}
           selectedCategoryLabel={selectedCategoryLabel}
           onSelectPlace={onSelectPlace}
+          onActivateCluster={(marker) =>
+            onClusterFocusViewport?.(getClusterViewport(marker, 16))
+          }
         />
         <div className="altteulmap-map-overlay absolute left-4 top-4 z-10 max-w-[17rem] px-3.5 py-3 text-sm text-stone-700">
           <div className="flex items-center justify-between gap-3">
@@ -406,6 +426,7 @@ class NaverMapPanelBoundary extends Component<
           selectedCategoryLabel={this.props.selectedCategoryLabel}
           activePlaceId={this.props.activePlaceId ?? null}
           onSelectPlace={this.props.onSelectPlace ?? (() => {})}
+          onClusterFocusViewport={this.props.onClusterFocusViewport}
         />
       );
     }
@@ -428,6 +449,7 @@ function NaverMapPanelContent({
   activePlaceId: controlledActivePlaceId,
   focusPlacesKey,
   onSelectPlace,
+  onClusterFocusViewport,
   onViewportChange,
 }: NaverMapPanelProps) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
@@ -523,17 +545,18 @@ function NaverMapPanelContent({
     const viewport = getViewportFromMap(mapInstanceRef.current);
 
     if (!viewport) {
-      return;
+      return null;
     }
 
     const nextKey = serializeViewport(viewport);
 
     if (lastViewportKeyRef.current === nextKey) {
-      return;
+      return viewport;
     }
 
     lastViewportKeyRef.current = nextKey;
     onViewportChange?.(viewport);
+    return viewport;
   }, [onViewportChange]);
 
   useEffect(() => {
@@ -610,14 +633,23 @@ function NaverMapPanelContent({
           mapInstanceRef.current.fitBounds?.(clusterBounds);
         }
 
-        window.setTimeout(() => {
-          emitViewportChange();
-        }, 100);
+        const notifyClusterViewport = () => {
+          const viewport =
+            emitViewportChange() ??
+            getClusterViewport(
+              marker,
+              mapInstanceRef.current?.getZoom?.() ?? 16,
+            );
+
+          onClusterFocusViewport?.(viewport);
+        };
+
+        window.setTimeout(notifyClusterViewport, 260);
       } catch (error) {
         failMap("Failed to focus the NAVER map cluster.", error);
       }
     },
-    [emitViewportChange, failMap, status],
+    [emitViewportChange, failMap, onClusterFocusViewport, status],
   );
   const runLocateCurrentPosition = useCallback(() => {
     if (!mapInstanceRef.current) {
@@ -686,16 +718,21 @@ function NaverMapPanelContent({
 
   const handlePreviewClusterActivate = useCallback(
     (marker: ClusterDisplayMarker) => {
-      requestMapBoot();
+      const canBootMap = requestMapBoot();
 
       if (status !== "ready" || !mapInstanceRef.current) {
         pendingClusterFocusRef.current = marker;
+
+        if (!canBootMap) {
+          onClusterFocusViewport?.(getClusterViewport(marker, 16));
+        }
+
         return;
       }
 
       focusCluster(marker);
     },
-    [focusCluster, requestMapBoot, status],
+    [focusCluster, onClusterFocusViewport, requestMapBoot, status],
   );
 
   const locateCurrentPosition = useCallback(() => {

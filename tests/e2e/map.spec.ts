@@ -54,6 +54,30 @@ test("지도 map API는 한 번에 하나의 marker 모드만 반환한다", asy
   expect(Array.from(markerKinds)).toEqual([payload.markerMode]);
 });
 
+test("지도 map API는 높은 줌에서 클러스터 대신 개별 장소 마커를 반환한다", async ({ page }) => {
+  const search = new URLSearchParams({
+    minLat: String(SEOUL_BOOTSTRAP_BOUNDS.minLat),
+    maxLat: String(SEOUL_BOOTSTRAP_BOUNDS.maxLat),
+    minLng: String(SEOUL_BOOTSTRAP_BOUNDS.minLng),
+    maxLng: String(SEOUL_BOOTSTRAP_BOUNDS.maxLng),
+    zoom: "16",
+  });
+  const response = await page.request.get(`/api/places/map?${search.toString()}`);
+
+  expect(response.ok()).toBeTruthy();
+
+  const payload = (await response.json()) as {
+    mapMarkers?: Array<{ kind: string }>;
+    markerMode?: "cluster" | "place";
+  };
+
+  expect(payload.markerMode).toBe("place");
+  expect(payload.mapMarkers?.length).toBeTruthy();
+  expect(new Set(payload.mapMarkers?.map((marker) => marker.kind))).toEqual(
+    new Set(["place"]),
+  );
+});
+
 test("지도 검색, 상세 시트, 비회원 좋아요, 공유, 닫기 흐름", async ({ page }) => {
   await page.addInitScript(() => {
     (
