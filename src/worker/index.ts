@@ -207,6 +207,74 @@ function parseMapBounds(searchParams: URLSearchParams): PlaceBounds | null {
   };
 }
 
+function isMapPreviewEdgeCacheable({
+  bounds,
+  query,
+  searchScope,
+}: {
+  bounds: PlaceBounds | null;
+  query: string | null;
+  searchScope: PlaceSearchScope;
+}) {
+  return searchScope === "viewport" && Boolean(bounds) && !query;
+}
+
+async function getMapPreviewEdgeCacheResponse(request: Request) {
+  if (typeof caches === "undefined") {
+    return null;
+  }
+
+  const edgeCache = (caches as CacheStorage & { default?: Cache }).default;
+
+  if (!edgeCache) {
+    return null;
+  }
+
+  const cached = await edgeCache.match(request).catch(() => null);
+
+  if (!cached) {
+    return null;
+  }
+
+  const headers = new Headers(cached.headers);
+  headers.set("Cache-Control", noStoreHeaders["Cache-Control"]);
+  headers.set("X-Altteulmap-Map-Cache", "edge-hit");
+
+  return new Response(cached.body, {
+    status: cached.status,
+    statusText: cached.statusText,
+    headers,
+  });
+}
+
+async function putMapPreviewEdgeCache(request: Request, response: Response) {
+  if (typeof caches === "undefined" || !response.ok) {
+    return;
+  }
+
+  const edgeCache = (caches as CacheStorage & { default?: Cache }).default;
+
+  if (!edgeCache) {
+    return;
+  }
+
+  const headers = new Headers(response.headers);
+  headers.set("Cache-Control", "public, max-age=12");
+
+  await edgeCache
+    .put(
+      request,
+      new Response(response.clone().body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers,
+      }),
+    )
+    .catch((error: unknown) => {
+      console.debug("Failed to put map preview response into edge cache.", error);
+    });
+}
+
 function getVisitorIdFromCookie(cookieHeader: string | null) {
   return getCookieValue(cookieHeader, VISITOR_ID_COOKIE_NAME);
 }
@@ -1282,6 +1350,20 @@ app.get("/api/places/map", async (c) => {
     query && searchParams.get("scope") === "global" ? "global" : "viewport";
   const bounds = parseMapBounds(searchParams);
   const zoom = parseFiniteNumber(searchParams.get("zoom"));
+  const isEdgeCacheable = isMapPreviewEdgeCacheable({
+    bounds,
+    query,
+    searchScope,
+  });
+
+  if (isEdgeCacheable) {
+    const cachedResponse = await getMapPreviewEdgeCacheResponse(c.req.raw);
+
+    if (cachedResponse) {
+      return cachedResponse;
+    }
+  }
+
   const result = await listWorkerMapPlaces(c.env, {
     category,
     query,
@@ -1289,7 +1371,7 @@ app.get("/api/places/map", async (c) => {
     zoom: searchScope === "viewport" ? zoom : null,
   });
 
-  return c.json(
+  const response = c.json(
     {
       items: result.items,
       mapMarkers: result.mapMarkers,
@@ -1315,6 +1397,12 @@ app.get("/api/places/map", async (c) => {
       "X-Altteulmap-Map-Cache": result.cacheStatus,
     },
   );
+
+  if (isEdgeCacheable) {
+    await putMapPreviewEdgeCache(c.req.raw, response);
+  }
+
+  return response;
 });
 
 app.get("/api/places/:id", async (c) => {

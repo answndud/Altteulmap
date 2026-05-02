@@ -26,7 +26,8 @@ Next.js 기능 parity 회귀 복구 구현은 1차 완료됐지만, 운영 수�
   - 추가 리뷰에서 클러스터 클릭 직후 예약된 cluster bounds 조회가 지도 `idle` viewport sync에 의해 취소될 수 있는 흐름을 발견했다.
   - `MapRoute`는 클러스터 focus viewport를 받으면 debounce를 거치지 않고 즉시 `/api/places/map`을 호출하며, 짧은 lock window 동안 지도 `idle` viewport sync를 무시한다.
   - 일반 pan/zoom debounce는 180ms에서 100ms로 줄여 수동 지도 이동 후 반응 속도를 개선했다.
-  - 같은 bounds/zoom으로 반복되는 지도 preview 요청은 12초 TTL 메모리 cache로 처리하고, 성공한 API mutation 후 cache를 invalidate한다.
+  - 같은 bounds/zoom으로 반복되는 지도 preview 요청은 12초 TTL 메모리 cache와 Cloudflare edge cache로 처리한다.
+  - 메모리 cache는 성공한 API mutation 후 invalidate하고, edge cache는 짧은 TTL로 stale 노출 시간을 제한한다.
   - Worker DB 연결을 request 간 재사용하는 방식은 workerd에서 `Cannot perform I/O on behalf of a different request` 제약으로 실패해 적용하지 않았다.
   - `tests/e2e/map.spec.ts`에 같은 viewport 중복 요청이 `X-Altteulmap-Map-Cache: hit`으로 처리되는 회귀 검증을 추가했다.
 - `MapRoute`에 모바일 목록 바텀시트를 복구했다.
@@ -142,6 +143,17 @@ Next.js 기능 parity 회귀 복구 구현은 1차 완료됐지만, 운영 수�
     - mobile map 2건 통과
     - bookmarks/comments/price-review/report-admin 5건 통과
   - `npm run deploy:check`: 통과
+- edge cache 추가 검증:
+  - `npm run lint`: 통과
+  - `npm run typecheck`: 통과
+  - `git diff --check`: 통과
+  - `node scripts/run-local-e2e.mjs smoke -- tests/e2e/map.spec.ts`: 통과
+    - smoke 10건 통과
+    - 중복 viewport 요청이 `hit` 또는 `edge-hit`으로 처리되는지 확인
+  - `npm run test:e2e:full`: 통과
+    - smoke 10건 통과
+    - mobile map 2건 통과
+    - bookmarks/comments/price-review/report-admin 5건 통과
 - `npm run deploy`: 통과
   - URL: `https://altteulmap.altteul-lab.workers.dev`
   - Version ID: `b63ce151-afee-41a6-8e7b-2a4b1fc76959`
@@ -176,13 +188,13 @@ Next.js 기능 parity 회귀 복구 구현은 1차 완료됐지만, 운영 수�
 ## 남은 이슈
 - 숫자 클러스터 자동 fetch 루프 수정분은 로컬 검증, 운영 배포, remote smoke, 운영 API 검증이 통과했다. 운영 브라우저/실기기에서 실제 Naver 지도 클릭/줌인/줌아웃 시각 확인이 필요하다.
 - cluster bucket 단위 mixed marker 응답 수정은 로컬 검증, 운영 배포, remote smoke, 운영 API 검증이 통과했다. 운영 브라우저/실기기에서 실제 Naver 지도 시각 확인이 필요하다.
-- 클러스터 클릭 즉시 전환, map API 병렬화, bounds map API 단일 read, 중복 viewport cache 수정은 로컬 검증이 통과했다. 운영 배포와 운영 API/브라우저 재계측이 필요하다.
+- 클러스터 클릭 즉시 전환, map API 병렬화, bounds map API 단일 read, 중복 viewport memory/edge cache 수정은 로컬 검증이 통과했다. 운영 배포와 운영 API/브라우저 재계측이 필요하다.
 - Kakao/Naver OAuth live callback은 provider 실제 계정 로그인이 필요하므로 수동 QA가 필요하다.
 - 실제 모바일 기기에서 Naver map + 목록 sheet 터치 충돌, 상세 sheet, 주요 화면 디자인 밀도는 최종 수동 확인이 필요하다.
 
 ## 다음 액션
 - 운영 브라우저/실기기에서 숫자 클러스터 클릭, 줌인, 줌아웃이 각각 marker/list 재조회로 이어지고 개별 장소 핀으로 분해되는지 확인한다.
-- 클러스터 클릭 즉시 전환, 중복 viewport cache 수정분을 커밋/푸시하고 운영 배포한다.
+- 클러스터 클릭 즉시 전환, 중복 viewport memory/edge cache 수정분을 커밋/푸시하고 운영 배포한다.
 - 배포 후 운영 API TTFB와 브라우저 첫 map API 발생 시점을 재계측한다.
 - 실제 Kakao/Naver 계정으로 운영 OAuth callback을 확인한다.
 - 실제 모바일 기기에서 지도, 목록 바텀시트, 상세 시트, 제보/신고/댓글 흐름을 최종 확인한다.
