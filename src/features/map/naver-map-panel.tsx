@@ -214,10 +214,10 @@ function PreviewMap({
 
   return (
     <div
-      className="pointer-events-none relative h-[34rem] bg-[linear-gradient(to_right,#e7e5e4_1px,transparent_1px),linear-gradient(to_bottom,#e7e5e4_1px,transparent_1px)] bg-[size:32px_32px] bg-stone-50 lg:h-[43rem]"
+      className="pointer-events-none relative h-[42rem] bg-[linear-gradient(to_right,color-mix(in_oklch,var(--altteul-surface-border)_68%,transparent)_1px,transparent_1px),linear-gradient(to_bottom,color-mix(in_oklch,var(--altteul-surface-border)_68%,transparent)_1px,transparent_1px)] bg-[size:32px_32px] bg-[var(--altteul-bg-surface)] lg:h-[calc(100dvh-11rem)] lg:min-h-[50rem]"
       data-testid="map-panel-preview"
     >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(251,146,60,0.18),transparent_30%),radial-gradient(circle_at_bottom_left,rgba(245,158,11,0.12),transparent_28%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,color-mix(in_oklch,var(--altteul-primary)_7%,transparent),transparent_30%),radial-gradient(circle_at_bottom_left,color-mix(in_oklch,var(--altteul-accent)_6%,transparent),transparent_28%)]" />
       {markers.map((marker) => {
         const top = ((bounds.maxLat - marker.latitude) / latRange) * 70 + 10;
         const left = ((marker.longitude - bounds.minLng) / lngRange) * 72 + 8;
@@ -322,13 +322,13 @@ function PreviewMap({
           </button>
         );
       })}
-      <div className="altteulmap-map-overlay absolute bottom-4 left-4 max-w-[17rem] px-3.5 py-3 text-sm text-stone-700">
-        <p className="font-medium text-stone-900">
+      <div className="altteulmap-map-overlay absolute bottom-4 left-4 max-w-[17rem] px-3.5 py-3 text-sm text-[var(--altteul-text-primary)]">
+        <p className="font-semibold text-[var(--altteul-text-strong)]">
           {selectedCategoryLabel
             ? `${selectedCategoryLabel} 카테고리`
             : "전체 카테고리"}
         </p>
-        <p className="mt-1 text-xs leading-5 text-stone-600">
+        <p className="mt-1 text-xs leading-5 text-[var(--altteul-text-secondary)]">
           {hasClusterMarkers
             ? "가까운 장소는 숫자 클러스터로 묶어 보여줍니다."
             : "선택한 조건의 개별 장소를 바로 표시합니다."}
@@ -365,10 +365,10 @@ function NaverMapFallback({
 
   return (
     <section
-      className="relative isolate overflow-hidden rounded-[1.125rem] border border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-surface)]"
+      className="relative isolate overflow-hidden rounded-[0.875rem] border border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-surface)]"
       data-testid="map-panel-shell"
     >
-      <div className="relative isolate z-0 h-[34rem] lg:h-[43rem]">
+      <div className="relative isolate z-0 h-[42rem] lg:h-[calc(100dvh-11rem)] lg:min-h-[50rem]">
         <PreviewMap
           markers={displayMarkers}
           selectedCategoryLabel={selectedCategoryLabel}
@@ -380,16 +380,16 @@ function NaverMapFallback({
             )
           }
         />
-        <div className="altteulmap-map-overlay absolute left-4 top-4 z-10 max-w-[17rem] px-3.5 py-3 text-sm text-stone-700">
+        <div className="altteulmap-map-overlay absolute left-4 top-4 z-10 max-w-[17rem] px-3.5 py-3 text-sm text-[var(--altteul-text-primary)]">
           <div className="flex items-center justify-between gap-3">
-            <p className="font-medium text-stone-900">임시 미리보기</p>
+            <p className="font-semibold text-[var(--altteul-text-strong)]">임시 미리보기</p>
             <span className="altteulmap-badge whitespace-nowrap px-2.5 py-1 text-[11px] font-medium">
               {isLoading && mapMarkers.length === 0
                 ? "불러오는 중"
                 : `${placeCount ?? mapMarkers.length}곳`}
             </span>
           </div>
-          <p className="mt-2 text-xs leading-5 text-stone-600">
+          <p className="mt-2 text-xs leading-5 text-[var(--altteul-text-secondary)]">
             지도를 불러오지 못해 임시 미리보기로 먼저 표시합니다.
           </p>
         </div>
@@ -1094,11 +1094,11 @@ function NaverMapPanelContent({
       className="altteulmap-panel relative isolate overflow-hidden"
       data-testid="map-panel-shell"
     >
-      <div className="relative isolate z-0 h-[34rem] lg:h-[43rem]">
+      <div className="relative isolate z-0 h-[42rem] lg:h-[calc(100dvh-11rem)] lg:min-h-[50rem]">
         <div
           ref={mapContainerRef}
           data-testid="map-panel"
-          className="altteulmap-naver-map relative z-0 h-full w-full overflow-hidden bg-stone-100"
+          className="altteulmap-naver-map relative z-0 h-full w-full overflow-hidden bg-[var(--altteul-bg-subtle)]"
         />
 
         {showPreview ? (
@@ -1122,7 +1122,7 @@ function NaverMapPanelContent({
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="altteulmap-section-kicker text-[10px]">지도</p>
-                  <h2 className="mt-1 text-sm font-semibold text-stone-900 sm:text-base">
+                  <h2 className="mt-1 text-sm font-semibold text-[var(--altteul-text-strong)] sm:text-base">
                     가격 지도
                   </h2>
                 </div>
@@ -1130,7 +1130,7 @@ function NaverMapPanelContent({
                   {placeCountLabel}
                 </span>
               </div>
-              <p className="mt-2 hidden text-xs leading-5 text-stone-600 sm:block">
+              <p className="mt-2 hidden text-xs leading-5 text-[var(--altteul-text-secondary)] sm:block">
                 {selectedCategoryLabel
                   ? `${selectedCategoryLabel} 카테고리 기준으로 보고 있습니다.`
                   : "대표 가격과 최근 제보를 함께 확인합니다."}
@@ -1138,7 +1138,7 @@ function NaverMapPanelContent({
             </div>
 
             {statusMessage ? (
-              <div className="altteulmap-map-overlay-subtle px-3 py-2 text-xs leading-5 text-stone-600">
+              <div className="altteulmap-map-overlay-subtle px-3 py-2 text-xs leading-5 text-[var(--altteul-text-secondary)]">
                 {statusMessage}
               </div>
             ) : null}
@@ -1152,7 +1152,7 @@ function NaverMapPanelContent({
                 }}
                 disabled={refreshAction.isLoading}
                 data-testid="map-refresh-button"
-                className="altteulmap-accent-solid altteulmap-button w-fit whitespace-nowrap px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-70"
+                className="altteulmap-accent-solid altteulmap-button w-fit whitespace-nowrap px-3.5 py-2 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-70 sm:text-sm"
               >
                 {refreshAction.isLoading ? "검색 중" : "이 지역 다시 찾기"}
               </button>
@@ -1165,13 +1165,13 @@ function NaverMapPanelContent({
               onClick={locateCurrentPosition}
               disabled={!canLocateCurrentPosition || isLocating}
               data-testid="map-current-location-button"
-              className="altteulmap-map-overlay-subtle inline-flex whitespace-nowrap px-3 py-2 text-xs font-medium text-stone-700 transition hover:bg-white disabled:cursor-not-allowed disabled:text-stone-400"
+              className="altteulmap-map-overlay-subtle inline-flex whitespace-nowrap px-3 py-2 text-xs font-medium text-[var(--altteul-text-primary)] transition hover:bg-[var(--altteul-bg-surface)] disabled:cursor-not-allowed disabled:text-[var(--altteul-text-tertiary)]"
             >
               {isLocating ? "위치 확인 중" : "현재 위치"}
             </button>
 
             {locationMessage ? (
-              <div className="altteulmap-map-overlay-subtle max-w-[13rem] px-3 py-2 text-right text-xs leading-5 text-stone-600">
+              <div className="altteulmap-map-overlay-subtle max-w-[13rem] px-3 py-2 text-right text-xs leading-5 text-[var(--altteul-text-secondary)]">
                 {locationMessage}
               </div>
             ) : null}

@@ -11,12 +11,12 @@ export function ReportRoute() {
     return (
       <main className="bg-[var(--altteul-bg-canvas)] px-4 py-8 sm:px-6">
         <section className="mx-auto grid min-h-[calc(100dvh-8rem)] max-w-3xl place-items-center">
-          <div className="w-full rounded-[1.25rem] border border-stone-200 bg-[var(--altteul-bg-surface)] p-6 text-center shadow-sm sm:p-8">
+          <div className="altteulmap-panel w-full p-6 text-center sm:p-8">
             <p className="altteulmap-section-kicker">장소 신고</p>
-            <h1 className="mt-3 break-keep text-2xl font-semibold leading-9 text-stone-950 sm:text-3xl">
+            <h1 className="mt-3 break-keep text-2xl font-bold leading-9 text-[var(--altteul-text-strong)] sm:text-3xl">
               신고할 장소를 먼저 선택해 주세요
             </h1>
-            <p className="mt-3 text-sm leading-6 text-stone-600">
+            <p className="mt-3 text-sm leading-6 text-[var(--altteul-text-secondary)]">
               지도나 장소 상세에서 신고하기를 누르면 어떤 장소를 수정할지
               함께 전달됩니다. 장소를 찾지 못했다면 새 장소로 등록할 수 있어요.
             </p>
@@ -29,7 +29,7 @@ export function ReportRoute() {
               </Link>
               <Link
                 to="/submit"
-                className="altteulmap-button inline-flex items-center justify-center px-5 py-3 text-sm font-medium text-stone-700"
+                className="altteulmap-button inline-flex items-center justify-center px-5 py-3 text-sm font-medium"
               >
                 장소 등록하기
               </Link>
@@ -41,11 +41,11 @@ export function ReportRoute() {
   }
 
   return (
-    <main className="bg-stone-50 px-4 py-8 sm:px-6">
-      <section className="mx-auto max-w-7xl rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm sm:p-8">
+    <main className="bg-[var(--altteul-bg-canvas)] px-4 py-6 sm:px-6 sm:py-8">
+      <section className="mx-auto max-w-7xl">
         <div>
-          <p className="text-xs font-medium text-orange-600">장소 신고</p>
-          <h1 className="mt-3 text-3xl font-semibold text-stone-900 sm:text-5xl">
+          <p className="altteulmap-section-kicker">장소 신고</p>
+          <h1 className="mt-2 text-[2rem] font-bold text-[var(--altteul-text-strong)] sm:text-[2.4rem]">
             정보 수정 요청
           </h1>
         </div>

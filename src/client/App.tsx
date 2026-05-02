@@ -12,9 +12,8 @@ import { AdminRoutes } from "@/client/routes/admin/AdminRoutes";
 
 const navItems = [
   { href: "/", label: "지도" },
-  { href: "/submit", label: "제보" },
+  { href: "/submit", label: "가격 제보" },
   { href: "/bookmarks", label: "북마크" },
-  { href: "/admin", label: "관리자" },
 ];
 
 type SessionUser = {
@@ -77,9 +76,9 @@ function Shell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-dvh bg-[var(--altteul-bg-canvas)] text-[var(--altteul-text-primary)]">
-      <header className="border-b border-stone-200/70 bg-[var(--altteul-bg-surface)]/95 px-4 py-3">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3">
-          <Link to="/" className="text-base font-semibold text-stone-950">
+      <header className="border-b border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-surface)]/95 px-4 py-3">
+        <div className="mx-auto flex max-w-[96rem] flex-wrap items-center justify-between gap-3">
+          <Link to="/" className="text-base font-bold text-[var(--altteul-text-strong)]">
             알뜰맵
           </Link>
           <nav className="flex flex-wrap items-center gap-1 text-sm">
@@ -89,10 +88,10 @@ function Shell({ children }: { children: React.ReactNode }) {
                 to={item.href}
                 className={({ isActive }) =>
                   [
-                    "rounded-full px-3 py-2 transition",
+                    "rounded-[0.7rem] px-3 py-2 font-medium transition",
                     isActive
-                      ? "bg-[var(--altteul-accent)] text-white"
-                      : "text-stone-600 hover:bg-stone-100 hover:text-stone-950",
+                      ? "bg-[var(--altteul-primary)] text-white"
+                      : "text-[var(--altteul-text-secondary)] hover:bg-[var(--altteul-bg-subtle)] hover:text-[var(--altteul-text-strong)]",
                   ].join(" ")
                 }
               >
@@ -103,15 +102,17 @@ function Shell({ children }: { children: React.ReactNode }) {
               <>
                 <span
                   data-testid="session-user-badge"
-                  className="rounded-full border border-stone-200 bg-stone-50 px-3 py-2 text-xs font-medium text-stone-600"
+                  className="altteulmap-badge px-3 py-2 text-xs font-medium"
                 >
-                  {sessionUser.email ?? sessionUser.name ?? "로그인됨"}
+                  {sessionUser.role === "admin"
+                    ? "운영자"
+                    : sessionUser.name || "내 계정"}
                 </span>
                 {sessionUser.role === "admin" ? (
                   <Link
                     to="/admin"
                     data-testid="session-admin-link"
-                    className="rounded-full bg-stone-900 px-3 py-2 text-sm text-white transition hover:bg-stone-700"
+                    className="rounded-[0.7rem] bg-[var(--altteul-text-strong)] px-3 py-2 text-sm font-medium text-white transition hover:bg-[var(--altteul-text-primary)]"
                   >
                     운영
                   </Link>
@@ -120,7 +121,7 @@ function Shell({ children }: { children: React.ReactNode }) {
                   type="button"
                   onClick={() => void signOut()}
                   data-testid="sign-out-button"
-                  className="rounded-full px-3 py-2 text-sm text-stone-600 transition hover:bg-stone-100 hover:text-stone-950"
+                  className="rounded-[0.7rem] px-3 py-2 text-sm font-medium text-[var(--altteul-text-secondary)] transition hover:bg-[var(--altteul-bg-subtle)] hover:text-[var(--altteul-text-strong)]"
                 >
                   로그아웃
                 </button>
@@ -129,7 +130,7 @@ function Shell({ children }: { children: React.ReactNode }) {
               <Link
                 to="/login"
                 data-testid="session-login-link"
-                className="rounded-full px-3 py-2 text-sm text-stone-600 transition hover:bg-stone-100 hover:text-stone-950"
+                className="rounded-[0.7rem] px-3 py-2 text-sm font-medium text-[var(--altteul-text-secondary)] transition hover:bg-[var(--altteul-bg-subtle)] hover:text-[var(--altteul-text-strong)]"
               >
                 로그인
               </Link>

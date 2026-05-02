@@ -94,12 +94,12 @@ export function ReportSubmitForm({
       <form
         onSubmit={onSubmit}
         data-testid="report-submit-form"
-        className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm sm:p-8"
+        className="altteulmap-panel p-6 sm:p-8"
       >
         <div className="grid gap-6">
           <section>
-            <p className="text-sm text-stone-500">신고 대상</p>
-            <h2 className="mt-2 text-2xl font-semibold text-stone-900">
+            <p className="text-sm text-[var(--altteul-text-tertiary)]">신고 대상</p>
+            <h2 className="mt-2 text-2xl font-bold text-[var(--altteul-text-strong)]">
               {placeName}
             </h2>
           </section>
@@ -107,12 +107,12 @@ export function ReportSubmitForm({
           <input type="hidden" {...register("placeId")} />
           <input type="hidden" {...register("placeName")} />
 
-          <label className="grid gap-2 text-sm text-stone-700">
+          <label className="grid gap-2 text-sm text-[var(--altteul-text-primary)]">
             신고 유형
             <select
               {...register("reasonType")}
               data-testid="report-reason"
-              className="altteulmap-input px-4 py-3.5 text-stone-900"
+              className="altteulmap-input px-4 py-3.5"
             >
               {reportReasonOptions.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -123,13 +123,13 @@ export function ReportSubmitForm({
             <FieldError>{errors.reasonType?.message}</FieldError>
           </label>
 
-          <label className="grid gap-2 text-sm text-stone-700">
+          <label className="grid gap-2 text-sm text-[var(--altteul-text-primary)]">
             상세 설명
             <textarea
               {...register("detail")}
               rows={8}
               data-testid="report-detail"
-              className="altteulmap-input min-h-44 resize-y px-4 py-3.5 text-stone-900"
+              className="altteulmap-input min-h-44 resize-y px-4 py-3.5"
               placeholder="예: 가격표는 7,500원으로 바뀌었는데 화면에는 7,000원으로 표시됩니다."
             />
             <FieldError>{errors.detail?.message}</FieldError>
@@ -148,8 +148,8 @@ export function ReportSubmitForm({
 
       {submitResult ? (
         <aside data-testid="report-result">
-          <section className="rounded-[2rem] border border-stone-200 bg-stone-50 p-6">
-            <h2 className="text-xl font-semibold text-stone-900">접수 내용</h2>
+          <section className="altteulmap-panel p-6">
+            <h2 className="text-xl font-semibold text-[var(--altteul-text-strong)]">접수 내용</h2>
             <div className="mt-4 space-y-4">
               <ResultMessage
                 testId="report-result-message"
@@ -161,15 +161,15 @@ export function ReportSubmitForm({
                 {submitResult.message}
               </ResultMessage>
               {submitResult.preview ? (
-                <div className="rounded-3xl border border-stone-200 bg-white p-5 text-sm text-stone-700">
-                  <p className="text-stone-500">유형</p>
-                  <p className="mt-1 font-medium text-stone-900">
+                <div className="rounded-[0.875rem] border border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-subtle)] p-5 text-sm text-[var(--altteul-text-secondary)]">
+                  <p className="text-[var(--altteul-text-tertiary)]">유형</p>
+                  <p className="mt-1 font-medium text-[var(--altteul-text-strong)]">
                     {reportReasonMap[submitResult.preview.reasonType]}
                   </p>
-                  <p className="mt-4 text-stone-500">상세 설명</p>
+                  <p className="mt-4 text-[var(--altteul-text-tertiary)]">상세 설명</p>
                   <p
                     data-testid="report-result-detail"
-                    className="mt-1 leading-6 text-stone-700"
+                    className="mt-1 leading-6 text-[var(--altteul-text-secondary)]"
                   >
                     {submitResult.preview.detail}
                   </p>

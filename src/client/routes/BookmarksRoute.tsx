@@ -136,29 +136,29 @@ export function BookmarksRoute() {
   }, []);
 
   return (
-    <main className="bg-stone-50 px-4 py-8 sm:px-6">
-      <section className="mx-auto max-w-7xl rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm sm:p-8">
+    <main className="bg-[var(--altteul-bg-canvas)] px-4 py-6 sm:px-6 sm:py-8">
+      <section className="mx-auto max-w-7xl">
         <div>
-          <p className="text-xs font-medium text-orange-600">북마크</p>
-          <h1 className="mt-3 text-3xl font-semibold text-stone-900 sm:text-5xl">
+          <p className="altteulmap-section-kicker">북마크</p>
+          <h1 className="mt-2 text-[2rem] font-bold text-[var(--altteul-text-strong)] sm:text-[2.4rem]">
             북마크한 장소
           </h1>
           {state.status === "success" ? (
-            <p className="mt-3 text-sm text-stone-500">
-              {state.data.userLabel} 계정 기준으로 저장한 장소입니다.
+            <p className="mt-2 text-sm text-[var(--altteul-text-secondary)]">
+              현재 로그인한 계정 기준으로 저장한 장소입니다.
             </p>
           ) : null}
         </div>
 
         {state.status === "loading" ? (
-          <div className="mt-8 rounded-[1.25rem] border border-dashed border-stone-300 bg-stone-50 p-6 text-sm text-stone-500">
+          <div className="mt-6 rounded-[0.875rem] border border-dashed border-[var(--altteul-surface-border-strong)] bg-[var(--altteul-bg-surface)] p-6 text-sm text-[var(--altteul-text-tertiary)]">
             북마크 목록을 불러오는 중입니다.
           </div>
         ) : null}
 
         {state.status === "unauthorized" ? (
-          <div className="mt-8 rounded-[1.25rem] border border-dashed border-stone-300 bg-stone-50 p-6 text-sm leading-7 text-stone-600 sm:p-8">
-            <p className="text-base font-semibold text-stone-900">
+          <div className="mt-6 rounded-[0.875rem] border border-dashed border-[var(--altteul-surface-border-strong)] bg-[var(--altteul-bg-surface)] p-6 text-sm leading-7 text-[var(--altteul-text-secondary)] sm:p-8">
+            <p className="text-base font-semibold text-[var(--altteul-text-strong)]">
               로그인이 필요합니다
             </p>
             <p className="mt-2 max-w-2xl">
@@ -174,13 +174,13 @@ export function BookmarksRoute() {
         ) : null}
 
         {state.status === "error" ? (
-          <div className="mt-8 rounded-[1.25rem] border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">
+          <div className="mt-6 rounded-[0.875rem] border border-[var(--altteul-warning-border)] bg-[var(--altteul-warning-soft)] p-6 text-sm text-[var(--altteul-warning-text)]">
             {state.error}
           </div>
         ) : null}
 
         {state.status === "success" && state.data.items.length > 0 ? (
-          <div data-testid="bookmark-list" className="mt-8 grid gap-4">
+          <div data-testid="bookmark-list" className="mt-6 grid gap-3">
             {state.data.items.map(({ bookmarkCreatedAt, place }) => {
               const category = getCategoryBySlug(place.categorySlug);
 
@@ -188,31 +188,31 @@ export function BookmarksRoute() {
                 <article
                   key={place.id}
                   data-testid={`bookmark-item-${place.id}`}
-                  className="rounded-[1.75rem] border border-stone-200 bg-stone-50 p-5"
+                  className="rounded-[0.875rem] border border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-surface)] p-5 transition hover:border-[var(--altteul-primary-border)]"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
-                      <p className="text-xs font-semibold uppercase text-orange-600">
+                      <p className="text-xs font-semibold text-[var(--altteul-primary-text)]">
                         북마크 {bookmarkCreatedAt}
                       </p>
-                      <h2 className="mt-2 text-2xl font-semibold text-stone-900">
+                      <h2 className="mt-2 text-xl font-bold text-[var(--altteul-text-strong)] sm:text-2xl">
                         {place.name}
                       </h2>
-                      <p className="mt-2 text-sm text-stone-500">
+                      <p className="mt-2 text-sm text-[var(--altteul-text-secondary)]">
                         {category?.name ?? "기타"}
                       </p>
-                      <p className="mt-1 text-sm text-stone-400">
+                      <p className="mt-1 text-sm text-[var(--altteul-text-tertiary)]">
                         {place.district}
                       </p>
                     </div>
-                    <div className="rounded-[1.35rem] bg-white px-4 py-3 text-right">
-                      <p className="text-xs uppercase text-stone-500">
-                        대표 가격
+                    <div className="rounded-[0.75rem] border border-[var(--altteul-primary-border)] bg-[var(--altteul-primary-soft)] px-4 py-3 text-right">
+                      <p className="text-xs font-semibold text-[var(--altteul-primary-text)]">
+                        대표가
                       </p>
-                      <p className="mt-2 text-lg font-semibold text-stone-900">
+                      <p className="altteulmap-price-number mt-2 text-xl">
                         {formatKrw(place.representativePriceAmount)}원
                       </p>
-                      <p className="text-sm text-stone-500">
+                      <p className="text-sm text-[var(--altteul-primary-text)]">
                         {place.representativePriceLabel}
                       </p>
                     </div>
@@ -252,7 +252,7 @@ export function BookmarksRoute() {
                     </Link>
                     <Link
                       to={`/?q=${encodeURIComponent(place.name)}&scope=global`}
-                      className="altteulmap-button whitespace-nowrap border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-stone-100"
+                      className="altteulmap-button whitespace-nowrap px-4 py-2 text-sm font-medium transition"
                     >
                       지도에서 찾기
                     </Link>
@@ -264,8 +264,8 @@ export function BookmarksRoute() {
         ) : null}
 
         {state.status === "success" && state.data.items.length === 0 ? (
-          <div className="mt-8 rounded-[1.25rem] border border-dashed border-stone-300 bg-stone-50 p-6 text-sm leading-7 text-stone-600 sm:p-8">
-            <p className="text-base font-semibold text-stone-900">
+          <div className="mt-6 rounded-[0.875rem] border border-dashed border-[var(--altteul-surface-border-strong)] bg-[var(--altteul-bg-surface)] p-6 text-sm leading-7 text-[var(--altteul-text-secondary)] sm:p-8">
+            <p className="text-base font-semibold text-[var(--altteul-text-strong)]">
               아직 저장한 장소가 없어요
             </p>
             <p className="mt-2 max-w-2xl">
@@ -281,7 +281,7 @@ export function BookmarksRoute() {
               </Link>
               <Link
                 to="/submit"
-                className="altteulmap-button inline-flex items-center justify-center px-5 py-3 text-sm font-medium text-stone-700"
+                className="altteulmap-button inline-flex items-center justify-center px-5 py-3 text-sm font-medium"
               >
                 장소 등록하기
               </Link>
