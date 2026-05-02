@@ -22,6 +22,7 @@ Next.js 기능 parity 회귀 복구 구현은 1차 완료됐지만, 운영 수�
   - 지도 SDK 부팅 지연을 제거하고, 클러스터 클릭 시 260ms 대기 없이 즉시 target zoom/bounds를 부모 route에 전달하도록 수정했다.
   - 클러스터 클릭은 bucket 규모에 따라 target zoom을 더 공격적으로 잡아 즉시 다음 단계 marker를 요청한다.
   - Worker map API는 count/items/marker rows를 병렬 조회하고, place marker mode에서는 이미 읽은 `items`를 재사용하도록 수정했다.
+  - 추가로 bounds 기반 map API는 같은 장소 데이터를 list용/marker용으로 두 번 읽지 않고, 한 번 읽은 marker rows를 메모리에서 정렬/분할해 list와 marker를 만든다.
 - `MapRoute`에 모바일 목록 바텀시트를 복구했다.
   - `mobile-place-list-open`, `mobile-place-list-sheet`, drag handle, size toggle, mobile list item contract를 다시 제공한다.
   - 목록은 `hidden`/`peek`/`expanded` 상태를 가지며, 장소 선택 시 목록을 닫고 모바일 상세 시트를 연다.
@@ -112,6 +113,17 @@ Next.js 기능 parity 회귀 복구 구현은 1차 완료됐지만, 운영 수�
     - mobile map 2건 통과
     - bookmarks/comments/price-review/report-admin 5건 통과
   - `npm run deploy:check`: 통과
+- map API 단일 read 최적화 로컬 검증:
+  - `npm run lint`: 통과
+  - `npm run typecheck`: 통과
+  - `git diff --check`: 통과
+  - `node scripts/run-local-e2e.mjs smoke -- tests/e2e/map.spec.ts`: 통과
+    - smoke 9건 통과
+  - `npm run test:e2e:full`: 통과
+    - smoke 9건 통과
+    - mobile map 2건 통과
+    - bookmarks/comments/price-review/report-admin 5건 통과
+  - `npm run deploy:check`: 통과
 - `npm run deploy`: 통과
   - URL: `https://altteulmap.altteul-lab.workers.dev`
   - Version ID: `b63ce151-afee-41a6-8e7b-2a4b1fc76959`
@@ -146,7 +158,7 @@ Next.js 기능 parity 회귀 복구 구현은 1차 완료됐지만, 운영 수�
 ## 남은 이슈
 - 숫자 클러스터 자동 fetch 루프 수정분은 로컬 검증, 운영 배포, remote smoke, 운영 API 검증이 통과했다. 운영 브라우저/실기기에서 실제 Naver 지도 클릭/줌인/줌아웃 시각 확인이 필요하다.
 - cluster bucket 단위 mixed marker 응답 수정은 로컬 검증, 운영 배포, remote smoke, 운영 API 검증이 통과했다. 운영 브라우저/실기기에서 실제 Naver 지도 시각 확인이 필요하다.
-- 클러스터 클릭 즉시 전환과 map API 병렬화 수정은 로컬 검증이 통과했다. 운영 배포와 운영 API/브라우저 재계측이 필요하다.
+- 클러스터 클릭 즉시 전환, map API 병렬화, bounds map API 단일 read 수정은 로컬 검증이 통과했다. 운영 배포와 운영 API/브라우저 재계측이 필요하다.
 - Kakao/Naver OAuth live callback은 provider 실제 계정 로그인이 필요하므로 수동 QA가 필요하다.
 - 실제 모바일 기기에서 Naver map + 목록 sheet 터치 충돌, 상세 sheet, 주요 화면 디자인 밀도는 최종 수동 확인이 필요하다.
 
