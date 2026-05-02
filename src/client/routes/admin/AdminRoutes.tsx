@@ -34,6 +34,14 @@ type AdminActionResult<T> = {
   item: T | null;
 };
 
+type ModerationSuggestion = {
+  suggestedAction: "approve" | "review" | "reject";
+  confidence: number;
+  summary: string;
+  checks: string[];
+  flags: string[];
+};
+
 type PendingPlace = {
   id: string;
   name: string;
@@ -68,6 +76,7 @@ type PendingPriceReport = {
   existingPriceLabel?: string;
   existingPriceAmount?: number;
   existingPriceUnitLabel?: string;
+  moderationSuggestion?: ModerationSuggestion;
 };
 
 type AdminReport = {
@@ -83,6 +92,7 @@ type AdminReport = {
   detail: string;
   status: "open" | "reviewing" | "resolved" | "dismissed";
   createdAt: string;
+  moderationSuggestion?: ModerationSuggestion;
 };
 type AdminPriceItem = {
   id: string;
@@ -127,6 +137,11 @@ const reportStatusMap: Record<AdminReport["status"], string> = {
   reviewing: "검토 중",
   resolved: "처리 완료",
   dismissed: "기각",
+};
+const moderationActionMap: Record<ModerationSuggestion["suggestedAction"], string> = {
+  approve: "승인 권장",
+  review: "수동 검토",
+  reject: "반려 권장",
 };
 const adminNavItems = [
   { href: "/admin", label: "대시보드" },
@@ -345,6 +360,43 @@ function DataBadge({ source, mock }: { source: string; mock: boolean }) {
     >
       데이터: {source === "database" ? "실데이터" : "목업"}
     </span>
+  );
+}
+
+function AdminAiReviewPanel({
+  fallback,
+  suggestion,
+}: {
+  fallback: string;
+  suggestion?: ModerationSuggestion;
+}) {
+  return (
+    <div
+      data-testid="admin-ai-review-panel"
+      className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[11px] font-semibold text-amber-800">AI 1차 검수</p>
+        {suggestion ? (
+          <span className="rounded-full bg-white/85 px-2 py-0.5 text-[11px] font-semibold text-amber-900">
+            {moderationActionMap[suggestion.suggestedAction]} ·{" "}
+            {suggestion.confidence}%
+          </span>
+        ) : null}
+      </div>
+      <p className="mt-1">{suggestion?.summary ?? fallback}</p>
+      {suggestion && (suggestion.flags.length > 0 || suggestion.checks.length > 0) ? (
+        <div className="mt-2 grid gap-1 text-xs">
+          {suggestion.flags.length > 0
+            ? suggestion.flags.slice(0, 2).map((flag) => (
+                <p key={`flag-${flag}`}>주의: {flag}</p>
+              ))
+            : suggestion.checks.slice(0, 2).map((check) => (
+                <p key={`check-${check}`}>확인: {check}</p>
+              ))}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -649,17 +701,7 @@ function PendingPlaceCard({
               ))}
             </div>
           </div>
-          <div
-            data-testid="admin-ai-review-panel"
-            className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900"
-          >
-            <p className="text-[11px] font-semibold text-amber-800">
-              AI 1차 검수
-            </p>
-            <p className="mt-1">
-              주소, 업종, 가격 입력값을 운영자가 최종 확인한 뒤 승인합니다.
-            </p>
-          </div>
+          <AdminAiReviewPanel fallback="주소, 업종, 가격 입력값을 운영자가 최종 확인한 뒤 승인합니다." />
         </div>
         <div className="altteulmap-panel-muted grid gap-3 p-4">
           <label className="grid gap-1 text-sm text-stone-700">
@@ -729,18 +771,20 @@ function AdminPricesRoute() {
                 {data.count}건
               </span>
             </div>
-            {data.items.length > 0 ? (
-              data.items.map((report) => (
-                <PendingPriceCard
-                  key={report.id}
-                  report={report}
-                  disabled={data.mock}
-                  onChanged={() => setVersion((value) => value + 1)}
-                />
-              ))
-            ) : (
-              <EmptyPanel message="현재 검토 대기 중인 가격 제보가 없습니다." />
-            )}
+            <div className="grid gap-4" data-testid="admin-price-report-list">
+              {data.items.length > 0 ? (
+                data.items.map((report) => (
+                  <PendingPriceCard
+                    key={report.id}
+                    report={report}
+                    disabled={data.mock}
+                    onChanged={() => setVersion((value) => value + 1)}
+                  />
+                ))
+              ) : (
+                <EmptyPanel message="현재 검토 대기 중인 가격 제보가 없습니다." />
+              )}
+            </div>
           </div>
         )}
       </AdminAccessGate>
@@ -818,6 +862,12 @@ function PendingPriceCard({
             <p className="mt-2">같은 이름의 기존 가격 항목이 없습니다.</p>
           )}
           <p className="mt-3">{report.comment || "메모 없이 접수되었습니다."}</p>
+          <div className="mt-3">
+            <AdminAiReviewPanel
+              fallback="기존 가격과 제보 금액의 차이, 메모 내용을 운영자가 최종 확인합니다."
+              suggestion={report.moderationSuggestion}
+            />
+          </div>
         </div>
         <div className="flex flex-wrap items-start gap-2">
           <button
@@ -832,6 +882,7 @@ function PendingPriceCard({
             type="button"
             disabled={disabled}
             onClick={() => void submit("reject")}
+            data-testid="admin-price-reject-button"
             className="altteulmap-button border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 disabled:opacity-50"
           >
             반려
@@ -1072,18 +1123,20 @@ function AdminReportsRoute() {
                 </span>
               </div>
               <ReportFilterBar items={data.items} active={statusFilter} />
-              {filteredItems.length > 0 ? (
-                filteredItems.map((report) => (
-                  <ReportCard
-                    key={report.id}
-                    report={report}
-                    disabled={data.mock}
-                    onChanged={() => setVersion((value) => value + 1)}
-                  />
-                ))
-              ) : (
-                <EmptyPanel message="해당 상태의 신고가 없습니다." />
-              )}
+              <div className="grid gap-4" data-testid="admin-report-list">
+                {filteredItems.length > 0 ? (
+                  filteredItems.map((report) => (
+                    <ReportCard
+                      key={report.id}
+                      report={report}
+                      disabled={data.mock}
+                      onChanged={() => setVersion((value) => value + 1)}
+                    />
+                  ))
+                ) : (
+                  <EmptyPanel message="해당 상태의 신고가 없습니다." />
+                )}
+              </div>
             </div>
           );
         }}
@@ -1130,6 +1183,8 @@ function ReportFilterBar({
           <Link
             key={filter.value}
             to={href}
+            data-testid={`admin-report-filter-${filter.value}`}
+            data-active={selected ? "true" : "false"}
             className={`altteulmap-chip inline-flex items-center gap-2 border px-4 py-2 text-sm ${
               selected
                 ? "border-[rgba(151,70,29,0.38)] bg-[rgba(181,90,43,0.12)] text-[var(--altteul-accent-text)]"
@@ -1159,7 +1214,7 @@ function ReportCard({
   const [status, setStatus] = useState<AdminReport["status"]>(report.status);
   const [message, setMessage] = useState<string | null>(null);
 
-  async function submit() {
+  async function submit(nextStatus: AdminReport["status"]) {
     setMessage("처리 중입니다.");
 
     try {
@@ -1167,10 +1222,11 @@ function ReportCard({
         `/api/admin/reports/${report.id}`,
         {
           method: "PATCH",
-          body: JSON.stringify({ status }),
+          body: JSON.stringify({ status: nextStatus }),
         },
       );
 
+      setStatus(result.item?.status ?? nextStatus);
       setMessage(result.message);
       onChanged();
     } catch (error) {
@@ -1192,27 +1248,45 @@ function ReportCard({
             {reportReasonMap[report.reasonType]} · 접수 {report.createdAt}
           </p>
         </div>
-        <span className="rounded-full bg-stone-200 px-3 py-1 text-xs font-semibold text-stone-700">
-          {reportStatusMap[report.status]}
+        <span
+          data-testid="admin-report-status-badge"
+          className="rounded-full bg-stone-200 px-3 py-1 text-xs font-semibold text-stone-700"
+        >
+          {reportStatusMap[status]}
         </span>
       </div>
       <p className="mt-4 text-sm leading-6 text-stone-700">{report.detail}</p>
+      <div className="mt-4">
+        <AdminAiReviewPanel
+          fallback="신고 사유와 상세 내용을 확인한 뒤 운영자가 상태를 확정합니다."
+          suggestion={report.moderationSuggestion}
+        />
+      </div>
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <select
-          value={status}
-          onChange={(event) => setStatus(event.target.value as AdminReport["status"])}
-          className="rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm"
-        >
-          {Object.entries(reportStatusMap).map(([value, label]) => (
-            <option key={value} value={value}>
+        {Object.entries(reportStatusMap).map(([value, label]) => {
+          const nextStatus = value as AdminReport["status"];
+
+          return (
+            <button
+              key={value}
+              type="button"
+              disabled={disabled}
+              data-testid={`admin-report-status-${value}`}
+              onClick={() => void submit(nextStatus)}
+              className={`altteulmap-button px-4 py-2 text-sm disabled:opacity-50 ${
+                status === nextStatus
+                  ? "altteulmap-accent-solid"
+                  : "border border-stone-300 bg-white text-stone-700"
+              }`}
+            >
               {label}
-            </option>
-          ))}
-        </select>
+            </button>
+          );
+        })}
         <button
           type="button"
           disabled={disabled}
-          onClick={() => void submit()}
+          onClick={() => void submit(status)}
           className="altteulmap-button altteulmap-accent-solid px-4 py-2 text-sm disabled:opacity-50"
         >
           상태 변경

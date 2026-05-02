@@ -147,6 +147,7 @@ export function App() {
     <Shell>
       <Routes>
         <Route path="/" element={<MapRoute />} />
+        <Route path="/map" element={<MapRoute />} />
         <Route path="/place/:id" element={<PlaceDetailRoute />} />
         <Route path="/submit" element={<SubmitRoute />} />
         <Route path="/report" element={<ReportRoute />} />

@@ -145,9 +145,11 @@ async function login(email, password) {
       body: JSON.stringify({
         callbackUrl: "/admin",
         email,
+        json: "true",
         password,
       }),
       headers: {
+        accept: "application/json",
         "content-type": "application/json",
       },
       method: "POST",
@@ -176,6 +178,14 @@ async function smokeApi() {
   assert(
     Array.isArray(categories.body.categories),
     "categories.categories missing",
+  );
+
+  const publicConfig = await requestJson("/api/config/public");
+
+  assert(publicConfig.response.status === 200, "public config API failed");
+  assert(
+    Boolean(publicConfig.body.naverMapKeyId),
+    "public config did not expose a NAVER map key",
   );
 
   const map = await requestJson("/api/places/map?scope=global");

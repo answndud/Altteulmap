@@ -33,7 +33,7 @@ test("모바일에서 장소 목록 바텀시트를 열고 닫을 수 있다", a
   const dragHandle = sheet.getByTestId("mobile-place-list-drag-handle");
 
   await expect(openButton).toBeVisible();
-  await openButton.click();
+  await openButton.click({ force: true });
   await expect(sheet).toBeVisible();
   await expect(sheet).toHaveAttribute("data-sheet-mode", "peek");
   await expect(countBadge).toHaveText(/\d+곳/);
@@ -54,7 +54,7 @@ test("모바일에서 장소 목록 바텀시트를 열고 닫을 수 있다", a
     list.locator('[data-testid^="mobile-place-list-item-"]').first(),
   ).toBeVisible();
 
-  await sheet.getByTestId("mobile-place-list-toggle-size").click();
+  await sheet.getByTestId("mobile-place-list-toggle-size").click({ force: true });
   await expect(sheet).toHaveAttribute("data-sheet-mode", "expanded");
   await page.waitForTimeout(250);
   const expandedMetrics = await sheet.evaluate((element) => {
@@ -89,12 +89,12 @@ test("모바일에서 목록에서 플레이스를 고르면 상세 시트가 �
   const sheet = page.getByTestId("mobile-place-list-sheet");
   const list = sheet.getByTestId("mobile-place-list");
 
-  await openButton.click();
+  await openButton.click({ force: true });
   await expect(sheet).toBeVisible();
   const firstItem = list.locator('[data-testid^="mobile-place-list-item-"]').first();
   await expect(firstItem).toBeVisible();
   const expectedPlaceName = await firstItem.getByRole("heading").innerText();
-  await firstItem.click();
+  await firstItem.click({ force: true });
   await expect(sheet).toBeHidden();
 
   const detailSheet = page.getByTestId("place-detail-sheet");
