@@ -1812,3 +1812,36 @@
   - 늦게 도착한 bootstrap 응답이 현재 viewport 결과를 덮어쓰지 않도록 방어했다.
   - 배포 후 운영 URL에서 첫 진입 marker 자동 표시와 상세 패널 동작을 최종 확인해야 한다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+<a id="archive-050"></a>
+## `050` 지도 가격 marker 겹침 완화
+- 완료일: `2026-05-02`
+- 배경:
+  - 같은 건물이나 같은 좌표에 여러 업소가 있으면 가격표 marker가 한 지점에 겹쳐 보였다.
+  - 선택된 marker와 일반 marker가 겹칠 때 두 가격표가 한 덩어리처럼 보여 가격과 선택 상태를 빠르게 구분하기 어려웠다.
+  - 지도는 가격표형 marker를 유지하되, 동일 좌표 marker끼리는 읽을 수 있게 분산할 필요가 있었다.
+- 변경 내용:
+  - place marker 표시 모델에 `offsetX`, `offsetY`, `zIndex`를 추가했다.
+  - 같은 좌표 또는 같은 건물권으로 볼 수 있는 근접 좌표의 place marker를 좌표 key 기준으로 그룹화하고, 그룹 내 marker를 작은 원형 배치로 분산했다.
+  - 선택된 place marker는 항상 높은 z-index를 사용해 다른 marker 뒤에 깔리지 않도록 했다.
+  - local fallback 지도와 운영 Naver 지도 marker icon 양쪽에 같은 offset 값을 적용했다.
+  - cluster marker 로직과 지도 viewport/API 흐름은 유지했다.
+- 코드/문서:
+  - `src/features/map/naver-map-panel.tsx`
+  - `src/features/map/naver-map-marker-visuals.ts`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run build`
+    - 통과
+  - `npm run verify`
+    - 통과
+    - lint, typecheck 성공
+  - `npm run design:detect:json`
+    - 통과
+    - 결과 `[]`
+  - `git diff --check`
+    - 통과
+- 결과:
+  - 동일/근접 좌표의 가격표 marker가 한 위치에 완전히 포개지지 않고 작은 반경으로 벌어진다.
+  - 선택된 marker는 일반 marker보다 위에 렌더링되어 선택 상태가 묻히지 않는다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.

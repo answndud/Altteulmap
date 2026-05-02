@@ -64,6 +64,9 @@ type PlaceDisplayMarker = {
   latitude: number;
   longitude: number;
   isActive: boolean;
+  offsetX: number;
+  offsetY: number;
+  zIndex: number;
   place: PlacePreviewRecord;
 };
 
@@ -101,6 +104,7 @@ const LOCAL_FALLBACK_MIN_ZOOM = 11;
 const LOCAL_FALLBACK_MAX_ZOOM = 16;
 const LOCAL_FALLBACK_TILE_RANGE_X = 5;
 const LOCAL_FALLBACK_TILE_RANGE_Y = 4;
+const PLACE_MARKER_OVERLAP_COORDINATE_PRECISION = 4;
 
 function getMapZoom(placeCount: number) {
   return placeCount > 1 ? 13 : 15;
@@ -291,6 +295,9 @@ function getPreviewBounds(
 function createPlaceDisplayMarker(
   place: PlaceMapPlaceMarkerRecord,
   isActive: boolean,
+  offsetX = 0,
+  offsetY = 0,
+  zIndex = isActive ? 1000 : 100,
 ): PlaceDisplayMarker {
   return {
     kind: "place",
@@ -298,6 +305,9 @@ function createPlaceDisplayMarker(
     latitude: place.latitude,
     longitude: place.longitude,
     isActive,
+    offsetX,
+    offsetY,
+    zIndex,
     place,
   };
 }
@@ -306,11 +316,63 @@ function getDisplayMarkers(
   mapMarkers: PlaceMapMarkerRecord[],
   activePlaceId: string | null,
 ) {
-  return mapMarkers.map((marker) =>
-    marker.kind === "cluster"
-      ? marker
-      : createPlaceDisplayMarker(marker, marker.id === activePlaceId),
-  ) satisfies MapDisplayMarker[];
+  const coordinateGroups = new Map<string, PlaceMapPlaceMarkerRecord[]>();
+
+  mapMarkers.forEach((marker) => {
+    if (marker.kind === "cluster") {
+      return;
+    }
+
+    const coordinateKey = [
+      marker.latitude.toFixed(PLACE_MARKER_OVERLAP_COORDINATE_PRECISION),
+      marker.longitude.toFixed(PLACE_MARKER_OVERLAP_COORDINATE_PRECISION),
+    ].join(":");
+    const group = coordinateGroups.get(coordinateKey) ?? [];
+
+    group.push(marker);
+    coordinateGroups.set(coordinateKey, group);
+  });
+
+  const offsets = new Map<string, { x: number; y: number; zIndex: number }>();
+
+  coordinateGroups.forEach((group) => {
+    if (group.length <= 1) {
+      return;
+    }
+
+    const sortedGroup = [...group].sort((left, right) =>
+      left.id.localeCompare(right.id),
+    );
+    const stepAngle = (Math.PI * 2) / sortedGroup.length;
+    const radius = Math.min(34, 14 + sortedGroup.length * 4);
+
+    sortedGroup.forEach((marker, index) => {
+      const angle = -Math.PI / 2 + stepAngle * index;
+
+      offsets.set(marker.id, {
+        x: Math.round(Math.cos(angle) * radius),
+        y: Math.round(Math.sin(angle) * radius),
+        zIndex: 100 + index,
+      });
+    });
+  });
+
+  return mapMarkers.map((marker) => {
+    if (marker.kind === "cluster") {
+      return marker;
+    }
+
+    const isActive = marker.id === activePlaceId;
+    const offset = offsets.get(marker.id) ?? { x: 0, y: 0, zIndex: 100 };
+
+    return createPlaceDisplayMarker(
+      marker,
+      isActive,
+      offset.x,
+      offset.y,
+      isActive ? 1000 : offset.zIndex,
+    );
+  }) satisfies MapDisplayMarker[];
 }
 
 function serializeViewport(viewport: MapViewport) {
@@ -633,6 +695,10 @@ function PreviewMap({
         }
 
         const placeVisual = getPlaceMarkerVisual(marker.place, marker.isActive);
+        const transformPrefix =
+          marker.offsetX === 0 && marker.offsetY === 0
+            ? ""
+            : `translate(${marker.offsetX}px, ${marker.offsetY}px) `;
 
         return (
           <button
@@ -645,6 +711,8 @@ function PreviewMap({
             style={{
               top: `${top}${markerPositionUnit}`,
               left: `${left}${markerPositionUnit}`,
+              zIndex: marker.zIndex,
+              transform: `${transformPrefix}translate(-50%, -100%)`,
             }}
           >
             <span
@@ -1320,12 +1388,16 @@ function NaverMapPanelContent({
           map: mapInstanceRef.current,
           position: new maps.LatLng(markerItem.latitude, markerItem.longitude),
           title,
+          zIndex: markerItem.kind === "cluster" ? 10 : markerItem.zIndex,
           icon:
             markerItem.kind === "cluster"
               ? createClusterMarkerIcon(markerItem.placeCount, { maps })
-              : createMapMarkerIcon(markerItem.place, markerItem.isActive, {
-                  maps,
-                }),
+              : createMapMarkerIcon(
+                  markerItem.place,
+                  markerItem.isActive,
+                  { maps },
+                  { x: markerItem.offsetX, y: markerItem.offsetY },
+                ),
         });
 
         maps.Event.addListener(marker, "click", () => {

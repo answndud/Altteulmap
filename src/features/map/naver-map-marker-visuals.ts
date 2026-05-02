@@ -147,6 +147,7 @@ export function createMapMarkerIcon(
   place: PlaceMarkerPriceInput,
   isActive: boolean,
   naver: ReturnType<typeof getLoadedNaverMapSdk>,
+  offset = { x: 0, y: 0 },
 ) {
   const Point = naver?.maps.Point;
   const Size = naver?.maps.Size;
@@ -160,7 +161,10 @@ export function createMapMarkerIcon(
   return {
     content: createPlaceMarkerIconHtml(place, isActive),
     size: new Size(visual.canvasWidth, visual.canvasHeight),
-    anchor: new Point(visual.canvasWidth / 2, visual.canvasHeight),
+    anchor: new Point(
+      visual.canvasWidth / 2 - offset.x,
+      visual.canvasHeight - offset.y,
+    ),
   };
 }
 
