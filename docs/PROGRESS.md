@@ -27,6 +27,12 @@ Next.js 기능 parity 회귀 복구 구현은 1차 완료됐지만, 운영 수�
   - `MapRoute`는 클러스터 focus viewport를 받으면 debounce를 거치지 않고 즉시 `/api/places/map`을 호출하며, 짧은 lock window 동안 지도 `idle` viewport sync를 무시한다.
   - 작은 cluster marker는 하위 `previewPlaces`를 함께 내려주고, 클라이언트는 클릭 즉시 해당 preview를 임시 place marker로 펼친다.
   - 실제 API 응답이 도착하면 optimistic marker를 서버 응답으로 교체해 첫 DB miss 구간에서도 사용자가 클릭한 cluster가 시각적으로 반응한다.
+  - 추가 QA에서 실제 Naver 숫자 cluster와 fallback/optimistic place marker가 겹쳐 보이는 현상이 확인됐다.
+  - 원인은 ready 상태에서도 map tile 감지 전까지 fallback `PreviewMap`을 계속 overlay하고, 클러스터 클릭 후 80ms 지연 viewport 재통지가 marker 전환 경합을 만들 수 있는 구조다.
+  - Naver map이 `ready` 상태가 되면 fallback preview layer를 제거하도록 바꿔 실제 지도 marker와 fallback marker가 동시에 보이지 않게 했다.
+  - 클러스터 클릭 직후 기존 Naver marker instance를 즉시 `setMap(null)` 처리해 optimistic place marker와 기존 숫자 cluster가 겹치는 시간을 제거했다.
+  - 클러스터 클릭 후 80ms 지연 viewport 재통지는 제거해 중복 fetch와 marker 경합을 줄였다.
+  - cluster `previewPlaces` 상한은 `80`에서 `40`으로 낮춰 운영 gzip 응답 크기와 marker 렌더 비용을 줄였다.
   - 일반 pan/zoom debounce는 180ms에서 100ms로 줄여 수동 지도 이동 후 반응 속도를 개선했다.
   - 같은 bounds/zoom으로 반복되는 지도 preview 요청은 12초 TTL 메모리 cache와 Cloudflare edge cache로 처리한다.
   - 메모리 cache는 성공한 API mutation 후 invalidate하고, edge cache는 짧은 TTL로 stale 노출 시간을 제한한다.
@@ -170,6 +176,17 @@ Next.js 기능 parity 회귀 복구 구현은 1차 완료됐지만, 운영 수�
     - cache miss: TTFB 약 `2.10s`, gzip download `38.5KB`
     - edge-hit 1차: TTFB 약 `0.46s`
     - edge-hit 2차: TTFB 약 `0.48s`
+- 지도 marker 겹침/성능 재리뷰 로컬 검증:
+  - `npm run lint`: 통과
+  - `npm run typecheck`: 통과
+  - `git diff --check`: 통과
+  - `node scripts/run-local-e2e.mjs smoke -- tests/e2e/map.spec.ts`: 통과
+    - smoke 10건 통과
+  - `npm run test:e2e:full`: 통과
+    - smoke 10건 통과
+    - mobile map 2건 통과
+    - bookmarks/comments/price-review/report-admin 5건 통과
+  - `npm run deploy:check`: 통과
   - `npm run deploy:check`: 통과
 - edge cache 추가 검증:
   - `npm run lint`: 통과

@@ -472,7 +472,6 @@ function NaverMapPanelContent({
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const [shouldBootMap, setShouldBootMap] = useState(false);
   const [status, setStatus] = useState<MapStatus>("loading");
-  const [hasVisibleMap, setHasVisibleMap] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
   const [locationMessage, setLocationMessage] = useState<string | null>(null);
   const [internalActivePlaceId, setInternalActivePlaceId] = useState<string | null>(
@@ -494,7 +493,7 @@ function NaverMapPanelContent({
     () => getDisplayMarkers(mapMarkers, activePlaceId ?? null),
     [activePlaceId, mapMarkers],
   );
-  const showPreview = status !== "ready" || !hasVisibleMap;
+  const showPreview = status !== "ready";
 
   const selectPlace = useCallback(
     (place: PlacePreviewRecord) => {
@@ -540,7 +539,6 @@ function NaverMapPanelContent({
     (message: string, error?: unknown) => {
       console.error(message, error);
       clearMapInstance();
-      setHasVisibleMap(false);
       setStatus("error");
     },
     [clearMapInstance],
@@ -629,23 +627,15 @@ function NaverMapPanelContent({
         mapInstanceRef.current.setZoom?.(nextZoom);
         mapInstanceRef.current.panTo?.(nextCenter);
 
-        const notifyClusterViewport = () => {
-          const viewport =
-            emitViewportChange() ??
-            getClusterViewport(
-              marker,
-              mapInstanceRef.current?.getZoom?.() ?? 16,
-            );
-
-          onClusterFocusViewport?.(viewport, marker.previewPlaces);
-        };
-
-        window.setTimeout(notifyClusterViewport, 80);
+        markerInstancesRef.current.forEach((markerInstance) =>
+          markerInstance.setMap?.(null),
+        );
+        markerInstancesRef.current = [];
       } catch (error) {
         failMap("Failed to focus the NAVER map cluster.", error);
       }
     },
-    [emitViewportChange, failMap, onClusterFocusViewport, status],
+    [failMap, onClusterFocusViewport, status],
   );
   const runLocateCurrentPosition = useCallback(() => {
     if (!mapInstanceRef.current) {
@@ -870,7 +860,6 @@ function NaverMapPanelContent({
             emitViewportChange();
           });
 
-          setHasVisibleMap(false);
           window.requestAnimationFrame(syncViewport);
           window.setTimeout(syncViewport, 0);
           resizeTimeoutId = window.setTimeout(syncViewport, 180);
@@ -904,78 +893,6 @@ function NaverMapPanelContent({
     naverMapKeyId,
     shouldBootMap,
   ]);
-
-  useEffect(() => {
-    if (status !== "ready") {
-      return;
-    }
-
-    const container = mapContainerRef.current;
-
-    if (!container) {
-      return;
-    }
-
-    const hasLoadedMapImage = () =>
-      Array.from(container.querySelectorAll("img")).some((image) => {
-        if (!(image instanceof HTMLImageElement)) {
-          return false;
-        }
-
-        const isMapAsset =
-          image.src.includes("map.naver.net") ||
-          image.src.includes(".pstatic.net/styles/") ||
-          image.src.includes(".pstatic.net/static/maps/") ||
-          image.src.includes("pstatic.net/maps") ||
-          image.src.includes("static.naver.net/maps");
-
-        return isMapAsset && image.complete && image.naturalWidth > 1;
-      });
-
-    const syncVisibility = () => {
-      if (hasLoadedMapImage()) {
-        setHasVisibleMap(true);
-        return true;
-      }
-
-      return false;
-    };
-
-    if (syncVisibility()) {
-      return;
-    }
-
-    const mutationObserver = new MutationObserver(() => {
-      if (syncVisibility()) {
-        mutationObserver.disconnect();
-      }
-    });
-
-    mutationObserver.observe(container, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ["src"],
-    });
-
-    const visibilityIntervalId = window.setInterval(() => {
-      if (syncVisibility()) {
-        window.clearInterval(visibilityIntervalId);
-        mutationObserver.disconnect();
-      }
-    }, 300);
-
-    const visibilityTimeoutId = window.setTimeout(() => {
-      window.clearInterval(visibilityIntervalId);
-      mutationObserver.disconnect();
-    }, 8000);
-
-    return () => {
-      window.clearInterval(visibilityIntervalId);
-      window.clearTimeout(visibilityTimeoutId);
-      mutationObserver.disconnect();
-    };
-  }, [containerSize.height, containerSize.width, mapMarkers, status]);
 
   useEffect(() => {
     if (
