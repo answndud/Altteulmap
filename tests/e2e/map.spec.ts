@@ -273,7 +273,7 @@ test("지도 검색, 상세 시트, 비회원 좋아요, 공유, 닫기 흐름",
   await expect(page.getByTestId("map-panel-shell")).toBeVisible();
 });
 
-test("홈에서 인기 장소 섹션이 보이고 상세 페이지로 이동할 수 있다", async ({
+test("홈에서 인기 장소 섹션이 보이고 상세 패널을 열 수 있다", async ({
   page,
 }) => {
   await page.addInitScript(() => {
@@ -311,22 +311,26 @@ test("홈에서 인기 장소 섹션이 보이고 상세 페이지로 이동할 
   const shareCall = await getLatestShareCall(page);
   expect(shareCall?.title).toContain(expectedPlaceName);
 
+  const beforeDetailUrl = page.url();
   await firstCard
     .locator('[data-testid^="trending-place-primary-link-"]')
     .click();
 
-  await expect(page).toHaveURL(/\/place\//);
+  await expect(page).toHaveURL(beforeDetailUrl);
+  const detailSheet = page.getByTestId("place-detail-sheet");
+  await expect(detailSheet).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: expectedPlaceName }).first(),
+    detailSheet.getByRole("heading", { name: expectedPlaceName }).first(),
   ).toBeVisible();
+  await expect(page.getByTestId("place-detail-inline-details")).toBeVisible();
 
-  await page.getByTestId("place-page-share-button").click();
-  await expect(page.getByTestId("place-page-share-message")).toHaveText(
+  await page.getByTestId("place-detail-share-button").click();
+  await expect(page.getByTestId("place-detail-share-message")).toHaveText(
     /공유 문구/,
   );
   await expect
     .poll(async () => (await getLatestShareCall(page))?.url ?? "")
-    .toContain("source=detail");
+    .toContain("source=detail_sheet");
   const detailShareCall = await getLatestShareCall(page);
   expect(detailShareCall?.title).toContain(expectedPlaceName);
 });
