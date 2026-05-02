@@ -101,7 +101,7 @@ export type WorkerPlaceDetailResult = {
 
 const MAP_LIST_RESPONSE_LIMIT = 120;
 const MAP_MARKER_SUMMARY_ROW_LIMIT = 2_000;
-const MAP_CLUSTER_PREVIEW_PLACE_LIMIT = 80;
+const MAP_CLUSTER_PREVIEW_PLACE_LIMIT = 40;
 
 const dateFormatter = new Intl.DateTimeFormat("sv-SE", {
   timeZone: "Asia/Seoul",
