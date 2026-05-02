@@ -25,6 +25,8 @@ Next.js 기능 parity 회귀 복구 구현은 1차 완료됐지만, 운영 수�
   - 추가로 bounds 기반 map API는 같은 장소 데이터를 list용/marker용으로 두 번 읽지 않고, 한 번 읽은 marker rows를 메모리에서 정렬/분할해 list와 marker를 만든다.
   - 추가 리뷰에서 클러스터 클릭 직후 예약된 cluster bounds 조회가 지도 `idle` viewport sync에 의해 취소될 수 있는 흐름을 발견했다.
   - `MapRoute`는 클러스터 focus viewport를 받으면 debounce를 거치지 않고 즉시 `/api/places/map`을 호출하며, 짧은 lock window 동안 지도 `idle` viewport sync를 무시한다.
+  - 작은 cluster marker는 하위 `previewPlaces`를 함께 내려주고, 클라이언트는 클릭 즉시 해당 preview를 임시 place marker로 펼친다.
+  - 실제 API 응답이 도착하면 optimistic marker를 서버 응답으로 교체해 첫 DB miss 구간에서도 사용자가 클릭한 cluster가 시각적으로 반응한다.
   - 일반 pan/zoom debounce는 180ms에서 100ms로 줄여 수동 지도 이동 후 반응 속도를 개선했다.
   - 같은 bounds/zoom으로 반복되는 지도 preview 요청은 12초 TTL 메모리 cache와 Cloudflare edge cache로 처리한다.
   - 메모리 cache는 성공한 API mutation 후 invalidate하고, edge cache는 짧은 TTL로 stale 노출 시간을 제한한다.
@@ -138,6 +140,17 @@ Next.js 기능 parity 회귀 복구 구현은 1차 완료됐지만, 운영 수�
   - `node scripts/run-local-e2e.mjs smoke -- tests/e2e/map.spec.ts`: 통과
     - smoke 10건 통과
     - 같은 viewport 중복 요청 cache hit 검증 포함
+  - `npm run test:e2e:full`: 통과
+    - smoke 10건 통과
+    - mobile map 2건 통과
+    - bookmarks/comments/price-review/report-admin 5건 통과
+- optimistic cluster split 로컬 검증:
+  - `npm run lint`: 통과
+  - `npm run typecheck`: 통과
+  - `git diff --check`: 통과
+  - `node scripts/run-local-e2e.mjs smoke -- tests/e2e/map.spec.ts`: 통과
+    - smoke 10건 통과
+    - cluster marker가 하위 `previewPlaces`를 제공하는지 검증 포함
   - `npm run test:e2e:full`: 통과
     - smoke 10건 통과
     - mobile map 2건 통과

@@ -42,7 +42,11 @@ test("지도 map API는 클러스터 모드에서도 단일 장소 bucket은 pla
   expect(response.ok()).toBeTruthy();
 
   const payload = (await response.json()) as {
-    mapMarkers?: Array<{ kind: string; placeCount?: number }>;
+    mapMarkers?: Array<{
+      kind: string;
+      placeCount?: number;
+      previewPlaces?: unknown[];
+    }>;
     markerMode?: "cluster" | "place";
   };
 
@@ -59,6 +63,14 @@ test("지도 map API는 클러스터 모드에서도 단일 장소 bucket은 pla
       (marker) => marker.kind === "cluster" && marker.placeCount === 1,
     ),
   ).toBe(false);
+  expect(
+    payload.mapMarkers?.some(
+      (marker) =>
+        marker.kind === "cluster" &&
+        Array.isArray(marker.previewPlaces) &&
+        marker.previewPlaces.length > 0,
+    ),
+  ).toBe(true);
 });
 
 test("홈 첫 지도 요청은 서울 bootstrap bounds와 zoom을 사용한다", async ({ page }) => {

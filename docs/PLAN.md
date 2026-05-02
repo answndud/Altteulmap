@@ -46,6 +46,7 @@ Next.js 기능 parity 회귀를 복구한다.
   - 클러스터 클릭 또는 충분한 줌인 이후에는 새 viewport 기준으로 `/api/places/map`을 재조회해 클러스터가 개별 장소 마커로 분할되어야 한다.
   - `markerMode=cluster` 응답에서도 한 장소만 들어 있는 bucket은 숫자 클러스터가 아니라 place marker로 반환해, 확대할수록 클러스터와 개별 핀이 자연스럽게 섞여야 한다.
   - 클러스터 클릭은 지연 없이 즉시 선택한 cluster bounds/zoom으로 재조회되어야 하며, 지도 SDK 초기 부팅도 사용자가 기다리지 않도록 즉시 시작해야 한다.
+  - 작은 cluster는 하위 place preview를 함께 내려주고, 클릭 즉시 임시 place marker로 펼친 뒤 실제 API 응답으로 교체해 첫 DB miss에서도 시각 전환이 막히지 않게 한다.
   - `/api/places/map`은 지도 상호작용을 막지 않도록 count/items/marker rows 조회를 병렬화하고, 불필요한 추가 marker query를 피해야 한다.
   - 운영 TTFB가 지도 전환 체감을 막지 않도록 Worker DB 연결 재사용 가능성을 검토하되, Cloudflare request I/O 제약을 위반하는 방식은 적용하지 않는다.
   - 같은 bounds/zoom으로 중복 발생하는 지도 preview 요청은 짧은 TTL memory/edge cache로 흡수하되, cache TTL은 사용자가 stale data를 오래 보지 않을 수준으로 제한한다.

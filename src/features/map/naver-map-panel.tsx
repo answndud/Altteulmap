@@ -43,7 +43,10 @@ type NaverMapPanelProps = {
   activePlaceId?: string | null;
   focusPlacesKey?: string | null;
   onSelectPlace?: (place: PlacePreviewRecord) => void;
-  onClusterFocusViewport?: (viewport: MapViewport) => void;
+  onClusterFocusViewport?: (
+    viewport: MapViewport,
+    previewPlaces?: PlacePreviewRecord[],
+  ) => void;
   onViewportChange?: (viewport: MapViewport) => void;
 };
 
@@ -350,7 +353,10 @@ function NaverMapFallback({
   selectedCategoryLabel: string | null;
   activePlaceId?: string | null;
   onSelectPlace: (place: PlacePreviewRecord) => void;
-  onClusterFocusViewport?: (viewport: MapViewport) => void;
+  onClusterFocusViewport?: (
+    viewport: MapViewport,
+    previewPlaces?: PlacePreviewRecord[],
+  ) => void;
 }) {
   const displayMarkers = useMemo(
     () => getDisplayMarkers(mapMarkers, activePlaceId ?? null),
@@ -368,7 +374,10 @@ function NaverMapFallback({
           selectedCategoryLabel={selectedCategoryLabel}
           onSelectPlace={onSelectPlace}
           onActivateCluster={(marker) =>
-            onClusterFocusViewport?.(getClusterViewport(marker, 16))
+            onClusterFocusViewport?.(
+              getClusterViewport(marker, 16),
+              marker.previewPlaces,
+            )
           }
         />
         <div className="altteulmap-map-overlay absolute left-4 top-4 z-10 max-w-[17rem] px-3.5 py-3 text-sm text-stone-700">
@@ -612,7 +621,10 @@ function NaverMapPanelContent({
         const currentZoom = mapInstanceRef.current.getZoom?.() ?? 13;
         const nextZoom = Math.min(getClusterFocusZoom(marker, currentZoom), 17);
 
-        onClusterFocusViewport?.(getClusterViewport(marker, nextZoom));
+        onClusterFocusViewport?.(
+          getClusterViewport(marker, nextZoom),
+          marker.previewPlaces,
+        );
         mapInstanceRef.current.setCenter?.(nextCenter);
         mapInstanceRef.current.setZoom?.(nextZoom);
         mapInstanceRef.current.panTo?.(nextCenter);
@@ -625,7 +637,7 @@ function NaverMapPanelContent({
               mapInstanceRef.current?.getZoom?.() ?? 16,
             );
 
-          onClusterFocusViewport?.(viewport);
+          onClusterFocusViewport?.(viewport, marker.previewPlaces);
         };
 
         window.setTimeout(notifyClusterViewport, 80);
@@ -708,7 +720,10 @@ function NaverMapPanelContent({
         pendingClusterFocusRef.current = marker;
 
         if (!canBootMap) {
-          onClusterFocusViewport?.(getClusterViewport(marker, 16));
+          onClusterFocusViewport?.(
+            getClusterViewport(marker, 16),
+            marker.previewPlaces,
+          );
         }
 
         return;
