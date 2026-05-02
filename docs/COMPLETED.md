@@ -1374,3 +1374,41 @@
   - 정리 후 프로젝트 폴더는 약 `895MB`이고, 대부분은 유지 대상인 `node_modules` 약 `846MB`다.
   - 실제 Kakao/Naver provider 계정 callback과 실기기 지도 체감은 외부 계정/기기 확인이 필요한 수동 QA 항목으로 남긴다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+<a id="archive-041"></a>
+## `041` 운영 URL 자동 QA 마감
+- 완료일: `2026-05-02`
+- 배경:
+  - Vite 마이그레이션과 지도 클러스터 안정화 후 남은 항목은 운영 URL 기준 실제 화면과 OAuth/admin 경계 확인이었다.
+  - Kakao/Naver 실제 계정 callback은 외부 provider 계정과 콘솔 redirect URI 설정이 필요하므로 자동 검증과 수동 검증 경계를 분리해야 했다.
+- 변경 내용:
+  - 운영 QA 마감 계획을 `docs/PLAN.md`에 열고, 진행 상태를 `docs/PROGRESS.md`에 기록했다.
+  - 운영 remote smoke로 public/static/map/auth/admin boundary를 재확인했다.
+  - Playwright headless DOM smoke로 운영 URL의 주요 public/admin route를 확인했다.
+  - desktop 홈에서 지도 shell, refresh button, place list item, Naver map request, fallback 문구 미노출을 확인했다.
+  - mobile iPhone 13 viewport에서 모바일 장소 목록 CTA, bottom sheet, mobile place list item, fallback 문구 미노출을 확인했다.
+- 코드/문서:
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev npm run smoke:remote`
+    - 통과
+    - home, robots, sitemap, public config, map API, place page, login, admin route, admin API boundary `401`, Kakao/Naver provider redirect 확인
+    - credentials/admin smoke는 `SMOKE_ADMIN_EMAIL`, `SMOKE_ADMIN_PASSWORD` 미설정으로 skip
+  - `npm run verify`
+    - 통과
+  - `git diff --check`
+    - 통과
+  - 운영 URL Playwright DOM smoke
+    - 통과
+    - `/`, `/map`, `/submit`, `/login`, `/admin` route 렌더링 확인
+    - desktop place list item `240`개 확인
+    - mobile place list item `120`개 확인
+    - Naver map request `6`건 확인
+    - `지도 설정이 아직 준비되지 않아 임시 미리보기`, `지도 설정이 아직 준비되지 않아 현재 위치를 사용할 수 없습니다.` 문구 미노출 확인
+- 결과:
+  - 운영 URL 기준 자동 확인 가능한 public/admin/map/auth boundary는 통과했다.
+  - Kakao/Naver provider redirect와 state cookie는 자동 smoke로 확인됐다.
+  - 실제 Kakao/Naver 계정 callback 완료와 credentials/admin production smoke는 사용자 계정/secret env가 필요한 수동 QA 항목으로 남긴다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
