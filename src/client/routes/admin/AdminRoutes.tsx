@@ -355,7 +355,7 @@ function DataBadge({ source, mock }: { source: string; mock: boolean }) {
       className={`altteulmap-badge ${
         mock
           ? "border-[rgba(181,90,43,0.18)] bg-[rgba(181,90,43,0.12)] text-[var(--altteul-accent-text)]"
-          : "border-emerald-200 bg-emerald-50 text-emerald-700"
+          : "border-[var(--altteul-primary-border)] bg-[var(--altteul-primary-soft)] text-[var(--altteul-primary-text)]"
       }`}
     >
       데이터: {source === "database" ? "실데이터" : "목업"}

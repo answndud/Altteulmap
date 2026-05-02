@@ -122,7 +122,7 @@ export function ViteBookmarkToggleButton({
         <p
           data-testid={`bookmark-message-${placeId}`}
           className={`text-xs ${
-            messageTone === "success" ? "text-emerald-700" : "text-stone-500"
+            messageTone === "success" ? "text-[var(--altteul-primary-text)]" : "text-stone-500"
           }`}
         >
           {message}

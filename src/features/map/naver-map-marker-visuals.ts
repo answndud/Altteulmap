@@ -20,12 +20,12 @@ type PlaceMarkerTheme = {
 
 const PLACE_MARKER_THEMES: Record<PlaceMarkerGroupKey, PlaceMarkerTheme> = {
   food: {
-    fill: "#dc603e",
-    activeFill: "#c44d2d",
-    stroke: "rgba(126, 47, 25, 0.24)",
-    activeStroke: "rgba(112, 38, 19, 0.32)",
-    coreRing: "#8e3821",
-    coreDot: "#dc603e",
+    fill: "#f97316",
+    activeFill: "#ea580c",
+    stroke: "rgba(194, 65, 12, 0.22)",
+    activeStroke: "rgba(154, 52, 18, 0.32)",
+    coreRing: "#9a3412",
+    coreDot: "#f97316",
   },
   "life-services": {
     fill: "#4f78bf",
@@ -60,22 +60,22 @@ const PLACE_MARKER_THEMES: Record<PlaceMarkerGroupKey, PlaceMarkerTheme> = {
     coreDot: "#4f647d",
   },
   fallback: {
-    fill: "#9a613f",
-    activeFill: "#7d4a2b",
-    stroke: "rgba(95, 56, 34, 0.22)",
-    activeStroke: "rgba(79, 44, 24, 0.3)",
-    coreRing: "#693b21",
-    coreDot: "#9a613f",
+    fill: "#2563eb",
+    activeFill: "#1d4ed8",
+    stroke: "rgba(37, 99, 235, 0.22)",
+    activeStroke: "rgba(29, 78, 216, 0.32)",
+    coreRing: "#1e40af",
+    coreDot: "#2563eb",
   },
 };
 
 export const CLUSTER_MARKER_THEME = {
   background:
-    "linear-gradient(180deg, rgba(228, 236, 247, 0.97) 0%, rgba(212, 224, 240, 0.95) 100%)",
-  border: "rgba(88, 110, 143, 0.24)",
-  ring: "rgba(183, 198, 223, 0.94)",
-  text: "#334155",
-  shadow: "0 7px 16px rgba(71, 85, 105, 0.14)",
+    "linear-gradient(180deg, rgba(239, 246, 255, 0.98) 0%, rgba(219, 234, 254, 0.96) 100%)",
+  border: "rgba(37, 99, 235, 0.22)",
+  ring: "rgba(191, 219, 254, 0.94)",
+  text: "#1e40af",
+  shadow: "0 7px 16px rgba(15, 23, 42, 0.14)",
 } as const;
 
 export function formatMarkerCount(count: number) {

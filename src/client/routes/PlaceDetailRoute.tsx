@@ -91,11 +91,11 @@ export function PlaceDetailRoute() {
   if (!id) {
     return (
       <main className="bg-[var(--altteul-bg-canvas)] px-4 py-6 sm:px-6 sm:py-8">
-        <div className="mx-auto grid max-w-6xl gap-4 rounded-[1rem] border border-stone-200 bg-white p-6">
-          <p className="text-sm text-stone-500">장소를 찾을 수 없습니다.</p>
+        <div className="altteulmap-panel mx-auto grid max-w-6xl gap-4 p-6">
+          <p className="text-sm text-[var(--altteul-text-tertiary)]">장소를 찾을 수 없습니다.</p>
           <Link
             to="/"
-            className="altteulmap-button w-fit border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700"
+            className="altteulmap-button w-fit px-4 py-2 text-sm font-medium"
           >
             지도로 돌아가기
           </Link>
@@ -107,7 +107,7 @@ export function PlaceDetailRoute() {
   if (state.status === "loading") {
     return (
       <main className="bg-[var(--altteul-bg-canvas)] px-4 py-6 sm:px-6 sm:py-8">
-        <div className="mx-auto max-w-6xl rounded-[1rem] border border-stone-200 bg-white p-6 text-sm text-stone-500">
+        <div className="altteulmap-panel mx-auto max-w-6xl p-6 text-sm text-[var(--altteul-text-tertiary)]">
           장소 상세를 불러오는 중입니다.
         </div>
       </main>
@@ -117,11 +117,11 @@ export function PlaceDetailRoute() {
   if (state.status === "not-found" || state.status === "error") {
     return (
       <main className="bg-[var(--altteul-bg-canvas)] px-4 py-6 sm:px-6 sm:py-8">
-        <div className="mx-auto grid max-w-6xl gap-4 rounded-[1rem] border border-stone-200 bg-white p-6">
-          <p className="text-sm text-stone-500">{state.error}</p>
+        <div className="altteulmap-panel mx-auto grid max-w-6xl gap-4 p-6">
+          <p className="text-sm text-[var(--altteul-text-tertiary)]">{state.error}</p>
           <Link
             to="/"
-            className="altteulmap-button w-fit border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700"
+            className="altteulmap-button w-fit px-4 py-2 text-sm font-medium"
           >
             지도로 돌아가기
           </Link>
@@ -161,7 +161,7 @@ export function PlaceDetailRoute() {
       <div className="mx-auto max-w-6xl">
         <Link
           to="/"
-          className="altteulmap-button inline-flex whitespace-nowrap border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 transition hover:bg-white"
+          className="altteulmap-button inline-flex whitespace-nowrap px-4 py-2 text-sm font-medium transition"
         >
           지도로 돌아가기
         </Link>
@@ -172,11 +172,11 @@ export function PlaceDetailRoute() {
               <p className="altteulmap-section-kicker">
                 {category?.parentName ?? "장소"}
               </p>
-              <h1 className="mt-2 break-keep text-[2rem] font-semibold leading-tight text-stone-950 sm:text-[2.6rem]">
+              <h1 className="mt-2 break-keep text-[2rem] font-bold leading-tight text-[var(--altteul-text-strong)] sm:text-[2.6rem]">
                 {place.name}
               </h1>
               {place.businessName && place.businessName !== place.name ? (
-                <p className="mt-3 text-sm text-[var(--altteul-accent-text)]">
+                <p className="mt-3 text-sm text-[var(--altteul-primary-text)]">
                   사업장 이름 {place.businessName}
                 </p>
               ) : null}
@@ -184,19 +184,19 @@ export function PlaceDetailRoute() {
                 {summaryItems.map((item) => (
                   <span
                     key={item}
-                    className="altteulmap-badge bg-white/80 px-2.5 py-1 text-[11px] font-medium text-[var(--altteul-accent-text)]"
+                    className="altteulmap-badge bg-[var(--altteul-bg-surface)] px-2.5 py-1 text-[11px] font-medium text-[var(--altteul-primary-text)]"
                   >
                     {item}
                   </span>
                 ))}
               </div>
-              <p className="mt-6 text-[11px] font-medium uppercase text-[var(--altteul-accent-text)]">
-                대표 가격
+              <p className="mt-6 text-[11px] font-semibold text-[var(--altteul-primary-text)]">
+                대표가
               </p>
               <p className="altteulmap-price-number mt-2 text-[2.4rem] sm:text-[2.8rem]">
                 {formatKrw(place.representativePriceAmount)}원
               </p>
-              <p className="mt-2 text-sm text-[var(--altteul-accent-text)]">
+              <p className="mt-2 text-sm text-[var(--altteul-primary-text)]">
                 {place.representativePriceLabel}
               </p>
               <div className="mt-4">
@@ -221,22 +221,22 @@ export function PlaceDetailRoute() {
             </section>
 
             <aside className="grid gap-3">
-              <section className="rounded-[1rem] border border-stone-200 bg-[var(--altteul-bg-subtle)]/65 p-4">
-                <p className="text-xs font-medium text-stone-500">최근 갱신</p>
-                <p className="mt-2 text-base font-semibold text-stone-900">
+              <section className="rounded-[0.875rem] border border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-subtle)] p-4">
+                <p className="text-xs font-medium text-[var(--altteul-text-tertiary)]">최근 갱신</p>
+                <p className="mt-2 text-base font-semibold text-[var(--altteul-text-strong)]">
                   {place.lastPriceUpdatedAt}
                 </p>
               </section>
-              <section className="rounded-[1rem] border border-stone-200 bg-[var(--altteul-bg-subtle)]/65 p-4">
-                <p className="text-xs font-medium text-stone-500">주소</p>
-                <p className="mt-2 text-sm leading-6 text-stone-700">
+              <section className="rounded-[0.875rem] border border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-subtle)] p-4">
+                <p className="text-xs font-medium text-[var(--altteul-text-tertiary)]">주소</p>
+                <p className="mt-2 text-sm leading-6 text-[var(--altteul-text-secondary)]">
                   {place.address}
                 </p>
               </section>
               {(place.description || place.note) && (
-                <section className="rounded-[1rem] border border-stone-200 bg-[var(--altteul-bg-subtle)]/65 p-4">
-                  <p className="text-xs font-medium text-stone-500">메모</p>
-                  <p className="mt-2 text-sm leading-6 text-stone-700">
+                <section className="rounded-[0.875rem] border border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-subtle)] p-4">
+                  <p className="text-xs font-medium text-[var(--altteul-text-tertiary)]">메모</p>
+                  <p className="mt-2 text-sm leading-6 text-[var(--altteul-text-secondary)]">
                     {place.note || place.description}
                   </p>
                 </section>
@@ -255,7 +255,7 @@ export function PlaceDetailRoute() {
               {place.description ? (
                 <section className="altteulmap-panel p-5">
                   <p className="altteulmap-section-kicker text-[11px]">소개</p>
-                  <p className="mt-3 text-sm leading-7 text-stone-700">
+                  <p className="mt-3 text-sm leading-7 text-[var(--altteul-text-secondary)]">
                     {place.description}
                   </p>
                 </section>
@@ -265,7 +265,7 @@ export function PlaceDetailRoute() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="altteulmap-section-kicker text-[11px]">가격</p>
-                    <h2 className="mt-1 text-lg font-semibold text-stone-900">
+                    <h2 className="mt-1 text-lg font-semibold text-[var(--altteul-text-strong)]">
                       가격 항목
                     </h2>
                   </div>
@@ -273,13 +273,13 @@ export function PlaceDetailRoute() {
                     {place.priceItems.length}개
                   </span>
                 </div>
-                <div className="mt-4 divide-y divide-stone-200">
+                <div className="mt-4 divide-y divide-[var(--altteul-surface-border)]">
                   {place.priceItems.map((item) => (
                     <div key={item.id} className="py-4 first:pt-0 last:pb-0">
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <div className="min-w-0">
-                          <p className="font-medium text-stone-900">{item.label}</p>
-                          <p className="mt-1 text-xs text-stone-500">
+                          <p className="font-medium text-[var(--altteul-text-strong)]">{item.label}</p>
+                          <p className="mt-1 text-xs text-[var(--altteul-text-tertiary)]">
                             마지막 제보 {item.reportedAt}
                           </p>
                         </div>
@@ -297,45 +297,45 @@ export function PlaceDetailRoute() {
             </section>
 
             <aside className="grid content-start gap-3">
-              <section className="overflow-hidden rounded-[1rem] border border-stone-200 bg-[var(--altteul-bg-surface)]">
+              <section className="overflow-hidden rounded-[0.875rem] border border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-surface)]">
                 <div className="px-4 py-3 text-left">
                   <p className="altteulmap-section-kicker text-[11px]">가격 제보</p>
-                  <h3 className="mt-1 text-base font-semibold text-stone-900">
+                  <h3 className="mt-1 text-base font-semibold text-[var(--altteul-text-strong)]">
                     새 가격 남기기
                   </h3>
-                  <p className="mt-1 text-sm leading-6 text-stone-500">
+                  <p className="mt-1 text-sm leading-6 text-[var(--altteul-text-tertiary)]">
                     가격표가 달라졌다면 바로 제보할 수 있습니다.
                   </p>
                 </div>
-                <div className="border-t border-stone-200 p-4">
-                <PlacePriceReportForm
-                  key={`${place.id}-price-form`}
-                  placeId={place.id}
-                  showHeader={false}
-                  surface="plain"
-                  suggestedItems={place.priceItems}
-                />
+                <div className="border-t border-[var(--altteul-surface-border)] p-4">
+                  <PlacePriceReportForm
+                    key={`${place.id}-price-form`}
+                    placeId={place.id}
+                    showHeader={false}
+                    surface="plain"
+                    suggestedItems={place.priceItems}
+                  />
                 </div>
               </section>
 
-              <section className="overflow-hidden rounded-[1rem] border border-stone-200 bg-[var(--altteul-bg-surface)]">
+              <section className="overflow-hidden rounded-[0.875rem] border border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-surface)]">
                 <div className="px-4 py-3 text-left">
                   <p className="altteulmap-section-kicker text-[11px]">코멘트</p>
-                  <h3 className="mt-1 text-base font-semibold text-stone-900">
+                  <h3 className="mt-1 text-base font-semibold text-[var(--altteul-text-strong)]">
                     이용 메모
                   </h3>
-                  <p className="mt-1 text-sm leading-6 text-stone-500">
+                  <p className="mt-1 text-sm leading-6 text-[var(--altteul-text-tertiary)]">
                     현재 {place.comments.length}개가 등록돼 있습니다.
                   </p>
                 </div>
-                <div className="border-t border-stone-200 p-4">
-                <PlaceCommentsSection
-                  key={`${place.id}-comments`}
-                  placeId={place.id}
-                  initialComments={place.comments}
-                  showHeader={false}
-                  surface="plain"
-                />
+                <div className="border-t border-[var(--altteul-surface-border)] p-4">
+                  <PlaceCommentsSection
+                    key={`${place.id}-comments`}
+                    placeId={place.id}
+                    initialComments={place.comments}
+                    showHeader={false}
+                    surface="plain"
+                  />
                 </div>
               </section>
             </aside>

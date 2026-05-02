@@ -76,7 +76,7 @@ const VIEWPORT_FETCH_DEBOUNCE_MS = 320;
 const CLUSTER_FOCUS_VIEWPORT_LOCK_MS = 360;
 
 const scopeChipClassName =
-  "altteulmap-chip altteulmap-scope-chip inline-flex min-w-[5.5rem] items-center justify-center whitespace-nowrap px-3 py-2 text-xs font-medium transition sm:text-sm";
+  "altteulmap-scope-chip inline-flex min-w-[6.75rem] items-center justify-center whitespace-nowrap rounded-[0.65rem] px-3 py-2 text-xs font-semibold transition sm:text-sm";
 
 function useIsDesktopLayout() {
   const [isDesktop, setIsDesktop] = useState(() => {
@@ -104,6 +104,16 @@ function useIsDesktopLayout() {
 
 function formatKrw(amount: number) {
   return new Intl.NumberFormat("ko-KR").format(amount);
+}
+
+function getVerificationBadgeClassName(status: PlacePreviewRecord["verificationStatus"]) {
+  return status === "verified"
+    ? "altteulmap-badge altteulmap-badge-success"
+    : "altteulmap-badge altteulmap-badge-warning";
+}
+
+function getVerificationLabel(status: PlacePreviewRecord["verificationStatus"]) {
+  return status === "verified" ? "검증됨" : "확인 필요";
 }
 
 function buildMapApiPath(
@@ -245,7 +255,7 @@ function MapCategoryTray({
     <div className="grid gap-4">
       <div className="grid gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-medium text-stone-500">
+          <span className="text-xs font-medium text-[var(--altteul-text-tertiary)]">
             전체 {totalCategoryCount}개 업종
           </span>
           <Link
@@ -256,7 +266,7 @@ function MapCategoryTray({
             })}
             className={`altteulmap-chip inline-flex min-w-0 items-center justify-center border px-3 py-2 text-center text-xs font-medium leading-tight transition sm:text-sm ${
               activeCategory
-                ? "border-stone-300/90 bg-white text-stone-700 hover:bg-white"
+                ? "border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-surface)] text-[var(--altteul-text-primary)] hover:bg-[var(--altteul-surface-fill-hover)]"
                 : "altteulmap-accent-chip"
             }`}
           >
@@ -270,7 +280,7 @@ function MapCategoryTray({
         </div>
 
         <div className="grid gap-2">
-          <p className="text-xs font-medium text-stone-500">
+          <p className="text-xs font-medium text-[var(--altteul-text-tertiary)]">
             상위 묶음 먼저 고르기
           </p>
           <div className="altteulmap-scroll-row">
@@ -287,16 +297,16 @@ function MapCategoryTray({
                   onClick={() => setActiveGroupSlug(group.slug)}
                   className={`altteulmap-chip inline-flex shrink-0 items-center gap-2 border px-3 py-2 text-sm font-medium transition ${
                     isGroupSelected
-                      ? "border-[rgba(151,70,29,0.38)] bg-[rgba(181,90,43,0.12)] text-[var(--altteul-accent-text)]"
-                      : "border-stone-300/90 bg-white text-stone-700 hover:bg-white"
+                      ? "border-[var(--altteul-primary-border)] bg-[var(--altteul-primary-soft)] text-[var(--altteul-primary-text)]"
+                      : "border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-surface)] text-[var(--altteul-text-primary)] hover:bg-[var(--altteul-surface-fill-hover)]"
                   }`}
                 >
                   <span>{group.name}</span>
                   <span
                     className={`rounded-full px-2 py-0.5 text-[11px] ${
                       isGroupSelected || isGroupActive
-                        ? "bg-white/85 text-[var(--altteul-accent-text)]"
-                        : "bg-[var(--altteul-bg-subtle)] text-stone-500"
+                        ? "bg-[var(--altteul-bg-surface)] text-[var(--altteul-primary-text)]"
+                        : "bg-[var(--altteul-bg-subtle)] text-[var(--altteul-text-tertiary)]"
                     }`}
                   >
                     {group.children.length}
@@ -309,13 +319,13 @@ function MapCategoryTray({
       </div>
 
       {activeGroup ? (
-        <section className="grid gap-3 border-t border-stone-200 pt-4">
+        <section className="grid gap-3 border-t border-[var(--altteul-surface-border)] pt-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <h3 className="text-sm font-semibold text-stone-900">
+              <h3 className="text-sm font-semibold text-[var(--altteul-text-strong)]">
                 {activeGroup.name}
               </h3>
-              <p className="mt-1 text-xs text-stone-500">
+              <p className="mt-1 text-xs text-[var(--altteul-text-tertiary)]">
                 세부 업종을 골라 결과를 바로 좁힙니다.
               </p>
             </div>
@@ -339,7 +349,7 @@ function MapCategoryTray({
                   className={`altteulmap-chip inline-flex min-w-0 items-center justify-center border px-3 py-2 text-center text-xs font-medium leading-tight break-keep transition sm:text-sm ${
                     isActive
                       ? "altteulmap-accent-chip"
-                      : "border-stone-300/90 bg-white text-stone-700 hover:bg-white"
+                      : "border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-surface)] text-[var(--altteul-text-primary)] hover:bg-[var(--altteul-surface-fill-hover)]"
                   }`}
                 >
                   {category.name}
@@ -369,8 +379,6 @@ function PlaceCard({
   onSelect: (place: PlacePreviewRecord) => void;
 }) {
   const category = getCategoryBySlug(place.categorySlug);
-  const verificationLabel =
-    place.verificationStatus === "verified" ? "검증됨" : "미검증";
   const sharePayload = createPlaceSharePayload(place, "list");
 
   return (
@@ -384,19 +392,19 @@ function PlaceCard({
           onSelect(place);
         }
       }}
-      className={`rounded-[1rem] border p-4 text-left shadow-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 ${
+      className={`rounded-[0.85rem] border p-4 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--altteul-primary)] ${
         isSelected
-          ? "border-[var(--altteul-accent-border)] bg-[var(--altteul-accent-soft)]"
-          : "border-stone-200 bg-white hover:border-[var(--altteul-accent-border)] hover:bg-[var(--altteul-surface-fill-hover)]"
+          ? "border-[var(--altteul-primary-border)] bg-[var(--altteul-primary-soft)]"
+          : "border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-surface)] hover:border-[var(--altteul-primary-border)] hover:bg-[var(--altteul-surface-fill-hover)]"
       }`}
       data-testid={`place-list-item-${place.id}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[11px] font-medium uppercase text-stone-500">
-            {place.representativePriceLabel || "대표 가격"}
+          <p className="text-[11px] font-semibold text-[var(--altteul-primary-text)]">
+            대표가 · {place.representativePriceLabel || "기준 가격"}
           </p>
-          <p className="altteulmap-price-number mt-1 text-2xl">
+          <p className="altteulmap-price-number mt-1 text-[1.75rem] leading-none">
             {formatKrw(place.representativePriceAmount)}원
           </p>
         </div>
@@ -412,22 +420,22 @@ function PlaceCard({
           />
         </div>
       </div>
-      <h2 className="mt-3 truncate text-base font-semibold text-stone-950">
+      <h2 className="mt-3 truncate text-base font-bold text-[var(--altteul-text-strong)]">
         {place.name}
       </h2>
-      <p className="mt-1 truncate text-xs text-stone-600">
+      <p className="mt-1 truncate text-xs text-[var(--altteul-text-secondary)]">
         {[category?.name ?? "기타", place.district].join(" · ")}
       </p>
-      <p className="mt-3 line-clamp-2 text-sm leading-6 text-stone-600">
+      <p className="mt-3 line-clamp-2 text-sm leading-6 text-[var(--altteul-text-secondary)]">
         {place.description || place.note || place.address}
       </p>
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap gap-2">
-          <span className="altteulmap-badge px-2.5 py-1 text-[11px] font-medium">
-            {verificationLabel}
+          <span className={`${getVerificationBadgeClassName(place.verificationStatus)} px-2.5 py-1 text-[11px] font-semibold`}>
+            {getVerificationLabel(place.verificationStatus)}
           </span>
-          <span className="altteulmap-badge px-2.5 py-1 text-[11px] font-medium">
+          <span className="altteulmap-badge altteulmap-badge-info px-2.5 py-1 text-[11px] font-medium">
             갱신 {place.lastPriceUpdatedAt}
           </span>
           <span
@@ -445,16 +453,16 @@ function PlaceCard({
             path={sharePayload.path}
             title={sharePayload.title}
             text={sharePayload.text}
-            className="altteulmap-button inline-flex items-center gap-1.5 whitespace-nowrap border border-stone-300 bg-white px-3 py-1.5 text-xs font-medium text-stone-700 transition hover:bg-white"
-            messageClassName="mt-1 text-right text-[11px] text-stone-500"
+            className="altteulmap-button inline-flex items-center gap-1.5 whitespace-nowrap px-3 py-1.5 text-xs font-medium"
+            messageClassName="mt-1 text-right text-[11px] text-[var(--altteul-text-tertiary)]"
             testId={`place-list-item-share-button-${place.id}`}
             messageTestId={`place-list-item-share-message-${place.id}`}
           />
           <Link
             to={`/place/${encodeURIComponent(place.id)}`}
-            className="altteulmap-button inline-flex px-3 py-1.5 text-xs font-medium text-stone-700"
+            className="altteulmap-button inline-flex px-3 py-1.5 text-xs font-medium"
           >
-            상세
+            가격 보기
           </Link>
         </div>
       </div>
@@ -488,13 +496,13 @@ function PlaceDetailSheet({
   return (
     <aside
       data-testid={testId}
-      className="altteulmap-panel fixed inset-x-3 bottom-3 z-30 max-h-[82dvh] overflow-auto p-4 shadow-[var(--altteul-shadow-overlay)] xl:static xl:max-h-none xl:shadow-sm"
+      className="altteulmap-panel fixed inset-x-3 bottom-3 z-30 max-h-[82dvh] overflow-auto p-4 shadow-[var(--altteul-shadow-overlay)] xl:static xl:max-h-none xl:shadow-none"
     >
       <button
         type="button"
         aria-label="상세 시트 닫기"
         data-testid="place-detail-drag-handle"
-        className="mx-auto mb-3 block h-2 w-14 rounded-full bg-stone-300 xl:hidden"
+        className="mx-auto mb-3 block h-2 w-14 rounded-full bg-[var(--altteul-bg-muted)] xl:hidden"
         onPointerDown={(event) => {
           event.currentTarget.setPointerCapture(event.pointerId);
           setDragStartY(event.clientY);
@@ -510,10 +518,10 @@ function PlaceDetailSheet({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="altteulmap-section-kicker">선택한 장소</p>
-          <h2 className="mt-1 text-xl font-semibold text-stone-950">
+          <h2 className="mt-1 text-xl font-bold text-[var(--altteul-text-strong)]">
             {place.name}
           </h2>
-          <p className="mt-1 text-sm text-stone-600">
+          <p className="mt-1 text-sm text-[var(--altteul-text-secondary)]">
             {[category?.name ?? "기타", place.district].join(" · ")}
           </p>
         </div>
@@ -527,22 +535,22 @@ function PlaceDetailSheet({
         </button>
       </div>
 
-      <div className="mt-4 rounded-[1rem] border border-[var(--altteul-accent-border)] bg-[var(--altteul-accent-soft)] px-4 py-3">
-        <p className="text-[11px] font-medium text-[var(--altteul-accent-text)]">
-          {place.representativePriceLabel || "대표 가격"}
+      <div className="mt-4 rounded-[0.85rem] border border-[var(--altteul-primary-border)] bg-[var(--altteul-primary-soft)] px-4 py-3">
+        <p className="text-[11px] font-semibold text-[var(--altteul-primary-text)]">
+          대표가 · {place.representativePriceLabel || "기준 가격"}
         </p>
         <p className="altteulmap-price-number mt-1 text-3xl">
           {formatKrw(place.representativePriceAmount)}원
         </p>
-        <p className="mt-2 text-xs text-[var(--altteul-accent-text)]">
+        <p className="mt-2 text-xs text-[var(--altteul-primary-text)]">
           {place.verificationStatus === "verified" ? "검증된 가격" : "검증 대기 가격"} · 갱신 {place.lastPriceUpdatedAt}
         </p>
       </div>
 
-      <p className="mt-4 text-sm leading-6 text-stone-600">
+      <p className="mt-4 text-sm leading-6 text-[var(--altteul-text-secondary)]">
         {place.description || place.note || place.address}
       </p>
-      <p className="mt-2 text-xs leading-5 text-stone-500">{place.address}</p>
+      <p className="mt-2 text-xs leading-5 text-[var(--altteul-text-tertiary)]">{place.address}</p>
 
       <div className="mt-4 flex flex-wrap items-start gap-2">
         <VitePlaceReactionButtons
@@ -630,7 +638,7 @@ function MobilePlaceListSheet({
           className="altteulmap-button altteulmap-accent-solid pointer-events-auto inline-flex min-h-11 items-center justify-center gap-2 px-5 py-3 text-sm font-semibold shadow-[var(--altteul-shadow-overlay)]"
         >
           목록 열기
-          <span className="rounded-full bg-white/90 px-2 py-0.5 text-xs text-[var(--altteul-accent-text)]">
+          <span className="rounded-full bg-white/90 px-2 py-0.5 text-xs text-[var(--altteul-primary-text)]">
             {state.status === "success" ? `${totalPlaceCount}곳` : "..."}
           </span>
         </button>
@@ -644,7 +652,7 @@ function MobilePlaceListSheet({
     <section
       data-testid="mobile-place-list-sheet"
       data-sheet-mode={mode}
-      className={`fixed inset-x-3 bottom-3 rounded-[1.5rem] border border-stone-200 bg-[var(--altteul-bg-surface)] p-3 shadow-[var(--altteul-shadow-overlay)] transition-all xl:hidden ${
+      className={`fixed inset-x-3 bottom-3 rounded-[1rem] border border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-surface)] p-3 shadow-[var(--altteul-shadow-overlay)] transition-all xl:hidden ${
         isExpanded ? "max-h-[88dvh]" : "max-h-[58dvh]"
       }`}
       style={{ zIndex: 2147483647 }}
@@ -653,7 +661,7 @@ function MobilePlaceListSheet({
         type="button"
         aria-label="목록 시트 크기 조절"
         data-testid="mobile-place-list-drag-handle"
-        className="mx-auto mb-3 block h-2 w-14 rounded-full bg-stone-300"
+        className="mx-auto mb-3 block h-2 w-14 rounded-full bg-[var(--altteul-bg-muted)]"
         onPointerDown={(event) => {
           event.currentTarget.setPointerCapture(event.pointerId);
           setDragStartY(event.clientY);
@@ -671,10 +679,10 @@ function MobilePlaceListSheet({
         }}
         onPointerCancel={() => setDragStartY(null)}
       />
-      <div className="flex items-center justify-between gap-3 border-b border-stone-200 pb-3">
+      <div className="flex items-center justify-between gap-3 border-b border-[var(--altteul-surface-border)] pb-3">
         <div>
           <p className="altteulmap-section-kicker text-[11px]">목록</p>
-          <h2 className="mt-1 text-base font-semibold text-stone-900">
+          <h2 className="mt-1 text-base font-semibold text-[var(--altteul-text-strong)]">
             지도 결과
           </h2>
         </div>
@@ -700,17 +708,17 @@ function MobilePlaceListSheet({
         }`}
       >
         {state.status === "loading" ? (
-          <div className="rounded-[1rem] border border-dashed border-stone-300 bg-white p-5 text-center text-sm text-stone-500">
+          <div className="rounded-[0.85rem] border border-dashed border-[var(--altteul-surface-border-strong)] bg-[var(--altteul-bg-surface)] p-5 text-center text-sm text-[var(--altteul-text-tertiary)]">
             지도 결과를 불러오는 중입니다.
           </div>
         ) : null}
         {state.status === "error" ? (
-          <div className="rounded-[1rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <div className="rounded-[0.85rem] border border-[var(--altteul-warning-border)] bg-[var(--altteul-warning-soft)] px-4 py-3 text-sm text-[var(--altteul-warning-text)]">
             {state.error}
           </div>
         ) : null}
         {state.status === "success" && places.length === 0 ? (
-          <div className="rounded-[1rem] border border-dashed border-stone-300 bg-white p-5 text-center text-sm text-stone-500">
+          <div className="rounded-[0.85rem] border border-dashed border-[var(--altteul-surface-border-strong)] bg-[var(--altteul-bg-surface)] p-5 text-center text-sm text-[var(--altteul-text-tertiary)]">
             조건에 맞는 장소가 없습니다.
           </div>
         ) : null}
@@ -731,12 +739,12 @@ function MobilePlaceListSheet({
                   onSelectPlace(place);
                 }
               }}
-              className="rounded-[1rem] border border-stone-200 bg-white p-3 text-left shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
+              className="rounded-[0.85rem] border border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-surface)] p-3 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--altteul-primary)]"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-[11px] font-medium text-stone-500">
-                    {place.representativePriceLabel || "대표 가격"}
+                  <p className="text-[11px] font-semibold text-[var(--altteul-primary-text)]">
+                    대표가 · {place.representativePriceLabel || "기준 가격"}
                   </p>
                   <p className="altteulmap-price-number mt-1 text-xl">
                     {formatKrw(place.representativePriceAmount)}원
@@ -757,10 +765,10 @@ function MobilePlaceListSheet({
                   />
                 </div>
               </div>
-              <h3 className="mt-2 truncate text-base font-semibold text-stone-950">
+              <h3 className="mt-2 truncate text-base font-semibold text-[var(--altteul-text-strong)]">
                 {place.name}
               </h3>
-              <p className="mt-1 truncate text-xs text-stone-600">
+              <p className="mt-1 truncate text-xs text-[var(--altteul-text-secondary)]">
                 {[category?.name ?? "기타", place.district].join(" · ")}
               </p>
             </article>
@@ -794,19 +802,19 @@ function TrendingPlacesSection({
 
   return (
     <section
-      className="border-t border-stone-200/70 pt-4 sm:pt-5"
+      className="border-t border-[var(--altteul-surface-border)] pt-4 sm:pt-5"
       data-testid="trending-places-section"
     >
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="altteulmap-section-kicker">빠른 비교</p>
-          <h2 className="mt-1 text-lg font-semibold text-stone-900 sm:text-xl">
+          <h2 className="mt-1 text-lg font-semibold text-[var(--altteul-text-strong)] sm:text-xl">
             {selectedCategoryLabel
-              ? `${selectedCategoryLabel} 인기 장소`
-              : "인기 장소"}
+              ? `${selectedCategoryLabel} 빠른 비교`
+              : "가격 비교가 쉬운 장소"}
           </h2>
-          <p className="mt-1 text-sm text-stone-500">
-            가격과 최근 반응을 기준으로 바로 비교할 수 있는 카드입니다.
+          <p className="mt-1 text-sm text-[var(--altteul-text-tertiary)]">
+            현재 결과에서 좋아요와 최근 갱신이 살아 있는 장소를 먼저 보여줍니다.
           </p>
         </div>
         <span className="altteulmap-badge whitespace-nowrap px-3 py-1.5 text-xs font-medium">
@@ -818,46 +826,44 @@ function TrendingPlacesSection({
         {items.map((place, index) => {
           const category = getCategoryBySlug(place.categorySlug);
           const sharePayload = createPlaceSharePayload(place, "trending");
-          const verificationLabel =
-            place.verificationStatus === "verified" ? "검증됨" : "미검증";
 
           return (
             <article
               key={place.id}
               data-testid={`trending-place-card-${place.id}`}
-              className="min-w-[16rem] rounded-[1rem] border border-stone-200 bg-white p-3.5 lg:min-w-0"
+              className="min-w-[16rem] rounded-[0.85rem] border border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-surface)] p-3.5 lg:min-w-0"
             >
               <Link
                 to={`/place/${encodeURIComponent(place.id)}`}
                 data-testid={`trending-place-primary-link-${place.id}`}
-                className="block rounded-[0.85rem] transition hover:bg-[var(--altteul-surface-fill-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
+                className="block rounded-[0.75rem] transition hover:bg-[var(--altteul-surface-fill-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--altteul-primary)]"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-[11px] font-medium uppercase text-stone-500">
-                      {place.representativePriceLabel}
+                    <p className="text-[11px] font-semibold text-[var(--altteul-primary-text)]">
+                      대표가 · {place.representativePriceLabel}
                     </p>
                     <p className="altteulmap-price-number mt-1 text-[1.55rem]">
                       {formatKrw(place.representativePriceAmount)}원
                     </p>
                   </div>
-                  <span className="altteulmap-badge shrink-0 whitespace-nowrap px-2.5 py-1 text-[11px] font-medium">
+                  <span className="altteulmap-badge altteulmap-badge-info shrink-0 whitespace-nowrap px-2.5 py-1 text-[11px] font-medium">
                     #{index + 1}
                   </span>
                 </div>
 
                 <div className="mt-2.5 min-w-0">
-                  <h3 className="line-clamp-2 text-[0.98rem] font-semibold text-stone-900">
+                  <h3 className="line-clamp-2 text-[0.98rem] font-semibold text-[var(--altteul-text-strong)]">
                     {place.name}
                   </h3>
-                  <p className="mt-1 text-xs text-stone-500">
+                  <p className="mt-1 text-xs text-[var(--altteul-text-tertiary)]">
                     {category?.name ?? "기타"} · {place.district}
                   </p>
                 </div>
 
                 <div className="mt-3 grid gap-2">
-                  <span className="altteulmap-badge px-2.5 py-1 text-[11px] font-medium">
-                    {verificationLabel}
+                  <span className={`${getVerificationBadgeClassName(place.verificationStatus)} px-2.5 py-1 text-[11px] font-semibold`}>
+                    {getVerificationLabel(place.verificationStatus)}
                   </span>
                   <span className="altteulmap-badge px-2.5 py-1 text-[11px] font-medium">
                     {getTrendingReason(place)}
@@ -868,7 +874,7 @@ function TrendingPlacesSection({
                 <Link
                   to={`/place/${encodeURIComponent(place.id)}`}
                   data-testid={`trending-place-detail-link-${place.id}`}
-                  className="text-xs font-medium text-[var(--altteul-accent-text)]"
+                  className="text-xs font-semibold text-[var(--altteul-primary-text)]"
                 >
                   상세 보기
                 </Link>
@@ -876,8 +882,8 @@ function TrendingPlacesSection({
                   path={sharePayload.path}
                   title={sharePayload.title}
                   text={sharePayload.text}
-                  className="altteulmap-button inline-flex items-center gap-2 whitespace-nowrap border border-stone-300 bg-white px-3 py-1.5 text-xs font-medium text-stone-700 transition hover:bg-white"
-                  messageClassName="mt-1 text-right text-[11px] text-stone-500"
+                  className="altteulmap-button inline-flex items-center gap-2 whitespace-nowrap px-3 py-1.5 text-xs font-medium transition"
+                  messageClassName="mt-1 text-right text-[11px] text-[var(--altteul-text-tertiary)]"
                   testId={`trending-place-share-button-${place.id}`}
                   messageTestId={`trending-place-share-message-${place.id}`}
                 />
@@ -1238,15 +1244,15 @@ export function MapRoute() {
 
   return (
     <main className="bg-[var(--altteul-bg-canvas)] px-3 pb-4 pt-3 sm:px-4 sm:py-4 lg:px-5 xl:px-6">
-      <div className="mx-auto grid max-w-[96rem] gap-3">
-        <section className="grid gap-3 border-b border-stone-200/70 pb-3 sm:pb-4">
+      <div className="mx-auto grid max-w-[112rem] gap-3">
+        <section className="grid gap-3 border-b border-[var(--altteul-surface-border)] pb-3 sm:pb-4">
           <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
             <div className="min-w-0">
               <p className="altteulmap-section-kicker">탐색</p>
-              <h1 className="mt-1 text-xl font-semibold text-stone-950 sm:text-[1.55rem]">
+              <h1 className="mt-1 text-xl font-bold text-[var(--altteul-text-strong)] sm:text-[1.55rem]">
                 가격이 보이는 동네 지도
               </h1>
-              <p className="mt-1 hidden max-w-2xl text-sm leading-6 text-stone-600 sm:block">
+              <p className="mt-1 hidden max-w-2xl text-sm leading-6 text-[var(--altteul-text-secondary)] sm:block">
                 대표 가격, 검증 상태, 최근 갱신을 기준으로 지금 갈 곳을 빠르게 비교합니다.
               </p>
             </div>
@@ -1262,7 +1268,7 @@ export function MapRoute() {
                 </span>
               ) : null}
               <span className="altteulmap-badge px-3 py-1.5 text-xs font-medium">
-                {searchScope === "global" ? "전체 지역" : "보이는 지도"}
+                {searchScope === "global" ? "전체 지역" : "현재 지도 범위"}
               </span>
             </div>
           </div>
@@ -1275,7 +1281,7 @@ export function MapRoute() {
                   type="search"
                   name="q"
                   defaultValue={query}
-                  placeholder="김밥, 세탁소, 프린트, 약국"
+                  placeholder="무엇을 싸게 찾고 있나요? 예: 김밥, 세탁소, 프린트"
                   data-testid="place-search-input"
                   className="altteulmap-input h-11 px-4 text-sm"
                 />
@@ -1293,7 +1299,7 @@ export function MapRoute() {
               {query ? (
                 <Link
                   to={createMapHref({ category: activeCategory })}
-                  className="altteulmap-button col-span-2 inline-flex h-11 items-center justify-center px-4 text-sm font-medium text-stone-700 sm:col-auto"
+                  className="altteulmap-button col-span-2 inline-flex h-11 items-center justify-center px-4 text-sm font-medium sm:col-auto"
                 >
                   지우기
                 </Link>
@@ -1302,7 +1308,7 @@ export function MapRoute() {
 
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex min-w-0 flex-wrap items-center gap-2">
-                <span className="text-xs font-medium text-stone-600">검색 범위</span>
+                <span className="text-xs font-semibold text-[var(--altteul-text-secondary)]">검색 범위</span>
                 <div className="altteulmap-segmented w-fit">
                   <label className="cursor-pointer">
                     <input
@@ -1313,7 +1319,7 @@ export function MapRoute() {
                       defaultChecked={searchScope === "viewport"}
                       className="altteulmap-scope-input sr-only"
                     />
-                    <span className={scopeChipClassName}>보이는 지도</span>
+                    <span className={scopeChipClassName}>현재 지도 범위</span>
                   </label>
                   <label className="cursor-pointer">
                     <input
@@ -1333,24 +1339,24 @@ export function MapRoute() {
             <div className="grid gap-2.5 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start">
               <RouteResetDetails
                 key={`${activeCategory ?? "all"}:${query || "all"}:${searchScope}`}
-                className="w-full overflow-hidden rounded-[1rem] border border-stone-200/80 bg-[rgba(255,253,249,0.62)]"
-                summaryClassName="flex cursor-pointer list-none items-center justify-between gap-3 px-3.5 py-2.5 text-sm font-medium text-stone-800 [&::-webkit-details-marker]:hidden"
+                className="w-full overflow-hidden rounded-[0.85rem] border border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-surface)]"
+                summaryClassName="flex cursor-pointer list-none items-center justify-between gap-3 px-3.5 py-2.5 text-sm font-semibold text-[var(--altteul-text-primary)] [&::-webkit-details-marker]:hidden"
                 summary={
                   <>
                     <div className="min-w-0">
                       <span>업종 필터</span>
-                      <p className="mt-0.5 truncate text-xs font-normal text-stone-500">
+                      <p className="mt-0.5 truncate text-xs font-normal text-[var(--altteul-text-tertiary)]">
                         {selectedCategory
                           ? `${selectedCategory.parentName} · ${selectedCategory.name}`
                           : "전체 업종"}
                       </p>
                     </div>
-                    <span className="shrink-0 text-xs font-medium text-stone-500">
+                    <span className="shrink-0 text-xs font-medium text-[var(--altteul-primary-text)]">
                       열기
                     </span>
                   </>
                 }
-                bodyClassName="border-t border-stone-200 px-3.5 py-3.5"
+                bodyClassName="border-t border-[var(--altteul-surface-border)] px-3.5 py-3.5"
               >
                 <MapCategoryTray
                   activeCategory={activeCategory}
@@ -1371,7 +1377,7 @@ export function MapRoute() {
           </form>
         </section>
 
-        <section className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_24rem]">
+        <section className="relative">
           <NaverMapPanel
             initialBounds={state.data?.bounds ?? null}
             isLoading={state.status === "loading"}
@@ -1398,7 +1404,7 @@ export function MapRoute() {
             onViewportChange={handleViewportChange}
           />
 
-          <aside className="hidden content-start gap-3 xl:grid">
+          <aside className="hidden content-start gap-3 overflow-auto rounded-[0.875rem] border border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-surface)] p-3 shadow-[var(--altteul-shadow-overlay)] xl:absolute xl:right-3 xl:top-3 xl:z-20 xl:grid xl:max-h-[calc(100%-1.5rem)] xl:w-[18rem] 2xl:w-[20rem]">
             {selectedPlace && isDesktopLayout ? (
               <PlaceDetailSheet
                 bookmarked={bookmarkedPlaceIds.has(selectedPlace.id)}
@@ -1410,10 +1416,10 @@ export function MapRoute() {
               />
             ) : null}
 
-            <div className="flex items-center justify-between border-b border-stone-200/80 pb-3">
+            <div className="flex items-center justify-between border-b border-[var(--altteul-surface-border)] pb-3">
               <div>
                 <p className="altteulmap-section-kicker text-[11px]">목록</p>
-                <h2 className="mt-1 text-base font-semibold text-stone-900">
+                <h2 className="mt-1 text-base font-semibold text-[var(--altteul-text-strong)]">
                   지도 결과
                 </h2>
               </div>
@@ -1423,7 +1429,7 @@ export function MapRoute() {
             </div>
 
             {state.status === "success" && (isServerTrimmed || visiblePlaceCount > 0) ? (
-              <div className="flex flex-wrap gap-2 text-xs text-stone-600">
+              <div className="flex flex-wrap gap-2 text-xs text-[var(--altteul-text-secondary)]">
                 {isServerTrimmed ? (
                   <span className="altteulmap-badge px-2.5 py-1 text-[11px] font-medium">
                     총 {totalPlaceCount}곳 중 {visiblePlaceCount}곳 먼저 표시
@@ -1436,22 +1442,22 @@ export function MapRoute() {
             ) : null}
 
             {state.status === "loading" ? (
-              <div className="rounded-[1rem] border border-dashed border-stone-300 bg-white p-6 text-center text-sm text-stone-500">
+              <div className="rounded-[0.85rem] border border-dashed border-[var(--altteul-surface-border-strong)] bg-[var(--altteul-bg-surface)] p-6 text-center text-sm text-[var(--altteul-text-tertiary)]">
                 지도 결과를 불러오는 중입니다.
               </div>
             ) : null}
             {state.status === "error" ? (
-              <div className="rounded-[1rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              <div className="rounded-[0.85rem] border border-[var(--altteul-warning-border)] bg-[var(--altteul-warning-soft)] px-4 py-3 text-sm text-[var(--altteul-warning-text)]">
                 {state.error}
               </div>
             ) : null}
             {state.status === "success" && places.length === 0 ? (
-              <div className="rounded-[1rem] border border-dashed border-stone-300 bg-white p-6 text-center text-sm leading-7 text-stone-500">
+              <div className="rounded-[0.85rem] border border-dashed border-[var(--altteul-surface-border-strong)] bg-[var(--altteul-bg-surface)] p-6 text-center text-sm leading-7 text-[var(--altteul-text-tertiary)]">
                 조건에 맞는 장소가 없습니다.
               </div>
             ) : null}
             {state.status === "success" && places.length > 0 ? (
-              <div className="grid max-h-[40rem] gap-3 overflow-auto pr-1" data-testid="place-list">
+              <div className="grid gap-3 pr-1" data-testid="place-list">
                 {displayedPlaces.map((place) => (
                   <PlaceCard
                     key={place.id}
