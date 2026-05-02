@@ -25,6 +25,7 @@ import type {
   PlaceComment,
   PlaceHistoryEntry,
   PlaceMapClusterMarkerRecord,
+  PlaceMapMarkerRecord,
   PlaceMapMarkerMode,
   PlaceMapPlaceMarkerRecord,
   PlacePreviewRecord,
@@ -336,7 +337,7 @@ function getClusterOnlyMapMarkers(
   bounds: PlaceBounds,
   query: string | null,
   zoom: number | null,
-): PlaceMapClusterMarkerRecord[] {
+): PlaceMapMarkerRecord[] {
   const markerLimit = getMapMarkerLimit(zoom, query);
   const { columnCount, latSpan, lngSpan, rowCount } = getMapTileGrid(
     bounds,
@@ -360,16 +361,22 @@ function getClusterOnlyMapMarkers(
     cells.set(cellKey, bucket);
   }
 
-  return [...cells.entries()].map(([cellKey, bucket]) => ({
-    kind: "cluster",
-    id: `cluster:${cellKey}:${bucket.length}`,
-    latitude:
-      bucket.reduce((sum, place) => sum + place.latitude, 0) / bucket.length,
-    longitude:
-      bucket.reduce((sum, place) => sum + place.longitude, 0) / bucket.length,
-    bounds: getBoundsFromPlaces(bucket),
-    placeCount: bucket.length,
-  }));
+  return [...cells.entries()].map(([cellKey, bucket]) => {
+    if (bucket.length === 1 && bucket[0]) {
+      return toMapPlaceMarkerRecord(bucket[0]);
+    }
+
+    return {
+      kind: "cluster",
+      id: `cluster:${cellKey}:${bucket.length}`,
+      latitude:
+        bucket.reduce((sum, place) => sum + place.latitude, 0) / bucket.length,
+      longitude:
+        bucket.reduce((sum, place) => sum + place.longitude, 0) / bucket.length,
+      bounds: getBoundsFromPlaces(bucket),
+      placeCount: bucket.length,
+    };
+  });
 }
 
 function getDatabaseMapPlaceWhereClause({

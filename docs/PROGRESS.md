@@ -14,6 +14,9 @@ Next.js 기능 parity 회귀 복구 구현은 1차 완료됐지만, 운영 수�
   - `MapRoute` 첫 지도 요청을 bounds 없는 전역 조회가 아니라 Next 시절과 같은 서울 bootstrap bounds/zoom 기준 조회로 되돌렸다.
   - `onViewportChange`를 단순 `setViewport`가 아니라 debounce `/api/places/map` 재조회 루프로 연결했다.
   - 클러스터 클릭 전용 보정은 자동 viewport 재조회 루프를 깨지 않도록 보조 신호로만 사용한다.
+  - 추가 QA에서 확대 후에도 숫자 클러스터가 남는 문제가 계속 확인됐다. 원인은 `markerMode=cluster`일 때 한 장소 bucket까지 숫자 클러스터로 내려주는 all-or-nothing marker 응답이다.
+  - cluster bucket 중 `placeCount=1`인 항목을 place marker로 반환해, 확대 시 개별 장소 핀이 자연스럽게 섞이도록 수정했다.
+  - `tests/e2e/map.spec.ts`는 단일 장소 bucket이 숫자 클러스터로 반환되지 않는지 검증하도록 갱신했다.
 - `MapRoute`에 모바일 목록 바텀시트를 복구했다.
   - `mobile-place-list-open`, `mobile-place-list-sheet`, drag handle, size toggle, mobile list item contract를 다시 제공한다.
   - 목록은 `hidden`/`peek`/`expanded` 상태를 가지며, 장소 선택 시 목록을 닫고 모바일 상세 시트를 연다.
@@ -71,6 +74,18 @@ Next.js 기능 parity 회귀 복구 구현은 1차 완료됐지만, 운영 수�
     - `zoom=11` 서울 bootstrap bounds 응답이 `markerMode: cluster`, `kinds: ["cluster"]`, `mapMarkerCount: 14`를 반환함
   - 운영 API 좁아진 cluster bounds 확인: 통과
     - 선택한 cluster bounds + `zoom=15` 응답이 `markerMode: place`, `kinds: ["place"]`, `mapMarkerCount: 1`을 반환함
+- mixed marker 복구 검증:
+  - `npm run lint`: 통과
+  - `npm run typecheck`: 통과
+  - `git diff --check`: 통과
+  - `node scripts/run-local-e2e.mjs smoke -- tests/e2e/map.spec.ts`: 통과
+    - smoke 9건 통과
+    - cluster mode에서도 단일 장소 bucket이 place marker로 반환되는지 확인
+  - `npm run test:e2e:full`: 통과
+    - smoke 9건 통과
+    - mobile map 2건 통과
+    - bookmarks/comments/price-review/report-admin 5건 통과
+  - `npm run deploy:check`: 통과
 - `npm run deploy`: 통과
   - URL: `https://altteulmap.altteul-lab.workers.dev`
   - Version ID: `b63ce151-afee-41a6-8e7b-2a4b1fc76959`
@@ -104,10 +119,12 @@ Next.js 기능 parity 회귀 복구 구현은 1차 완료됐지만, 운영 수�
 
 ## 남은 이슈
 - 숫자 클러스터 자동 fetch 루프 수정분은 로컬 검증, 운영 배포, remote smoke, 운영 API 검증이 통과했다. 운영 브라우저/실기기에서 실제 Naver 지도 클릭/줌인/줌아웃 시각 확인이 필요하다.
+- cluster bucket 단위 mixed marker 응답 수정은 로컬 검증이 통과했다. 운영 배포와 원격 API/브라우저 확인이 필요하다.
 - Kakao/Naver OAuth live callback은 provider 실제 계정 로그인이 필요하므로 수동 QA가 필요하다.
 - 실제 모바일 기기에서 Naver map + 목록 sheet 터치 충돌, 상세 sheet, 주요 화면 디자인 밀도는 최종 수동 확인이 필요하다.
 
 ## 다음 액션
-- 운영 브라우저/실기기에서 숫자 클러스터 클릭, 줌인, 줌아웃이 각각 marker/list 재조회로 이어지는지 확인한다.
+- mixed marker 수정분을 커밋/푸시하고 운영 배포한다.
+- 운영 브라우저/실기기에서 숫자 클러스터 클릭, 줌인, 줌아웃이 각각 marker/list 재조회로 이어지고 개별 장소 핀으로 분해되는지 확인한다.
 - 실제 Kakao/Naver 계정으로 운영 OAuth callback을 확인한다.
 - 실제 모바일 기기에서 지도, 목록 바텀시트, 상세 시트, 제보/신고/댓글 흐름을 최종 확인한다.

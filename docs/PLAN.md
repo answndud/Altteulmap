@@ -44,6 +44,7 @@ Next.js 기능 parity 회귀를 복구한다.
   - 실제 Naver 지도 렌더링이 운영 환경에서 `지도 설정이 아직 준비되지 않아 임시 미리보기` 상태로 떨어지지 않는지 확인한다.
   - 숫자 클러스터는 지도 위에서 숫자가 읽히는 마커로 표시되어야 하고, 클릭 시 클러스터 bounds로 확대/이동해야 한다.
   - 클러스터 클릭 또는 충분한 줌인 이후에는 새 viewport 기준으로 `/api/places/map`을 재조회해 클러스터가 개별 장소 마커로 분할되어야 한다.
+  - `markerMode=cluster` 응답에서도 한 장소만 들어 있는 bucket은 숫자 클러스터가 아니라 place marker로 반환해, 확대할수록 클러스터와 개별 핀이 자연스럽게 섞여야 한다.
   - 클러스터 클릭 경로는 실제 Naver 지도와 임시 preview fallback 모두에서 최소한의 동작이 보존되어야 한다.
   - 주요 public 화면(`/`, `/map`, `/place/:id`, `/submit`, `/login`, `/bookmarks`)과 admin 화면(`/admin`, `/admin/prices`, `/admin/reports`, `/admin/places`)의 정보 밀도, 여백, 버튼 위계, 모바일 터치 타겟을 점검한다.
   - 디자인 수정은 기능 contract를 바꾸지 않고, Next 시절보다 빈약해진 UI를 복구하는 범위로 제한한다.
