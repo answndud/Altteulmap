@@ -1284,8 +1284,7 @@ export function MapRoute() {
           <NaverMapPanel
             initialBounds={state.data?.bounds ?? null}
             isLoading={
-              state.status === "loading" ||
-              (isRefreshingViewport && places.length === 0)
+              state.status === "loading" || isRefreshingViewport
             }
             mapMarkers={mapMarkers}
             placeCount={state.data?.count ?? 0}

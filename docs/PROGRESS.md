@@ -17,6 +17,11 @@ Next.js 기능 parity 회귀 복구 구현은 1차 완료됐지만, 운영 수�
   - 추가 QA에서 확대 후에도 숫자 클러스터가 남는 문제가 계속 확인됐다. 원인은 `markerMode=cluster`일 때 한 장소 bucket까지 숫자 클러스터로 내려주는 all-or-nothing marker 응답이다.
   - cluster bucket 중 `placeCount=1`인 항목을 place marker로 반환해, 확대 시 개별 장소 핀이 자연스럽게 섞이도록 수정했다.
   - `tests/e2e/map.spec.ts`는 단일 장소 bucket이 숫자 클러스터로 반환되지 않는지 검증하도록 갱신했다.
+  - 추가 QA에서 클러스터 클릭 전환 지연과 초기 지도 API 지연이 계속 확인됐다.
+  - 운영 계측 결과 첫 `/api/places/map`이 브라우저에서 약 4.1초 뒤에 발생했고, 직접 API TTFB도 약 2.5초였다.
+  - 지도 SDK 부팅 지연을 제거하고, 클러스터 클릭 시 260ms 대기 없이 즉시 target zoom/bounds를 부모 route에 전달하도록 수정했다.
+  - 클러스터 클릭은 bucket 규모에 따라 target zoom을 더 공격적으로 잡아 즉시 다음 단계 marker를 요청한다.
+  - Worker map API는 count/items/marker rows를 병렬 조회하고, place marker mode에서는 이미 읽은 `items`를 재사용하도록 수정했다.
 - `MapRoute`에 모바일 목록 바텀시트를 복구했다.
   - `mobile-place-list-open`, `mobile-place-list-sheet`, drag handle, size toggle, mobile list item contract를 다시 제공한다.
   - 목록은 `hidden`/`peek`/`expanded` 상태를 가지며, 장소 선택 시 목록을 닫고 모바일 상세 시트를 연다.
@@ -96,6 +101,17 @@ Next.js 기능 parity 회귀 복구 구현은 1차 완료됐지만, 운영 수�
     - `markerMode: cluster`, `kinds: ["cluster", "place"]`, 단일 장소 숫자 클러스터 `0`, place marker `1`, cluster marker `13`
   - 운영 API 좁아진 cluster bounds 확인: 통과
     - source cluster `4곳` bounds + `zoom=15` 응답이 `markerMode: place`, place marker `4`, cluster marker `0`을 반환함
+- 클러스터 클릭 속도 개선 로컬 검증:
+  - `npm run lint`: 통과
+  - `npm run typecheck`: 통과
+  - `git diff --check`: 통과
+  - `node scripts/run-local-e2e.mjs smoke -- tests/e2e/map.spec.ts`: 통과
+    - smoke 9건 통과
+  - `npm run test:e2e:full`: 통과
+    - smoke 9건 통과
+    - mobile map 2건 통과
+    - bookmarks/comments/price-review/report-admin 5건 통과
+  - `npm run deploy:check`: 통과
 - `npm run deploy`: 통과
   - URL: `https://altteulmap.altteul-lab.workers.dev`
   - Version ID: `b63ce151-afee-41a6-8e7b-2a4b1fc76959`
@@ -130,10 +146,13 @@ Next.js 기능 parity 회귀 복구 구현은 1차 완료됐지만, 운영 수�
 ## 남은 이슈
 - 숫자 클러스터 자동 fetch 루프 수정분은 로컬 검증, 운영 배포, remote smoke, 운영 API 검증이 통과했다. 운영 브라우저/실기기에서 실제 Naver 지도 클릭/줌인/줌아웃 시각 확인이 필요하다.
 - cluster bucket 단위 mixed marker 응답 수정은 로컬 검증, 운영 배포, remote smoke, 운영 API 검증이 통과했다. 운영 브라우저/실기기에서 실제 Naver 지도 시각 확인이 필요하다.
+- 클러스터 클릭 즉시 전환과 map API 병렬화 수정은 로컬 검증이 통과했다. 운영 배포와 운영 API/브라우저 재계측이 필요하다.
 - Kakao/Naver OAuth live callback은 provider 실제 계정 로그인이 필요하므로 수동 QA가 필요하다.
 - 실제 모바일 기기에서 Naver map + 목록 sheet 터치 충돌, 상세 sheet, 주요 화면 디자인 밀도는 최종 수동 확인이 필요하다.
 
 ## 다음 액션
 - 운영 브라우저/실기기에서 숫자 클러스터 클릭, 줌인, 줌아웃이 각각 marker/list 재조회로 이어지고 개별 장소 핀으로 분해되는지 확인한다.
+- 클러스터 클릭 즉시 전환과 map API 병렬화 수정분을 커밋/푸시하고 운영 배포한다.
+- 배포 후 운영 API TTFB와 브라우저 첫 map API 발생 시점을 재계측한다.
 - 실제 Kakao/Naver 계정으로 운영 OAuth callback을 확인한다.
 - 실제 모바일 기기에서 지도, 목록 바텀시트, 상세 시트, 제보/신고/댓글 흐름을 최종 확인한다.
