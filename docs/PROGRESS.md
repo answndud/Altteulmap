@@ -69,6 +69,7 @@ Next.js 기능 parity 회귀 복구 구현은 1차 완료됐지만, 운영 수�
   - viewport edge cache Version ID: `1b4488fd-ca31-4f13-8360-6cdbaa708928`
   - optimistic cluster split Version ID: `5b32c422-c410-4c24-88f8-207c3242598f`
   - marker overlap 방지 Version ID: `ce9f53c2-f950-4c37-a652-04f8d6f78121`
+  - cluster-only marker mode Version ID: `77a447f6-662c-4490-a827-b460f93cde2d`
 
 ## 최근 검증
 - `npm run lint`: 통과
@@ -216,6 +217,20 @@ Next.js 기능 parity 회귀 복구 구현은 1차 완료됐지만, 운영 수�
     - mobile map 2건 통과
     - bookmarks/comments/price-review/report-admin 5건 통과
   - `npm run deploy:check`: 통과
+- cluster-only marker mode 운영 배포 검증:
+  - `npm run deploy`: 통과
+    - URL: `https://altteulmap.altteul-lab.workers.dev`
+    - Version ID: `77a447f6-662c-4490-a827-b460f93cde2d`
+  - `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev npm run smoke:remote`: 통과
+  - 운영 API cluster-only 확인: 통과
+    - `zoom=11` 서울 bounds 응답이 `markerMode: cluster`, `kinds: ["cluster"]`만 반환함
+    - marker `14`개 중 place marker `0`개
+    - 단일 장소 bucket은 숫자 cluster `1`로 유지됨
+    - cluster `11`개는 optimistic split용 `previewPlaces`를 포함함
+  - 운영 API 압축 응답 계측: 통과
+    - cache miss: TTFB 약 `2.28s`, gzip download `33.4KB`
+    - edge-hit 1차: TTFB 약 `0.62s`
+    - edge-hit 2차: TTFB 약 `0.47s`
   - `npm run deploy:check`: 통과
 - edge cache 추가 검증:
   - `npm run lint`: 통과
@@ -262,7 +277,7 @@ Next.js 기능 parity 회귀 복구 구현은 1차 완료됐지만, 운영 수�
 ## 남은 이슈
 - 숫자 클러스터 자동 fetch 루프 수정분은 로컬 검증, 운영 배포, remote smoke, 운영 API 검증이 통과했다. 운영 브라우저/실기기에서 실제 Naver 지도 클릭/줌인/줌아웃 시각 확인이 필요하다.
 - cluster bucket 단위 mixed marker 응답 수정은 로컬 검증, 운영 배포, remote smoke, 운영 API 검증이 통과했다. 운영 브라우저/실기기에서 실제 Naver 지도 시각 확인이 필요하다.
-- 클러스터 클릭 즉시 전환, map API 병렬화, bounds map API 단일 read, 중복 viewport memory/edge cache, optimistic cluster split, marker overlap 방지는 로컬/운영 검증이 통과했다. 실제 실기기에서 시각 전환 체감 확인이 필요하다.
+- 클러스터 클릭 즉시 전환, map API 병렬화, bounds map API 단일 read, 중복 viewport memory/edge cache, optimistic cluster split, marker overlap 방지, cluster-only marker mode는 로컬/운영 검증이 통과했다. 실제 실기기에서 시각 전환 체감 확인이 필요하다.
 - Kakao/Naver OAuth live callback은 provider 실제 계정 로그인이 필요하므로 수동 QA가 필요하다.
 - 실제 모바일 기기에서 Naver map + 목록 sheet 터치 충돌, 상세 sheet, 주요 화면 디자인 밀도는 최종 수동 확인이 필요하다.
 
