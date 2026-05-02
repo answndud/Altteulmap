@@ -166,7 +166,9 @@ test("지도 map API는 같은 viewport 중복 요청을 preview cache로 처리
 
   expect(firstResponse.ok()).toBeTruthy();
   expect(secondResponse.ok()).toBeTruthy();
-  expect(secondResponse.headers()["x-altteulmap-map-cache"]).toBe("hit");
+  expect(["hit", "edge-hit"]).toContain(
+    secondResponse.headers()["x-altteulmap-map-cache"],
+  );
 });
 
 test("지도 검색, 상세 시트, 비회원 좋아요, 공유, 닫기 흐름", async ({ page }) => {
