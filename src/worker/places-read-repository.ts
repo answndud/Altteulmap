@@ -368,10 +368,6 @@ function getClusterOnlyMapMarkers(
   }
 
   return [...cells.entries()].map(([cellKey, bucket]) => {
-    if (bucket.length === 1 && bucket[0]) {
-      return toMapPlaceMarkerRecord(bucket[0]);
-    }
-
     return {
       kind: "cluster",
       id: `cluster:${cellKey}:${bucket.length}`,

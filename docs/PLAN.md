@@ -44,7 +44,7 @@ Next.js 기능 parity 회귀를 복구한다.
   - 실제 Naver 지도 렌더링이 운영 환경에서 `지도 설정이 아직 준비되지 않아 임시 미리보기` 상태로 떨어지지 않는지 확인한다.
   - 숫자 클러스터는 지도 위에서 숫자가 읽히는 마커로 표시되어야 하고, 클릭 시 클러스터 bounds로 확대/이동해야 한다.
   - 클러스터 클릭 또는 충분한 줌인 이후에는 새 viewport 기준으로 `/api/places/map`을 재조회해 클러스터가 개별 장소 마커로 분할되어야 한다.
-  - `markerMode=cluster` 응답에서도 한 장소만 들어 있는 bucket은 숫자 클러스터가 아니라 place marker로 반환해, 확대할수록 클러스터와 개별 핀이 자연스럽게 섞여야 한다.
+  - `markerMode=cluster` 응답에서는 단일 장소 bucket도 숫자 클러스터로 유지해 zoom-out 상태에서 숫자 클러스터와 개별 place pin이 섞이지 않게 한다.
   - 클러스터 클릭은 지연 없이 즉시 선택한 cluster bounds/zoom으로 재조회되어야 하며, 지도 SDK 초기 부팅도 사용자가 기다리지 않도록 즉시 시작해야 한다.
   - 작은 cluster는 하위 place preview를 함께 내려주고, 클릭 즉시 임시 place marker로 펼친 뒤 실제 API 응답으로 교체해 첫 DB miss에서도 시각 전환이 막히지 않게 한다.
   - 실제 Naver map이 ready 상태가 된 뒤에는 fallback preview layer를 겹쳐 표시하지 않는다.

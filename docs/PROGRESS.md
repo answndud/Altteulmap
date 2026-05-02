@@ -33,6 +33,9 @@ Next.js 기능 parity 회귀 복구 구현은 1차 완료됐지만, 운영 수�
   - 클러스터 클릭 직후 기존 Naver marker instance를 즉시 `setMap(null)` 처리해 optimistic place marker와 기존 숫자 cluster가 겹치는 시간을 제거했다.
   - 클러스터 클릭 후 80ms 지연 viewport 재통지는 제거해 중복 fetch와 marker 경합을 줄였다.
   - cluster `previewPlaces` 상한은 `80`에서 `40`으로 낮춰 운영 gzip 응답 크기와 marker 렌더 비용을 줄였다.
+  - 추가 스크린샷 QA에서 zoom-out 상태에 숫자 cluster와 개별 place pin이 같이 보이는 문제가 확인됐다.
+  - 원인은 `markerMode=cluster`에서도 단일 장소 bucket을 place marker로 반환하는 mixed marker 정책이었다.
+  - cluster mode에서는 단일 장소 bucket도 숫자 cluster `1`로 유지하고, place pin은 cluster 클릭/줌인 후 place mode에서만 렌더링하도록 수정했다.
   - 일반 pan/zoom debounce는 180ms에서 100ms로 줄여 수동 지도 이동 후 반응 속도를 개선했다.
   - 같은 bounds/zoom으로 반복되는 지도 preview 요청은 12초 TTL 메모리 cache와 Cloudflare edge cache로 처리한다.
   - 메모리 cache는 성공한 API mutation 후 invalidate하고, edge cache는 짧은 TTL로 stale 노출 시간을 제한한다.
@@ -201,6 +204,18 @@ Next.js 기능 parity 회귀 복구 구현은 1차 완료됐지만, 운영 수�
     - edge-hit 1차: TTFB 약 `0.48s`
     - edge-hit 2차: TTFB 약 `1.20s`
     - 이전 optimistic split 계측의 gzip `38.5KB` 대비 약 `5KB` 감소
+- cluster-only marker mode 로컬 검증:
+  - `npm run lint`: 통과
+  - `npm run typecheck`: 통과
+  - `git diff --check`: 통과
+  - `node scripts/run-local-e2e.mjs smoke -- tests/e2e/map.spec.ts`: 통과
+    - smoke 10건 통과
+    - cluster mode에서 `mapMarkers.kind`가 `cluster`만 반환되는지 검증 포함
+  - `npm run test:e2e:full`: 통과
+    - smoke 10건 통과
+    - mobile map 2건 통과
+    - bookmarks/comments/price-review/report-admin 5건 통과
+  - `npm run deploy:check`: 통과
   - `npm run deploy:check`: 통과
 - edge cache 추가 검증:
   - `npm run lint`: 통과
