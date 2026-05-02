@@ -1683,3 +1683,41 @@
   - 로컬 fallback이 OSM 기본 타일보다 절제된 light map으로 보여 배포 지도와의 시각 차이가 줄었다.
   - 가격표 marker는 fallback camera state에 맞춰 함께 움직인다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+<a id="archive-047"></a>
+## `047` Cloudflare Dashboard legacy deploy command 실패 방지
+- 완료일: `2026-05-02`
+- 배경:
+  - Cloudflare Dashboard latest build가 build 단계는 성공하지만 deploy 단계에서 실패했다.
+  - 로그상 build output은 `dist/altteulmap/wrangler.json`에 생성됐지만 Dashboard deploy command는 이전 migration 경로 `dist/altteulmap_vite_migration/wrangler.json`를 참조했다.
+  - 실제 운영 배포는 로컬 Wrangler 배포로 적용되고 있었지만 Dashboard에는 latest build failed 상태가 남아 혼선을 만들었다.
+- 변경 내용:
+  - `npm run cf:build:vite`가 canonical output 생성 후 legacy Dashboard deploy command 호환 alias `dist/altteulmap_vite_migration/*`를 함께 만들도록 했다.
+  - `scripts/sync-vite-worker-alias.mjs`를 추가해 `dist/altteulmap` worker output을 `dist/altteulmap_vite_migration`으로 동기화한다.
+  - `deploy:check:vite`가 canonical output과 legacy alias output을 모두 검증하도록 확장했다.
+  - Cloudflare 배포 문서에 권장 deploy command와 legacy command 호환 기준을 명시했다.
+- 코드/문서:
+  - `package.json`
+  - `scripts/sync-vite-worker-alias.mjs`
+  - `scripts/check-vite-worker-output.mjs`
+  - `docs/deploy/deploy-cloudflare.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `rm -rf dist && npm run cf:build:vite`
+    - 통과
+    - `dist/altteulmap/wrangler.json`와 `dist/altteulmap_vite_migration/wrangler.json` 생성 확인
+  - `npm run deploy:check:vite`
+    - 통과
+    - canonical worker output과 legacy alias output 검증
+  - `npx wrangler deploy --config dist/altteulmap_vite_migration/wrangler.json --name altteulmap --dry-run`
+    - 통과
+    - Cloudflare Dashboard의 현재 stale deploy command와 같은 경로가 Wrangler에서 정상 해석됨
+  - `npm run verify`
+    - 통과
+  - `git diff --check`
+    - 통과
+- 결과:
+  - Dashboard deploy command가 아직 `dist/altteulmap_vite_migration/wrangler.json`로 남아 있어도 다음 build부터 ENOENT로 실패하지 않아야 한다.
+  - 정석 deploy command는 여전히 `npx wrangler deploy --config dist/altteulmap/wrangler.json --name altteulmap`이다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.

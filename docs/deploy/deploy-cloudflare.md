@@ -62,6 +62,24 @@ dist/client/index.html
 dist/client/assets/*
 ```
 
+Cloudflare Workers Builds의 build command는 아래를 사용한다.
+
+```bash
+npm run cf:build:vite
+```
+
+이 명령은 canonical output인 `dist/altteulmap/*`를 만든 뒤, 이전 Dashboard deploy command가 참조하던 `dist/altteulmap_vite_migration/*` alias도 함께 만든다. 올바른 deploy command는 아래 canonical 경로다.
+
+```bash
+npx wrangler deploy --config dist/altteulmap/wrangler.json --name altteulmap
+```
+
+현재 Dashboard에 이전 command가 남아 있으면 아래도 동작하도록 alias를 유지한다.
+
+```bash
+npx wrangler deploy --config dist/altteulmap_vite_migration/wrangler.json --name altteulmap
+```
+
 ## 배포
 Cloudflare Dashboard Builds 저장 폼이 불안정할 수 있으므로, 현재 기준 운영 배포는 Wrangler 직접 배포를 기본 경로로 둔다.
 
