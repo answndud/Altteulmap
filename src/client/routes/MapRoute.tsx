@@ -72,7 +72,7 @@ const SEOUL_BOOTSTRAP_BOUNDS: PlaceBounds = {
   maxLng: 127.2693,
 };
 const SEOUL_BOOTSTRAP_ZOOM = 11;
-const VIEWPORT_FETCH_DEBOUNCE_MS = 100;
+const VIEWPORT_FETCH_DEBOUNCE_MS = 320;
 const CLUSTER_FOCUS_VIEWPORT_LOCK_MS = 360;
 
 const scopeChipClassName =
@@ -125,16 +125,52 @@ function buildMapApiPath(
   }
 
   if (scope === "viewport" && viewport) {
-    apiParams.set("minLat", String(viewport.bounds.minLat));
-    apiParams.set("maxLat", String(viewport.bounds.maxLat));
-    apiParams.set("minLng", String(viewport.bounds.minLng));
-    apiParams.set("maxLng", String(viewport.bounds.maxLng));
-    apiParams.set("zoom", String(viewport.zoom));
+    const snappedBounds = isBootstrapBounds(viewport.bounds)
+      ? viewport.bounds
+      : snapViewportBounds(viewport.bounds, viewport.zoom);
+
+    apiParams.set("minLat", String(snappedBounds.minLat));
+    apiParams.set("maxLat", String(snappedBounds.maxLat));
+    apiParams.set("minLng", String(snappedBounds.minLng));
+    apiParams.set("maxLng", String(snappedBounds.maxLng));
+    apiParams.set("zoom", String(Math.round(viewport.zoom)));
   }
 
   const queryString = apiParams.toString();
 
   return queryString ? `/api/places/map?${queryString}` : "/api/places/map";
+}
+
+function isBootstrapBounds(bounds: PlaceBounds) {
+  return (
+    bounds.minLat === SEOUL_BOOTSTRAP_BOUNDS.minLat &&
+    bounds.maxLat === SEOUL_BOOTSTRAP_BOUNDS.maxLat &&
+    bounds.minLng === SEOUL_BOOTSTRAP_BOUNDS.minLng &&
+    bounds.maxLng === SEOUL_BOOTSTRAP_BOUNDS.maxLng
+  );
+}
+
+function getViewportBoundsSnapFactor(zoom: number) {
+  if (zoom <= 12) {
+    return 200;
+  }
+
+  if (zoom <= 14) {
+    return 500;
+  }
+
+  return 1_000;
+}
+
+function snapViewportBounds(bounds: PlaceBounds, zoom: number): PlaceBounds {
+  const snapFactor = getViewportBoundsSnapFactor(zoom);
+
+  return {
+    minLat: Math.floor(bounds.minLat * snapFactor) / snapFactor,
+    maxLat: Math.ceil(bounds.maxLat * snapFactor) / snapFactor,
+    minLng: Math.floor(bounds.minLng * snapFactor) / snapFactor,
+    maxLng: Math.ceil(bounds.maxLng * snapFactor) / snapFactor,
+  };
 }
 
 function createBootstrapViewport(): MapViewport {
@@ -877,7 +913,8 @@ export function MapRoute() {
   const [bookmarkedPlaceIds, setBookmarkedPlaceIds] = useState<Set<string>>(
     () => new Set(),
   );
-  const [isRefreshingViewport, startViewportRefresh] = useTransition();
+  const [isManualRefreshPending, setIsManualRefreshPending] = useState(false);
+  const [, startViewportRefresh] = useTransition();
   const query = searchParams.get("q")?.trim() || "";
   const activeCategory = searchParams.get("category");
   const searchScope: PlaceSearchScope =
@@ -975,6 +1012,7 @@ export function MapRoute() {
       return;
     }
 
+    setIsManualRefreshPending(true);
     startViewportRefresh(async () => {
       try {
         const data = await loadPlaces(buildMapApiPath(searchParams, viewport));
@@ -990,6 +1028,8 @@ export function MapRoute() {
               ? error.message
               : "지도 결과를 불러오지 못했습니다.",
         });
+      } finally {
+        setIsManualRefreshPending(false);
       }
     });
   }, [loadPlaces, searchParams, viewport]);
@@ -1334,16 +1374,14 @@ export function MapRoute() {
         <section className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_24rem]">
           <NaverMapPanel
             initialBounds={state.data?.bounds ?? null}
-            isLoading={
-              state.status === "loading" || isRefreshingViewport
-            }
+            isLoading={state.status === "loading"}
             mapMarkers={mapMarkers}
             placeCount={state.data?.count ?? 0}
             refreshAction={
               searchScope === "viewport" && viewport
                 ? {
                     isVisible: true,
-                    isLoading: isRefreshingViewport,
+                    isLoading: isManualRefreshPending,
                     onRefresh: refreshViewportPlaces,
                   }
                 : null

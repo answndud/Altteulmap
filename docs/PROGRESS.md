@@ -37,6 +37,11 @@ Next.js 기능 parity 회귀 복구 구현은 1차 완료됐지만, 운영 수�
   - 원인은 `markerMode=cluster`에서도 단일 장소 bucket을 place marker로 반환하는 mixed marker 정책이었다.
   - cluster mode에서는 단일 장소 bucket도 숫자 cluster `1`로 유지하고, place pin은 cluster 클릭/줌인 후 place mode에서만 렌더링하도록 수정했다.
   - 일반 pan/zoom debounce는 180ms에서 100ms로 줄여 수동 지도 이동 후 반응 속도를 개선했다.
+  - 추가 수동 QA에서 지도를 조금만 움직여도 숫자 클러스터 위치가 계속 바뀌고, 자동 viewport 재조회 중 refresh 버튼이 긴 시간 `검색 중`으로 보이는 문제가 확인됐다.
+  - 원인은 서버 cluster grid가 현재 viewport bounds의 `minLat/minLng`를 원점으로 사용해 작은 pan에도 모든 cluster bucket/center를 다시 계산하는 구조였다.
+  - cluster grid를 viewport-relative grid에서 stable world grid로 변경하고, cluster id에서 bucket count를 제거해 작은 bounds 변화로 marker가 불필요하게 remount되지 않게 했다.
+  - viewport API path는 zoom별 snap bounds를 사용한다. 저배율은 더 큰 단위로 묶어 작은 pan의 cache miss를 줄이고, 고배율은 정확도를 유지한다.
+  - 자동 viewport 재조회는 지도 데이터를 조용히 갱신하고, `검색 중` 버튼 상태는 사용자가 직접 `이 지역 다시 찾기`를 누른 경우에만 표시하도록 분리했다.
   - 같은 bounds/zoom으로 반복되는 지도 preview 요청은 12초 TTL 메모리 cache와 Cloudflare edge cache로 처리한다.
   - 메모리 cache는 성공한 API mutation 후 invalidate하고, edge cache는 짧은 TTL로 stale 노출 시간을 제한한다.
   - Worker DB 연결을 request 간 재사용하는 방식은 workerd에서 `Cannot perform I/O on behalf of a different request` 제약으로 실패해 적용하지 않았다.
@@ -243,6 +248,18 @@ Next.js 기능 parity 회귀 복구 구현은 1차 완료됐지만, 운영 수�
     - smoke 10건 통과
     - mobile map 2건 통과
     - bookmarks/comments/price-review/report-admin 5건 통과
+- stable cluster grid/viewport snap 로컬 검증:
+  - `npm run lint`: 통과
+  - `npm run typecheck`: 통과
+  - `git diff --check`: 통과
+  - `node scripts/run-local-e2e.mjs smoke -- tests/e2e/map.spec.ts`: 통과
+    - smoke 10건 통과
+    - cluster-only, bootstrap bounds, cluster bounds 재계산, viewport cache hit 검증 포함
+  - `npm run test:e2e:full`: 통과
+    - smoke 10건 통과
+    - mobile map 2건 통과
+    - bookmarks/comments/price-review/report-admin 5건 통과
+  - `npm run deploy:check`: 통과
 - `npm run deploy`: 통과
   - URL: `https://altteulmap.altteul-lab.workers.dev`
   - Version ID: `b63ce151-afee-41a6-8e7b-2a4b1fc76959`
