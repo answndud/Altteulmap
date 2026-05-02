@@ -4,6 +4,7 @@ import {
   adminActions,
   categories,
   contentReports,
+  moderationSuggestions,
   placeCategories,
   places,
   priceItems,
@@ -64,6 +65,15 @@ type PendingPriceReportRecord = {
   existingPriceAmount?: number;
   existingPriceUnitLabel?: string;
   existingPriceVerificationStatus?: VerificationStatus;
+  moderationSuggestion?: ModerationSuggestionRecord;
+};
+
+type ModerationSuggestionRecord = {
+  suggestedAction: "approve" | "review" | "reject";
+  confidence: number;
+  summary: string;
+  checks: string[];
+  flags: string[];
 };
 
 type AdminPriceItemRecord = {
@@ -104,6 +114,22 @@ function toAdminActionUserId(adminUserId?: string | null) {
   }
 
   return adminUserId;
+}
+
+function toModerationSuggestionRecord(row: {
+  suggestedAction: "approve" | "review" | "reject";
+  confidence: number;
+  summary: string;
+  checks: string[];
+  flags: string[];
+}): ModerationSuggestionRecord {
+  return {
+    suggestedAction: row.suggestedAction,
+    confidence: row.confidence,
+    summary: row.summary,
+    checks: row.checks,
+    flags: row.flags,
+  };
 }
 
 function toPendingPlaceRecord(
@@ -497,6 +523,34 @@ export async function listWorkerPendingPriceReports(env: WorkerDatabaseBindings)
       ),
     )
     .orderBy(desc(priceReports.createdAt));
+  const suggestionRows =
+    rows.length > 0
+      ? await db
+          .select({
+            subjectKey: moderationSuggestions.subjectKey,
+            suggestedAction: moderationSuggestions.suggestedAction,
+            confidence: moderationSuggestions.confidence,
+            summary: moderationSuggestions.summary,
+            checks: moderationSuggestions.checks,
+            flags: moderationSuggestions.flags,
+          })
+          .from(moderationSuggestions)
+          .where(
+            and(
+              eq(moderationSuggestions.subjectType, "price_report"),
+              inArray(
+                moderationSuggestions.subjectKey,
+                rows.map((row) => row.id),
+              ),
+            ),
+          )
+      : [];
+  const suggestionsBySubject = new Map(
+    suggestionRows.map((row) => [
+      row.subjectKey,
+      toModerationSuggestionRecord(row),
+    ]),
+  );
 
   return {
     items: rows.map((row) => ({
@@ -514,6 +568,7 @@ export async function listWorkerPendingPriceReports(env: WorkerDatabaseBindings)
       existingPriceUnitLabel: row.existingPriceUnitLabel ?? undefined,
       existingPriceVerificationStatus:
         row.existingPriceVerificationStatus ?? undefined,
+      moderationSuggestion: suggestionsBySubject.get(row.id),
     })) satisfies PendingPriceReportRecord[],
     source: "database" as DataSource,
   };
@@ -951,6 +1006,34 @@ export async function listWorkerReports(env: WorkerDatabaseBindings) {
     .leftJoin(places, eq(contentReports.targetId, places.id))
     .where(eq(contentReports.targetType, "place"))
     .orderBy(desc(contentReports.createdAt));
+  const suggestionRows =
+    rows.length > 0
+      ? await db
+          .select({
+            subjectKey: moderationSuggestions.subjectKey,
+            suggestedAction: moderationSuggestions.suggestedAction,
+            confidence: moderationSuggestions.confidence,
+            summary: moderationSuggestions.summary,
+            checks: moderationSuggestions.checks,
+            flags: moderationSuggestions.flags,
+          })
+          .from(moderationSuggestions)
+          .where(
+            and(
+              eq(moderationSuggestions.subjectType, "content_report"),
+              inArray(
+                moderationSuggestions.subjectKey,
+                rows.map((row) => row.id),
+              ),
+            ),
+          )
+      : [];
+  const suggestionsBySubject = new Map(
+    suggestionRows.map((row) => [
+      row.subjectKey,
+      toModerationSuggestionRecord(row),
+    ]),
+  );
 
   return {
     items: rows.map((row) => ({
@@ -961,6 +1044,7 @@ export async function listWorkerReports(env: WorkerDatabaseBindings) {
       detail: row.detail ?? "",
       status: row.status,
       createdAt: formatDate(row.createdAt),
+      moderationSuggestion: suggestionsBySubject.get(row.id),
     })),
     source: "database" as DataSource,
   };

@@ -3,7 +3,6 @@ import { Link, useParams } from "react-router-dom";
 
 import { VitePlaceReactionButtons } from "@/client/components/VitePlaceReactionButtons";
 import { getCategoryBySlug } from "@/features/categories/catalog";
-import { RouteResetDetails } from "@/features/map/route-reset-details";
 import { PlaceCommentsSection } from "@/features/places/place-comments-section";
 import { PlacePriceReportForm } from "@/features/places/place-price-report-form";
 import { PlaceShareButton } from "@/features/places/place-share-button";
@@ -298,27 +297,17 @@ export function PlaceDetailRoute() {
             </section>
 
             <aside className="grid content-start gap-3">
-              <RouteResetDetails
-                className="overflow-hidden rounded-[1rem] border border-stone-200 bg-[var(--altteul-bg-surface)]"
-                summaryClassName="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-left [&::-webkit-details-marker]:hidden"
-                summary={
-                  <>
-                    <div className="min-w-0">
-                      <p className="altteulmap-section-kicker text-[11px]">가격 제보</p>
-                      <h3 className="mt-1 text-base font-semibold text-stone-900">
-                        새 가격 남기기
-                      </h3>
-                      <p className="mt-1 text-sm leading-6 text-stone-500">
-                        가격표가 달라졌을 때만 열어 작성합니다.
-                      </p>
-                    </div>
-                    <span className="altteulmap-badge shrink-0 px-3 py-1 text-xs font-medium">
-                      열기
-                    </span>
-                  </>
-                }
-                bodyClassName="border-t border-stone-200 p-4"
-              >
+              <section className="overflow-hidden rounded-[1rem] border border-stone-200 bg-[var(--altteul-bg-surface)]">
+                <div className="px-4 py-3 text-left">
+                  <p className="altteulmap-section-kicker text-[11px]">가격 제보</p>
+                  <h3 className="mt-1 text-base font-semibold text-stone-900">
+                    새 가격 남기기
+                  </h3>
+                  <p className="mt-1 text-sm leading-6 text-stone-500">
+                    가격표가 달라졌다면 바로 제보할 수 있습니다.
+                  </p>
+                </div>
+                <div className="border-t border-stone-200 p-4">
                 <PlacePriceReportForm
                   key={`${place.id}-price-form`}
                   placeId={place.id}
@@ -326,29 +315,20 @@ export function PlaceDetailRoute() {
                   surface="plain"
                   suggestedItems={place.priceItems}
                 />
-              </RouteResetDetails>
+                </div>
+              </section>
 
-              <RouteResetDetails
-                className="overflow-hidden rounded-[1rem] border border-stone-200 bg-[var(--altteul-bg-surface)]"
-                summaryClassName="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-left [&::-webkit-details-marker]:hidden"
-                summary={
-                  <>
-                    <div className="min-w-0">
-                      <p className="altteulmap-section-kicker text-[11px]">코멘트</p>
-                      <h3 className="mt-1 text-base font-semibold text-stone-900">
-                        이용 메모 보기
-                      </h3>
-                      <p className="mt-1 text-sm leading-6 text-stone-500">
-                        현재 {place.comments.length}개가 등록돼 있습니다.
-                      </p>
-                    </div>
-                    <span className="altteulmap-badge shrink-0 px-3 py-1 text-xs font-medium">
-                      열기
-                    </span>
-                  </>
-                }
-                bodyClassName="border-t border-stone-200 p-4"
-              >
+              <section className="overflow-hidden rounded-[1rem] border border-stone-200 bg-[var(--altteul-bg-surface)]">
+                <div className="px-4 py-3 text-left">
+                  <p className="altteulmap-section-kicker text-[11px]">코멘트</p>
+                  <h3 className="mt-1 text-base font-semibold text-stone-900">
+                    이용 메모
+                  </h3>
+                  <p className="mt-1 text-sm leading-6 text-stone-500">
+                    현재 {place.comments.length}개가 등록돼 있습니다.
+                  </p>
+                </div>
+                <div className="border-t border-stone-200 p-4">
                 <PlaceCommentsSection
                   key={`${place.id}-comments`}
                   placeId={place.id}
@@ -356,7 +336,8 @@ export function PlaceDetailRoute() {
                   showHeader={false}
                   surface="plain"
                 />
-              </RouteResetDetails>
+                </div>
+              </section>
             </aside>
           </div>
         </section>

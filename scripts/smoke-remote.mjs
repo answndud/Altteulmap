@@ -175,6 +175,14 @@ async function main() {
   );
   logStep("sitemap", "ok");
 
+  const publicConfig = await expectJson("/api/config/public", "public config");
+
+  if (!publicConfig.naverMapKeyId) {
+    throw new Error("public config did not expose a NAVER map key");
+  }
+
+  logStep("public config", "naver map key available");
+
   const mapApiPayload = await expectJson(
     "/api/places/map?scope=global&query=%EA%B9%80%EB%B0%A5",
     "map api",

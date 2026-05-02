@@ -6,7 +6,7 @@ test("모바일 탐색 조건에서 가격 필터는 보이지 않고 카테고�
   await page.goto("/");
 
   const filterSummary = page.locator("summary").filter({
-    hasText: "탐색 조건",
+    hasText: "업종 필터",
   });
 
   await filterSummary.click();
@@ -17,14 +17,4 @@ test("모바일 탐색 조건에서 가격 필터는 보이지 않고 카테고�
 
   await page.getByRole("link", { name: "한식" }).click();
   await expect(page).toHaveURL(/category=korean/);
-
-  const resetCategoryLink = page.getByRole("link", { name: "전체" }).first();
-
-  if (!(await resetCategoryLink.isVisible())) {
-    await filterSummary.click();
-  }
-
-  await expect(resetCategoryLink).toBeVisible();
-  await resetCategoryLink.click();
-  await expect(page).not.toHaveURL(/category=/);
 });

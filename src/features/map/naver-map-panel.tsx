@@ -201,10 +201,10 @@ function PreviewMap({
 
   return (
     <div
-      className="relative h-[34rem] bg-[linear-gradient(to_right,#e7e5e4_1px,transparent_1px),linear-gradient(to_bottom,#e7e5e4_1px,transparent_1px)] bg-[size:32px_32px] bg-stone-50 lg:h-[43rem]"
+      className="pointer-events-none relative h-[34rem] bg-[linear-gradient(to_right,#e7e5e4_1px,transparent_1px),linear-gradient(to_bottom,#e7e5e4_1px,transparent_1px)] bg-[size:32px_32px] bg-stone-50 lg:h-[43rem]"
       data-testid="map-panel-preview"
     >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(251,146,60,0.18),transparent_30%),radial-gradient(circle_at_bottom_left,rgba(245,158,11,0.12),transparent_28%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(251,146,60,0.18),transparent_30%),radial-gradient(circle_at_bottom_left,rgba(245,158,11,0.12),transparent_28%)]" />
       {markers.map((marker) => {
         const top = ((bounds.maxLat - marker.latitude) / latRange) * 70 + 10;
         const left = ((marker.longitude - bounds.minLng) / lngRange) * 72 + 8;
@@ -218,7 +218,7 @@ function PreviewMap({
               type="button"
               data-testid={`map-preview-marker-${marker.id}`}
               onClick={() => onActivateCluster?.(marker)}
-              className="absolute -translate-x-1/2 -translate-y-1/2 transition-transform hover:scale-[1.03]"
+              className="pointer-events-auto absolute -translate-x-1/2 -translate-y-1/2 transition-transform hover:scale-[1.03]"
               style={{
                 top: `${top}%`,
                 left: `${left}%`,
@@ -260,7 +260,7 @@ function PreviewMap({
             type="button"
             data-testid={`map-preview-marker-${marker.id}`}
             onClick={() => onSelectPlace(marker.place)}
-            className="absolute -translate-x-1/2 -translate-y-full transition-transform hover:scale-[1.04]"
+            className="pointer-events-auto absolute -translate-x-1/2 -translate-y-full transition-transform hover:scale-[1.04]"
             style={{
               top: `${top}%`,
               left: `${left}%`,
@@ -438,12 +438,14 @@ function NaverMapPanelContent({
   const lastFocusPlacesKeyRef = useRef<string | null>(null);
   const pendingClusterFocusRef = useRef<ClusterDisplayMarker | null>(null);
   const pendingLocateCurrentPositionRef = useRef(false);
-  const naverMapKeyId = getNaverMapKeyId();
+  const buildTimeNaverMapKeyId = getNaverMapKeyId();
+  const [runtimeNaverMapKeyId, setRuntimeNaverMapKeyId] = useState(
+    buildTimeNaverMapKeyId,
+  );
+  const naverMapKeyId = runtimeNaverMapKeyId;
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const [shouldBootMap, setShouldBootMap] = useState(false);
-  const [status, setStatus] = useState<MapStatus>(
-    naverMapKeyId ? "loading" : "missing-key",
-  );
+  const [status, setStatus] = useState<MapStatus>("loading");
   const [hasVisibleMap, setHasVisibleMap] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
   const [locationMessage, setLocationMessage] = useState<string | null>(null);
@@ -533,6 +535,45 @@ function NaverMapPanelContent({
     lastViewportKeyRef.current = nextKey;
     onViewportChange?.(viewport);
   }, [onViewportChange]);
+
+  useEffect(() => {
+    if (buildTimeNaverMapKeyId) {
+      setRuntimeNaverMapKeyId(buildTimeNaverMapKeyId);
+      setStatus("loading");
+      return;
+    }
+
+    let isDisposed = false;
+
+    fetch("/api/config/public", { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) {
+          return "";
+        }
+
+        const payload = (await response.json()) as { naverMapKeyId?: string };
+
+        return payload.naverMapKeyId?.trim() ?? "";
+      })
+      .then((keyId) => {
+        if (isDisposed) {
+          return;
+        }
+
+        setRuntimeNaverMapKeyId(keyId);
+        setStatus(keyId ? "loading" : "missing-key");
+      })
+      .catch(() => {
+        if (!isDisposed) {
+          setRuntimeNaverMapKeyId("");
+          setStatus("missing-key");
+        }
+      });
+
+    return () => {
+      isDisposed = true;
+    };
+  }, [buildTimeNaverMapKeyId]);
   const focusCluster = useCallback(
     (marker: ClusterDisplayMarker) => {
       if (status !== "ready" || !mapInstanceRef.current) {
@@ -1153,7 +1194,7 @@ function NaverMapPanelContent({
 
         {showPreview ? (
           <div
-            className="absolute inset-0"
+            className="pointer-events-none absolute inset-0"
             onPointerDownCapture={requestMapBoot}
             onKeyDownCapture={requestMapBoot}
           >

@@ -91,7 +91,10 @@ type CloudflareBindings = {
   AUTH_NAVER_CLIENT_ID?: string;
   AUTH_NAVER_CLIENT_SECRET?: string;
   DATABASE_URL?: string;
+  NAVER_MAP_CLIENT_ID?: string;
   NEXTAUTH_URL?: string;
+  NEXT_PUBLIC_NAVER_MAP_CLIENT_ID?: string;
+  NEXT_PUBLIC_NAVER_MAP_KEY_ID?: string;
   SITE_URL?: string;
   USE_MOCK_DATA?: string;
 };
@@ -813,6 +816,20 @@ app.get("/api/categories", (c) =>
     groups: categoryGroups,
     categories: categoryOptions,
   }),
+);
+
+app.get("/api/config/public", (c) =>
+  c.json(
+    {
+      naverMapKeyId:
+        c.env.NEXT_PUBLIC_NAVER_MAP_KEY_ID ||
+        c.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID ||
+        c.env.NAVER_MAP_CLIENT_ID ||
+        "",
+    },
+    200,
+    noStoreHeaders,
+  ),
 );
 
 app.get("/api/auth/csrf", (c) => {

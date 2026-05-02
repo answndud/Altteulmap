@@ -9,7 +9,7 @@ test("preview fallback에서도 bootstrap fetch와 카테고리 탐색은 유지
   page,
 }) => {
   const initialFetch = page.waitForResponse((response) =>
-    response.url().includes("/api/places/map?"),
+    response.url().includes("/api/places/map"),
   );
 
   await page.goto("/");
@@ -41,6 +41,7 @@ test("preview fallback에서도 bootstrap fetch와 카테고리 탐색은 유지
       response.url().includes("category=korean"),
   );
 
+  await page.locator("summary").filter({ hasText: "업종 필터" }).click();
   await page.getByRole("link", { name: "한식" }).click();
 
   await expect(page).toHaveURL(/category=korean/);

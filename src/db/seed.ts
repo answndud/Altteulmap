@@ -27,6 +27,7 @@ async function main() {
     contentReports,
     placeCategories,
     places,
+    placeReactions,
     priceItems,
     priceReports,
     users,
@@ -38,6 +39,7 @@ async function main() {
     await tx.delete(adminActions);
     await tx.delete(contentReports);
     await tx.delete(bookmarks);
+    await tx.delete(placeReactions);
     await tx.delete(comments);
     await tx.delete(priceReports);
     await tx.delete(priceItems);
