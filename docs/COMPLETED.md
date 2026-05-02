@@ -1412,3 +1412,86 @@
   - Kakao/Naver provider redirect와 state cookie는 자동 smoke로 확인됐다.
   - 실제 Kakao/Naver 계정 callback 완료와 credentials/admin production smoke는 사용자 계정/secret env가 필요한 수동 QA 항목으로 남긴다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+<a id="archive-042"></a>
+## `042` Vite React 프론트 디자인 시스템 1차 재정비
+- 완료일: `2026-05-02`
+- 배경:
+  - Next.js에서 Vite + React로 이관한 뒤 기능 parity와 운영 자동 QA는 마감됐지만, 버튼, 카드, 배지, 필터, 지도 오버레이, 리스트 패널의 세부 디자인 품질이 낮아졌다.
+  - 외부 피드백은 단순한 색상 문제가 아니라 브랜드 인상, 버튼 위계, 카드 정보 위계, 지도/list 관계, 배지 의미 체계가 불명확하다는 점을 지적했다.
+  - 사용자는 초록색 primary가 마음에 들지 않고, 배경은 흰색을 유지하며, 지도 크기를 더 크게 만들기를 요청했다.
+  - 플레이스 클릭 시 오른쪽 상세/list rail 아래로 큰 공백이 생겨 지도-first 화면의 밀도가 떨어지는 문제가 추가로 확인됐다.
+- 변경 내용:
+  - `.impeccable.md`의 system constraint를 Vite, React Router, React, TypeScript, Tailwind CSS, Naver Maps, Cloudflare Workers 기준으로 갱신했다.
+  - `src/client/styles.css`의 canvas/surface/text/border/primary/accent/status token을 OKLCH 기반으로 재정의했다.
+  - 초록 primary를 제거하고 흰 배경 위 블루 primary와 오렌지 accent를 제한적으로 쓰는 체계로 바꿨다.
+  - 버튼, badge, input, panel, map overlay의 radius, shadow, hover, focus, disabled 상태를 border 중심으로 정리했다.
+  - 사용자 header에서 관리자 메뉴를 일반 nav에서 분리하고, admin 계정에만 운영 link를 표시하도록 했다.
+  - 검색 범위 문구를 `현재 지도 범위`와 `전체 지역`으로 정리하고 segmented control 위계를 강화했다.
+  - 장소 카드, 모바일 sheet, 빠른 비교 카드에서 `대표가 -> 가격 -> 장소명 -> 위치/검증/갱신` 순서가 먼저 읽히도록 재구성했다.
+  - 장소 상세, 북마크, 제보, 신고 화면도 같은 token과 panel/card 체계로 맞췄다.
+  - E2E strict locator 충돌을 피하도록 북마크 설명문에서 사용자 nickname 반복을 제거했다.
+  - Naver map fallback preview, overlay, marker, cluster visual을 새 블루 primary와 흰 배경 기준으로 조정했다.
+  - 지도 화면의 max width, map panel 높이, list rail 배치를 조정해 지도 영역을 크게 만들었다.
+  - 오른쪽 목록/상세 rail을 지도 위 floating panel로 바꾸고, 콘텐츠 높이만 사용하도록 제한해 남는 영역은 지도가 보이게 했다.
+- 코드/문서:
+  - `.impeccable.md`
+  - `src/client/App.tsx`
+  - `src/client/components/ViteBookmarkToggleButton.tsx`
+  - `src/client/routes/BookmarksRoute.tsx`
+  - `src/client/routes/MapRoute.tsx`
+  - `src/client/routes/PlaceDetailRoute.tsx`
+  - `src/client/routes/ReportRoute.tsx`
+  - `src/client/routes/SubmitRoute.tsx`
+  - `src/client/routes/admin/AdminRoutes.tsx`
+  - `src/client/styles.css`
+  - `src/features/map/naver-map-marker-visuals.ts`
+  - `src/features/map/naver-map-panel.tsx`
+  - `src/features/reports/report-submit-form.tsx`
+  - `src/features/submission/place-submit-form.tsx`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run design:detect:json`
+    - 통과
+    - 결과 `[]`
+  - `git diff --check`
+    - 통과
+  - `npm run verify`
+    - 통과
+  - `npm run build`
+    - 통과
+  - `npm run test:e2e:smoke`
+    - 최초 실행은 9건 통과, 1건 실패
+    - 실패 원인은 북마크 화면에서 nickname이 session badge와 설명문에 중복 노출되어 Playwright strict locator가 2개를 찾은 것
+  - `npm run test:e2e:smoke`
+    - 재실행 통과
+    - 10건 통과
+  - 로컬 Playwright screenshot 확인:
+    - `/tmp/altteulmap-home-after.png`: primary button 텍스트 색 보정 확인
+    - `/tmp/altteulmap-home-blue-maplarge-2.png`: 흰 배경, 블루 primary, 확대된 지도 레이아웃 확인
+    - `/tmp/altteulmap-floating-rail-content-height.png`: floating rail 아래 영역이 지도 grid로 채워지는 것 확인
+  - `npm run deploy:check`
+    - 통과
+    - optional `EMAIL_FROM`, `RESEND_API_KEY`는 미설정 warning
+  - `npm run deploy:check:vite`
+    - 통과
+    - Worker entry `569051` bytes
+    - client `index.html` `633` bytes
+  - `npm run deploy`
+    - 통과
+    - production version `74a5365a-57b2-46a0-9140-c0b9be50e9c8`
+  - `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev npm run smoke:remote`
+    - 통과
+    - home, robots, sitemap, public config, map API, place page, login, admin route, admin API boundary `401`, Kakao/Naver provider redirect 확인
+    - credentials/admin smoke는 `SMOKE_ADMIN_EMAIL`, `SMOKE_ADMIN_PASSWORD` 미설정으로 skip
+  - 운영 Playwright screenshot 확인:
+    - `/tmp/altteulmap-prod-after-deploy.png`
+    - 운영 URL에서 흰 배경, 블루 primary, 지도 중심 레이아웃, floating rail 반영 확인
+- 결과:
+  - Vite React public 주요 화면은 흰 배경, 블루 primary, 가격 중심 typography, border 중심 panel/card 체계로 정리됐다.
+  - 지도 화면은 desktop에서 오른쪽 rail이 지도 위 floating panel로 동작하며, 플레이스 선택 후에도 큰 빈 공백이 남지 않는다.
+  - 사용자 화면의 관리자 메뉴 상시 노출을 줄이고 admin 계정에만 운영 link를 표시한다.
+  - 운영 URL `https://altteulmap.altteul-lab.workers.dev/`에 배포했고 remote smoke가 통과했다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
