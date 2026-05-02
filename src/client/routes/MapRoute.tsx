@@ -72,7 +72,8 @@ const SEOUL_BOOTSTRAP_BOUNDS: PlaceBounds = {
   maxLng: 127.2693,
 };
 const SEOUL_BOOTSTRAP_ZOOM = 11;
-const VIEWPORT_FETCH_DEBOUNCE_MS = 180;
+const VIEWPORT_FETCH_DEBOUNCE_MS = 100;
+const CLUSTER_FOCUS_VIEWPORT_LOCK_MS = 360;
 
 const scopeChipClassName =
   "altteulmap-chip altteulmap-scope-chip inline-flex min-w-[5.5rem] items-center justify-center whitespace-nowrap px-3 py-2 text-xs font-medium transition sm:text-sm";
@@ -869,6 +870,7 @@ export function MapRoute() {
   const [viewport, setViewport] = useState<MapViewport | null>(null);
   const lastViewportRequestPathRef = useRef<string | null>(null);
   const shouldIgnoreFirstViewportSyncRef = useRef(false);
+  const clusterFocusViewportLockUntilRef = useRef(0);
   const [bookmarkedPlaceIds, setBookmarkedPlaceIds] = useState<Set<string>>(
     () => new Set(),
   );
@@ -1033,6 +1035,10 @@ export function MapRoute() {
 
   const handleViewportChange = useCallback(
     (nextViewport: MapViewport) => {
+      if (Date.now() < clusterFocusViewportLockUntilRef.current) {
+        return;
+      }
+
       if (
         searchScope === "viewport" &&
         shouldIgnoreFirstViewportSyncRef.current
@@ -1051,11 +1057,36 @@ export function MapRoute() {
     [searchParams, searchScope],
   );
 
-  const handleClusterFocusViewport = useCallback((nextViewport: MapViewport) => {
-    shouldIgnoreFirstViewportSyncRef.current = false;
-    lastViewportRequestPathRef.current = null;
-    setViewport(nextViewport);
-  }, []);
+  const handleClusterFocusViewport = useCallback(
+    (nextViewport: MapViewport) => {
+      const apiPath = buildMapApiPath(searchParams, nextViewport);
+
+      clusterFocusViewportLockUntilRef.current =
+        Date.now() + CLUSTER_FOCUS_VIEWPORT_LOCK_MS;
+      shouldIgnoreFirstViewportSyncRef.current = false;
+      lastViewportRequestPathRef.current = apiPath;
+      setViewport(nextViewport);
+
+      startViewportRefresh(async () => {
+        try {
+          const data = await loadPlaces(apiPath);
+          setState({ status: "success", data, error: null });
+          setSelectedPlace(null);
+        } catch (error) {
+          lastViewportRequestPathRef.current = null;
+          setState({
+            status: "error",
+            data: null,
+            error:
+              error instanceof Error
+                ? error.message
+                : "지도 결과를 불러오지 못했습니다.",
+          });
+        }
+      });
+    },
+    [loadPlaces, searchParams],
+  );
 
   const places = state.data?.items ?? [];
   const mapMarkers = state.data?.mapMarkers ?? [];

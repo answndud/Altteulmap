@@ -36,6 +36,11 @@ import type {
   PlaceSort,
 } from "@/features/places/types";
 import {
+  buildMapPreviewCacheKey,
+  getCachedMapPreviewResult,
+  setCachedMapPreviewResult,
+} from "@/features/places/map-preview-cache";
+import {
   getWorkerDb,
   isWorkerDatabaseEnabled,
   markWorkerDatabaseUnavailable,
@@ -86,7 +91,7 @@ export type WorkerMapPlacesResult = {
   bounds: PlaceBounds | null;
   count: number;
   source: DataSource;
-  cacheStatus: "bypass";
+  cacheStatus: "bypass" | "hit" | "miss";
 };
 
 export type WorkerPlaceDetailResult = {
@@ -511,6 +516,25 @@ async function listDatabaseMapPlaces(
     normalizedQuery,
   });
   if (bounds && !normalizedQuery) {
+    const markerLimit = getMapMarkerLimit(zoom, null);
+    const cacheKey = buildMapPreviewCacheKey({
+      bounds,
+      category,
+      markerLimit,
+      normalizedQuery,
+      sort,
+    });
+    const cached = cacheKey
+      ? getCachedMapPreviewResult<WorkerMapPlacesResult>(cacheKey)
+      : null;
+
+    if (cached) {
+      return {
+        ...cached,
+        cacheStatus: "hit",
+      };
+    }
+
     const markerRows = await loadDatabaseMapMarkerRows(env, {
       whereClause,
       limit: MAP_MARKER_SUMMARY_ROW_LIMIT,
@@ -533,15 +557,21 @@ async function listDatabaseMapPlaces(
             zoom,
           );
 
-    return {
+    const result = {
       items,
       mapMarkers,
       markerMode,
       bounds,
       count,
       source: "database",
-      cacheStatus: "bypass",
-    };
+      cacheStatus: "miss",
+    } satisfies WorkerMapPlacesResult;
+
+    if (cacheKey) {
+      setCachedMapPreviewResult(cacheKey, result);
+    }
+
+    return result;
   }
 
   const db = getWorkerDb(env);
