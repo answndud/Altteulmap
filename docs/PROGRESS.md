@@ -56,6 +56,9 @@ Next.js 기능 parity 회귀 복구 구현은 1차 완료됐지만, 운영 수�
   - 클러스터 수정 Version ID: `b63ce151-afee-41a6-8e7b-2a4b1fc76959`
   - viewport 자동 재조회 복구 Version ID: `b42fbaf4-46b7-4ddf-8866-9d54863db392`
   - mixed marker 복구 Version ID: `bd69ef55-0192-4ce6-b537-5ccb5684aad8`
+  - 클러스터 즉시 focus Version ID: `a5589024-ab1a-4c30-851e-378587123603`
+  - viewport edge cache Version ID: `1b4488fd-ca31-4f13-8360-6cdbaa708928`
+  - optimistic cluster split Version ID: `5b32c422-c410-4c24-88f8-207c3242598f`
 
 ## 최근 검증
 - `npm run lint`: 통과
@@ -155,6 +158,18 @@ Next.js 기능 parity 회귀 복구 구현은 1차 완료됐지만, 운영 수�
     - smoke 10건 통과
     - mobile map 2건 통과
     - bookmarks/comments/price-review/report-admin 5건 통과
+- optimistic cluster split 운영 배포 검증:
+  - `npm run deploy`: 통과
+    - URL: `https://altteulmap.altteul-lab.workers.dev`
+    - Version ID: `5b32c422-c410-4c24-88f8-207c3242598f`
+  - `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev npm run smoke:remote`: 통과
+  - 운영 API previewPlaces 확인: 통과
+    - `zoom=9` 서울 bounds 응답이 cluster `13`개 중 `11`개에 `previewPlaces`를 포함함
+    - 첫 preview cluster의 하위 place 수는 `22`개
+  - 운영 API 압축 응답 계측: 통과
+    - cache miss: TTFB 약 `2.10s`, gzip download `38.5KB`
+    - edge-hit 1차: TTFB 약 `0.46s`
+    - edge-hit 2차: TTFB 약 `0.48s`
   - `npm run deploy:check`: 통과
 - edge cache 추가 검증:
   - `npm run lint`: 통과
@@ -201,13 +216,12 @@ Next.js 기능 parity 회귀 복구 구현은 1차 완료됐지만, 운영 수�
 ## 남은 이슈
 - 숫자 클러스터 자동 fetch 루프 수정분은 로컬 검증, 운영 배포, remote smoke, 운영 API 검증이 통과했다. 운영 브라우저/실기기에서 실제 Naver 지도 클릭/줌인/줌아웃 시각 확인이 필요하다.
 - cluster bucket 단위 mixed marker 응답 수정은 로컬 검증, 운영 배포, remote smoke, 운영 API 검증이 통과했다. 운영 브라우저/실기기에서 실제 Naver 지도 시각 확인이 필요하다.
-- 클러스터 클릭 즉시 전환, map API 병렬화, bounds map API 단일 read, 중복 viewport memory/edge cache 수정은 로컬 검증이 통과했다. 운영 배포와 운영 API/브라우저 재계측이 필요하다.
+- 클러스터 클릭 즉시 전환, map API 병렬화, bounds map API 단일 read, 중복 viewport memory/edge cache, optimistic cluster split은 로컬/운영 검증이 통과했다. 실제 실기기에서 시각 전환 체감 확인이 필요하다.
 - Kakao/Naver OAuth live callback은 provider 실제 계정 로그인이 필요하므로 수동 QA가 필요하다.
 - 실제 모바일 기기에서 Naver map + 목록 sheet 터치 충돌, 상세 sheet, 주요 화면 디자인 밀도는 최종 수동 확인이 필요하다.
 
 ## 다음 액션
-- 운영 브라우저/실기기에서 숫자 클러스터 클릭, 줌인, 줌아웃이 각각 marker/list 재조회로 이어지고 개별 장소 핀으로 분해되는지 확인한다.
-- 클러스터 클릭 즉시 전환, 중복 viewport memory/edge cache 수정분을 커밋/푸시하고 운영 배포한다.
-- 배포 후 운영 API TTFB와 브라우저 첫 map API 발생 시점을 재계측한다.
+- 운영 브라우저/실기기에서 숫자 클러스터 클릭, 줌인, 줌아웃이 각각 optimistic split, marker/list 재조회, 개별 장소 핀 교체로 이어지는지 확인한다.
+- 운영 브라우저에서 클러스터 클릭 후 첫 시각 반응과 서버 응답 교체 사이 지연 체감을 확인한다.
 - 실제 Kakao/Naver 계정으로 운영 OAuth callback을 확인한다.
 - 실제 모바일 기기에서 지도, 목록 바텀시트, 상세 시트, 제보/신고/댓글 흐름을 최종 확인한다.
