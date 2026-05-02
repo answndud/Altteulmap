@@ -496,42 +496,34 @@ async function listDatabaseMapPlaces(
     normalizedQuery,
   });
   const db = getWorkerDb(env);
-  const [countRow] = await db
+  const countPromise = db
     .select({
       count: sql<number>`count(*)::int`,
     })
     .from(places)
     .where(whereClause);
-  const count = Number(countRow?.count ?? 0);
 
   if (bounds && !normalizedQuery) {
-    const itemRows = await loadDatabaseMapPlaceRows(env, {
-      whereClause,
-      sort,
-      limit: MAP_LIST_RESPONSE_LIMIT,
-    });
+    const [countRows, itemRows, markerRows] = await Promise.all([
+      countPromise,
+      loadDatabaseMapPlaceRows(env, {
+        whereClause,
+        sort,
+        limit: MAP_LIST_RESPONSE_LIMIT,
+      }),
+      loadDatabaseMapMarkerRows(env, {
+        whereClause,
+        limit: MAP_MARKER_SUMMARY_ROW_LIMIT,
+      }),
+    ]);
+    const count = Number(countRows[0]?.count ?? 0);
     const items = toPlacePreviewRecords(itemRows);
     const markerMode = getMapMarkerMode(count, zoom, null);
     const mapMarkers =
       markerMode === "place"
-        ? getPlaceOnlyMapMarkers(
-            toPlacePreviewRecords(
-              await loadDatabaseMapPlaceRows(env, {
-                whereClause,
-                sort,
-                limit: getMapMarkerLimit(zoom, null),
-              }),
-            ),
-            zoom,
-            null,
-          )
+        ? getPlaceOnlyMapMarkers(items, zoom, null)
         : getClusterOnlyMapMarkers(
-            toPlacePreviewRecords(
-              await loadDatabaseMapMarkerRows(env, {
-                whereClause,
-                limit: Math.min(count, MAP_MARKER_SUMMARY_ROW_LIMIT),
-              }),
-            ),
+            toPlacePreviewRecords(markerRows),
             bounds,
             null,
             zoom,
@@ -548,10 +540,14 @@ async function listDatabaseMapPlaces(
     };
   }
 
-  const rows = await loadDatabaseMapPlaceRows(env, {
-    whereClause,
-    sort,
-  });
+  const [countRows, rows] = await Promise.all([
+    countPromise,
+    loadDatabaseMapPlaceRows(env, {
+      whereClause,
+      sort,
+    }),
+  ]);
+  const count = Number(countRows[0]?.count ?? 0);
   const mapped = sortPlacePreviewRecords(toPlacePreviewRecords(rows), sort);
   const resultBounds =
     mapped.length > 0 ? getBoundsFromPlaces(mapped) : bounds ?? null;

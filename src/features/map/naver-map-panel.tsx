@@ -60,25 +60,20 @@ type ClusterDisplayMarker = PlaceMapClusterMarkerRecord;
 
 type MapDisplayMarker = PlaceDisplayMarker | ClusterDisplayMarker;
 
-type IdleDeadlineLike = {
-  didTimeout: boolean;
-  timeRemaining: () => number;
-};
-
-type IdleWindow = Window &
-  typeof globalThis & {
-    requestIdleCallback?: (
-      callback: (deadline: IdleDeadlineLike) => void,
-      options?: { timeout: number },
-    ) => number;
-    cancelIdleCallback?: (handle: number) => void;
-  };
-
-const MAP_BOOT_DELAY_MS = 900;
-const MAP_BOOT_IDLE_TIMEOUT_MS = 400;
-
 function getMapZoom(placeCount: number) {
   return placeCount > 1 ? 13 : 15;
+}
+
+function getClusterFocusZoom(marker: ClusterDisplayMarker, currentZoom: number) {
+  if (marker.placeCount <= 6) {
+    return Math.max(currentZoom + 3, 16);
+  }
+
+  if (marker.placeCount <= 40) {
+    return Math.max(currentZoom + 2, 15);
+  }
+
+  return Math.max(currentZoom + 2, 14);
 }
 
 function getCenterFromBounds(bounds: PlaceBounds) {
@@ -563,6 +558,7 @@ function NaverMapPanelContent({
     if (buildTimeNaverMapKeyId) {
       setRuntimeNaverMapKeyId(buildTimeNaverMapKeyId);
       setStatus("loading");
+      setShouldBootMap(true);
       return;
     }
 
@@ -585,6 +581,7 @@ function NaverMapPanelContent({
 
         setRuntimeNaverMapKeyId(keyId);
         setStatus(keyId ? "loading" : "missing-key");
+        setShouldBootMap(Boolean(keyId));
       })
       .catch(() => {
         if (!isDisposed) {
@@ -605,33 +602,20 @@ function NaverMapPanelContent({
 
       const maps = getLoadedNaverMapSdk()?.maps;
 
-      if (!maps?.LatLng || !maps?.LatLngBounds) {
+      if (!maps?.LatLng) {
         failMap("NAVER Maps LatLng API is unavailable.");
         return;
       }
 
       try {
-        const southWest = new maps.LatLng(
-          marker.bounds.minLat,
-          marker.bounds.minLng,
-        );
-        const northEast = new maps.LatLng(
-          marker.bounds.maxLat,
-          marker.bounds.maxLng,
-        );
-        const clusterBounds = new maps.LatLngBounds(southWest, northEast);
         const nextCenter = new maps.LatLng(marker.latitude, marker.longitude);
-        const latSpan = Math.abs(marker.bounds.maxLat - marker.bounds.minLat);
-        const lngSpan = Math.abs(marker.bounds.maxLng - marker.bounds.minLng);
+        const currentZoom = mapInstanceRef.current.getZoom?.() ?? 13;
+        const nextZoom = Math.min(getClusterFocusZoom(marker, currentZoom), 17);
 
-        if (latSpan < 0.0004 && lngSpan < 0.0004) {
-          const currentZoom = mapInstanceRef.current.getZoom?.() ?? 13;
-          mapInstanceRef.current.setCenter?.(nextCenter);
-          mapInstanceRef.current.setZoom?.(Math.min(currentZoom + 2, 17));
-          mapInstanceRef.current.panTo?.(nextCenter);
-        } else {
-          mapInstanceRef.current.fitBounds?.(clusterBounds);
-        }
+        onClusterFocusViewport?.(getClusterViewport(marker, nextZoom));
+        mapInstanceRef.current.setCenter?.(nextCenter);
+        mapInstanceRef.current.setZoom?.(nextZoom);
+        mapInstanceRef.current.panTo?.(nextCenter);
 
         const notifyClusterViewport = () => {
           const viewport =
@@ -644,7 +628,7 @@ function NaverMapPanelContent({
           onClusterFocusViewport?.(viewport);
         };
 
-        window.setTimeout(notifyClusterViewport, 260);
+        window.setTimeout(notifyClusterViewport, 80);
       } catch (error) {
         failMap("Failed to focus the NAVER map cluster.", error);
       }
@@ -805,50 +789,6 @@ function NaverMapPanelContent({
       window.removeEventListener("error", handleSdkRuntimeError);
     };
   }, [failMap, naverMapKeyId]);
-
-  useEffect(() => {
-    if (!naverMapKeyId || shouldBootMap) {
-      return;
-    }
-
-    const idleWindow = window as IdleWindow;
-    let isDisposed = false;
-    let idleCallbackId: number | null = null;
-
-    const bootMap = () => {
-      if (isDisposed) {
-        return;
-      }
-
-      setShouldBootMap(true);
-    };
-
-    const timeoutId = window.setTimeout(() => {
-      if (typeof idleWindow.requestIdleCallback === "function") {
-        idleCallbackId = idleWindow.requestIdleCallback(
-          () => {
-            bootMap();
-          },
-          { timeout: MAP_BOOT_IDLE_TIMEOUT_MS },
-        );
-        return;
-      }
-
-      bootMap();
-    }, MAP_BOOT_DELAY_MS);
-
-    return () => {
-      isDisposed = true;
-      window.clearTimeout(timeoutId);
-
-      if (
-        idleCallbackId !== null &&
-        typeof idleWindow.cancelIdleCallback === "function"
-      ) {
-        idleWindow.cancelIdleCallback(idleCallbackId);
-      }
-    };
-  }, [naverMapKeyId, shouldBootMap]);
 
   useEffect(() => {
     if (
