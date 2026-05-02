@@ -29,7 +29,7 @@ async function getLatestShareCall(page: Page) {
   });
 }
 
-test("지도 map API는 한 번에 하나의 marker 모드만 반환한다", async ({ page }) => {
+test("지도 map API는 클러스터 모드에서도 단일 장소 bucket은 place marker로 반환한다", async ({ page }) => {
   const search = new URLSearchParams({
     minLat: String(SEOUL_BOOTSTRAP_BOUNDS.minLat),
     maxLat: String(SEOUL_BOOTSTRAP_BOUNDS.maxLat),
@@ -42,7 +42,7 @@ test("지도 map API는 한 번에 하나의 marker 모드만 반환한다", asy
   expect(response.ok()).toBeTruthy();
 
   const payload = (await response.json()) as {
-    mapMarkers?: Array<{ kind: string }>;
+    mapMarkers?: Array<{ kind: string; placeCount?: number }>;
     markerMode?: "cluster" | "place";
   };
 
@@ -51,8 +51,14 @@ test("지도 map API는 한 번에 하나의 marker 모드만 반환한다", asy
 
   const markerKinds = new Set(payload.mapMarkers?.map((marker) => marker.kind) ?? []);
 
-  expect(markerKinds.size).toBeLessThanOrEqual(1);
-  expect(Array.from(markerKinds)).toEqual([payload.markerMode]);
+  expect([...markerKinds].every((kind) => kind === "cluster" || kind === "place")).toBe(
+    true,
+  );
+  expect(
+    payload.mapMarkers?.some(
+      (marker) => marker.kind === "cluster" && marker.placeCount === 1,
+    ),
+  ).toBe(false);
 });
 
 test("홈 첫 지도 요청은 서울 bootstrap bounds와 zoom을 사용한다", async ({ page }) => {
@@ -134,9 +140,16 @@ test("지도 map API는 좁아진 클러스터 bounds에서 marker mode를 다�
   const expectedMarkerMode = narrowedPayload.count <= 96 ? "place" : "cluster";
 
   expect(narrowedPayload.markerMode).toBe(expectedMarkerMode);
-  expect(new Set(narrowedPayload.mapMarkers?.map((marker) => marker.kind))).toEqual(
-    new Set([expectedMarkerMode]),
-  );
+
+  if (expectedMarkerMode === "place") {
+    expect(new Set(narrowedPayload.mapMarkers?.map((marker) => marker.kind))).toEqual(
+      new Set(["place"]),
+    );
+  } else {
+    expect(
+      narrowedPayload.mapMarkers?.some((marker) => marker.kind === "cluster"),
+    ).toBe(true);
+  }
 });
 
 test("지도 검색, 상세 시트, 비회원 좋아요, 공유, 닫기 흐름", async ({ page }) => {
