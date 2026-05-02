@@ -8,6 +8,7 @@ const SEOUL_BOOTSTRAP_BOUNDS = {
   minLng: 126.7341,
   maxLng: 127.2693,
 };
+const SEOUL_BOOTSTRAP_ZOOM = 11;
 
 function parseCount(text: string | null | undefined) {
   const value = Number((text ?? "").replace(/[^\d]/g, ""));
@@ -54,27 +55,87 @@ test("지도 map API는 한 번에 하나의 marker 모드만 반환한다", asy
   expect(Array.from(markerKinds)).toEqual([payload.markerMode]);
 });
 
-test("지도 map API는 높은 줌에서 클러스터 대신 개별 장소 마커를 반환한다", async ({ page }) => {
+test("홈 첫 지도 요청은 서울 bootstrap bounds와 zoom을 사용한다", async ({ page }) => {
+  const mapResponsePromise = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+
+    return (
+      url.pathname === "/api/places/map" &&
+      url.searchParams.get("minLat") === String(SEOUL_BOOTSTRAP_BOUNDS.minLat) &&
+      url.searchParams.get("maxLat") === String(SEOUL_BOOTSTRAP_BOUNDS.maxLat) &&
+      url.searchParams.get("minLng") === String(SEOUL_BOOTSTRAP_BOUNDS.minLng) &&
+      url.searchParams.get("maxLng") === String(SEOUL_BOOTSTRAP_BOUNDS.maxLng) &&
+      url.searchParams.get("zoom") === String(SEOUL_BOOTSTRAP_ZOOM)
+    );
+  });
+
+  await page.goto("/");
+  await mapResponsePromise;
+});
+
+test("지도 map API는 좁아진 클러스터 bounds에서 marker mode를 다시 계산한다", async ({ page }) => {
   const search = new URLSearchParams({
     minLat: String(SEOUL_BOOTSTRAP_BOUNDS.minLat),
     maxLat: String(SEOUL_BOOTSTRAP_BOUNDS.maxLat),
     minLng: String(SEOUL_BOOTSTRAP_BOUNDS.minLng),
     maxLng: String(SEOUL_BOOTSTRAP_BOUNDS.maxLng),
-    zoom: "16",
+    zoom: "9",
   });
   const response = await page.request.get(`/api/places/map?${search.toString()}`);
 
   expect(response.ok()).toBeTruthy();
 
   const payload = (await response.json()) as {
+    mapMarkers?: Array<{
+      bounds?: typeof SEOUL_BOOTSTRAP_BOUNDS;
+      kind: string;
+      placeCount?: number;
+    }>;
+    markerMode?: "cluster" | "place";
+  };
+  const targetCluster = payload.mapMarkers
+    ?.filter(
+      (
+        marker,
+      ): marker is {
+        bounds: typeof SEOUL_BOOTSTRAP_BOUNDS;
+        kind: "cluster";
+        placeCount: number;
+      } =>
+        marker.kind === "cluster" &&
+        Boolean(marker.bounds) &&
+        typeof marker.placeCount === "number",
+    )
+    .sort((left, right) => left.placeCount - right.placeCount)[0];
+
+  if (!targetCluster) {
+    test.skip(true, "seed data did not return a cluster marker");
+    return;
+  }
+
+  const narrowedSearch = new URLSearchParams({
+    minLat: String(targetCluster.bounds.minLat),
+    maxLat: String(targetCluster.bounds.maxLat),
+    minLng: String(targetCluster.bounds.minLng),
+    maxLng: String(targetCluster.bounds.maxLng),
+    zoom: "15",
+  });
+  const narrowedResponse = await page.request.get(
+    `/api/places/map?${narrowedSearch.toString()}`,
+  );
+
+  expect(narrowedResponse.ok()).toBeTruthy();
+
+  const narrowedPayload = (await narrowedResponse.json()) as {
+    count: number;
     mapMarkers?: Array<{ kind: string }>;
     markerMode?: "cluster" | "place";
   };
+  const expectedMarkerMode = narrowedPayload.count <= 96 ? "place" : "cluster";
 
-  expect(payload.markerMode).toBe("place");
-  expect(payload.mapMarkers?.length).toBeTruthy();
-  expect(new Set(payload.mapMarkers?.map((marker) => marker.kind))).toEqual(
-    new Set(["place"]),
+  expect(narrowedPayload.markerMode).toBe(expectedMarkerMode);
+  expect(new Set(narrowedPayload.mapMarkers?.map((marker) => marker.kind))).toEqual(
+    new Set([expectedMarkerMode]),
   );
 });
 

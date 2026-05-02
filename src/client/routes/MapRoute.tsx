@@ -1,5 +1,12 @@
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import { createPortal } from "react-dom";
 import { Link, useSearchParams } from "react-router-dom";
 
@@ -57,6 +64,15 @@ type LoadState =
   | { status: "error"; data: null; error: string };
 
 type MobileSheetMode = "hidden" | "peek" | "expanded";
+
+const SEOUL_BOOTSTRAP_BOUNDS: PlaceBounds = {
+  minLat: 37.4133,
+  maxLat: 37.7151,
+  minLng: 126.7341,
+  maxLng: 127.2693,
+};
+const SEOUL_BOOTSTRAP_ZOOM = 11;
+const VIEWPORT_FETCH_DEBOUNCE_MS = 180;
 
 const scopeChipClassName =
   "altteulmap-chip altteulmap-scope-chip inline-flex min-w-[5.5rem] items-center justify-center whitespace-nowrap px-3 py-2 text-xs font-medium transition sm:text-sm";
@@ -120,16 +136,15 @@ function buildMapApiPath(
   return queryString ? `/api/places/map?${queryString}` : "/api/places/map";
 }
 
-function serializeMapViewport(viewport: MapViewport) {
-  return [
-    viewport.center.lat.toFixed(4),
-    viewport.center.lng.toFixed(4),
-    viewport.zoom.toFixed(2),
-    viewport.bounds.minLat.toFixed(4),
-    viewport.bounds.maxLat.toFixed(4),
-    viewport.bounds.minLng.toFixed(4),
-    viewport.bounds.maxLng.toFixed(4),
-  ].join(":");
+function createBootstrapViewport(): MapViewport {
+  return {
+    bounds: SEOUL_BOOTSTRAP_BOUNDS,
+    center: {
+      lat: (SEOUL_BOOTSTRAP_BOUNDS.minLat + SEOUL_BOOTSTRAP_BOUNDS.maxLat) / 2,
+      lng: (SEOUL_BOOTSTRAP_BOUNDS.minLng + SEOUL_BOOTSTRAP_BOUNDS.maxLng) / 2,
+    },
+    zoom: SEOUL_BOOTSTRAP_ZOOM,
+  };
 }
 
 function createMapHref(params: {
@@ -852,7 +867,8 @@ export function MapRoute() {
   const [mobileListMode, setMobileListMode] =
     useState<MobileSheetMode>("hidden");
   const [viewport, setViewport] = useState<MapViewport | null>(null);
-  const lastClusterRefreshViewportKeyRef = useRef<string | null>(null);
+  const lastViewportRequestPathRef = useRef<string | null>(null);
+  const shouldIgnoreFirstViewportSyncRef = useRef(false);
   const [bookmarkedPlaceIds, setBookmarkedPlaceIds] = useState<Set<string>>(
     () => new Set(),
   );
@@ -883,11 +899,17 @@ export function MapRoute() {
 
   useEffect(() => {
     const controller = new AbortController();
+    const initialViewport =
+      searchScope === "viewport" ? createBootstrapViewport() : null;
+    const initialApiPath = buildMapApiPath(searchParams, initialViewport);
 
-    loadPlaces(buildMapApiPath(searchParams), controller.signal)
+    shouldIgnoreFirstViewportSyncRef.current = searchScope === "viewport";
+    lastViewportRequestPathRef.current = initialApiPath;
+    setViewport(initialViewport);
+
+    loadPlaces(initialApiPath, controller.signal)
       .then((data) => {
         setSelectedPlace(null);
-        setViewport(null);
         setState({ status: "success", data, error: null });
       })
       .catch((error: unknown) => {
@@ -908,7 +930,7 @@ export function MapRoute() {
     return () => {
       controller.abort();
     };
-  }, [loadPlaces, searchParams]);
+  }, [loadPlaces, searchParams, searchScope]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -965,39 +987,75 @@ export function MapRoute() {
     });
   }, [loadPlaces, searchParams, viewport]);
 
-  const refreshClusterViewportPlaces = useCallback(
-    (nextViewport: MapViewport) => {
-      const nextKey = serializeMapViewport(nextViewport);
+  useEffect(() => {
+    if (searchScope !== "viewport" || !viewport) {
+      return;
+    }
 
-      if (lastClusterRefreshViewportKeyRef.current === nextKey) {
-        return;
-      }
+    const apiPath = buildMapApiPath(searchParams, viewport);
 
-      lastClusterRefreshViewportKeyRef.current = nextKey;
-      setViewport(nextViewport);
+    if (lastViewportRequestPathRef.current === apiPath) {
+      return;
+    }
+
+    const controller = new AbortController();
+    const fetchTimeoutId = window.setTimeout(() => {
+      lastViewportRequestPathRef.current = apiPath;
 
       startViewportRefresh(async () => {
         try {
-          const data = await loadPlaces(
-            buildMapApiPath(searchParams, nextViewport),
-          );
+          const data = await loadPlaces(apiPath, controller.signal);
           setState({ status: "success", data, error: null });
           setSelectedPlace(null);
         } catch (error) {
-          lastClusterRefreshViewportKeyRef.current = null;
+          if (controller.signal.aborted) {
+            return;
+          }
+
+          lastViewportRequestPathRef.current = null;
           setState({
             status: "error",
             data: null,
             error:
               error instanceof Error
                 ? error.message
-                : "클러스터 주변 결과를 불러오지 못했습니다.",
+                : "지도 결과를 불러오지 못했습니다.",
           });
         }
       });
+    }, VIEWPORT_FETCH_DEBOUNCE_MS);
+
+    return () => {
+      window.clearTimeout(fetchTimeoutId);
+      controller.abort();
+    };
+  }, [loadPlaces, searchParams, searchScope, viewport]);
+
+  const handleViewportChange = useCallback(
+    (nextViewport: MapViewport) => {
+      if (
+        searchScope === "viewport" &&
+        shouldIgnoreFirstViewportSyncRef.current
+      ) {
+        shouldIgnoreFirstViewportSyncRef.current = false;
+        lastViewportRequestPathRef.current = buildMapApiPath(
+          searchParams,
+          nextViewport,
+        );
+        setViewport(nextViewport);
+        return;
+      }
+
+      setViewport(nextViewport);
     },
-    [loadPlaces, searchParams],
+    [searchParams, searchScope],
   );
+
+  const handleClusterFocusViewport = useCallback((nextViewport: MapViewport) => {
+    shouldIgnoreFirstViewportSyncRef.current = false;
+    lastViewportRequestPathRef.current = null;
+    setViewport(nextViewport);
+  }, []);
 
   const places = state.data?.items ?? [];
   const mapMarkers = state.data?.mapMarkers ?? [];
@@ -1248,8 +1306,8 @@ export function MapRoute() {
                 : null
             }
             onSelectPlace={setSelectedPlace}
-            onClusterFocusViewport={refreshClusterViewportPlaces}
-            onViewportChange={setViewport}
+            onClusterFocusViewport={handleClusterFocusViewport}
+            onViewportChange={handleViewportChange}
           />
 
           <aside className="hidden content-start gap-3 xl:grid">
