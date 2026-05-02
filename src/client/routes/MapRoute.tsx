@@ -1257,10 +1257,6 @@ export function MapRoute() {
         shouldIgnoreFirstViewportSyncRef.current
       ) {
         shouldIgnoreFirstViewportSyncRef.current = false;
-        lastViewportRequestPathRef.current = buildMapApiPath(
-          searchParams,
-          nextViewport,
-        );
         setViewport(nextViewport);
         return;
       }

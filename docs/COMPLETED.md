@@ -1770,3 +1770,40 @@
   - 사용자는 같은 화면에서 상세 정보를 확인하고 `×` 버튼으로 닫을 수 있다.
   - 가격 항목/최근 이력/코멘트 요약이 full detail API 기반으로 패널 안에 표시된다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+<a id="archive-049"></a>
+## `049` 운영 첫 진입 지도 marker 자동 표시 복구
+- 완료일: `2026-05-02`
+- 배경:
+  - 운영 첫 진입 직후 지도 타일과 목록은 보이지만, 지도 위 숫자 cluster 또는 place marker가 현재 화면 기준으로 바로 보이지 않았다.
+  - 사용자가 `이 지역 다시 찾기`를 눌러야 현재 viewport 기준 `/api/places/map` 재조회가 실행되고 marker가 보였다.
+  - 원인은 Naver 지도 준비 직후 첫 viewport sync를 중복 요청 방지 로직이 소비하면서, bootstrap 서울 전체 API 응답 이후 실제 지도 viewport API 요청을 막은 것이다.
+- 변경 내용:
+  - 첫 viewport sync에서 `lastViewportRequestPathRef`를 실제 viewport API path로 덮어쓰지 않도록 수정했다.
+  - 초기 bootstrap 서울 전체 요청은 유지하되, Naver 지도가 준비되어 실제 viewport가 들어오면 기존 viewport effect가 자동으로 현재 지도 범위 API를 호출하도록 했다.
+  - 지도 상세 패널은 운영에서 URL 유지, inline detail load, 닫기 동작을 재확인했다.
+- 코드/문서:
+  - `src/client/routes/MapRoute.tsx`
+  - `docs/PLAN.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - 운영 재현 확인:
+    - 첫 진입 API는 bootstrap bounds `zoom=11`, `markerMode=cluster`, `mapMarkerCount=14`를 반환했다.
+    - 이전 배포에서는 첫 viewport sync가 막혀 `이 지역 다시 찾기` 전 현재 viewport API가 호출되지 않았다.
+  - `npm run build`
+    - 통과
+  - `npm run verify`
+    - 통과
+    - lint, typecheck 성공
+  - `npm run design:detect:json`
+    - 통과
+    - 결과 `[]`
+  - `git diff --check`
+    - 통과
+  - `npx playwright test tests/e2e/map.spec.ts -g "홈 첫 지도 요청|홈에서 인기 장소" --project chromium`
+    - 통과
+    - 2건 통과
+- 결과:
+  - Naver 지도 준비 후 첫 실제 viewport가 자동 재조회 대상이 되도록 복구했다.
+  - 배포 후 운영 URL에서 첫 진입 marker 자동 표시와 상세 패널 동작을 최종 확인해야 한다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
