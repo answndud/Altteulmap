@@ -40,6 +40,7 @@ import {
   listWorkerMapPlaces,
   type WorkerPlaceViewer,
 } from "@/worker/places-read-repository";
+import { invalidateMapPreviewCache } from "@/features/places/map-preview-cache";
 import {
   isWorkerDatabaseEnabled,
   withWorkerDatabaseConnection,
@@ -159,6 +160,14 @@ const mockCommentStore = new Map<
 >();
 const mockReactionStore = new Map<string, PlaceReactionType>();
 const mockBookmarkStore = new Map<string, Set<string>>();
+
+app.use("/api/*", async (c, next) => {
+  await next();
+
+  if (c.req.method !== "GET" && c.req.method !== "HEAD" && c.res.ok) {
+    invalidateMapPreviewCache();
+  }
+});
 
 type LocalSession = {
   user: {

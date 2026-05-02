@@ -47,6 +47,9 @@ Next.js 기능 parity 회귀를 복구한다.
   - `markerMode=cluster` 응답에서도 한 장소만 들어 있는 bucket은 숫자 클러스터가 아니라 place marker로 반환해, 확대할수록 클러스터와 개별 핀이 자연스럽게 섞여야 한다.
   - 클러스터 클릭은 지연 없이 즉시 선택한 cluster bounds/zoom으로 재조회되어야 하며, 지도 SDK 초기 부팅도 사용자가 기다리지 않도록 즉시 시작해야 한다.
   - `/api/places/map`은 지도 상호작용을 막지 않도록 count/items/marker rows 조회를 병렬화하고, 불필요한 추가 marker query를 피해야 한다.
+  - 운영 TTFB가 지도 전환 체감을 막지 않도록 Worker DB 연결 재사용 가능성을 검토하되, Cloudflare request I/O 제약을 위반하는 방식은 적용하지 않는다.
+  - 같은 bounds/zoom으로 중복 발생하는 지도 preview 요청은 짧은 TTL cache로 흡수하되, 쓰기 작업 후 stale data가 오래 남지 않도록 기존 invalidation 경로를 유지한다.
+  - 성능 개선은 API path/response shape와 DB schema를 바꾸지 않고, `X-Altteulmap-Map-Cache` 같은 내부 진단 header만 활용한다.
   - 클러스터 클릭 경로는 실제 Naver 지도와 임시 preview fallback 모두에서 최소한의 동작이 보존되어야 한다.
   - 주요 public 화면(`/`, `/map`, `/place/:id`, `/submit`, `/login`, `/bookmarks`)과 admin 화면(`/admin`, `/admin/prices`, `/admin/reports`, `/admin/places`)의 정보 밀도, 여백, 버튼 위계, 모바일 터치 타겟을 점검한다.
   - 디자인 수정은 기능 contract를 바꾸지 않고, Next 시절보다 빈약해진 UI를 복구하는 범위로 제한한다.

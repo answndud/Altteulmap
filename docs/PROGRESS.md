@@ -2,7 +2,7 @@
 
 ## Active 상태
 
-Next.js 기능 parity 회귀 복구 구현은 1차 완료됐지만, 운영 수동 QA에서 숫자 클러스터 표시/클릭/줌인/줌아웃 동작이 Next.js 시절과 다르게 깨진 추가 지도 회귀가 확인됐다. 현재 우선순위는 Next 시절 `MapExplorer`와 동일하게 초기 서울 bootstrap bounds를 사용하고, 지도 viewport 변경이 debounce API 재조회로 이어지도록 복구하는 것이다.
+Next.js 기능 parity 회귀 복구 구현은 1차 완료됐지만, 운영 수동 QA에서 숫자 클러스터 표시/클릭/줌인/줌아웃 동작과 전환 속도가 Next.js 시절과 다르게 깨진 추가 지도 회귀가 확인됐다. 현재 우선순위는 클러스터 클릭 시 정확한 cluster bounds를 즉시 조회하고, 중복 지도 API 요청을 줄여 전환 체감을 개선하는 것이다.
 
 ## 최근 변경
 - 숫자 클러스터 회귀를 복구했다.
@@ -23,6 +23,12 @@ Next.js 기능 parity 회귀 복구 구현은 1차 완료됐지만, 운영 수�
   - 클러스터 클릭은 bucket 규모에 따라 target zoom을 더 공격적으로 잡아 즉시 다음 단계 marker를 요청한다.
   - Worker map API는 count/items/marker rows를 병렬 조회하고, place marker mode에서는 이미 읽은 `items`를 재사용하도록 수정했다.
   - 추가로 bounds 기반 map API는 같은 장소 데이터를 list용/marker용으로 두 번 읽지 않고, 한 번 읽은 marker rows를 메모리에서 정렬/분할해 list와 marker를 만든다.
+  - 추가 리뷰에서 클러스터 클릭 직후 예약된 cluster bounds 조회가 지도 `idle` viewport sync에 의해 취소될 수 있는 흐름을 발견했다.
+  - `MapRoute`는 클러스터 focus viewport를 받으면 debounce를 거치지 않고 즉시 `/api/places/map`을 호출하며, 짧은 lock window 동안 지도 `idle` viewport sync를 무시한다.
+  - 일반 pan/zoom debounce는 180ms에서 100ms로 줄여 수동 지도 이동 후 반응 속도를 개선했다.
+  - 같은 bounds/zoom으로 반복되는 지도 preview 요청은 12초 TTL 메모리 cache로 처리하고, 성공한 API mutation 후 cache를 invalidate한다.
+  - Worker DB 연결을 request 간 재사용하는 방식은 workerd에서 `Cannot perform I/O on behalf of a different request` 제약으로 실패해 적용하지 않았다.
+  - `tests/e2e/map.spec.ts`에 같은 viewport 중복 요청이 `X-Altteulmap-Map-Cache: hit`으로 처리되는 회귀 검증을 추가했다.
 - `MapRoute`에 모바일 목록 바텀시트를 복구했다.
   - `mobile-place-list-open`, `mobile-place-list-sheet`, drag handle, size toggle, mobile list item contract를 다시 제공한다.
   - 목록은 `hidden`/`peek`/`expanded` 상태를 가지며, 장소 선택 시 목록을 닫고 모바일 상세 시트를 연다.
@@ -124,6 +130,18 @@ Next.js 기능 parity 회귀 복구 구현은 1차 완료됐지만, 운영 수�
     - mobile map 2건 통과
     - bookmarks/comments/price-review/report-admin 5건 통과
   - `npm run deploy:check`: 통과
+- 클러스터 즉시 focus/cache 최적화 로컬 검증:
+  - `npm run lint`: 통과
+  - `npm run typecheck`: 통과
+  - `git diff --check`: 통과
+  - `node scripts/run-local-e2e.mjs smoke -- tests/e2e/map.spec.ts`: 통과
+    - smoke 10건 통과
+    - 같은 viewport 중복 요청 cache hit 검증 포함
+  - `npm run test:e2e:full`: 통과
+    - smoke 10건 통과
+    - mobile map 2건 통과
+    - bookmarks/comments/price-review/report-admin 5건 통과
+  - `npm run deploy:check`: 통과
 - `npm run deploy`: 통과
   - URL: `https://altteulmap.altteul-lab.workers.dev`
   - Version ID: `b63ce151-afee-41a6-8e7b-2a4b1fc76959`
@@ -147,7 +165,7 @@ Next.js 기능 parity 회귀 복구 구현은 1차 완료됐지만, 운영 수�
 | Public route `/place/:id` | 상세 정보, 가격 항목, 가격 제보, 코멘트, 신고 링크, 공유, 반응 버튼이 노출된다. | 복구 완료 | 장소별 SSR/OG meta는 Vite 이관 1차 범위 밖 |
 | Public route `/submit`, `/report`, `/login`, `/signup`, `/bookmarks` | Vite route로 연결되어 E2E smoke/bookmarks/comments/admin submission 흐름이 통과했다. | 복구 완료 | 실제 디자인 밀도 수동 확인 필요 |
 | Admin route `/admin`, `/admin/places`, `/admin/prices`, `/admin/prices/places/:id`, `/admin/reports` | 단일 SPA admin route로 연결되어 dashboard/place/price/report 큐와 mutation이 동작한다. | 복구 완료 | 실제 운영 데이터로 승인/반려/상태 변경 수동 QA 필요 |
-| Public API | `/api/places/map`, `/api/places/:id`, price report, comments, reaction, submission, reports, bookmarks가 Worker route로 연결되어 E2E 통과했다. 가격 필터는 MVP 미노출로 확정했고, 고줌 map marker는 place mode로 전환된다. | 복구 완료 | 운영 Naver 지도 클릭 후 실제 분할 재확인 필요 |
+| Public API | `/api/places/map`, `/api/places/:id`, price report, comments, reaction, submission, reports, bookmarks가 Worker route로 연결되어 E2E 통과했다. 가격 필터는 MVP 미노출로 확정했고, 고줌 map marker는 place mode로 전환된다. 클러스터 focus 요청은 즉시 fetch하고 중복 viewport 요청은 preview cache로 흡수한다. | 복구 완료 | 운영 Naver 지도 클릭 후 실제 분할 재확인 필요 |
 | Admin API | `/api/admin/*`가 Worker route와 `requireAdmin` 보안 경계를 유지한다. | 복구 완료 | 비관리자 `403`, 비로그인 `401` 운영 smoke 재확인 필요 |
 | Auth/session | credentials, signup, signout, session, providers, Kakao/Naver signin/callback route가 Worker에 있다. Provider redirect와 admin credentials remote smoke가 통과했다. | 부분 완료 | Kakao/Naver live callback은 실제 계정으로 수동 QA 필요 |
 | SEO/static | `/robots.txt`, `/sitemap.xml`, `/manifest.webmanifest`, `/api/config/public` Worker route가 있다. | 부분 완료 | 장소별 SSR/OG는 후속 분리. 기본 title/description/canonical 수동 확인 필요 |
@@ -158,13 +176,13 @@ Next.js 기능 parity 회귀 복구 구현은 1차 완료됐지만, 운영 수�
 ## 남은 이슈
 - 숫자 클러스터 자동 fetch 루프 수정분은 로컬 검증, 운영 배포, remote smoke, 운영 API 검증이 통과했다. 운영 브라우저/실기기에서 실제 Naver 지도 클릭/줌인/줌아웃 시각 확인이 필요하다.
 - cluster bucket 단위 mixed marker 응답 수정은 로컬 검증, 운영 배포, remote smoke, 운영 API 검증이 통과했다. 운영 브라우저/실기기에서 실제 Naver 지도 시각 확인이 필요하다.
-- 클러스터 클릭 즉시 전환, map API 병렬화, bounds map API 단일 read 수정은 로컬 검증이 통과했다. 운영 배포와 운영 API/브라우저 재계측이 필요하다.
+- 클러스터 클릭 즉시 전환, map API 병렬화, bounds map API 단일 read, 중복 viewport cache 수정은 로컬 검증이 통과했다. 운영 배포와 운영 API/브라우저 재계측이 필요하다.
 - Kakao/Naver OAuth live callback은 provider 실제 계정 로그인이 필요하므로 수동 QA가 필요하다.
 - 실제 모바일 기기에서 Naver map + 목록 sheet 터치 충돌, 상세 sheet, 주요 화면 디자인 밀도는 최종 수동 확인이 필요하다.
 
 ## 다음 액션
 - 운영 브라우저/실기기에서 숫자 클러스터 클릭, 줌인, 줌아웃이 각각 marker/list 재조회로 이어지고 개별 장소 핀으로 분해되는지 확인한다.
-- 클러스터 클릭 즉시 전환과 map API 병렬화 수정분을 커밋/푸시하고 운영 배포한다.
+- 클러스터 클릭 즉시 전환, 중복 viewport cache 수정분을 커밋/푸시하고 운영 배포한다.
 - 배포 후 운영 API TTFB와 브라우저 첫 map API 발생 시점을 재계측한다.
 - 실제 Kakao/Naver 계정으로 운영 OAuth callback을 확인한다.
 - 실제 모바일 기기에서 지도, 목록 바텀시트, 상세 시트, 제보/신고/댓글 흐름을 최종 확인한다.
