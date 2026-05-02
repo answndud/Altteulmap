@@ -2,14 +2,18 @@
 
 ## Active 상태
 
-Next.js 기능 parity 회귀 복구 구현은 1차 완료됐지만, 운영 수동 QA에서 숫자 클러스터 표시/클릭/줌인 후 개별 장소 분할이 제대로 동작하지 않는 추가 지도 회귀가 확인됐다. 현재 우선순위는 클러스터 클릭 시 새 viewport 기준으로 지도 데이터를 재조회하고, 충분히 확대된 영역에서는 개별 장소 마커로 전환되도록 복구하는 것이다.
+Next.js 기능 parity 회귀 복구 구현은 1차 완료됐지만, 운영 수동 QA에서 숫자 클러스터 표시/클릭/줌인/줌아웃 동작이 Next.js 시절과 다르게 깨진 추가 지도 회귀가 확인됐다. 현재 우선순위는 Next 시절 `MapExplorer`와 동일하게 초기 서울 bootstrap bounds를 사용하고, 지도 viewport 변경이 debounce API 재조회로 이어지도록 복구하는 것이다.
 
 ## 최근 변경
 - 숫자 클러스터 회귀를 복구했다.
   - `NaverMapPanel`에서 클러스터 클릭/fallback 활성화 시 클러스터 bounds와 zoom을 부모 route에 전달한다.
   - `MapRoute`는 클러스터 focus viewport를 받으면 즉시 `/api/places/map`을 재조회해 지도 마커와 목록을 새 영역 기준으로 갱신한다.
-  - Worker map repository는 zoom 16 이상에서 클러스터 대신 개별 장소 마커를 반환하도록 marker mode 기준을 조정했다.
-  - `tests/e2e/map.spec.ts`에 고줌 viewport에서 place marker가 반환되는 회귀 테스트를 추가했다.
+  - 이전에 추가했던 `zoom >= 16` 강제 place mode는 Next parity와 달라 제거했다.
+  - `tests/e2e/map.spec.ts`는 bootstrap 요청과 좁아진 cluster bounds의 marker mode 재계산을 검증한다.
+- 진행 중인 추가 수정:
+  - `MapRoute` 첫 지도 요청을 bounds 없는 전역 조회가 아니라 Next 시절과 같은 서울 bootstrap bounds/zoom 기준 조회로 되돌렸다.
+  - `onViewportChange`를 단순 `setViewport`가 아니라 debounce `/api/places/map` 재조회 루프로 연결했다.
+  - 클러스터 클릭 전용 보정은 자동 viewport 재조회 루프를 깨지 않도록 보조 신호로만 사용한다.
 - `MapRoute`에 모바일 목록 바텀시트를 복구했다.
   - `mobile-place-list-open`, `mobile-place-list-sheet`, drag handle, size toggle, mobile list item contract를 다시 제공한다.
   - 목록은 `hidden`/`peek`/`expanded` 상태를 가지며, 장소 선택 시 목록을 닫고 모바일 상세 시트를 연다.
@@ -46,6 +50,17 @@ Next.js 기능 parity 회귀 복구 구현은 1차 완료됐지만, 운영 수�
   - bookmarks/comments/price-review/report-admin 5건 통과
 - `npm run verify`: 통과
 - `npm run deploy:check`: 통과
+- 추가 클러스터 복구 검증:
+  - `node scripts/run-local-e2e.mjs smoke -- tests/e2e/map.spec.ts`: 통과
+    - smoke 9건 통과
+    - 홈 첫 지도 요청이 서울 bootstrap bounds/zoom을 사용하는지 확인
+    - 좁아진 cluster bounds에서 marker mode를 다시 계산하는지 확인
+  - `npm run test:e2e:full`: 통과
+    - smoke 9건 통과
+    - mobile map 2건 통과
+    - bookmarks/comments/price-review/report-admin 5건 통과
+  - `npm run verify`: 통과
+  - `npm run deploy:check`: 통과
 - `npm run deploy`: 통과
   - URL: `https://altteulmap.altteul-lab.workers.dev`
   - Version ID: `b63ce151-afee-41a6-8e7b-2a4b1fc76959`
@@ -78,11 +93,12 @@ Next.js 기능 parity 회귀 복구 구현은 1차 완료됐지만, 운영 수�
 | Test isolation | seed가 `place_reactions`를 초기화해 반복 E2E 누적을 제거했다. | 복구 완료 | 없음 |
 
 ## 남은 이슈
-- 숫자 클러스터 자동 검증과 운영 API 검증은 통과했다. 운영 Naver 지도에서 실제 클릭 후 시각적으로 분할되는지는 브라우저/실기기에서 재확인이 필요하다.
+- 숫자 클러스터 자동 fetch 루프 수정분은 로컬 검증이 통과했다. 재배포와 운영 브라우저/실기기 확인이 필요하다.
 - Kakao/Naver OAuth live callback은 provider 실제 계정 로그인이 필요하므로 수동 QA가 필요하다.
 - 실제 모바일 기기에서 Naver map + 목록 sheet 터치 충돌, 상세 sheet, 주요 화면 디자인 밀도는 최종 수동 확인이 필요하다.
 
 ## 다음 액션
-- 운영 URL에서 숫자 클러스터 클릭 후 개별 장소 마커로 분할되는지 확인한다.
+- 지도 클러스터 수정분을 커밋/푸시하고 운영 배포한다.
+- 배포 후 숫자 클러스터 클릭, 줌인, 줌아웃이 각각 marker/list 재조회로 이어지는지 확인한다.
 - 실제 Kakao/Naver 계정으로 운영 OAuth callback을 확인한다.
 - 실제 모바일 기기에서 지도, 목록 바텀시트, 상세 시트, 제보/신고/댓글 흐름을 최종 확인한다.
