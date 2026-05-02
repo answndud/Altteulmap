@@ -3,9 +3,12 @@ import { join } from "node:path";
 
 const outputRoot = join(process.cwd(), "dist");
 const workerOutput = join(outputRoot, "altteulmap");
+const legacyWorkerOutput = join(outputRoot, "altteulmap_vite_migration");
 const clientOutput = join(outputRoot, "client");
 const wranglerPath = join(workerOutput, "wrangler.json");
 const workerEntryPath = join(workerOutput, "index.mjs");
+const legacyWranglerPath = join(legacyWorkerOutput, "wrangler.json");
+const legacyWorkerEntryPath = join(legacyWorkerOutput, "index.mjs");
 const clientIndexPath = join(clientOutput, "index.html");
 
 function fail(message) {
@@ -31,6 +34,14 @@ function assertFile(path, label) {
 
 const wranglerStats = assertFile(wranglerPath, "generated Wrangler config");
 const workerStats = assertFile(workerEntryPath, "Worker entry");
+const legacyWranglerStats = assertFile(
+  legacyWranglerPath,
+  "legacy Wrangler config alias",
+);
+const legacyWorkerStats = assertFile(
+  legacyWorkerEntryPath,
+  "legacy Worker entry alias",
+);
 const clientIndexStats = assertFile(clientIndexPath, "client index.html");
 
 if (wranglerStats) {
@@ -63,6 +74,33 @@ if (workerStats && workerStats.size <= 0) {
   fail("Worker entry is empty");
 }
 
+if (legacyWorkerStats && legacyWorkerStats.size !== workerStats?.size) {
+  fail("legacy Worker entry alias must match canonical Worker entry size");
+}
+
+if (legacyWranglerStats) {
+  const legacyWrangler = JSON.parse(readFileSync(legacyWranglerPath, "utf8"));
+
+  if (legacyWrangler.name !== "altteulmap") {
+    fail(`unexpected legacy worker name ${JSON.stringify(legacyWrangler.name)}`);
+  }
+
+  if (
+    legacyWrangler.main !== "index.mjs" &&
+    legacyWrangler.main !== "./index.mjs"
+  ) {
+    fail(
+      `legacy generated main should be index.mjs, got ${JSON.stringify(
+        legacyWrangler.main,
+      )}`,
+    );
+  }
+
+  if (legacyWrangler.assets?.directory !== "../client") {
+    fail("legacy assets.directory must remain ../client");
+  }
+}
+
 if (clientIndexStats) {
   const clientIndex = readFileSync(clientIndexPath, "utf8");
 
@@ -83,6 +121,11 @@ console.log(
         config: wranglerPath,
         entry: workerEntryPath,
         bytes: workerStats?.size ?? 0,
+      },
+      legacyWorkerAlias: {
+        config: legacyWranglerPath,
+        entry: legacyWorkerEntryPath,
+        bytes: legacyWorkerStats?.size ?? 0,
       },
       client: {
         index: clientIndexPath,

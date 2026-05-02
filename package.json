@@ -7,7 +7,7 @@
     "dev": "vite --config vite.config.mts",
     "dev:vite": "npm run dev",
     "cf:build": "npm run build",
-    "cf:build:vite": "npm run build",
+    "cf:build:vite": "npm run build && node scripts/sync-vite-worker-alias.mjs",
     "start": "vite preview --config vite.config.mts --host 127.0.0.1 --port ${PORT:-4173}",
     "preview": "npm run build && wrangler dev --config dist/altteulmap/wrangler.json",
     "preview:vite": "npm run preview",
