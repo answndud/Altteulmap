@@ -137,6 +137,10 @@ const PLACE_SHARE_SOURCES = [
   "list",
   "trending",
 ] as const;
+const BUILD_TIME_PUBLIC_NAVER_MAP_KEY_ID =
+  process.env.NEXT_PUBLIC_NAVER_MAP_KEY_ID ||
+  process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID ||
+  "";
 const OAUTH_PROVIDERS = ["kakao", "naver"] as const;
 const visitPayloadSchema = z
   .object({
@@ -902,6 +906,7 @@ app.get("/api/config/public", (c) =>
         c.env.NEXT_PUBLIC_NAVER_MAP_KEY_ID ||
         c.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID ||
         c.env.NAVER_MAP_CLIENT_ID ||
+        BUILD_TIME_PUBLIC_NAVER_MAP_KEY_ID ||
         "",
     },
     200,

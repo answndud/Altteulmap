@@ -63,6 +63,21 @@ type ClusterDisplayMarker = PlaceMapClusterMarkerRecord;
 
 type MapDisplayMarker = PlaceDisplayMarker | ClusterDisplayMarker;
 
+type TilePoint = {
+  x: number;
+  y: number;
+};
+
+type LocalFallbackTile = TilePoint & {
+  key: string;
+  left: string;
+  top: string;
+  url: string;
+};
+
+const LOCAL_FALLBACK_TILE_SIZE = 256;
+const LOCAL_FALLBACK_TILE_ZOOM = 13;
+
 function getMapZoom(placeCount: number) {
   return placeCount > 1 ? 13 : 15;
 }
@@ -103,6 +118,96 @@ function getMapCenter(items: Array<{ latitude: number; longitude: number }>) {
     lat: totals.lat / items.length,
     lng: totals.lng / items.length,
   };
+}
+
+function isLocalMapFallbackHost() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  return ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+}
+
+function clampTileY(tileY: number, zoom: number) {
+  const maxTileIndex = 2 ** zoom - 1;
+
+  return Math.max(0, Math.min(maxTileIndex, tileY));
+}
+
+function getTilePoint(
+  point: { latitude: number; longitude: number },
+  zoom: number,
+): TilePoint {
+  const scale = 2 ** zoom;
+  const latRad = (point.latitude * Math.PI) / 180;
+
+  return {
+    x: ((point.longitude + 180) / 360) * scale,
+    y:
+      ((1 -
+        Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) /
+        2) *
+      scale,
+  };
+}
+
+function getLocalFallbackTiles(
+  center: { latitude: number; longitude: number },
+): LocalFallbackTile[] {
+  const centerTile = getTilePoint(center, LOCAL_FALLBACK_TILE_ZOOM);
+  const centerTileX = Math.floor(centerTile.x);
+  const centerTileY = Math.floor(centerTile.y);
+  const offsetX = (centerTile.x - centerTileX) * LOCAL_FALLBACK_TILE_SIZE;
+  const offsetY = (centerTile.y - centerTileY) * LOCAL_FALLBACK_TILE_SIZE;
+  const tiles: LocalFallbackTile[] = [];
+
+  for (let yOffset = -3; yOffset <= 3; yOffset += 1) {
+    for (let xOffset = -4; xOffset <= 4; xOffset += 1) {
+      const x = centerTileX + xOffset;
+      const y = clampTileY(
+        centerTileY + yOffset,
+        LOCAL_FALLBACK_TILE_ZOOM,
+      );
+
+      tiles.push({
+        x,
+        y,
+        key: `${LOCAL_FALLBACK_TILE_ZOOM}:${x}:${y}`,
+        left: `calc(50% + ${(xOffset * LOCAL_FALLBACK_TILE_SIZE - offsetX).toFixed(2)}px)`,
+        top: `calc(50% + ${(yOffset * LOCAL_FALLBACK_TILE_SIZE - offsetY).toFixed(2)}px)`,
+        url: `https://tile.openstreetmap.org/${LOCAL_FALLBACK_TILE_ZOOM}/${x}/${y}.png`,
+      });
+    }
+  }
+
+  return tiles;
+}
+
+function LocalFallbackTileLayer({
+  center,
+}: {
+  center: { latitude: number; longitude: number };
+}) {
+  const tiles = getLocalFallbackTiles(center);
+
+  return (
+    <div className="absolute inset-0 overflow-hidden bg-[var(--altteul-bg-surface)]">
+      {tiles.map((tile) => (
+        <img
+          key={tile.key}
+          src={tile.url}
+          alt=""
+          draggable={false}
+          className="absolute h-64 w-64 select-none"
+          style={{
+            left: tile.left,
+            top: tile.top,
+          }}
+        />
+      ))}
+      <div className="pointer-events-none absolute inset-0 bg-white/10" />
+    </div>
+  );
 }
 
 function getPreviewBounds(
@@ -211,13 +316,23 @@ function PreviewMap({
   const latRange = Math.max(bounds.maxLat - bounds.minLat, 0.01);
   const lngRange = Math.max(bounds.maxLng - bounds.minLng, 0.01);
   const hasClusterMarkers = markers.some((marker) => marker.kind === "cluster");
+  const fallbackCenter = getMapCenter(markers);
+  const fallbackTileCenter = {
+    latitude: fallbackCenter.lat,
+    longitude: fallbackCenter.lng,
+  };
+  const shouldShowLocalTiles = isLocalMapFallbackHost();
 
   return (
     <div
       className="pointer-events-none relative h-[42rem] bg-[linear-gradient(to_right,color-mix(in_oklch,var(--altteul-surface-border)_68%,transparent)_1px,transparent_1px),linear-gradient(to_bottom,color-mix(in_oklch,var(--altteul-surface-border)_68%,transparent)_1px,transparent_1px)] bg-[size:32px_32px] bg-[var(--altteul-bg-surface)] lg:h-[calc(100dvh-11rem)] lg:min-h-[50rem]"
       data-testid="map-panel-preview"
     >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,color-mix(in_oklch,var(--altteul-primary)_7%,transparent),transparent_30%),radial-gradient(circle_at_bottom_left,color-mix(in_oklch,var(--altteul-accent)_6%,transparent),transparent_28%)]" />
+      {shouldShowLocalTiles ? (
+        <LocalFallbackTileLayer center={fallbackTileCenter} />
+      ) : (
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,color-mix(in_oklch,var(--altteul-primary)_7%,transparent),transparent_30%),radial-gradient(circle_at_bottom_left,color-mix(in_oklch,var(--altteul-accent)_6%,transparent),transparent_28%)]" />
+      )}
       {markers.map((marker) => {
         const top = ((bounds.maxLat - marker.latitude) / latRange) * 70 + 10;
         const left = ((marker.longitude - bounds.minLng) / lngRange) * 72 + 8;
@@ -465,10 +580,11 @@ function NaverMapPanelContent({
   const pendingClusterFocusRef = useRef<ClusterDisplayMarker | null>(null);
   const pendingLocateCurrentPositionRef = useRef(false);
   const buildTimeNaverMapKeyId = getNaverMapKeyId();
+  const shouldUseLocalTileFallback = isLocalMapFallbackHost();
   const [runtimeNaverMapKeyId, setRuntimeNaverMapKeyId] = useState(
     buildTimeNaverMapKeyId,
   );
-  const naverMapKeyId = runtimeNaverMapKeyId;
+  const naverMapKeyId = shouldUseLocalTileFallback ? "" : runtimeNaverMapKeyId;
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const [shouldBootMap, setShouldBootMap] = useState(false);
   const [status, setStatus] = useState<MapStatus>("loading");
@@ -562,6 +678,13 @@ function NaverMapPanelContent({
   }, [onViewportChange]);
 
   useEffect(() => {
+    if (shouldUseLocalTileFallback) {
+      setRuntimeNaverMapKeyId("");
+      setStatus("missing-key");
+      setShouldBootMap(false);
+      return;
+    }
+
     if (buildTimeNaverMapKeyId) {
       setRuntimeNaverMapKeyId(buildTimeNaverMapKeyId);
       setStatus("loading");
@@ -600,7 +723,7 @@ function NaverMapPanelContent({
     return () => {
       isDisposed = true;
     };
-  }, [buildTimeNaverMapKeyId]);
+  }, [buildTimeNaverMapKeyId, shouldUseLocalTileFallback]);
   const focusCluster = useCallback(
     (marker: ClusterDisplayMarker) => {
       if (status !== "ready" || !mapInstanceRef.current) {
@@ -1073,7 +1196,9 @@ function NaverMapPanelContent({
   }, [clearMapInstance]);
 
   const statusMessage =
-    status === "missing-key"
+    shouldUseLocalTileFallback
+      ? "로컬 서버에서는 지도 타일 미리보기로 표시합니다."
+      : status === "missing-key"
       ? "지도 설정이 아직 준비되지 않아 임시 미리보기로 표시합니다."
       : status === "error"
         ? "지도를 불러오지 못해 임시 미리보기로 표시합니다."
