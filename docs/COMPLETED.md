@@ -1495,3 +1495,67 @@
   - 사용자 화면의 관리자 메뉴 상시 노출을 줄이고 admin 계정에만 운영 link를 표시한다.
   - 운영 URL `https://altteulmap.altteul-lab.workers.dev/`에 배포했고 remote smoke가 통과했다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+<a id="archive-043"></a>
+## `043` 로컬 개발 서버 지도 fallback 개선
+- 완료일: `2026-05-02`
+- 배경:
+  - 운영 URL에서는 Naver Maps JavaScript SDK 인증이 통과해 실제 지도가 보인다.
+  - 로컬 Vite dev 서버에서는 Naver Maps auth endpoint가 `http://127.0.0.1:5173/`, `http://localhost:5173/` origin에 대해 `401`을 반환해 지도 영역이 실제 지도처럼 보이지 않았다.
+  - Naver 콘솔에 로컬 origin을 허용하지 않으면 SDK 인증 자체는 코드로 우회할 수 없으므로, 개발 서버에서도 지도 UX를 확인할 수 있는 fallback이 필요했다.
+- 변경 내용:
+  - Worker public config API가 로컬 dev에서도 build-time public env fallback을 반환하도록 보강했다.
+  - 로컬 host에서는 Naver SDK 부팅을 막고 `tile.openstreetmap.org` 기반 타일 fallback을 표시하도록 했다.
+  - fallback 위에는 기존 marker, cluster, list rail, overlay를 그대로 렌더링해 로컬에서도 지도 화면과 핀 밀도를 확인할 수 있게 했다.
+  - production에서는 기존 Naver Maps SDK 우선 동작을 유지했다.
+- 코드/문서:
+  - `src/features/map/naver-map-panel.tsx`
+  - `src/worker/index.ts`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `curl -s http://127.0.0.1:5173/api/config/public`
+    - `{"naverMapKeyId":"41jb38doiu"}` 반환 확인
+  - 로컬 Playwright 확인:
+    - URL `http://127.0.0.1:5173/`
+    - screenshot `/tmp/altteulmap-local-map-visible.png`
+    - tile fallback image count `63`
+    - `window.naver?.maps` 값 `false`
+    - Naver SDK request 없이 `tile.openstreetmap.org` tile request 발생 확인
+  - `npm run verify`
+    - 통과
+  - `npm run design:detect:json`
+    - 통과
+    - 결과 `[]`
+  - `git diff --check`
+    - 통과
+  - `npm run build`
+    - 통과
+    - Worker entry `569.13 kB`, gzip `121.34 kB`
+    - client JS `473.13 kB`, gzip `135.78 kB`
+    - client CSS `47.43 kB`, gzip `9.00 kB`
+  - `npm run deploy:check`
+    - 통과
+    - optional `EMAIL_FROM`, `RESEND_API_KEY`는 미설정 warning
+  - `npm run deploy:check:vite`
+    - 통과
+    - Worker entry `569138` bytes
+    - client `index.html` `633` bytes
+  - `npm run deploy`
+    - 통과
+    - production version `6b3315d7-6650-4302-addf-634f7a7c2d17`
+  - `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev npm run smoke:remote`
+    - 통과
+    - home, robots, sitemap, public config, map API, place page, login, admin route, admin API boundary `401`, Kakao/Naver provider redirect 확인
+    - credentials/admin smoke는 `SMOKE_ADMIN_EMAIL`, `SMOKE_ADMIN_PASSWORD` 미설정으로 skip
+  - 운영 Playwright 확인:
+    - 8초 대기 후 `window.naver?.maps` 값 `true`
+    - OSM tile fallback image count `0`
+    - Naver auth endpoint `200`
+    - screenshot `/tmp/altteulmap-prod-local-fallback-fix-wait.png`
+- 결과:
+  - 로컬 dev 서버에서도 지도 영역이 흰 grid가 아니라 실제 지도 타일과 marker/cluster 기반으로 보인다.
+  - 운영 URL은 Naver Maps SDK 우선 동작을 유지하고 remote smoke가 통과했다.
+  - Naver 콘솔에 로컬 origin을 등록하지 않아도 개발자가 로컬에서 지도 UI를 시각적으로 확인할 수 있다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
