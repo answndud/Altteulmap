@@ -479,6 +479,21 @@ async function loadDatabaseMapMarkerRows(
     .limit(params.limit);
 }
 
+async function countDatabaseMapPlaces(
+  env: WorkerDatabaseBindings,
+  whereClause: SQL | undefined,
+) {
+  const db = getWorkerDb(env);
+  const [countRow] = await db
+    .select({
+      count: sql<number>`count(*)::int`,
+    })
+    .from(places)
+    .where(whereClause);
+
+  return Number(countRow?.count ?? 0);
+}
+
 async function listDatabaseMapPlaces(
   env: WorkerDatabaseBindings,
   {
@@ -495,35 +510,24 @@ async function listDatabaseMapPlaces(
     bounds,
     normalizedQuery,
   });
-  const db = getWorkerDb(env);
-  const countPromise = db
-    .select({
-      count: sql<number>`count(*)::int`,
-    })
-    .from(places)
-    .where(whereClause);
-
   if (bounds && !normalizedQuery) {
-    const [countRows, itemRows, markerRows] = await Promise.all([
-      countPromise,
-      loadDatabaseMapPlaceRows(env, {
-        whereClause,
-        sort,
-        limit: MAP_LIST_RESPONSE_LIMIT,
-      }),
-      loadDatabaseMapMarkerRows(env, {
-        whereClause,
-        limit: MAP_MARKER_SUMMARY_ROW_LIMIT,
-      }),
-    ]);
-    const count = Number(countRows[0]?.count ?? 0);
-    const items = toPlacePreviewRecords(itemRows);
+    const markerRows = await loadDatabaseMapMarkerRows(env, {
+      whereClause,
+      limit: MAP_MARKER_SUMMARY_ROW_LIMIT,
+    });
+    const mapped = toPlacePreviewRecords(markerRows);
+    const count =
+      markerRows.length < MAP_MARKER_SUMMARY_ROW_LIMIT
+        ? mapped.length
+        : await countDatabaseMapPlaces(env, whereClause);
+    const sorted = sortPlacePreviewRecords(mapped, sort);
+    const items = getCappedMapListItems(sorted);
     const markerMode = getMapMarkerMode(count, zoom, null);
     const mapMarkers =
       markerMode === "place"
-        ? getPlaceOnlyMapMarkers(items, zoom, null)
+        ? getPlaceOnlyMapMarkers(sorted, zoom, null)
         : getClusterOnlyMapMarkers(
-            toPlacePreviewRecords(markerRows),
+            mapped,
             bounds,
             null,
             zoom,
@@ -540,6 +544,13 @@ async function listDatabaseMapPlaces(
     };
   }
 
+  const db = getWorkerDb(env);
+  const countPromise = db
+    .select({
+      count: sql<number>`count(*)::int`,
+    })
+    .from(places)
+    .where(whereClause);
   const [countRows, rows] = await Promise.all([
     countPromise,
     loadDatabaseMapPlaceRows(env, {
