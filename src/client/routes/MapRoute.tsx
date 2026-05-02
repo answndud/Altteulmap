@@ -864,6 +864,9 @@ export function MapRoute() {
   const [selectedPlace, setSelectedPlace] = useState<PlacePreviewRecord | null>(
     null,
   );
+  const [optimisticClusterPlaces, setOptimisticClusterPlaces] = useState<
+    PlacePreviewRecord[] | null
+  >(null);
   const isDesktopLayout = useIsDesktopLayout();
   const [mobileListMode, setMobileListMode] =
     useState<MobileSheetMode>("hidden");
@@ -912,6 +915,7 @@ export function MapRoute() {
     loadPlaces(initialApiPath, controller.signal)
       .then((data) => {
         setSelectedPlace(null);
+        setOptimisticClusterPlaces(null);
         setState({ status: "success", data, error: null });
       })
       .catch((error: unknown) => {
@@ -976,6 +980,7 @@ export function MapRoute() {
         const data = await loadPlaces(buildMapApiPath(searchParams, viewport));
         setState({ status: "success", data, error: null });
         setSelectedPlace(null);
+        setOptimisticClusterPlaces(null);
       } catch (error) {
         setState({
           status: "error",
@@ -1009,6 +1014,7 @@ export function MapRoute() {
           const data = await loadPlaces(apiPath, controller.signal);
           setState({ status: "success", data, error: null });
           setSelectedPlace(null);
+          setOptimisticClusterPlaces(null);
         } catch (error) {
           if (controller.signal.aborted) {
             return;
@@ -1058,13 +1064,16 @@ export function MapRoute() {
   );
 
   const handleClusterFocusViewport = useCallback(
-    (nextViewport: MapViewport) => {
+    (nextViewport: MapViewport, previewPlaces?: PlacePreviewRecord[]) => {
       const apiPath = buildMapApiPath(searchParams, nextViewport);
 
       clusterFocusViewportLockUntilRef.current =
         Date.now() + CLUSTER_FOCUS_VIEWPORT_LOCK_MS;
       shouldIgnoreFirstViewportSyncRef.current = false;
       lastViewportRequestPathRef.current = apiPath;
+      setOptimisticClusterPlaces(
+        previewPlaces && previewPlaces.length > 0 ? previewPlaces : null,
+      );
       setViewport(nextViewport);
 
       startViewportRefresh(async () => {
@@ -1072,8 +1081,10 @@ export function MapRoute() {
           const data = await loadPlaces(apiPath);
           setState({ status: "success", data, error: null });
           setSelectedPlace(null);
+          setOptimisticClusterPlaces(null);
         } catch (error) {
           lastViewportRequestPathRef.current = null;
+          setOptimisticClusterPlaces(null);
           setState({
             status: "error",
             data: null,
@@ -1089,7 +1100,16 @@ export function MapRoute() {
   );
 
   const places = state.data?.items ?? [];
-  const mapMarkers = state.data?.mapMarkers ?? [];
+  const mapMarkers = useMemo<PlaceMapMarkerRecord[]>(() => {
+    if (optimisticClusterPlaces?.length) {
+      return optimisticClusterPlaces.map((place) => ({
+        ...place,
+        kind: "place",
+      }));
+    }
+
+    return state.data?.mapMarkers ?? [];
+  }, [optimisticClusterPlaces, state.data?.mapMarkers]);
   const displayedPlaces = useMemo(() => {
     if (!selectedPlace) {
       return places;

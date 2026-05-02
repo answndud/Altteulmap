@@ -71,6 +71,7 @@ export type PlaceMapClusterMarkerRecord = {
   longitude: number;
   bounds: PlaceBounds;
   placeCount: number;
+  previewPlaces?: PlacePreviewRecord[];
 };
 
 export type PlaceMapMarkerRecord =
