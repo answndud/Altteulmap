@@ -1,72 +1,41 @@
-import { getCategoryBySlug } from "@/features/categories/catalog";
 import type { getLoadedNaverMapSdk } from "@/features/map/naver-map-sdk";
+import type { PlacePreviewRecord } from "@/features/places/types";
 
-type PlaceMarkerGroupKey =
-  | "food"
-  | "life-services"
-  | "shopping"
-  | "health"
-  | "study-work"
-  | "fallback";
+type PlaceMarkerPriceInput = Pick<
+  PlacePreviewRecord,
+  "representativePriceAmount" | "verificationStatus"
+>;
 
-type PlaceMarkerTheme = {
-  fill: string;
-  activeFill: string;
-  stroke: string;
-  activeStroke: string;
-  coreRing: string;
-  coreDot: string;
+type PlaceMarkerTone = {
+  background: string;
+  border: string;
+  text: string;
+  tailBackground: string;
+  tailBorder: string;
 };
 
-const PLACE_MARKER_THEMES: Record<PlaceMarkerGroupKey, PlaceMarkerTheme> = {
-  food: {
-    fill: "#f97316",
-    activeFill: "#ea580c",
-    stroke: "rgba(194, 65, 12, 0.22)",
-    activeStroke: "rgba(154, 52, 18, 0.32)",
-    coreRing: "#9a3412",
-    coreDot: "#f97316",
-  },
-  "life-services": {
-    fill: "#4f78bf",
-    activeFill: "#3e61a6",
-    stroke: "rgba(40, 65, 109, 0.22)",
-    activeStroke: "rgba(31, 53, 92, 0.3)",
-    coreRing: "#35558f",
-    coreDot: "#4f78bf",
-  },
-  shopping: {
-    fill: "#b25a72",
-    activeFill: "#95445a",
-    stroke: "rgba(106, 47, 64, 0.22)",
-    activeStroke: "rgba(88, 35, 50, 0.3)",
-    coreRing: "#7a3849",
-    coreDot: "#b25a72",
-  },
-  health: {
-    fill: "#2f8d69",
-    activeFill: "#1f7454",
-    stroke: "rgba(24, 87, 63, 0.22)",
-    activeStroke: "rgba(17, 71, 50, 0.3)",
-    coreRing: "#195a41",
-    coreDot: "#2f8d69",
-  },
-  "study-work": {
-    fill: "#4f647d",
-    activeFill: "#3b5067",
-    stroke: "rgba(43, 58, 74, 0.22)",
-    activeStroke: "rgba(34, 46, 60, 0.3)",
-    coreRing: "#314457",
-    coreDot: "#4f647d",
-  },
-  fallback: {
-    fill: "#2563eb",
-    activeFill: "#1d4ed8",
-    stroke: "rgba(37, 99, 235, 0.22)",
-    activeStroke: "rgba(29, 78, 216, 0.32)",
-    coreRing: "#1e40af",
-    coreDot: "#2563eb",
-  },
+const VERIFIED_PRICE_TONE: PlaceMarkerTone = {
+  background: "rgba(255, 253, 249, 0.98)",
+  border: "rgba(37, 99, 235, 0.52)",
+  text: "#162033",
+  tailBackground: "rgba(255, 253, 249, 0.98)",
+  tailBorder: "rgba(37, 99, 235, 0.52)",
+};
+
+const UNVERIFIED_PRICE_TONE: PlaceMarkerTone = {
+  background: "rgba(255, 253, 249, 0.98)",
+  border: "rgba(181, 90, 43, 0.5)",
+  text: "#2a1d15",
+  tailBackground: "rgba(255, 253, 249, 0.98)",
+  tailBorder: "rgba(181, 90, 43, 0.5)",
+};
+
+const ACTIVE_PRICE_TONE: PlaceMarkerTone = {
+  background: "#1f5fbf",
+  border: "rgba(24, 70, 145, 0.72)",
+  text: "#fffdf9",
+  tailBackground: "#1f5fbf",
+  tailBorder: "rgba(24, 70, 145, 0.72)",
 };
 
 export const CLUSTER_MARKER_THEME = {
@@ -82,45 +51,51 @@ export function formatMarkerCount(count: number) {
   return new Intl.NumberFormat("ko-KR").format(count);
 }
 
-function getPlaceMarkerGroupKey(
-  categorySlug: string | null | undefined,
-): PlaceMarkerGroupKey {
-  const parentSlug = getCategoryBySlug(categorySlug)?.parentSlug;
+export function formatMarkerPrice(amount: number) {
+  return `${new Intl.NumberFormat("ko-KR").format(amount)}원`;
+}
 
-  switch (parentSlug) {
-    case "food":
-    case "life-services":
-    case "shopping":
-    case "health":
-    case "study-work":
-      return parentSlug;
-    default:
-      return "fallback";
-  }
+function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
 export function getPlaceMarkerVisual(
-  categorySlug: string | null | undefined,
+  place: PlaceMarkerPriceInput,
   isActive: boolean,
 ) {
-  const theme = PLACE_MARKER_THEMES[getPlaceMarkerGroupKey(categorySlug)];
+  const label = formatMarkerPrice(place.representativePriceAmount);
+  const tone = isActive
+    ? ACTIVE_PRICE_TONE
+    : place.verificationStatus === "verified"
+      ? VERIFIED_PRICE_TONE
+      : UNVERIFIED_PRICE_TONE;
+  const labelWidth = label.length * (isActive ? 9.3 : 8.9) + 24;
+  const width = Math.ceil(Math.max(isActive ? 78 : 72, labelWidth));
+  const height = isActive ? 34 : 31;
+  const tailSize = isActive ? 9 : 8;
 
   return {
-    canvasWidth: isActive ? 48 : 44,
-    canvasHeight: isActive ? 58 : 54,
-    pinSize: isActive ? 34 : 30,
-    coreSize: isActive ? 16 : 14,
-    dotSize: isActive ? 6 : 5,
-    fill: isActive ? theme.activeFill : theme.fill,
-    stroke: isActive ? theme.activeStroke : theme.stroke,
-    coreRing: theme.coreRing,
-    coreDot: theme.coreDot,
-    outline: "rgba(255, 255, 255, 0.98)",
-    shadow: `0 0 0 3px rgba(255,255,255,0.94), 0 0 0 4.5px ${
-      isActive ? theme.activeStroke : theme.stroke
-    }, 0 ${isActive ? 18 : 14}px ${isActive ? 32 : 26}px rgba(15,23,42,${
-      isActive ? "0.26" : "0.2"
-    })`,
+    label,
+    canvasWidth: width + 16,
+    canvasHeight: height + tailSize + 11,
+    width,
+    height,
+    tailSize,
+    fontSize: isActive ? 14 : 13,
+    fontWeight: isActive ? 800 : 750,
+    background: tone.background,
+    border: tone.border,
+    text: tone.text,
+    tailBackground: tone.tailBackground,
+    tailBorder: tone.tailBorder,
+    shadow: isActive
+      ? "0 0 0 3px rgba(255, 253, 249, 0.94), 0 12px 26px rgba(15, 23, 42, 0.24)"
+      : "0 0 0 2px rgba(255, 253, 249, 0.9), 0 8px 18px rgba(15, 23, 42, 0.17)",
   };
 }
 
@@ -152,24 +127,24 @@ export function getClusterMarkerVisual(placeCount: number) {
 }
 
 function createPlaceMarkerIconHtml(
-  categorySlug: string | null | undefined,
+  place: PlaceMarkerPriceInput,
   isActive: boolean,
 ) {
-  const visual = getPlaceMarkerVisual(categorySlug, isActive);
+  const visual = getPlaceMarkerVisual(place, isActive);
+  const safeLabel = escapeHtml(visual.label);
 
   return `
-    <div style="width:${visual.canvasWidth}px;height:${visual.canvasHeight}px;display:flex;align-items:flex-end;justify-content:center;">
-      <span style="position:relative;display:block;width:${visual.pinSize}px;height:${visual.pinSize}px;border-radius:${visual.pinSize}px ${visual.pinSize}px ${visual.pinSize}px 0;background:${visual.fill};border:2px solid ${visual.outline};box-shadow:${visual.shadow};transform:rotate(-45deg);">
-        <span style="position:absolute;left:50%;top:50%;width:${visual.coreSize}px;height:${visual.coreSize}px;border-radius:999px;background:#ffffff;border:2px solid ${visual.coreRing};transform:translate(-50%,-50%) rotate(45deg);">
-          <span style="position:absolute;left:50%;top:50%;width:${visual.dotSize}px;height:${visual.dotSize}px;border-radius:999px;background:${visual.coreDot};transform:translate(-50%,-50%);"></span>
-        </span>
+    <div style="width:${visual.canvasWidth}px;height:${visual.canvasHeight}px;display:flex;align-items:flex-start;justify-content:center;position:relative;padding-top:2px;">
+      <span style="position:absolute;left:50%;top:${visual.height - 1}px;width:${visual.tailSize}px;height:${visual.tailSize}px;background:${visual.tailBackground};border-right:1.5px solid ${visual.tailBorder};border-bottom:1.5px solid ${visual.tailBorder};box-shadow:0 5px 10px rgba(15,23,42,0.12);transform:translateX(-50%) rotate(45deg);"></span>
+      <span style="position:relative;z-index:1;display:flex;align-items:center;justify-content:center;width:${visual.width}px;height:${visual.height}px;border-radius:999px;background:${visual.background};border:1.5px solid ${visual.border};box-shadow:${visual.shadow};color:${visual.text};font-size:${visual.fontSize}px;font-weight:${visual.fontWeight};line-height:1;letter-spacing:0;font-variant-numeric:tabular-nums;font-family:IBM Plex Sans KR, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;white-space:nowrap;">
+        ${safeLabel}
       </span>
     </div>
   `;
 }
 
 export function createMapMarkerIcon(
-  categorySlug: string | null | undefined,
+  place: PlaceMarkerPriceInput,
   isActive: boolean,
   naver: ReturnType<typeof getLoadedNaverMapSdk>,
 ) {
@@ -180,10 +155,10 @@ export function createMapMarkerIcon(
     return undefined;
   }
 
-  const visual = getPlaceMarkerVisual(categorySlug, isActive);
+  const visual = getPlaceMarkerVisual(place, isActive);
 
   return {
-    content: createPlaceMarkerIconHtml(categorySlug, isActive),
+    content: createPlaceMarkerIconHtml(place, isActive),
     size: new Size(visual.canvasWidth, visual.canvasHeight),
     anchor: new Point(visual.canvasWidth / 2, visual.canvasHeight),
   };
