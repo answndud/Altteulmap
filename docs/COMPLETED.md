@@ -1721,3 +1721,52 @@
   - Dashboard deploy command가 아직 `dist/altteulmap_vite_migration/wrangler.json`로 남아 있어도 다음 build부터 ENOENT로 실패하지 않아야 한다.
   - 정석 deploy command는 여전히 `npx wrangler deploy --config dist/altteulmap/wrangler.json --name altteulmap`이다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+<a id="archive-048"></a>
+## `048` 지도 내 Ajax형 장소 상세 패널 전환
+- 완료일: `2026-05-02`
+- 배경:
+  - 지도/목록에서 장소 상세를 누르면 `/place/:id` 페이지로 이동해 지도 탐색 맥락이 끊겼다.
+  - 사용자는 페이지 이동 없이 같은 지도 화면에서 상세 정보를 보고 닫기 버튼으로 패널을 닫는 흐름을 원했다.
+  - 기존 `PlaceDetailSheet`는 preview 데이터 중심이라 가격 항목, 가격 이력, 코멘트 같은 full detail 정보가 부족했다.
+- 변경 내용:
+  - 지도 목록 카드의 `가격 보기` 링크를 라우팅 대신 장소 선택 버튼으로 변경했다.
+  - 추천 장소 카드의 primary/detail 링크도 라우팅 대신 지도 상세 패널을 여는 버튼으로 변경했다.
+  - `PlaceDetailSheet`가 열릴 때 `/api/places/:id`를 fetch해 가격 항목, 최근 가격 이력, 코멘트 요약을 패널 안에 표시하도록 했다.
+  - 상세 패널 닫기 버튼은 `[x]` 형태의 `×` 버튼으로 바꿨다.
+  - 추천 장소에서 상세 패널을 열면 지도/패널 영역으로 스크롤되어 사용자가 열린 패널을 바로 볼 수 있게 했다.
+  - `/place/:id` 라우트는 공유 링크와 직접 접근용으로 유지했다.
+- 코드/문서:
+  - `src/client/routes/MapRoute.tsx`
+  - `tests/e2e/map.spec.ts`
+  - `docs/PLAN.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run build`
+    - 통과
+  - 로컬 Playwright 직접 확인:
+    - `가격 보기` 클릭 전후 URL이 `http://127.0.0.1:5173/`로 유지됨
+    - `place-detail-sheet` 표시 확인
+    - `place-detail-inline-details`에 가격 항목/이력 데이터 표시 확인
+    - 닫기 버튼 클릭 후 `place-detail-sheet` count `0`
+    - screenshot `/tmp/altteulmap-inline-detail-sheet.png`
+  - `npm run verify`
+    - 통과
+    - lint, typecheck 성공
+  - `npm run design:detect:json`
+    - 통과
+    - 결과 `[]`
+  - `git diff --check`
+    - 통과
+  - `npx playwright test tests/e2e/map.spec.ts -g "홈에서 인기 장소" --project chromium`
+    - 통과
+  - 참고:
+    - `npx playwright test tests/e2e/map.spec.ts --project chromium` 전체 실행은 6건 중 3건 통과, 1건 skip, 2건 실패
+    - 실패 1: cluster API 테스트가 일부 cluster marker의 `previewPlaces` 유무를 기대했으나 현재 데이터 응답과 불일치
+    - 실패 2: 비회원 좋아요 토글 테스트가 두 번째 클릭 후 count 복귀를 기대했으나 count `1` 유지
+    - 두 실패는 이번 라우팅 제거/상세 패널 전환과 직접 관련된 실패는 아니며 별도 점검이 필요하다.
+- 결과:
+  - 지도 화면에서 업소 상세 정보를 볼 때 URL이 `/place/:id`로 바뀌지 않는다.
+  - 사용자는 같은 화면에서 상세 정보를 확인하고 `×` 버튼으로 닫을 수 있다.
+  - 가격 항목/최근 이력/코멘트 요약이 full detail API 기반으로 패널 안에 표시된다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
