@@ -1559,3 +1559,127 @@
   - 운영 URL은 Naver Maps SDK 우선 동작을 유지하고 remote smoke가 통과했다.
   - Naver 콘솔에 로컬 origin을 등록하지 않아도 개발자가 로컬에서 지도 UI를 시각적으로 확인할 수 있다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+<a id="archive-044"></a>
+## `044` 지도 place marker 가격표형 전환
+- 완료일: `2026-05-02`
+- 배경:
+  - 사용자가 첨부한 예시처럼 지도 위 장소가 핀보다 가격표로 직접 읽히는 방향을 제안했다.
+  - 알뜰맵은 대표 가격이 핵심 판단 신호이므로, 지도 marker 단계에서 `5,000원` 같은 가격을 바로 보여주는 편이 제품 목적과 맞다.
+  - 추가 요청에 따라 가격 앞에는 이모티콘이나 아이콘을 넣지 않는 방향으로 정했다.
+- 변경 내용:
+  - 개별 place marker를 기존 컬러 핀에서 대표가 라벨형 가격표 marker로 변경했다.
+  - marker label은 `300원`, `1,000원`처럼 숫자와 원 단위만 표시하며, tabular numeric 처리를 적용했다.
+  - 검증된 가격은 steel-blue border, 미검증 가격은 muted warm border, 선택된 place는 blue filled label로 구분했다.
+  - 로컬 fallback 지도 preview와 실제 Naver Maps marker가 같은 `getPlaceMarkerVisual` 모델을 쓰도록 정리했다.
+  - 클러스터 marker는 기존 숫자 원형 badge를 유지해 낮은 zoom의 밀도 표현과 개별 가격표 표현이 섞이지 않게 했다.
+- 코드/문서:
+  - `src/features/map/naver-map-marker-visuals.ts`
+  - `src/features/map/naver-map-panel.tsx`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run build`
+    - 통과
+    - Worker/client production build 성공
+  - 로컬 Playwright 확인:
+    - URL `http://127.0.0.1:5173/`
+    - marker count `120`
+    - 첫 marker text 샘플: `300원`, `500원`, `700원`, `700원`, `800원`, `1,000원`
+    - screenshot `/tmp/altteulmap-price-tag-markers-local.png`
+  - `npm run verify`
+    - 통과
+    - lint, typecheck 성공
+  - `npm run design:detect:json`
+    - 통과
+    - 결과 `[]`
+  - `git diff --check`
+    - 통과
+- 결과:
+  - 지도 위 개별 place marker가 이모티콘 없는 가격표 UI로 바뀌었다.
+  - 사용자는 목록을 보기 전에도 지도에서 가격 밀도와 저가 위치를 바로 훑을 수 있다.
+  - 로컬 fallback 지도에서도 같은 가격표 marker가 보인다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+<a id="archive-045"></a>
+## `045` 로컬 fallback 지도 wheel zoom 지원
+- 완료일: `2026-05-02`
+- 배경:
+  - 운영 환경의 Naver 지도는 SDK가 wheel zoom을 처리하지만, 로컬 개발 서버는 Naver SDK 인증 제한을 피하기 위해 OSM tile fallback을 사용한다.
+  - 사용자가 로컬 서버에서 스크롤로 지도 확대/축소가 되지 않는 문제를 확인했다.
+  - 로컬에서도 지도 중심 UX를 점검할 수 있어야 하므로 fallback 지도에 별도 wheel zoom 처리가 필요했다.
+- 변경 내용:
+  - 로컬 fallback preview 지도에 `wheel` 이벤트 기반 zoom state를 추가했다.
+  - tile URL zoom level을 `11~16` 범위에서 조정해 스크롤 위/아래 입력으로 확대/축소되게 했다.
+  - marker 위치 계산도 fallback zoom scale을 반영하도록 바꿔 가격표 marker가 viewport zoom에 맞춰 재배치되게 했다.
+  - wheel listener는 non-passive native listener로 붙여, 지도 위 스크롤이 페이지 스크롤로 빠지지 않게 했다.
+  - 운영 Naver 지도 SDK 경로는 변경하지 않았다.
+- 코드/문서:
+  - `src/features/map/naver-map-panel.tsx`
+  - `docs/PLAN.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run build`
+    - 통과
+  - 로컬 Playwright wheel 확인:
+    - URL `http://127.0.0.1:5173/`
+    - fallback tile zoom `13 -> 14 -> 13`
+    - wheel 후 `window.scrollY` 값 `0`
+    - screenshot `/tmp/altteulmap-local-wheel-zoom.png`
+  - `npm run verify`
+    - 통과
+    - lint, typecheck 성공
+  - `npm run design:detect:json`
+    - 통과
+    - 결과 `[]`
+  - `git diff --check`
+    - 통과
+- 결과:
+  - 로컬 개발 서버의 fallback 지도에서도 마우스/트랙패드 스크롤로 확대/축소가 된다.
+  - 지도 위 wheel 입력이 페이지 스크롤로 빠지지 않아 실제 지도처럼 확인할 수 있다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+<a id="archive-046"></a>
+## `046` 로컬 fallback 지도 상호작용/시각 개선
+- 완료일: `2026-05-02`
+- 배경:
+  - 사용자는 배포 환경의 Naver 지도 화면을 기준으로 보고 있으며, 로컬 fallback은 OSM 기본 타일이라 시각 밀도와 지도 상호작용이 달랐다.
+  - 이전 fallback은 wheel zoom만 지원했고, 클릭 후 드래그로 지도 center를 이동하는 pan 모델이 없었다.
+  - 로컬 개발에서도 배포 지도와 비슷한 감각으로 UI를 확인할 수 있도록 fallback 품질을 높일 필요가 있었다.
+- 변경 내용:
+  - 로컬 fallback tile source를 `tile.openstreetmap.org` 기본 타일에서 `basemaps.cartocdn.com/light_all` light tile로 변경했다.
+  - fallback 지도에 별도 center state를 추가하고, pointer drag로 center가 이동하도록 했다.
+  - marker 위치를 기존 데이터 bounds 기반 percentage 배치에서 Web Mercator tile projection 기반 pixel 배치로 변경했다.
+  - wheel zoom과 drag pan이 같은 center/zoom camera state를 공유하도록 정리했다.
+  - 지도 위 drag는 empty map 영역에서 동작하게 하고, marker/button 클릭 동작은 유지했다.
+  - 운영 Naver SDK 경로와 production tile source는 변경하지 않았다.
+- 코드/문서:
+  - `src/features/map/naver-map-panel.tsx`
+  - `docs/PLAN.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run build`
+    - 통과
+  - 로컬 Playwright 확인:
+    - URL `http://127.0.0.1:5173/`
+    - tile source `basemaps.cartocdn.com/light_all/...` 확인
+    - drag 전 center `37.56650,126.97800`
+    - drag 후 center `37.59965,126.97640`
+    - drag 후 첫 tile URL과 첫 marker 위치 변경 확인
+    - wheel 후 zoom `13 -> 14`
+    - wheel/drag 후 `window.scrollY` 값 `0`
+    - screenshot `/tmp/altteulmap-local-fallback-pan-light.png`
+  - `npm run verify`
+    - 통과
+    - lint, typecheck 성공
+  - `npm run design:detect:json`
+    - 통과
+    - 결과 `[]`
+  - `git diff --check`
+    - 통과
+- 결과:
+  - 로컬 fallback 지도에서 클릭 후 드래그 pan이 가능해졌다.
+  - 로컬 fallback이 OSM 기본 타일보다 절제된 light map으로 보여 배포 지도와의 시각 차이가 줄었다.
+  - 가격표 marker는 fallback camera state에 맞춰 함께 움직인다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
