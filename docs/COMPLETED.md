@@ -1308,3 +1308,69 @@
   - Vite public 홈은 Next 시절의 핵심 지도/검색/카테고리/목록/상세/공유/인기 장소 흐름을 다시 제공한다.
   - admin과 auth의 주요 운영 흐름이 E2E 기준으로 복구됐다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+<a id="archive-040"></a>
+## `040` Vite 이관 후 지도 클러스터 안정화와 마감 정리
+- 완료일: `2026-05-02`
+- 배경:
+  - Vite + React 이관 후 자동 E2E는 통과했지만 운영 수동 QA에서 지도 숫자 클러스터 클릭, 줌인/줌아웃, marker 전환, pan 중 cluster 흔들림, 긴 `검색 중` 표시가 계속 확인됐다.
+  - Next/OpenNext dependency는 제거됐지만 로컬 작업 폴더에는 `.next`, `.open-next`, `apps/admin/.next` 같은 과거 빌드 산출물이 남아 있어 현재 구조를 오해하게 만들 수 있었다.
+- 변경 내용:
+  - 지도 첫 요청을 서울 bootstrap bounds/zoom 기준으로 고정하고, pan/zoom 시 viewport debounce fetch가 다시 동작하도록 복구했다.
+  - cluster focus 요청은 debounce를 기다리지 않고 즉시 `/api/places/map`을 호출하며, 짧은 lock window 동안 지도 `idle` sync가 focus 요청을 덮어쓰지 않도록 했다.
+  - cluster mode에서는 단일 장소 bucket도 숫자 cluster로 유지해 zoom-out 상태에서 숫자 cluster와 place pin이 섞이지 않게 했다.
+  - cluster marker에 작은 bucket의 `previewPlaces`를 포함하고, 클릭 즉시 optimistic marker를 보여준 뒤 서버 응답으로 교체하도록 했다.
+  - 실제 Naver map이 ready 상태가 되면 fallback preview layer를 숨기고, cluster 클릭 직후 기존 marker instance를 즉시 제거해 숫자 cluster와 optimistic pin이 겹치지 않게 했다.
+  - map API는 count/items/marker rows 조회를 병렬화하고, bounds 기반 조회에서 같은 장소 데이터를 list/marker 용도로 두 번 읽지 않도록 정리했다.
+  - 같은 bounds/zoom 중복 요청은 짧은 TTL memory/edge cache로 흡수하고 `X-Altteulmap-Map-Cache` header로 진단 가능하게 했다.
+  - server cluster grid를 viewport-relative grid에서 stable world grid로 바꿔 작은 pan에도 cluster key/center가 계속 흔들리지 않게 했다.
+  - viewport API path는 zoom별 snapped bounds와 rounded zoom을 사용하고, refresh 버튼의 `검색 중` 상태는 수동 refresh에만 표시되게 분리했다.
+  - GitHub Actions의 Next.js build cache restore 단계를 제거했다.
+  - `.gitignore`에서 Next/OpenNext 항목을 legacy generated output으로 명확히 주석 처리했다.
+  - 로컬 legacy 산출물 `.next`, `.next-dev`, `.open-next`, `apps/admin/.next`, `apps/admin/.open-next`, `apps`, `.wrangler`, `dist`, `test-results`, `playwright-report`, `tsconfig.tsbuildinfo`를 제거했다. `node_modules`는 유지했다.
+  - 마이그레이션 회고 블로그에 로컬 산출물 정리와 build path 기준으로 삭제 가능 여부를 판단해야 한다는 내용을 추가했다.
+- 코드/문서:
+  - `.github/workflows/ci.yml`
+  - `.gitignore`
+  - `src/client/routes/MapRoute.tsx`
+  - `src/features/map/naver-map-panel.tsx`
+  - `src/worker/places-read-repository.ts`
+  - `tests/e2e/map.spec.ts`
+  - `docs/blog/next-to-vite-migration-retrospective.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run lint`: 통과
+  - `npm run typecheck`: 통과
+  - `git diff --check`: 통과
+  - `node scripts/run-local-e2e.mjs smoke -- tests/e2e/map.spec.ts`: 통과
+    - smoke 10건 통과
+    - cluster-only, bootstrap bounds, cluster bounds 재계산, viewport cache hit 검증 포함
+  - `npm run test:e2e:full`: 통과
+    - smoke 10건 통과
+    - mobile map 2건 통과
+    - bookmarks/comments/price-review/report-admin 5건 통과
+  - `npm run verify`: 통과
+  - `npm run build`: 통과
+    - Worker entry `569.05 kB`, gzip `121.32 kB`
+    - client JS `467.28 kB`, gzip `134.86 kB`
+    - client CSS `42.27 kB`, gzip `8.56 kB`
+  - `npm run deploy:check`: 통과
+  - `npm run deploy:check:vite`: 통과
+  - `npm run smoke:vite:local`: 통과
+  - `npm run deploy`: 통과
+    - production version `7bf1e2de-4444-4d93-a48a-56d63ddbf88b`
+  - `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev npm run smoke:remote`: 통과
+  - 운영 API stable grid 확인:
+    - base bounds와 약간 이동한 shifted bounds 모두 `markerMode: cluster`, cluster marker `14`개 반환
+    - 두 응답의 앞쪽 cluster id 8개가 동일해 작은 pan에서 cluster key가 흔들리지 않음을 확인
+  - 운영 API 압축 응답 계측:
+    - cache miss TTFB 약 `1.99s`, gzip download 약 `20.2KB`
+    - edge-hit TTFB 약 `0.44~0.46s`
+- 결과:
+  - Vite 단일 Worker 구조에서 지도 cluster 표시, 클릭, viewport 재조회, optimistic split, cache 진단이 자동/운영 검증 기준으로 안정화됐다.
+  - 로컬 작업 폴더의 Next/OpenNext legacy 산출물이 제거되어 현재 구조가 Vite + React + Worker API임이 명확해졌다.
+  - 정리 후 프로젝트 폴더는 약 `895MB`이고, 대부분은 유지 대상인 `node_modules` 약 `846MB`다.
+  - 실제 Kakao/Naver provider 계정 callback과 실기기 지도 체감은 외부 계정/기기 확인이 필요한 수동 QA 항목으로 남긴다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.

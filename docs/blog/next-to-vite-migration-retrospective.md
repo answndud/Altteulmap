@@ -199,6 +199,10 @@ Next/OpenNext 제거는 마지막에 했다. 이 순서가 중요했다. Vite ro
 
 admin은 처음 계획대로 별도 앱이 아니라 통합 `/admin`으로 들어갔다. 여기서도 한 가지 운영 판단을 했다. 기존 `altteulmap-admin` Worker를 바로 삭제하지 않고 redirect-only Worker로 남겼다. 사용자가 거의 없더라도 내가 북마크하거나 문서에 남긴 old admin URL이 있을 수 있고, Cloudflare Dashboard에서 서비스가 갑자기 없어지는 것보다 명시적으로 새 위치로 보내는 편이 덜 위험하다. 작은 서비스에서도 "삭제"보다 "redirect 후 관찰"이 안전한 경우가 있다.
 
+마지막 마감 정리에서 또 한 가지를 확인했다. 의존성에서 Next를 제거해도 로컬에는 `.next`, `.next-dev`, `.open-next`, `apps/admin/.next`, `apps/admin/.open-next` 같은 산출물이 그대로 남을 수 있다. 이 파일들은 앱 구동에 필요하지 않지만, 새로 프로젝트를 열었을 때 "아직 Next 구조가 살아 있나"라는 혼란을 만든다. 그래서 CI의 Next cache restore를 제거하고, legacy 산출물은 로컬에서 지웠다. 코드 마이그레이션은 dependency와 route만 바꾸는 일이 아니라, 개발자가 보는 작업 공간까지 새 구조와 일치시키는 일이다.
+
+용량도 이 과정에서 현실적으로 봐야 한다. Next/OpenNext 산출물을 지워도 프로젝트 대부분은 `node_modules`가 차지한다. JavaScript 프로젝트에서 이 크기는 낯설 수 있지만, 현재 앱 구동에 필요한 dependency 묶음이다. 반대로 `.next`와 `.open-next`는 재생성 가능한 과거 빌드 결과다. 삭제해도 앱 실행 자체에는 영향이 없고, Vite 구조에서는 다시 만들 이유도 없다. "무엇을 지워도 되는가"는 파일 이름이 아니라 현재 build path가 무엇을 참조하는지로 판단해야 한다.
+
 최종 구조는 처음보다 훨씬 직접적이다.
 
 - 브라우저 UI는 Vite + React SPA다.
