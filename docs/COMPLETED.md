@@ -1792,6 +1792,10 @@
     - 이전 배포에서는 첫 viewport sync가 막혀 `이 지역 다시 찾기` 전 현재 viewport API가 호출되지 않았다.
   - `npm run build`
     - 통과
+  - 추가 원인 확인:
+    - 배포 후 운영 확인에서 현재 viewport API가 자동 호출되는 것은 확인했다.
+    - 다만 bootstrap 서울 전체 응답이 현재 viewport 응답보다 늦게 도착하면 bootstrap 응답이 다시 state를 덮어써 marker가 사라지는 race가 있었다.
+    - 초기 bootstrap 응답 처리 시 `lastViewportRequestPathRef.current !== initialApiPath`이면 stale 응답으로 보고 무시하도록 보강했다.
   - `npm run verify`
     - 통과
     - lint, typecheck 성공
@@ -1805,5 +1809,6 @@
     - 2건 통과
 - 결과:
   - Naver 지도 준비 후 첫 실제 viewport가 자동 재조회 대상이 되도록 복구했다.
+  - 늦게 도착한 bootstrap 응답이 현재 viewport 결과를 덮어쓰지 않도록 방어했다.
   - 배포 후 운영 URL에서 첫 진입 marker 자동 표시와 상세 패널 동작을 최종 확인해야 한다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.

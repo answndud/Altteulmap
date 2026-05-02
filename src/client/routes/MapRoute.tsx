@@ -1118,12 +1118,20 @@ export function MapRoute() {
 
     loadPlaces(initialApiPath, controller.signal)
       .then((data) => {
+        if (lastViewportRequestPathRef.current !== initialApiPath) {
+          return;
+        }
+
         setSelectedPlace(null);
         setOptimisticClusterPlaces(null);
         setState({ status: "success", data, error: null });
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) {
+          return;
+        }
+
+        if (lastViewportRequestPathRef.current !== initialApiPath) {
           return;
         }
 
