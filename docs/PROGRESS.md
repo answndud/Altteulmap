@@ -260,6 +260,18 @@ Next.js 기능 parity 회귀 복구 구현은 1차 완료됐지만, 운영 수�
     - mobile map 2건 통과
     - bookmarks/comments/price-review/report-admin 5건 통과
   - `npm run deploy:check`: 통과
+- stable cluster grid/viewport snap 운영 배포 검증:
+  - `npm run deploy`: 통과
+    - URL: `https://altteulmap.altteul-lab.workers.dev`
+    - Version ID: `7bf1e2de-4444-4d93-a48a-56d63ddbf88b`
+  - `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev npm run smoke:remote`: 통과
+  - 운영 API stable grid 확인: 통과
+    - base bounds와 약간 이동한 shifted bounds 모두 `markerMode: cluster`, cluster marker `14`개를 반환함
+    - 두 응답의 앞쪽 cluster id 8개가 모두 동일해 작은 pan에서 cluster key가 흔들리지 않음을 확인함
+  - 운영 API 압축 응답 계측: 통과
+    - cache miss: TTFB 약 `1.99s`, gzip download 약 `20.2KB`
+    - edge-hit 1차: TTFB 약 `0.44s`
+    - edge-hit 2차: TTFB 약 `0.46s`
 - `npm run deploy`: 통과
   - URL: `https://altteulmap.altteul-lab.workers.dev`
   - Version ID: `b63ce151-afee-41a6-8e7b-2a4b1fc76959`
