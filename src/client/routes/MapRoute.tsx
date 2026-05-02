@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { Link, useSearchParams } from "react-router-dom";
 
@@ -118,6 +118,18 @@ function buildMapApiPath(
   const queryString = apiParams.toString();
 
   return queryString ? `/api/places/map?${queryString}` : "/api/places/map";
+}
+
+function serializeMapViewport(viewport: MapViewport) {
+  return [
+    viewport.center.lat.toFixed(4),
+    viewport.center.lng.toFixed(4),
+    viewport.zoom.toFixed(2),
+    viewport.bounds.minLat.toFixed(4),
+    viewport.bounds.maxLat.toFixed(4),
+    viewport.bounds.minLng.toFixed(4),
+    viewport.bounds.maxLng.toFixed(4),
+  ].join(":");
 }
 
 function createMapHref(params: {
@@ -840,6 +852,7 @@ export function MapRoute() {
   const [mobileListMode, setMobileListMode] =
     useState<MobileSheetMode>("hidden");
   const [viewport, setViewport] = useState<MapViewport | null>(null);
+  const lastClusterRefreshViewportKeyRef = useRef<string | null>(null);
   const [bookmarkedPlaceIds, setBookmarkedPlaceIds] = useState<Set<string>>(
     () => new Set(),
   );
@@ -951,6 +964,40 @@ export function MapRoute() {
       }
     });
   }, [loadPlaces, searchParams, viewport]);
+
+  const refreshClusterViewportPlaces = useCallback(
+    (nextViewport: MapViewport) => {
+      const nextKey = serializeMapViewport(nextViewport);
+
+      if (lastClusterRefreshViewportKeyRef.current === nextKey) {
+        return;
+      }
+
+      lastClusterRefreshViewportKeyRef.current = nextKey;
+      setViewport(nextViewport);
+
+      startViewportRefresh(async () => {
+        try {
+          const data = await loadPlaces(
+            buildMapApiPath(searchParams, nextViewport),
+          );
+          setState({ status: "success", data, error: null });
+          setSelectedPlace(null);
+        } catch (error) {
+          lastClusterRefreshViewportKeyRef.current = null;
+          setState({
+            status: "error",
+            data: null,
+            error:
+              error instanceof Error
+                ? error.message
+                : "클러스터 주변 결과를 불러오지 못했습니다.",
+          });
+        }
+      });
+    },
+    [loadPlaces, searchParams],
+  );
 
   const places = state.data?.items ?? [];
   const mapMarkers = state.data?.mapMarkers ?? [];
@@ -1201,6 +1248,7 @@ export function MapRoute() {
                 : null
             }
             onSelectPlace={setSelectedPlace}
+            onClusterFocusViewport={refreshClusterViewportPlaces}
             onViewportChange={setViewport}
           />
 

@@ -272,6 +272,10 @@ function getMapMarkerLimit(zoom: number | null, query: string | null) {
     return 36;
   }
 
+  if (zoom >= 16) {
+    return 160;
+  }
+
   if (zoom >= 15) {
     return 96;
   }
@@ -297,6 +301,10 @@ function getMapMarkerMode(
   query: string | null,
 ): PlaceMapMarkerMode {
   if (query?.trim()) {
+    return "place";
+  }
+
+  if (zoom !== null && zoom >= 16) {
     return "place";
   }
 
