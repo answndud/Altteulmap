@@ -30,7 +30,8 @@ Next.js 기능 parity 회귀 복구 구현은 1차 완료됐지만, 운영 수�
 - 운영 Worker `altteulmap`에 `NEXT_PUBLIC_NAVER_MAP_KEY_ID` secret을 등록했다.
 - 운영 배포를 완료했다.
   - URL: `https://altteulmap.altteul-lab.workers.dev`
-  - Version ID: `9e0ef045-9e78-48a8-b142-16dfd06af87a`
+  - 기존 Version ID: `9e0ef045-9e78-48a8-b142-16dfd06af87a`
+  - 클러스터 수정 Version ID: `b63ce151-afee-41a6-8e7b-2a4b1fc76959`
 
 ## 최근 검증
 - `npm run lint`: 통과
@@ -45,6 +46,12 @@ Next.js 기능 parity 회귀 복구 구현은 1차 완료됐지만, 운영 수�
   - bookmarks/comments/price-review/report-admin 5건 통과
 - `npm run verify`: 통과
 - `npm run deploy:check`: 통과
+- `npm run deploy`: 통과
+  - URL: `https://altteulmap.altteul-lab.workers.dev`
+  - Version ID: `b63ce151-afee-41a6-8e7b-2a4b1fc76959`
+- `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev npm run smoke:remote`: 통과
+- 운영 API 클러스터 고줌 확인: 통과
+  - `/api/places/map?...&zoom=16` 응답이 `markerMode: place`, `kinds: ["place"]`, `mapMarkerCount: 160`을 반환함
 - 이전 배포 검증:
   - `npx playwright test tests/e2e/map-price-filter.spec.ts tests/e2e/map-price-filter.mobile.spec.ts`: 통과
   - `npm run deploy`: 통과
@@ -71,12 +78,11 @@ Next.js 기능 parity 회귀 복구 구현은 1차 완료됐지만, 운영 수�
 | Test isolation | seed가 `place_reactions`를 초기화해 반복 E2E 누적을 제거했다. | 복구 완료 | 없음 |
 
 ## 남은 이슈
-- 숫자 클러스터 자동 검증은 API/E2E 기준으로 통과했다. 운영 Naver 지도에서 실제 클릭 후 분할되는지는 배포 후 브라우저/실기기에서 재확인이 필요하다.
+- 숫자 클러스터 자동 검증과 운영 API 검증은 통과했다. 운영 Naver 지도에서 실제 클릭 후 시각적으로 분할되는지는 브라우저/실기기에서 재확인이 필요하다.
 - Kakao/Naver OAuth live callback은 provider 실제 계정 로그인이 필요하므로 수동 QA가 필요하다.
 - 실제 모바일 기기에서 Naver map + 목록 sheet 터치 충돌, 상세 sheet, 주요 화면 디자인 밀도는 최종 수동 확인이 필요하다.
 
 ## 다음 액션
-- 클러스터 수정분을 운영 배포하고 remote smoke를 다시 수행한다.
 - 운영 URL에서 숫자 클러스터 클릭 후 개별 장소 마커로 분할되는지 확인한다.
 - 실제 Kakao/Naver 계정으로 운영 OAuth callback을 확인한다.
 - 실제 모바일 기기에서 지도, 목록 바텀시트, 상세 시트, 제보/신고/댓글 흐름을 최종 확인한다.
