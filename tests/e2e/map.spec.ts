@@ -29,7 +29,7 @@ async function getLatestShareCall(page: Page) {
   });
 }
 
-test("지도 map API는 클러스터 모드에서도 단일 장소 bucket은 place marker로 반환한다", async ({ page }) => {
+test("지도 map API는 클러스터 모드에서 숫자 클러스터만 반환한다", async ({ page }) => {
   const search = new URLSearchParams({
     minLat: String(SEOUL_BOOTSTRAP_BOUNDS.minLat),
     maxLat: String(SEOUL_BOOTSTRAP_BOUNDS.maxLat),
@@ -53,16 +53,12 @@ test("지도 map API는 클러스터 모드에서도 단일 장소 bucket은 pla
   expect(payload.markerMode === "cluster" || payload.markerMode === "place").toBeTruthy();
   expect(payload.mapMarkers?.length).toBeTruthy();
 
-  const markerKinds = new Set(payload.mapMarkers?.map((marker) => marker.kind) ?? []);
+  if (payload.markerMode === "cluster") {
+    expect(new Set(payload.mapMarkers?.map((marker) => marker.kind))).toEqual(
+      new Set(["cluster"]),
+    );
+  }
 
-  expect([...markerKinds].every((kind) => kind === "cluster" || kind === "place")).toBe(
-    true,
-  );
-  expect(
-    payload.mapMarkers?.some(
-      (marker) => marker.kind === "cluster" && marker.placeCount === 1,
-    ),
-  ).toBe(false);
   expect(
     payload.mapMarkers?.some(
       (marker) =>
