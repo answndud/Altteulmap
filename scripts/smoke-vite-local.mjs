@@ -32,8 +32,11 @@ const workerEnvKeys = [
   "AUTH_NAVER_CLIENT_SECRET",
   "NEXT_PUBLIC_NAVER_MAP_KEY_ID",
   "NEXT_PUBLIC_NAVER_MAP_CLIENT_ID",
+  "NEXT_PUBLIC_TURNSTILE_SITE_KEY",
   "NAVER_MAP_CLIENT_ID",
   "NAVER_CLIENT_SECRET",
+  "TURNSTILE_BYPASS_TOKEN",
+  "TURNSTILE_SECRET_KEY",
 ];
 
 loadEnvFilesWithShellPrecedence({
@@ -205,10 +208,15 @@ function assertSecurityHeaders(response, label) {
   );
 }
 
+function assertRequestIdHeader(response, label) {
+  assert(Boolean(response.headers.get("x-request-id")), `${label} X-Request-Id missing`);
+}
+
 async function smokeApi() {
   const deepHealth = await requestJson("/api/health?deep=1");
 
   assert(deepHealth.response.status === 200, "deep health failed");
+  assertRequestIdHeader(deepHealth.response, "deep health");
   assert(deepHealth.body.ok === true, "deep health returned non-ok status");
   assert(
     deepHealth.body.checks?.some(
@@ -231,6 +239,7 @@ async function smokeApi() {
 
   assert(categories.response.status === 200, "categories API failed");
   assertSecurityHeaders(categories.response, "categories API");
+  assertRequestIdHeader(categories.response, "categories API");
   assert(Array.isArray(categories.body.groups), "categories.groups missing");
   assert(
     Array.isArray(categories.body.categories),
@@ -241,6 +250,7 @@ async function smokeApi() {
 
   assert(publicConfig.response.status === 200, "public config API failed");
   assertSecurityHeaders(publicConfig.response, "public config API");
+  assertRequestIdHeader(publicConfig.response, "public config API");
   assert(
     Boolean(publicConfig.body.naverMapKeyId),
     "public config did not expose a NAVER map key",

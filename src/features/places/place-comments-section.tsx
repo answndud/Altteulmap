@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 
+import { PublicWriteTurnstile } from "@/client/components/PublicWriteTurnstile";
 import { getRateLimitFeedbackMessage } from "@/lib/rate-limit-feedback";
 import type { PlaceComment } from "@/features/places/types";
 
@@ -28,7 +29,10 @@ export function PlaceCommentsSection({
 }: PlaceCommentsSectionProps) {
   const [comments, setComments] = useState(initialComments);
   const [body, setBody] = useState("");
+  const [isTurnstileRequired, setIsTurnstileRequired] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
+  const [turnstileResetSignal, setTurnstileResetSignal] = useState(0);
+  const [turnstileToken, setTurnstileToken] = useState("");
   const [isPending, startTransition] = useTransition();
 
   const handleSubmit = () => {
@@ -38,10 +42,11 @@ export function PlaceCommentsSection({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ body }),
+        body: JSON.stringify({ body, turnstileToken }),
       });
 
       const result = (await response.json()) as CommentActionResponse;
+      setTurnstileResetSignal((current) => current + 1);
       setMessage(
         getRateLimitFeedbackMessage({
           response,
@@ -118,10 +123,17 @@ export function PlaceCommentsSection({
             <p className="text-sm text-stone-500">
               짧고 구체적인 이용 팁만 남겨주세요.
             </p>
+            <PublicWriteTurnstile
+              disabled={isPending}
+              onRequiredChange={setIsTurnstileRequired}
+              onTokenChange={setTurnstileToken}
+              resetSignal={turnstileResetSignal}
+              testId="comment-turnstile"
+            />
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={isPending || body.trim().length < 2}
+              disabled={isPending || body.trim().length < 2 || (isTurnstileRequired && !turnstileToken)}
               data-testid="comment-submit"
               className="altteulmap-accent-solid altteulmap-button inline-flex w-full items-center justify-center whitespace-nowrap px-4 py-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
             >

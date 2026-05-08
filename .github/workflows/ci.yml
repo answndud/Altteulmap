@@ -12,6 +12,8 @@ on:
       - docs/**
       - README.md
   workflow_dispatch:
+  schedule:
+    - cron: "17 */6 * * *"
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -123,7 +125,7 @@ jobs:
 
   remote-smoke:
     name: Remote Smoke
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -145,8 +147,5 @@ jobs:
 
       - name: Run remote smoke
         run: |
-          if [ -z "$SMOKE_PUBLIC_URL" ]; then
-            echo "SMOKE_PUBLIC_URL is not configured; skipping remote smoke."
-            exit 0
-          fi
+          export SMOKE_PUBLIC_URL="${SMOKE_PUBLIC_URL:-https://altteulmap.altteul-lab.workers.dev}"
           npm run smoke:remote

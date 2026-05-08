@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useState, useTransition } from "react";
 
+import { PublicWriteTurnstile } from "@/client/components/PublicWriteTurnstile";
 import { FieldError, ResultMessage } from "@/components/form-feedback";
 import { getRateLimitFeedbackMessage } from "@/lib/rate-limit-feedback";
 import {
@@ -38,6 +39,9 @@ export function ReportSubmitForm({
   placeName,
 }: ReportSubmitFormProps) {
   const [submitResult, setSubmitResult] = useState<SubmitResult | null>(null);
+  const [isTurnstileRequired, setIsTurnstileRequired] = useState(true);
+  const [turnstileResetSignal, setTurnstileResetSignal] = useState(0);
+  const [turnstileToken, setTurnstileToken] = useState("");
   const [isPending, startTransition] = useTransition();
 
   const form = useForm<
@@ -67,10 +71,14 @@ export function ReportSubmitForm({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(values),
+        body: JSON.stringify({
+          ...values,
+          turnstileToken,
+        }),
       });
 
       const result = (await response.json()) as SubmitResult;
+      setTurnstileResetSignal((current) => current + 1);
       setSubmitResult({
         ...result,
         message: getRateLimitFeedbackMessage({
@@ -135,9 +143,17 @@ export function ReportSubmitForm({
             <FieldError>{errors.detail?.message}</FieldError>
           </label>
 
+          <PublicWriteTurnstile
+            disabled={isPending}
+            onRequiredChange={setIsTurnstileRequired}
+            onTokenChange={setTurnstileToken}
+            resetSignal={turnstileResetSignal}
+            testId="report-turnstile"
+          />
+
           <button
             type="submit"
-            disabled={isPending}
+            disabled={isPending || (isTurnstileRequired && !turnstileToken)}
             data-testid="report-submit-button"
             className="altteulmap-accent-solid altteulmap-button inline-flex w-full items-center justify-center whitespace-nowrap px-5 py-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
           >
