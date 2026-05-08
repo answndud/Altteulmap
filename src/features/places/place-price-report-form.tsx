@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 
+import { PublicWriteTurnstile } from "@/client/components/PublicWriteTurnstile";
 import { getRateLimitFeedbackMessage } from "@/lib/rate-limit-feedback";
 import type { PlacePriceItem } from "@/features/places/types";
 
@@ -34,6 +35,9 @@ export function PlacePriceReportForm({
   const [unitLabel, setUnitLabel] = useState("");
   const [comment, setComment] = useState("");
   const [feedback, setFeedback] = useState<PriceReportFeedback | null>(null);
+  const [isTurnstileRequired, setIsTurnstileRequired] = useState(true);
+  const [turnstileResetSignal, setTurnstileResetSignal] = useState(0);
+  const [turnstileToken, setTurnstileToken] = useState("");
   const [isPending, startTransition] = useTransition();
 
   const handleSubmit = () => {
@@ -49,10 +53,12 @@ export function PlacePriceReportForm({
           amount,
           unitLabel,
           comment,
+          turnstileToken,
         }),
       });
 
       const result = (await response.json()) as PriceReportActionResponse;
+      setTurnstileResetSignal((current) => current + 1);
       const resolvedMessage = getRateLimitFeedbackMessage({
         response,
         message: result.message,
@@ -177,10 +183,22 @@ export function PlacePriceReportForm({
           <p className="text-sm text-stone-500">
             접수된 가격은 운영 검토 후 대표 가격에 반영됩니다.
           </p>
+          <PublicWriteTurnstile
+            disabled={isPending}
+            onRequiredChange={setIsTurnstileRequired}
+            onTokenChange={setTurnstileToken}
+            resetSignal={turnstileResetSignal}
+            testId="price-report-turnstile"
+          />
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={isPending || label.trim().length === 0 || amount.trim().length === 0}
+            disabled={
+              isPending ||
+              label.trim().length === 0 ||
+              amount.trim().length === 0 ||
+              (isTurnstileRequired && !turnstileToken)
+            }
             data-testid="price-report-submit"
             className="altteulmap-accent-solid altteulmap-button inline-flex w-full items-center justify-center whitespace-nowrap px-4 py-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
           >

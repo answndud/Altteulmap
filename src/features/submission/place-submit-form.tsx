@@ -8,6 +8,7 @@ import {
   useForm,
 } from "react-hook-form";
 
+import { PublicWriteTurnstile } from "@/client/components/PublicWriteTurnstile";
 import { FieldError, ResultMessage } from "@/components/form-feedback";
 import { categoryGroups } from "@/features/categories/catalog";
 import {
@@ -165,6 +166,9 @@ function PriceItemFields({
 
 export function PlaceSubmitForm() {
   const [submitResult, setSubmitResult] = useState<SubmitResult | null>(null);
+  const [isTurnstileRequired, setIsTurnstileRequired] = useState(true);
+  const [turnstileResetSignal, setTurnstileResetSignal] = useState(0);
+  const [turnstileToken, setTurnstileToken] = useState("");
   const [isPending, startTransition] = useTransition();
 
   const form = useForm<
@@ -197,10 +201,14 @@ export function PlaceSubmitForm() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(values),
+        body: JSON.stringify({
+          ...values,
+          turnstileToken,
+        }),
       });
 
       const result = (await response.json()) as SubmitResult;
+      setTurnstileResetSignal((current) => current + 1);
       setSubmitResult({
         ...result,
         message: getRateLimitFeedbackMessage({
@@ -390,9 +398,16 @@ export function PlaceSubmitForm() {
             <p className="text-sm text-[var(--altteul-text-tertiary)]">
               운영 검토 후 지도에 반영됩니다.
             </p>
+            <PublicWriteTurnstile
+              disabled={isPending}
+              onRequiredChange={setIsTurnstileRequired}
+              onTokenChange={setTurnstileToken}
+              resetSignal={turnstileResetSignal}
+              testId="submit-turnstile"
+            />
             <button
               type="submit"
-              disabled={isPending}
+              disabled={isPending || (isTurnstileRequired && !turnstileToken)}
               data-testid="submit-place-button"
               className="altteulmap-accent-solid altteulmap-button inline-flex w-full items-center justify-center whitespace-nowrap px-5 py-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
             >
