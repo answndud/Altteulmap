@@ -1,3 +1,417 @@
 # PROGRESS.md
 
-현재 active 작업 없음
+## Active 상태
+
+### 작업명
+운영 하드닝 후속 과제 계획
+
+### 현재 상태
+- `docs/project/production-hardening-report-2026-05-08.md`의 남은 후속 과제를 `docs/PLAN.md`에 active 계획으로 정리했다.
+- P0. 가격 제보 동시 승인 DB-level idempotency 구현과 검증을 완료했다.
+- P1. 운영 알림과 에러 추적 1차 보강을 완료했다.
+- P1. Turnstile public write bot 방어 구현과 로컬 검증을 완료했다.
+- P2. Hyperdrive 도입 판단을 완료했고, 현재는 도입 보류로 결정했다.
+- P2. strict CSP 전환 준비를 완료했고, enforcement 전환은 marker SVG/data URL PoC 이후로 분리했다.
+- P2. global search index 기준 수립을 완료했고, 현재는 인덱스 도입 보류로 결정했다.
+- P3. 큰 파일 분리 리팩터링을 시작했고, Worker HTTP utilities, health/static route, auth, public config/bookmark route, places read route, public write route, admin route, telemetry route, admin reports repository, admin prices repository, admin places repository, map query helper, place card, category tray를 분리했다.
+- 다음 단계는 P3 `src/client/routes/MapRoute.tsx`의 trending section 또는 sheet 영역을 추가 분리하는 것이다.
+
+### 완료한 변경
+- `docs/PLAN.md`
+  - 가격 제보 동시 승인 DB-level idempotency를 P0로 배치했다.
+  - Turnstile public write bot 방어와 운영 알림/에러 추적을 P1로 배치했다.
+  - Hyperdrive, strict CSP, global search index를 수치/로그 기반 판단이 필요한 P2로 배치했다.
+  - 큰 파일 분리 리팩터링을 P3로 배치하고 `docs/refactoring-large-files.md`를 기준 문서로 연결했다.
+- `src/worker/admin-repository.ts`
+  - 가격 제보 승인/반려 처리 시작 시 `report_status = pending_review` 조건부 update로 report row를 먼저 claim하도록 변경했다.
+  - 동일 report에 대한 동시 요청 중 하나만 claim에 성공하고 나머지는 `이미 처리된 가격 제보입니다.` 응답을 받도록 했다.
+  - 승인 처리에서는 claim 후 `accepted` 상태가 된 현재 report를 count에 포함하므로 기존 `accepted count + 1` 계산을 제거했다.
+  - 같은 장소+가격 라벨 단위로 `pg_advisory_xact_lock`을 걸어 같은 price item 갱신이 transaction 내에서 직렬화되도록 했다.
+- `scripts/smoke-price-report-concurrency.ts`
+  - 임시 active place와 pending price report를 만든 뒤 같은 report에 approve 요청 2개를 동시에 실행하는 targeted smoke를 추가했다.
+  - 검증 후 임시 place/report/action은 정리한다.
+- `package.json`
+  - `npm run smoke:price-concurrency` 스크립트를 추가했다.
+- `.github/workflows/ci.yml`
+  - `remote-smoke` job을 `workflow_dispatch`뿐 아니라 6시간 간격 schedule에서도 실행하도록 변경했다.
+  - `SMOKE_PUBLIC_URL` secret이 없으면 기본 운영 URL `https://altteulmap.altteul-lab.workers.dev`를 사용하도록 했다.
+  - 관리자 smoke credentials가 없으면 기존처럼 credentials/admin smoke만 skip하고 public/deep health smoke는 계속 실행한다.
+- `src/worker/index.ts`
+  - 모든 Worker 처리 요청에 `X-Request-Id`를 부여하는 middleware를 추가했다.
+  - 처리되지 않은 예외를 `app.onError`에서 JSON 로그로 남기고, response body에도 `requestId`를 포함하도록 했다.
+  - 로그에는 `worker_unhandled_error`, request id, method, path, error name, message만 남겨 secret이 섞이지 않도록 했다.
+- `scripts/smoke-vite-local.mjs`
+  - 주요 API 응답의 `X-Request-Id` 존재를 검증하도록 보강했다.
+- `docs/deploy/deploy-cloudflare.md`
+  - GitHub Actions scheduled remote smoke 운영 기준을 추가했다.
+  - Worker unhandled error JSON 로그와 `X-Request-Id` 역추적 기준을 runbook에 추가했다.
+- `src/worker/index.ts`
+  - `POST /api/places/:id/prices`, `POST /api/places/:id/comments`, `POST /api/places`, `POST /api/reports`에 Turnstile server-side 검증을 추가했다.
+  - production에서는 `TURNSTILE_SECRET_KEY` 없이 public write가 성공하지 않도록 했다.
+  - localhost 또는 `USE_MOCK_DATA=true`에서만 Turnstile local/test bypass를 허용하도록 했다.
+  - `/api/config/public`에 `turnstileSiteKey`를 추가하고, `/api/health`의 `public-config`에서 Turnstile site key/secret 설정 여부를 확인하도록 했다.
+- `src/client/components/PublicWriteTurnstile.tsx`
+  - `/api/config/public`에서 site key를 받아 Cloudflare Turnstile widget을 명시 렌더링하는 공용 컴포넌트를 추가했다.
+  - site key가 없는 local/test 환경에서는 UI를 렌더링하지 않고 기존 자동화 흐름을 유지한다.
+- 공개 write form
+  - 가격 제보, 코멘트, 장소 등록, 신고 폼이 `turnstileToken`을 함께 전송하도록 했다.
+  - Turnstile이 필요한 환경에서는 토큰이 없을 때 submit 버튼을 비활성화한다.
+- `public/_headers`
+  - Turnstile script/connect/frame 출처를 CSP에 추가했다.
+- `scripts/smoke-vite-local.mjs`, `scripts/run-local-e2e.mjs`
+  - `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`, `TURNSTILE_BYPASS_TOKEN`을 로컬 Worker dev vars 전달 목록에 추가했다.
+- `docs/deploy/deploy-cloudflare.md`
+  - Turnstile 운영 var/secret 설정, local bypass 제한, 장애 확인 순서를 추가했다.
+- `src/worker/db.ts`
+  - Worker DB connection resolver가 `env.HYPERDRIVE.connectionString`을 우선 사용하고, 없으면 기존 `DATABASE_URL`로 fallback하도록 변경했다.
+  - 기존 env 이름을 바꾸지 않고 Hyperdrive binding 추가만으로 전환 가능한 구조로 만들었다.
+- `src/worker/index.ts`
+  - `/api/health` database check가 DB source를 `hyperdrive`, `database-url`, `mock`, `missing`으로 구분하도록 했다.
+- `docs/project/hyperdrive-decision-2026-05-08.md`
+  - 운영 map API 측정값, remote smoke 결과, Hyperdrive 도입/보류 판단, 도입 trigger, 전환/rollback 절차를 문서화했다.
+- `docs/deploy/deploy-cloudflare.md`
+  - Hyperdrive 전환 기준, Wrangler binding 예시, 검증 명령, rollback 절차를 추가했다.
+- `src/client/routes/MapRoute.tsx`
+  - 모바일 장소 목록 open/sheet/toggle/item의 단순 inline style 4건을 class 기반으로 제거했다.
+- `scripts/check-csp-inline-style-inventory.mjs`
+  - `src`, `public` 하위의 inline style/CSP blocker 후보를 JSON으로 출력하는 inventory 스크립트를 추가했다.
+- `package.json`
+  - `npm run csp:inventory` 스크립트를 추가했다.
+- `docs/project/strict-csp-inventory-2026-05-08.md`
+  - 현재 inline style inventory, 제거 완료 항목, 남은 blocker, marker SVG/data URL 전환 전략, report-only/enforcement 검증 계획을 문서화했다.
+- `docs/deploy/deploy-cloudflare.md`
+  - strict CSP 전환 기준 문서와 `npm run csp:inventory` 검증 명령을 추가했다.
+- `scripts/analyze-global-search-query.mjs`
+  - 운영/로컬 DB에서 global search count, sample, current OR query plan, proposed expression query plan을 JSON으로 출력하는 read-only 분석 스크립트를 추가했다.
+- `package.json`
+  - `npm run search:analyze` 스크립트를 추가했다.
+- `docs/project/global-search-index-decision-2026-05-08.md`
+  - 운영 API 측정값, DB query plan, `pg_trgm` vs full-text 판단, migration 후보 SQL, 도입 trigger, rollback 절차를 문서화했다.
+- `docs/deploy/deploy-cloudflare.md`
+  - global search index 도입 기준과 query plan 확인 명령을 추가했다.
+- `src/worker/http/security-headers.ts`
+  - Worker 공통 보안 헤더와 CSP 조립 로직을 `src/worker/index.ts`에서 분리했다.
+  - `applySecurityHeaders` 동작은 기존과 동일하게 유지했다.
+- `src/worker/http/errors.ts`
+  - `createRequestId`, `getErrorMessage`, `logWorkerError`를 `src/worker/index.ts`에서 분리했다.
+  - `cf-ray` 기반 request id 우선순위와 fallback `randomUUID` 동작을 유지했다.
+- `src/worker/index.ts`
+  - 보안 헤더/request id/error helper를 import하도록 정리했다.
+  - route 순서, response shape, `X-Request-Id`, `app.onError` 동작은 변경하지 않았다.
+- `src/worker/http/cookies.ts`
+  - `getCookieValue`, `appendCookie`, visitor id cookie helper를 `src/worker/index.ts`에서 분리했다.
+  - cookie name/value encoding, `HttpOnly`, `SameSite=Lax`, localhost secure cookie 예외 동작을 유지했다.
+- `src/worker/http/urls.ts`
+  - origin 산출과 callback URL normalization helper를 `src/worker/index.ts`에서 분리했다.
+  - `/login`, `/signup` callback 차단과 same-origin callback 보정 동작을 유지했다.
+- `src/worker/index.ts`
+  - cookie/URL helper를 import하도록 정리했다.
+  - 인증 cookie 이름, session cookie semantics, OAuth callback route path는 변경하지 않았다.
+- `src/worker/http/public-config.ts`
+  - Naver Map public key와 Turnstile site key 산출 helper를 `src/worker/index.ts`에서 분리했다.
+  - build-time fallback env 우선순위와 runtime env 우선순위를 유지했다.
+- `src/worker/routes/health.ts`
+  - `/api/health` route와 deep health DB/static asset check를 `src/worker/index.ts`에서 분리했다.
+  - health response shape, status code, `no-store`, public-config/auth-provider/database/static-assets check 필드를 유지했다.
+- `src/worker/routes/static.ts`
+  - `/robots.txt`, `/manifest.webmanifest`, `/sitemap.xml`, unmatched `/api/*`, SPA `notFound` fallback을 분리했다.
+  - static/SEO route가 SPA `index.html`로 fall through하지 않는 기존 route 순서를 유지했다.
+- `src/worker/index.ts`
+  - health/static route는 registrar 호출로 대체했다.
+  - route path, fallback 순서, `app.notFound` security header 적용은 변경하지 않았다.
+- `src/worker/auth/session.ts`
+  - Auth.js 호환 cookie 이름, session max age, OAuth state max age 상수를 `src/worker/index.ts`에서 분리했다.
+  - session 생성, signed payload encode/decode, session cookie decode, request session reader를 분리했다.
+  - 기존 `AUTH_SECRET` fallback, `v1.payload.signature` 형식, legacy plain JSON session parse fallback을 유지했다.
+- `src/worker/index.ts`
+  - auth session/signing helper를 import하도록 정리했다.
+  - `/api/auth/*` route path, session cookie semantics, credentials/OAuth response shape는 변경하지 않았다.
+- `src/worker/routes/auth.ts`
+  - `/api/auth/csrf`, `/api/auth/session`, `/api/auth/signout`, `/api/auth/providers`, `/api/auth/signin/:provider`, `/api/auth/callback/:provider`, `/api/auth/callback/credentials`, `/api/auth/signup` route를 `src/worker/index.ts`에서 분리했다.
+  - Kakao/Naver OAuth state 생성/검증, provider config, token exchange, profile fetch helper를 auth route 모듈로 이동했다.
+  - credentials login/signup response shape, OAuth redirect/error behavior, Auth.js 호환 cookie names는 유지했다.
+- `src/worker/index.ts`
+  - auth route는 `registerAuthRoutes` 호출로 대체했다.
+  - `src/worker/index.ts`는 2675줄에서 2122줄로 감소했다.
+- `src/worker/routes/public-config.ts`
+  - `/api/categories`, `/api/config/public` route를 `src/worker/index.ts`에서 분리했다.
+  - 카테고리 응답 shape와 public config `naverMapKeyId`, `turnstileSiteKey` 필드를 유지했다.
+- `src/worker/routes/bookmarks.ts`
+  - `/api/bookmarks`, `PUT /api/bookmarks/:id` route와 mock bookmark store를 `src/worker/index.ts`에서 분리했다.
+  - 인증 없음 `401`, 검증 실패 `400`, 대상 없음 `404`, 성공 응답 shape를 유지했다.
+- `src/worker/index.ts`
+  - public config와 bookmark route는 registrar 호출로 대체했다.
+  - `src/worker/index.ts`는 2122줄에서 1986줄로 감소했다.
+- `src/worker/routes/places-read.ts`
+  - `/api/places/map`, `/api/places/:id` route를 `src/worker/index.ts`에서 분리했다.
+  - map bounds/zoom query parsing, map preview edge cache, viewer detection, mock comment merge helper를 places read route 모듈로 이동했다.
+  - 지도 목록 response shape, `X-Altteulmap-Map-Cache`, 장소 상세 `404`/`503` response, comment merge semantics를 유지했다.
+- `src/worker/index.ts`
+  - places read route는 `registerPlacesReadRoutes` 호출로 대체했다.
+  - `/api/places/:id`가 가격 제보/댓글/반응 write route보다 먼저 등록되는 route 순서를 유지했다.
+  - `src/worker/index.ts`는 1986줄에서 1736줄로 감소했다.
+- `src/worker/routes/public-write.ts`
+  - `POST /api/places/:id/prices`, `POST /api/places/:id/comments`, `DELETE /api/places/:id/comments/:commentId`, `PUT /api/places/:id/reaction`, `POST /api/places`, `POST /api/reports` route를 `src/worker/index.ts`에서 분리했다.
+  - Turnstile 검증, public write rate limit, mock comment/reaction store, DB-backed write fallback을 public write route 모듈로 이동했다.
+  - mock comment store는 `getMockPublicWriteComments`로만 places read route에 노출해 상세 조회와 댓글 쓰기/삭제가 같은 store를 공유하도록 유지했다.
+  - 공개 쓰기 response shape, rate limit header, Turnstile local bypass, DB unavailable response 의미를 유지했다.
+- `src/worker/index.ts`
+  - public write route는 `registerPublicWriteRoutes` 호출로 대체했다.
+  - Turnstile bypass health check는 public write route 모듈에서 export한 `isLocalTurnstileBypassAllowed`를 그대로 사용한다.
+  - `src/worker/index.ts`는 1736줄에서 894줄로 감소했다.
+- `src/worker/routes/admin.ts`
+  - `/api/admin/places`, `/api/admin/places/:id`, `/api/admin/prices`, `/api/admin/prices/:id`, `/api/admin/prices/places/:id`, `/api/admin/price-items/:id`, `/api/admin/reports`, `/api/admin/reports/:id` route를 `src/worker/index.ts`에서 분리했다.
+  - `requireAdminSession`을 admin route 모듈로 이동해 `/api/admin/*`의 401/403 권한 경계를 route 모듈 안에 모았다.
+  - 관리자 장소 승인, 가격 제보 승인/반려, 가격 항목 수정, 신고 처리의 DB/mock fallback과 response shape를 유지했다.
+- `src/worker/index.ts`
+  - admin route는 `registerAdminRoutes` 호출로 대체했다.
+  - `src/worker/index.ts`는 894줄에서 303줄로 감소했다.
+- `src/worker/routes/telemetry.ts`
+  - `POST /api/telemetry/visit` route를 `src/worker/index.ts`에서 분리했다.
+  - 방문 이벤트 zod schema, `detail|detail_sheet|list|trending` share source 검증, actor 산출, `visit_activity` 기록 호출을 telemetry route 모듈로 이동했다.
+  - 성공 응답 `{ ok, tracked, source }`, 검증 실패 `400`, 기록 실패 `500`, visitor cookie/write header 동작을 유지했다.
+- `src/worker/index.ts`
+  - telemetry route는 `registerTelemetryRoutes` 호출로 대체했다.
+  - `src/worker/index.ts`는 303줄에서 190줄로 감소했다.
+- `src/worker/admin-reports-repository.ts`
+  - 관리자 신고 목록, mock 신고 목록, 신고 상태 변경 repository를 `src/worker/admin-repository.ts`에서 분리했다.
+  - 신고 AI moderation suggestion 조회, 신고 상태 update, admin action 기록, mock fallback response shape를 유지했다.
+- `src/worker/admin-repository.ts`
+  - 기존 `src/worker/routes/admin.ts` import 경로가 깨지지 않도록 신고 repository 함수를 re-export한다.
+  - 파일 크기는 1200줄에서 1062줄로 감소했다.
+- `src/worker/admin-prices-repository.ts`
+  - 관리자 가격 제보 목록, 가격 제보 승인/반려, 장소별 가격 항목 상세, 가격 항목 수정 repository를 `src/worker/admin-repository.ts`에서 분리했다.
+  - 가격 제보 moderation suggestion 조회, 동시 승인 claim/idempotency, advisory lock, 대표 가격 summary refresh, admin action 기록 response shape를 유지했다.
+- `src/worker/admin-repository.ts`
+  - 기존 `src/worker/routes/admin.ts` import 경로가 깨지지 않도록 가격 repository 함수를 re-export한다.
+  - 파일 크기는 1062줄에서 339줄로 감소했다.
+- `src/worker/admin-places-repository.ts`
+  - 관리자 장소 제보 목록과 장소 승인/반려 repository를 `src/worker/admin-repository.ts`에서 분리했다.
+  - 장소 승인/반려 시 장소 status 변경, 연결된 가격 제보 status 변경, admin action 기록, category/price item 포함 response shape를 유지했다.
+- `src/worker/admin-repository.ts`
+  - 장소/가격/신고 repository를 re-export하는 compatibility barrel로 축소했다.
+  - 파일 크기는 339줄에서 15줄로 감소했다.
+- `src/client/features/map/map-query.ts`
+  - 서울 bootstrap bounds/zoom, viewport fetch debounce 상수, cluster focus lock 상수, map API path builder, viewport bounds snap, bootstrap viewport 생성, map href 생성을 `src/client/routes/MapRoute.tsx`에서 분리했다.
+  - 지도 API query string, viewport bounds snapping, bootstrap bounds 처리, 검색 scope 처리 동작은 변경하지 않았다.
+- `src/client/routes/MapRoute.tsx`
+  - map query/viewport 순수 helper를 import하도록 정리했다.
+  - 파일 크기는 1685줄에서 1582줄로 감소했다.
+- `src/client/features/map/map-format.ts`
+  - 가격 formatter와 검증 badge/label helper를 `src/client/routes/MapRoute.tsx`에서 분리했다.
+  - 카드, 상세 시트, 모바일 목록에서 쓰는 가격/검증 문구 semantics를 유지했다.
+- `src/client/features/map/PlaceCard.tsx`
+  - 지도 결과 목록의 장소 카드 UI를 `src/client/routes/MapRoute.tsx`에서 분리했다.
+  - `place-list-item-*`, `place-list-like-count-*`, share button data-testid, bookmark update, list selection 동작을 유지했다.
+- `src/client/routes/MapRoute.tsx`
+  - 장소 카드 컴포넌트를 import하도록 정리했다.
+  - 파일 크기는 1582줄에서 1466줄로 감소했다.
+- `src/client/features/map/MapCategoryTray.tsx`
+  - 업종 필터 tray UI를 `src/client/routes/MapRoute.tsx`에서 분리했다.
+  - 전체 보기 링크, 상위 업종 그룹 선택, 세부 업종 링크, 현재 검색어/검색 scope 유지 동작을 보존했다.
+- `src/client/routes/MapRoute.tsx`
+  - 업종 필터 tray 컴포넌트를 import하도록 정리했다.
+  - 파일 크기는 1466줄에서 1326줄로 감소했다.
+
+### 최근 검증
+- `npm run typecheck` 통과
+- `npm run lint` 통과
+- `npm run smoke:price-concurrency` 통과
+  - 동시 approve 2건 중 1건 성공, 1건 `이미 처리된 가격 제보입니다.` 응답 확인
+  - persisted state 확인:
+    - accepted report 1개
+    - pending report 0개
+    - price item 1개
+    - `verifiedReportCount` 1
+    - approve admin action 1개
+- `npm run cf:build:vite` 통과
+- `npm run deploy:check:vite` 통과
+- `npm run smoke:vite:local` 통과
+- CI YAML parse 확인 통과
+- 운영 알림/에러 추적 보강 후 `npm run typecheck` 통과
+- 운영 알림/에러 추적 보강 후 `npm run lint` 통과
+- 운영 알림/에러 추적 보강 후 `npm run smoke:vite:local` 통과
+- 운영 알림/에러 추적 보강 후 `npm run deploy:check:vite` 통과
+- 운영 알림/에러 추적 보강 후 `git diff --check` 통과
+- `NEXTAUTH_URL=http://127.0.0.1:3107 npx playwright test tests/e2e/price-review.spec.ts --project chromium` 통과
+- `git diff --check` 통과
+- Turnstile public write bot 방어 후 `npm run typecheck` 통과
+- Turnstile public write bot 방어 후 `npm run lint` 통과
+- Turnstile public write bot 방어 후 `npm run cf:build:vite` 통과
+- Turnstile public write bot 방어 후 `npm run deploy:check:vite` 통과
+- Turnstile public write bot 방어 후 `npm run smoke:vite:local` 통과
+- Turnstile public write bot 방어 후 `VITE_SMOKE_PORT=3107 npm run smoke:vite:local` 통과
+- Turnstile public write bot 방어 후 `npm run smoke:price-concurrency` 통과
+- Turnstile public write bot 방어 후 `NEXTAUTH_URL=http://127.0.0.1:3107 npx playwright test tests/e2e/price-review.spec.ts tests/e2e/comments.spec.ts tests/e2e/submission-admin.spec.ts tests/e2e/report-admin.spec.ts --project chromium` 통과
+- Turnstile public write bot 방어 후 `git diff --check` 통과
+- Hyperdrive 판단 중 `MAP_MEASURE_URL=https://altteulmap.altteul-lab.workers.dev npm run map:measure` 통과
+  - `seoul-viewport-z11`: p95 37ms
+  - `seoul-category-food-z13`: p95 36ms
+  - `global-query-kimbap`: p95 224ms
+- Hyperdrive 판단 중 `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev npm run smoke:remote` 통과
+  - deep health, map/place DB source, login, admin route, admin API boundary, Kakao/Naver redirect 확인
+  - admin credentials smoke는 secret 미설정으로 skip
+- Hyperdrive optional binding 코드 보강 후 `npm run typecheck` 통과
+- Hyperdrive optional binding 코드 보강 후 `npm run lint` 통과
+- Hyperdrive optional binding 코드 보강 후 `npm run cf:build:vite` 통과
+- Hyperdrive optional binding 코드 보강 후 `npm run deploy:check:vite` 통과
+- Hyperdrive optional binding 코드 보강 후 `npm run smoke:vite:local` 통과
+- Hyperdrive optional binding 코드 보강 후 `git diff --check` 통과
+- Strict CSP 전환 준비 중 `npm run csp:inventory` 통과
+  - 현재 남은 inline style 후보 12건
+  - `src/features/map/naver-map-panel.tsx`: 7건
+  - `src/features/map/naver-map-marker-visuals.ts`: 5건
+  - `src/worker/index.ts`, `public/_headers`는 `unsafe-inline` 유지 중
+- Strict CSP 전환 준비 후 `npm run typecheck` 통과
+- Strict CSP 전환 준비 후 `npm run lint` 통과
+- Strict CSP 전환 준비 후 `npm run smoke:vite:local` 통과
+- Strict CSP 전환 준비 후 `npm run deploy:check:vite` 통과
+- Strict CSP 전환 준비 후 `git diff --check` 통과
+- Global search index 판단 중 `MAP_MEASURE_URL=https://altteulmap.altteul-lab.workers.dev npm run map:measure` 통과
+  - `seoul-viewport-z11`: p95 43ms
+  - `seoul-category-food-z13`: p95 64ms
+  - `global-query-kimbap`: p95 213ms
+- Global search index 판단 중 `SEARCH_ANALYZE_QUERY=김밥 SEARCH_ANALYZE_EXECUTE=1 npm run search:analyze` 통과
+  - `pg_trgm` 미설치 확인
+  - `김밥` count 55
+  - current OR query plan은 `places_representative_price_idx` index scan + filter, execution 13.417ms
+  - proposed expression query plan은 seq scan, execution 7.327ms
+- Global search index 판단 중 `SEARCH_ANALYZE_QUERY=서울 SEARCH_ANALYZE_EXECUTE=1 npm run search:analyze` 통과
+- Global search index 판단 중 `SEARCH_ANALYZE_QUERY=분식 SEARCH_ANALYZE_EXECUTE=1 npm run search:analyze` 통과
+- Global search index 기준 수립 후 `npm run typecheck` 통과
+- Global search index 기준 수립 후 `npm run lint` 통과
+- Global search index 기준 수립 후 `npm run smoke:vite:local` 통과
+- Global search index 기준 수립 후 `npm run deploy:check:vite` 통과
+- Global search index 기준 수립 후 `git diff --check` 통과
+- P3 Worker HTTP helper 분리 후 `npm run typecheck` 통과
+- P3 Worker HTTP helper 분리 후 `npm run lint` 통과
+- P3 Worker HTTP helper 분리 후 `npm run deploy:check:vite` 통과
+- P3 Worker HTTP helper 분리 후 `npm run smoke:vite:local` 통과
+- P3 Worker HTTP helper 분리 후 `git diff --check` 통과
+- P3 Worker cookie/URL helper 분리 후 `npm run typecheck` 통과
+- P3 Worker cookie/URL helper 분리 후 `npm run lint` 통과
+- P3 Worker cookie/URL helper 분리 후 `npm run deploy:check:vite` 통과
+- P3 Worker cookie/URL helper 분리 후 `npm run smoke:vite:local` 통과
+- P3 Worker cookie/URL helper 분리 후 `git diff --check` 통과
+- P3 Worker health/static route 분리 후 `npm run typecheck` 통과
+- P3 Worker health/static route 분리 후 `npm run lint` 통과
+- P3 Worker health/static route 분리 후 `npm run deploy:check:vite` 통과
+- P3 Worker health/static route 분리 후 `npm run smoke:vite:local` 통과
+- P3 Worker health/static route 분리 후 `git diff --check` 통과
+- P3 Worker auth session helper 분리 후 `npm run typecheck` 통과
+- P3 Worker auth session helper 분리 후 `npm run lint` 통과
+- P3 Worker auth session helper 분리 후 `npm run deploy:check:vite` 통과
+- P3 Worker auth session helper 분리 후 `npm run smoke:vite:local` 통과
+- P3 Worker auth session helper 분리 후 `NEXTAUTH_URL=http://127.0.0.1:3107 npx playwright test tests/e2e/login.spec.ts tests/e2e/signup.spec.ts --project chromium` 통과
+- P3 Worker auth session helper 분리 후 `git diff --check` 통과
+- P3 Worker auth route registrar 분리 후 `npm run typecheck` 통과
+- P3 Worker auth route registrar 분리 후 `npm run lint` 통과
+- P3 Worker auth route registrar 분리 후 `npm run deploy:check:vite` 통과
+- P3 Worker auth route registrar 분리 후 `npm run smoke:vite:local` 통과
+- P3 Worker auth route registrar 분리 후 `NEXTAUTH_URL=http://127.0.0.1:3107 npx playwright test tests/e2e/login.spec.ts tests/e2e/signup.spec.ts --project chromium` 통과
+- P3 Worker auth route registrar 분리 후 `git diff --check` 통과
+- P3 Worker public config/bookmark route 분리 후 `npm run typecheck` 통과
+- P3 Worker public config/bookmark route 분리 후 `npm run lint` 통과
+- P3 Worker public config/bookmark route 분리 후 `npm run deploy:check:vite` 통과
+- P3 Worker public config/bookmark route 분리 후 `npm run smoke:vite:local` 통과
+- P3 Worker public config/bookmark route 분리 후 `NEXTAUTH_URL=http://127.0.0.1:3130 npx playwright test tests/e2e/bookmarks.spec.ts --project chromium` 통과
+- P3 Worker public config/bookmark route 분리 후 `git diff --check` 통과
+- P3 Worker places read route 분리 후 `npm run typecheck` 통과
+- P3 Worker places read route 분리 후 `npm run lint` 통과
+- P3 Worker places read route 분리 후 `npm run smoke:vite:local` 통과
+- P3 Worker places read route 분리 후 `npm run deploy:check:vite` 통과
+- P3 Worker places read route 분리 후 `USE_MOCK_DATA=true NEXTAUTH_URL=http://127.0.0.1:3107 npx playwright test tests/e2e/map.spec.ts --project chromium` 통과
+- P3 Worker places read route 분리 후 `git diff --check` 통과
+- P3 Worker public write route 분리 후 `npm run typecheck` 통과
+- P3 Worker public write route 분리 후 `npm run lint` 통과
+- P3 Worker public write route 분리 후 `npm run smoke:vite:local` 통과
+- P3 Worker public write route 분리 후 `npm run deploy:check:vite` 통과
+- P3 Worker public write route 분리 후 `USE_MOCK_DATA=true NEXTAUTH_URL=http://127.0.0.1:3107 npx playwright test tests/e2e/comments.spec.ts tests/e2e/report-admin.spec.ts tests/e2e/submission-admin.spec.ts --project chromium` 실행
+  - 댓글 2건과 장소 등록 폼 1건 통과
+  - 관리자 로그인 helper 2건은 기존 `NEXTAUTH_URL` origin mismatch로 실패
+- P3 Worker public write route 분리 후 `USE_MOCK_DATA=true NEXTAUTH_URL=http://127.0.0.1:3130 npx playwright test tests/e2e/report-admin.spec.ts tests/e2e/submission-admin.spec.ts tests/e2e/price-review.spec.ts --project chromium` 통과
+- P3 Worker public write route 분리 후 `git diff --check` 통과
+- P3 Worker admin route 분리 후 `npm run typecheck` 통과
+- P3 Worker admin route 분리 후 `npm run lint` 통과
+- P3 Worker admin route 분리 후 `npm run smoke:vite:local` 통과
+- P3 Worker admin route 분리 후 `npm run deploy:check:vite` 통과
+- P3 Worker admin route 분리 후 `USE_MOCK_DATA=true NEXTAUTH_URL=http://127.0.0.1:3130 npx playwright test tests/e2e/report-admin.spec.ts tests/e2e/submission-admin.spec.ts tests/e2e/price-review.spec.ts --project chromium` 통과
+- P3 Worker admin route 분리 후 `git diff --check` 통과
+- P3 Worker telemetry route 분리 후 `npm run typecheck` 통과
+- P3 Worker telemetry route 분리 후 `npm run lint` 통과
+- P3 Worker telemetry route 분리 후 `npm run smoke:vite:local` 통과
+- P3 Worker telemetry route 분리 후 `npm run deploy:check:vite` 통과
+- P3 Worker telemetry route 분리 후 `curl -sS -i -X POST http://127.0.0.1:3130/api/telemetry/visit -H 'content-type: application/json' --data '{"path":"/place/test","ref":"share","source":"detail","scope":"public"}'` 통과
+  - `200 OK`, `{ "ok": true, "tracked": true, "source": "database" }` 확인
+- P3 Worker telemetry route 분리 후 `curl -sS -i -X POST http://127.0.0.1:3130/api/telemetry/visit -H 'content-type: application/json' --data '{"path":"/place/test","source":"detail","scope":"public"}'` 통과
+  - `400 Bad Request`, `공유 source는 ref=share와 함께 보내야 합니다.` 검증 오류 확인
+- P3 Worker telemetry route 분리 후 `git diff --check` 통과
+- P3 Worker admin reports repository 분리 후 `npm run typecheck` 통과
+- P3 Worker admin reports repository 분리 후 `npm run lint` 통과
+- P3 Worker admin reports repository 분리 후 `npm run cf:build:vite` 통과
+- P3 Worker admin reports repository 분리 후 `npm run deploy:check:vite` 통과
+- P3 Worker admin reports repository 분리 후 `npm run smoke:vite:local` 통과
+- P3 Worker admin reports repository 분리 후 `USE_MOCK_DATA=true NEXTAUTH_URL=http://127.0.0.1:3130 npx playwright test tests/e2e/report-admin.spec.ts --project chromium` 통과
+- P3 Worker admin reports repository 분리 후 `git diff --check` 통과
+- P3 Worker admin prices repository 분리 후 `npm run typecheck` 통과
+- P3 Worker admin prices repository 분리 후 `npm run lint` 통과
+- P3 Worker admin prices repository 분리 후 `npm run smoke:price-concurrency` 통과
+- P3 Worker admin prices repository 분리 후 `npm run cf:build:vite` 통과
+- P3 Worker admin prices repository 분리 후 `node scripts/run-local-e2e.mjs smoke` 통과
+- P3 Worker admin prices repository 분리 후 `NEXTAUTH_URL=http://127.0.0.1:3107 npx playwright test tests/e2e/price-review.spec.ts --project chromium` 통과
+- P3 Worker admin prices repository 분리 후 `npm run deploy:check:vite` 통과
+- P3 Worker admin prices repository 분리 후 `npm run smoke:vite:local` 통과
+- P3 Worker admin prices repository 분리 후 `git diff --check` 통과
+- P3 Worker admin places repository 분리 후 `npm run typecheck` 통과
+- P3 Worker admin places repository 분리 후 `npm run lint` 통과
+- P3 Worker admin places repository 분리 후 `USE_MOCK_DATA=true NEXTAUTH_URL=http://127.0.0.1:3130 npx playwright test tests/e2e/submission-admin.spec.ts --project chromium` 통과
+- P3 Worker admin places repository 분리 후 `npm run cf:build:vite` 통과
+- P3 Worker admin places repository 분리 후 `node scripts/run-local-e2e.mjs smoke` 통과
+- P3 Worker admin places repository 분리 후 `NEXTAUTH_URL=http://127.0.0.1:3107 npx playwright test tests/e2e/price-review.spec.ts --project chromium` 통과
+- P3 Worker admin places repository 분리 후 `NEXTAUTH_URL=http://127.0.0.1:3107 npx playwright test tests/e2e/report-admin.spec.ts --project chromium` 통과
+- P3 Worker admin places repository 분리 후 `npm run deploy:check:vite` 통과
+- P3 Worker admin places repository 분리 후 `npm run smoke:vite:local` 통과
+- P3 Worker admin places repository 분리 후 `git diff --check` 통과
+- P3 Map query helper 분리 후 `npm run typecheck` 통과
+- P3 Map query helper 분리 후 `npm run lint` 통과
+- P3 Map query helper 분리 후 `USE_MOCK_DATA=true node scripts/run-local-e2e.mjs smoke` 통과
+- P3 Map query helper 분리 후 `npm run deploy:check:vite` 통과
+- P3 Map query helper 분리 후 `npm run smoke:vite:local` 통과
+- P3 Map query helper 분리 후 `git diff --check` 통과
+- P3 PlaceCard 분리 후 `npm run typecheck` 통과
+- P3 PlaceCard 분리 후 `npm run lint` 통과
+- P3 PlaceCard 분리 후 `USE_MOCK_DATA=true node scripts/run-local-e2e.mjs smoke` 통과
+- P3 PlaceCard 분리 후 `npm run deploy:check:vite` 통과
+- P3 PlaceCard 분리 후 `npm run smoke:vite:local` 통과
+- P3 PlaceCard 분리 후 `git diff --check` 통과
+- P3 MapCategoryTray 분리 후 `npm run typecheck` 통과
+- P3 MapCategoryTray 분리 후 `npm run lint` 통과
+- P3 MapCategoryTray 분리 후 `USE_MOCK_DATA=true node scripts/run-local-e2e.mjs smoke` 통과
+- P3 MapCategoryTray 분리 후 `npm run deploy:check:vite` 통과
+- P3 MapCategoryTray 분리 후 `npm run smoke:vite:local` 통과
+- P3 MapCategoryTray 분리 후 `git diff --check` 통과
+- 참고:
+  - `USE_MOCK_DATA=true NEXTAUTH_URL=http://127.0.0.1:3130 npx playwright test tests/e2e/report-admin.spec.ts tests/e2e/submission-admin.spec.ts tests/e2e/price-review.spec.ts --project chromium` 묶음 실행은 `cf:build:vite` 직후 최소 `.dev.vars` 상태에서 `/api/places/map` 503과 repeated rate limit으로 실패했다.
+  - 같은 기능은 `node scripts/run-local-e2e.mjs smoke`로 E2E용 `.dev.vars`를 생성한 뒤 targeted spec을 단독 실행하면 통과한다.
+  - `report-admin`과 `price-review`를 병렬 실행했을 때는 Playwright webServer debug port `9229` 충돌로 한 spec이 시작 실패했다. 각 spec 단독 실행은 통과했다.
+- 참고:
+  - `NEXTAUTH_URL=http://127.0.0.1:3130 npx playwright test tests/e2e/map.spec.ts --project chromium`는 `/api/places/map` 503 응답으로 실패했다.
+  - 원인은 직전 `dist/altteulmap/.dev.vars`가 `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap`, `USE_MOCK_DATA=false`, `NEXTAUTH_URL=http://127.0.0.1:3130` 상태라 Playwright webServer 3107에서 로컬 DB 없는 DB-backed 실행을 시도했기 때문이다.
+  - 같은 spec은 `USE_MOCK_DATA=true`, `NEXTAUTH_URL=http://127.0.0.1:3107` 환경에서 6건 모두 통과했다.
+- 참고:
+  - `npx playwright test tests/e2e/price-review.spec.ts --project chromium` 단독 실행은 `NEXTAUTH_URL` origin mismatch로 실패했다.
+  - `NEXTAUTH_URL=http://127.0.0.1:3107`를 명시하면 통과한다.
+  - `tests/e2e/bookmarks.spec.ts`는 현재 `dist/altteulmap/.dev.vars`의 auth origin이 `http://127.0.0.1:3130`으로 남아 있어 `NEXTAUTH_URL=http://127.0.0.1:3107`로 실행하면 login helper의 redirect origin assertion에서 실패한다.
+  - `NEXTAUTH_URL=http://127.0.0.1:3130`로 실행하면 bookmark E2E는 통과한다.
+  - `npm run test:e2e:full`은 smoke 10건 통과 후 `tests/e2e/map.mobile.spec.ts`의 `mobile-place-list-sheet` 미표시 실패로 중단됐다.
+  - 위 모바일 실패는 이번 가격 제보 idempotency 변경과 직접 관련 없는 기존 모바일 UI 회귀 영역이다.
+
+### 다음 액션
+- Cloudflare Dashboard에서 운영 Worker `altteulmap`에 `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`를 설정한 뒤 production public write 수동 QA를 진행한다.
+- P3 큰 파일 분리 리팩터링의 다음 slice로 `src/client/routes/MapRoute.tsx`의 trending section 또는 sheet 영역을 추가 분리한다.
+- strict CSP enforcement는 `naver-map-marker-visuals.ts`의 HTML inline style marker를 SVG data URL icon으로 바꾸는 PoC 이후 진행한다.
+- global search index는 1k 기준 p95 300ms 3회 연속 초과, 장소 10k 이상, DB execution 100ms 반복 초과 중 하나가 발생할 때 도입한다.
+- 모바일 바텀시트 E2E 실패는 별도 UI 회귀 작업으로 분리할지 결정한다.
+
+### Blocker
+- 없음.

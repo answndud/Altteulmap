@@ -25,6 +25,8 @@ AUTH_KAKAO_CLIENT_SECRET
 AUTH_NAVER_CLIENT_ID
 AUTH_NAVER_CLIENT_SECRET
 NEXT_PUBLIC_NAVER_MAP_KEY_ID
+NEXT_PUBLIC_TURNSTILE_SITE_KEY
+TURNSTILE_SECRET_KEY
 USE_MOCK_DATA=false
 ```
 
@@ -41,6 +43,12 @@ OAuth callback:
 https://altteulmap.altteul-lab.workers.dev/api/auth/callback/kakao
 https://altteulmap.altteul-lab.workers.dev/api/auth/callback/naver
 ```
+
+Turnstile:
+- Cloudflare Turnstile에서 운영 도메인용 site key/secret을 만든다.
+- `NEXT_PUBLIC_TURNSTILE_SITE_KEY`는 공개 var로, `TURNSTILE_SECRET_KEY`는 secret으로 설정한다.
+- `TURNSTILE_BYPASS_TOKEN`은 로컬/E2E 보조용이며 production 우회로 사용하지 않는다. Worker는 localhost 또는 `USE_MOCK_DATA=true`에서만 bypass를 허용한다.
+- 보호 대상 public write route는 장소 등록, 가격 제보, 댓글, 신고다. 북마크/반응/삭제는 기존 인증·권한·rate limit 정책을 유지한다.
 
 ## 배포 전 검증
 ```bash
@@ -152,7 +160,57 @@ temporary unavailable TTL: 60000ms
 - public read API는 DB unavailable 상태를 `503` JSON으로 드러낸다.
 - timeout 이후 같은 isolate는 60초 동안 DB를 temporarily unavailable로 보고 빠르게 실패한다.
 - `postgres` driver의 `statement_timeout`이 서버 측 long-running query를 중단하고, response timeout은 Worker 응답 지연을 제한한다.
-- 현재 `wrangler.jsonc`에는 Hyperdrive binding이 없다. Supabase 직접 연결이 반복적으로 timeout되거나 connection churn이 늘면 Hyperdrive 도입을 별도 작업으로 진행한다.
+- 현재 `wrangler.jsonc`에는 Hyperdrive binding이 없다. Worker DB layer는 optional `HYPERDRIVE.connectionString`을 우선 사용하고, binding이 없으면 기존 `DATABASE_URL`을 사용한다.
+- Supabase 직접 연결이 반복적으로 timeout되거나 connection churn이 늘면 Hyperdrive binding을 추가해 전환한다.
+
+## Hyperdrive 전환 기준
+현재 판단:
+- 2026-05-08 운영 측정에서 map API p95는 `seoul-viewport-z11=37ms`, `seoul-category-food-z13=36ms`, `global-query-kimbap=224ms`였다.
+- `smoke:remote`의 deep health, map/place DB source, OAuth provider redirect, admin boundary가 통과했다.
+- 현재 1k seed 수준과 사용자 유입 전 단계에서는 Hyperdrive를 즉시 도입하지 않고 보류한다.
+
+도입 trigger:
+- `database` deep health 실패 또는 DB timeout이 하루 2회 이상 반복된다.
+- map API p95가 1k seed 기준 300ms를 반복 초과한다.
+- Supabase connection limit 또는 connection churn 관련 장애가 확인된다.
+- 사용자가 늘어 public read/write가 동시 발생하기 시작한다.
+
+전환 절차:
+```bash
+npx wrangler hyperdrive create altteulmap-prod-hyperdrive \
+  --connection-string="<production-supabase-connection-string>"
+```
+
+생성된 id를 기준으로 `wrangler.jsonc`에 binding을 추가한다.
+
+```jsonc
+{
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "<hyperdrive-id>"
+    }
+  ]
+}
+```
+
+전환 후 검증:
+```bash
+npm run cf:build:vite
+npm run deploy:check:vite
+npm run deploy:vite
+SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev npm run smoke:remote
+MAP_MEASURE_URL=https://altteulmap.altteul-lab.workers.dev npm run map:measure
+```
+
+Rollback:
+- `wrangler.jsonc`에서 `hyperdrive` binding을 제거하고 재배포한다.
+- `DATABASE_URL` secret은 유지하므로 Worker는 즉시 기존 직접 연결로 fallback한다.
+- Hyperdrive configuration은 검증이 끝난 뒤 삭제한다.
+
+참고:
+- Cloudflare Hyperdrive 공식 문서는 Worker에서 `env.<BINDING>.connectionString`을 기존 Postgres driver에 넘기는 구조를 안내한다.
+- 로컬 개발에서는 Wrangler `localConnectionString` 또는 `CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_<BINDING>`을 사용할 수 있다.
 
 ## Security Headers 기준
 SPA 정적 asset은 `public/_headers`가 Vite build 때 `dist/client/_headers`로 복사되어 Cloudflare Assets에 적용된다.
@@ -170,12 +228,14 @@ CSP allowlist 기준:
 - 기본 출처는 `default-src 'self'`다.
 - `frame-ancestors 'none'`, `object-src 'none'`, `base-uri 'self'`를 고정한다.
 - Naver Maps SDK 로딩을 위해 `script-src`에 `https://oapi.map.naver.com`, `https://openapi.map.naver.com`, `https://*.pstatic.net`을 허용한다.
-- React inline style과 Naver marker HTML style을 위해 `style-src 'unsafe-inline'`은 현재 필요하다.
+- Naver marker HTML style과 fallback map preview 동적 style 때문에 `style-src 'unsafe-inline'`은 현재 필요하다.
+- strict CSP 전환 준비 상태는 `docs/project/strict-csp-inventory-2026-05-08.md`를 기준으로 본다.
 - 지도 타일/이미지 로딩을 위해 `img-src`는 `https:`, `data:`, `blob:`을 허용한다.
 - 지도 API/타일 호출을 위해 `connect-src`에 Naver/Carto 관련 host를 허용한다.
 
 검증:
 ```bash
+npm run csp:inventory
 npm run smoke:vite:local
 ```
 
@@ -205,11 +265,18 @@ MAP_MEASURE_URL=https://altteulmap.altteul-lab.workers.dev npm run map:measure
 - `places_status_lat_lng_idx`: 일반 viewport bbox 조회용
 - `places_status_category_lat_lng_idx`: category + viewport bbox 조회용
 - 검색어가 있는 global query는 `ILIKE '%query%'` 기반이라 데이터가 커지면 별도 full-text/trigram index가 필요할 수 있다.
+- global search index 도입 기준은 `docs/project/global-search-index-decision-2026-05-08.md`를 따른다.
 
 운영 판단:
 - viewport 시나리오가 목표를 넘으면 bbox 인덱스 적용 여부와 query plan을 먼저 확인한다.
-- global keyword search가 목표를 넘으면 `pg_trgm` 또는 full-text search 도입을 별도 migration으로 분리한다.
+- global keyword search가 1k 기준 p95 300ms를 3회 연속 초과하거나 장소 데이터가 10k 이상으로 늘면 `pg_trgm` expression index 도입을 검토한다.
 - 100k 이상에서 clustering 비용이 커지면 서버 clustering을 grid/pre-aggregation 또는 PostGIS 기반으로 분리한다.
+
+Global search query plan 확인:
+
+```bash
+SEARCH_ANALYZE_QUERY=김밥 SEARCH_ANALYZE_EXECUTE=1 npm run search:analyze
+```
 
 ## GitHub Actions 기준
 `main` 직접 push와 PR 모두 CI를 실행한다.
@@ -222,14 +289,17 @@ CI에서 확인하는 항목:
 - `git diff --check`
 - PostgreSQL service 기반 full E2E
 
-수동 실행(`workflow_dispatch`)에서는 optional remote smoke job도 실행할 수 있다.
-GitHub repository secrets에 아래 값을 넣으면 운영 URL smoke까지 확인한다.
+수동 실행(`workflow_dispatch`)과 6시간 간격 schedule에서는 `remote-smoke` job도 실행한다.
+GitHub repository secrets에 아래 값을 넣으면 관리자 credentials까지 포함해 운영 URL smoke를 확인한다.
 
 ```text
 SMOKE_PUBLIC_URL
 SMOKE_ADMIN_EMAIL
 SMOKE_ADMIN_PASSWORD
 ```
+
+`SMOKE_PUBLIC_URL`이 비어 있으면 schedule job은 기본 운영 URL `https://altteulmap.altteul-lab.workers.dev`를 사용한다.
+`SMOKE_ADMIN_EMAIL`, `SMOKE_ADMIN_PASSWORD`가 비어 있으면 credentials/admin smoke만 skip하고 public/deep health smoke는 계속 실행한다.
 
 ## 배포 후 Smoke
 ```bash
@@ -263,7 +333,7 @@ curl -s https://altteulmap.altteul-lab.workers.dev/api/health?deep=1 | jq
 
 health check 항목:
 - `runtime`: Worker 런타임 응답 여부
-- `public-config`: Naver Maps public key 노출 여부
+- `public-config`: Naver Maps public key와 Turnstile site key 노출 여부
 - `auth-providers`: credentials, Kakao, Naver provider 설정 여부
 - `database-config`: 기본 health에서 DB env/mock 상태 확인
 - `database`: deep health에서 실제 DB 연결과 query 확인
@@ -271,15 +341,19 @@ health check 항목:
 
 장애별 확인 순서:
 - `database` 실패: Supabase project paused 여부, `DATABASE_URL` secret, DB password rotation, `drizzle/0011_wise_mantis.sql` 적용 여부, Supabase connection limit을 확인한다.
-- `public-config` 실패: Cloudflare Worker var의 `NEXT_PUBLIC_NAVER_MAP_KEY_ID` 또는 호환 var를 확인한다.
+- `public-config` 실패: Cloudflare Worker var의 `NEXT_PUBLIC_NAVER_MAP_KEY_ID`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY` 또는 호환 var를 확인한다.
+- public write가 `보안 확인 설정이 필요합니다.`로 실패: `TURNSTILE_SECRET_KEY` secret이 운영 Worker에 설정됐는지 확인한다.
 - `auth-providers` degraded: `AUTH_KAKAO_CLIENT_ID/SECRET`, `AUTH_NAVER_CLIENT_ID/SECRET`, `AUTH_SECRET`, `NEXTAUTH_URL`, `SITE_URL`을 확인한다.
 - `static-assets` 실패: Cloudflare deploy output의 `dist/client/index.html`, Dashboard deploy command, `dist/altteulmap/wrangler.json` asset binding을 확인한다.
 - `smoke:remote`에서 map/place `source=database` 실패: production mock fallback 금지 정책 위반 또는 DB 장애다. `USE_MOCK_DATA=false`와 DB health를 먼저 확인한다.
 - OAuth redirect 실패: Provider console callback URL과 Worker `NEXTAUTH_URL`/`SITE_URL`이 같은 origin인지 확인한다.
 
 알림 운영 기준:
-- 지금 단계에서는 별도 유료 모니터링을 추가하지 않고, GitHub Actions `workflow_dispatch`의 `remote-smoke` job과 수동 `npm run smoke:remote`를 1차 운영 점검으로 둔다.
-- 실제 사용자 유입이 생기면 Cloudflare Workers Logs/Logpush 또는 Sentry Free 중 하나를 도입한다.
+- 지금 단계에서는 별도 유료 모니터링을 추가하지 않고, GitHub Actions schedule의 `remote-smoke` job과 수동 `npm run smoke:remote`를 1차 운영 점검으로 둔다.
+- schedule은 6시간마다 실행되며, 실패 시 GitHub Actions 실패 알림과 repository notification으로 확인한다.
+- Worker에서 처리되지 않은 예외가 발생하면 `worker_unhandled_error` JSON 로그에 `requestId`, method, path, error name, message를 남긴다.
+- 모든 Worker 응답에는 `X-Request-Id`가 붙으므로, 사용자 제보 또는 smoke 실패 시 해당 request id로 Cloudflare 로그를 역추적한다.
+- 실제 사용자 유입이 생기면 Cloudflare Workers Logs/Logpush 또는 Sentry Free 중 하나를 추가 도입한다.
 - Sentry를 도입할 때는 Worker server error, client runtime error, OAuth callback error, DB unavailable error를 우선 수집 대상으로 둔다.
 
 원격 smoke가 자동으로 확인하는 OAuth/Auth 범위:
