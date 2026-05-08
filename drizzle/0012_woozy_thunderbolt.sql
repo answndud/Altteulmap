@@ -1,0 +1,2 @@
+CREATE INDEX "places_status_lat_lng_idx" ON "places" USING btree ("status","latitude","longitude");--> statement-breakpoint
+CREATE INDEX "places_status_category_lat_lng_idx" ON "places" USING btree ("status","primary_category_slug","latitude","longitude");

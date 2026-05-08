@@ -1845,3 +1845,97 @@
   - 동일/근접 좌표의 가격표 marker가 한 위치에 완전히 포개지지 않고 작은 반경으로 벌어진다.
   - 선택된 marker는 일반 marker보다 위에 렌더링되어 선택 상태가 묻히지 않는다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+<a id="archive-051"></a>
+## `051` Pre-mortem 기반 운영 신뢰성 하드닝
+- 완료일: `2026-05-08`
+- 배경:
+  - 출시/운영 전 사전 부검에서 운영 DB 장애가 mock 데이터로 가려질 수 있는 문제, public/admin write partial state, edge isolate-local rate limit, Cloudflare deploy path mismatch, OAuth/DB/static 관측성 부족, 지도 API 성장 리스크가 확인됐다.
+  - 사용자는 신규 기능보다 운영 데이터 신뢰성, 배포 신뢰성, abuse 방어, 관측성을 먼저 보강하길 원했다.
+  - Vite React SPA + 단일 Cloudflare Worker 구조를 유지하면서 API path, response shape, DB schema 의미, env 이름, 사용자 플로우는 보존해야 했다.
+- 변경 내용:
+  - production DB read 실패 시 mock fallback을 금지하고, 운영 public read API가 DB unavailable 상태를 명시적 503/degraded response로 드러내도록 했다.
+  - public map/detail/admin smoke가 `source=database`를 확인하도록 remote smoke를 강화했다.
+  - 장소 등록, 장소 승인/반려, 가격 제보 승인/반려, 가격 항목 수정, 신고 처리 흐름을 transaction으로 묶어 중간 실패 시 partial write 위험을 줄였다.
+  - `public_write_rate_limits` 테이블과 Postgres upsert 기반 persistent rate limit을 추가해 anonymous write abuse 방어를 isolate-local memory에서 DB 기준으로 강화했다.
+  - main push CI, Vite Worker build, deploy output check, migration drift check, whitespace check를 GitHub Actions에 추가했다.
+  - Cloudflare Dashboard build/deploy 기준을 `dist/altteulmap/wrangler.json` canonical output으로 정리하고, legacy alias output도 유지했다.
+  - Kakao/Naver OAuth redirect, state cookie, session cookie attributes, credentials admin session, signout clearing을 remote smoke와 deploy 문서 기준으로 고정했다.
+  - Worker/스크립트 DB client에 `connect_timeout`, `statement_timeout`, `lock_timeout`, `idle_in_transaction_session_timeout`, connection lifetime 기준을 추가했다.
+  - Worker-generated response와 Cloudflare Assets response에 CSP, frame 차단, nosniff, referrer policy, permissions policy, HSTS를 적용했다.
+  - `/api/health`와 `/api/health?deep=1`을 추가해 runtime, public config, auth providers, DB, static assets 상태를 한 번에 확인할 수 있게 했다.
+  - 지도 bbox 조회용 `places(status, latitude, longitude)`, `places(status, primary_category_slug, latitude, longitude)` 인덱스와 map API 측정 스크립트를 추가했다.
+  - 큰 파일 분리 계획을 별도 문서로 작성해 Worker route, admin repository, map route, Naver map panel 후속 리팩터링 순서와 보호 테스트를 고정했다.
+  - 운영 DB migration은 `db:push` 대신 Drizzle migration folder 기준 `npm run db:migrate`로 적용하도록 스크립트와 문서를 정리했다.
+- 코드/문서:
+  - `.github/workflows/ci.yml`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+  - `docs/deploy/deploy-cloudflare.md`
+  - `docs/refactoring-large-files.md`
+  - `drizzle/0011_wise_mantis.sql`
+  - `drizzle/0012_woozy_thunderbolt.sql`
+  - `drizzle/meta/_journal.json`
+  - `drizzle/meta/0011_snapshot.json`
+  - `drizzle/meta/0012_snapshot.json`
+  - `package.json`
+  - `public/_headers`
+  - `scripts/measure-map-api.mjs`
+  - `scripts/migrate-production.mjs`
+  - `scripts/smoke-remote.mjs`
+  - `scripts/smoke-vite-local.mjs`
+  - `src/db/client.ts`
+  - `src/db/schema.ts`
+  - `src/worker/admin-repository.ts`
+  - `src/worker/db.ts`
+  - `src/worker/index.ts`
+  - `src/worker/places-read-repository.ts`
+  - `src/worker/places-write-repository.ts`
+  - `src/worker/rate-limit-repository.ts`
+- 검증:
+  - `npm run db:generate`
+    - 통과
+  - `npm run db:push`
+    - 로컬 DB 반영 통과
+  - `npm run db:migrate`
+    - 로컬 DB URL에는 guard가 실행을 거부하는 것 확인
+    - `.env.production.local`의 Supabase pooler 운영 DB URL 기준 실행 통과
+  - `npm run typecheck`
+    - 통과
+  - `npm run lint`
+    - 통과
+  - `npm run cf:build:vite`
+    - 통과
+  - `npm run deploy:check:vite`
+    - 통과
+  - `npm run smoke:vite:local`
+    - 통과
+  - `git diff --check`
+    - 통과
+  - local Worker API targeted transaction smoke:
+    - 장소 등록, 관리자 장소 승인, 가격 제보 등록, 관리자 가격 제보 반려, 신고 등록, 관리자 신고 처리 완료 확인
+  - local Worker API persistent rate limit smoke:
+    - 같은 visitor cookie로 댓글 9회 제출 후 9번째 요청에서 `429`, `Retry-After`, `X-RateLimit-Remaining: 0` 확인
+  - local DB timeout smoke:
+    - `statement_timeout=4500ms`로 `pg_sleep(10)`이 약 4538ms에 실패하는 것 확인
+  - map API local measurement:
+    - `seoul-viewport-z11`: count 502, p95 4ms
+    - `seoul-category-food-z13`: count 140, p95 5ms
+    - `global-query-kimbap`: count 55, p95 34ms
+  - 운영 배포:
+    - `npx wrangler deploy --config dist/altteulmap/wrangler.json --name altteulmap` 통과
+    - 배포 URL `https://altteulmap.altteul-lab.workers.dev`
+    - Version ID `68eb066e-3fcc-4993-ba9d-7343b4711bc8`
+  - 운영 remote smoke:
+    - `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev npm run smoke:remote` 통과
+    - 관리자 credentials 포함 remote smoke 통과
+    - deep health, home, robots, sitemap, public config, map API, place page/API, login, admin route, admin API boundary, Kakao/Naver provider redirect, credentials/admin smoke 확인
+- 결과:
+  - 운영 DB migration과 Worker 배포까지 완료했다.
+  - 운영 smoke에서 DB/source/auth/static/admin boundary가 정상임을 확인했다.
+  - production DB 장애가 mock 데이터로 조용히 가려지는 핵심 리스크를 제거했다.
+  - public/admin write path의 transaction 안정성과 anonymous write rate limit이 강화됐다.
+  - 배포/관측/성능/보안 기준이 문서와 스크립트에 남아 다음 세션에서도 재검증할 수 있다.
+  - 남은 후속 과제는 가격 제보 동시 승인 DB-level idempotency, Turnstile, Hyperdrive, Sentry/Logpush, strict CSP, global search index, 큰 파일 분리 리팩터링이다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.

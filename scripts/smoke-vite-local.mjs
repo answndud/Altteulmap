@@ -170,10 +170,67 @@ function assert(condition, message) {
   }
 }
 
+function assertSecurityHeaders(response, label) {
+  const contentSecurityPolicy = response.headers.get("content-security-policy") ?? "";
+
+  assert(
+    contentSecurityPolicy.includes("default-src 'self'"),
+    `${label} CSP default-src missing`,
+  );
+  assert(
+    contentSecurityPolicy.includes("frame-ancestors 'none'"),
+    `${label} CSP frame-ancestors missing`,
+  );
+  assert(
+    contentSecurityPolicy.includes("https://oapi.map.naver.com"),
+    `${label} CSP NAVER Maps allowlist missing`,
+  );
+  assert(
+    response.headers.get("x-content-type-options") === "nosniff",
+    `${label} X-Content-Type-Options missing`,
+  );
+  assert(
+    response.headers.get("x-frame-options") === "DENY",
+    `${label} X-Frame-Options missing`,
+  );
+  assert(
+    response.headers.get("referrer-policy") === "strict-origin-when-cross-origin",
+    `${label} Referrer-Policy missing`,
+  );
+  assert(
+    response.headers
+      .get("permissions-policy")
+      ?.includes("geolocation=(self)") === true,
+    `${label} Permissions-Policy missing geolocation baseline`,
+  );
+}
+
 async function smokeApi() {
+  const deepHealth = await requestJson("/api/health?deep=1");
+
+  assert(deepHealth.response.status === 200, "deep health failed");
+  assert(deepHealth.body.ok === true, "deep health returned non-ok status");
+  assert(
+    deepHealth.body.checks?.some(
+      (check) => check.name === "database" && check.status === "ok",
+    ),
+    "deep health did not confirm database",
+  );
+  assert(
+    deepHealth.body.checks?.some(
+      (check) => check.name === "static-assets" && check.status === "ok",
+    ),
+    "deep health did not confirm static assets",
+  );
+
+  const home = await request("/");
+  assert(home.status === 200, "home page failed");
+  assertSecurityHeaders(home, "home page");
+
   const categories = await requestJson("/api/categories");
 
   assert(categories.response.status === 200, "categories API failed");
+  assertSecurityHeaders(categories.response, "categories API");
   assert(Array.isArray(categories.body.groups), "categories.groups missing");
   assert(
     Array.isArray(categories.body.categories),
@@ -183,6 +240,7 @@ async function smokeApi() {
   const publicConfig = await requestJson("/api/config/public");
 
   assert(publicConfig.response.status === 200, "public config API failed");
+  assertSecurityHeaders(publicConfig.response, "public config API");
   assert(
     Boolean(publicConfig.body.naverMapKeyId),
     "public config did not expose a NAVER map key",

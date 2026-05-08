@@ -21,6 +21,9 @@ import { mockReports, type MockReportRecord } from "@/features/reports/mock-data
 import { getWorkerDb, type WorkerDatabaseBindings } from "@/worker/db";
 
 type DataSource = "database";
+type WorkerDb = ReturnType<typeof getWorkerDb>;
+type WorkerDbTransaction = Parameters<Parameters<WorkerDb["transaction"]>[0]>[0];
+type WorkerDbExecutor = WorkerDb | WorkerDbTransaction;
 type VerificationStatus = "verified" | "unverified";
 type AdminUser = {
   id: string;
@@ -194,12 +197,11 @@ function toAdminPriceItemRecord(item: {
   };
 }
 
-async function loadCategoryMap(env: WorkerDatabaseBindings, placeIds: string[]) {
+async function loadCategoryMap(db: WorkerDbExecutor, placeIds: string[]) {
   if (placeIds.length === 0) {
     return new Map<string, string>();
   }
 
-  const db = getWorkerDb(env);
   const rows = await db
     .select({
       placeId: placeCategories.placeId,
@@ -241,11 +243,10 @@ function selectRepresentativePriceItem(
 }
 
 async function refreshWorkerPlacePricingSummary(
-  env: WorkerDatabaseBindings,
+  db: WorkerDbExecutor,
   placeId: string,
   changedAt: Date,
 ) {
-  const db = getWorkerDb(env);
   const currentPriceItems = await db
     .select({
       id: priceItems.id,
@@ -331,7 +332,7 @@ export async function listWorkerPendingPlaces(env: WorkerDatabaseBindings) {
     .where(eq(places.status, "pending_review"))
     .orderBy(desc(places.createdAt));
   const pendingPlaceIds = rows.map((row) => row.internalId);
-  const categoryMap = await loadCategoryMap(env, pendingPlaceIds);
+  const categoryMap = await loadCategoryMap(db, pendingPlaceIds);
   const priceItemRows =
     pendingPlaceIds.length === 0
       ? []
@@ -383,116 +384,119 @@ export async function moderateWorkerPlaceSubmission(
   adminUser: AdminUser,
 ) {
   const db = getWorkerDb(env);
-  const [existing] = await db
-    .select({
-      id: places.id,
-      slug: places.slug,
-      name: places.name,
-      businessName: places.businessName,
-      note: places.note,
-      roadAddress: places.roadAddress,
-      district: places.district,
-      latitude: places.latitude,
-      longitude: places.longitude,
-      primaryCategorySlug: places.primaryCategorySlug,
-      representativePriceAmount: places.representativePriceAmount,
-      representativePriceLabel: places.representativePriceLabel,
-      createdAt: places.createdAt,
-    })
-    .from(places)
-    .where(and(eq(places.slug, slug), eq(places.status, "pending_review")))
-    .limit(1);
 
-  if (!existing) {
-    return {
-      ok: false,
-      message: "검토 대상을 찾지 못했습니다.",
-      source: "database" as DataSource,
-      item: null,
-    };
-  }
+  return await db.transaction(async (tx) => {
+    const [existing] = await tx
+      .select({
+        id: places.id,
+        slug: places.slug,
+        name: places.name,
+        businessName: places.businessName,
+        note: places.note,
+        roadAddress: places.roadAddress,
+        district: places.district,
+        latitude: places.latitude,
+        longitude: places.longitude,
+        primaryCategorySlug: places.primaryCategorySlug,
+        representativePriceAmount: places.representativePriceAmount,
+        representativePriceLabel: places.representativePriceLabel,
+        createdAt: places.createdAt,
+      })
+      .from(places)
+      .where(and(eq(places.slug, slug), eq(places.status, "pending_review")))
+      .limit(1);
 
-  const nextStatus = input.decision === "approve" ? "active" : "hidden";
-  const changedAt = new Date();
+    if (!existing) {
+      return {
+        ok: false,
+        message: "검토 대상을 찾지 못했습니다.",
+        source: "database" as DataSource,
+        item: null,
+      };
+    }
 
-  await db
-    .update(places)
-    .set({
-      status: nextStatus,
-      latitude:
+    const nextStatus = input.decision === "approve" ? "active" : "hidden";
+    const changedAt = new Date();
+
+    await tx
+      .update(places)
+      .set({
+        status: nextStatus,
+        latitude:
+          input.decision === "approve"
+            ? input.latitude ?? existing.latitude
+            : existing.latitude,
+        longitude:
+          input.decision === "approve"
+            ? input.longitude ?? existing.longitude
+            : existing.longitude,
+        updatedAt: changedAt,
+      })
+      .where(eq(places.id, existing.id));
+    await tx
+      .update(priceReports)
+      .set({
+        reportStatus: input.decision === "approve" ? "accepted" : "rejected",
+      })
+      .where(eq(priceReports.placeId, existing.id));
+    await tx.insert(adminActions).values({
+      adminUserId: toAdminActionUserId(adminUser.id),
+      actionType:
         input.decision === "approve"
-          ? input.latitude ?? existing.latitude
-          : existing.latitude,
-      longitude:
-        input.decision === "approve"
-          ? input.longitude ?? existing.longitude
-          : existing.longitude,
-      updatedAt: changedAt,
-    })
-    .where(eq(places.id, existing.id));
-  await db
-    .update(priceReports)
-    .set({
-      reportStatus: input.decision === "approve" ? "accepted" : "rejected",
-    })
-    .where(eq(priceReports.placeId, existing.id));
-  await db.insert(adminActions).values({
-    adminUserId: toAdminActionUserId(adminUser.id),
-    actionType:
-      input.decision === "approve"
-        ? "approve_place_submission"
-        : "reject_place_submission",
-    targetType: "place",
-    targetId: existing.id,
-    metadataJson: {
-      latitude:
-        input.decision === "approve"
-          ? input.latitude ?? existing.latitude
-          : existing.latitude,
-      longitude:
-        input.decision === "approve"
-          ? input.longitude ?? existing.longitude
-          : existing.longitude,
-    },
-  });
-
-  const categoryMap = await loadCategoryMap(env, [existing.id]);
-  const priceItemRows = await db
-    .select({
-      id: priceItems.id,
-      label: priceItems.label,
-      amount: priceItems.amount,
-      unitLabel: priceItems.unitLabel,
-      verificationStatus: priceItems.verificationStatus,
-      latestReportedAt: priceItems.latestReportedAt,
-    })
-    .from(priceItems)
-    .where(eq(priceItems.placeId, existing.id))
-    .orderBy(asc(priceItems.amount), asc(priceItems.label));
-
-  return {
-    ok: true,
-    message:
-      input.decision === "approve"
-        ? "장소 제보를 승인했습니다."
-        : "장소 제보를 반려했습니다.",
-    source: "database" as DataSource,
-    item: toPendingPlaceRecord(
-      {
-        ...existing,
-        internalId: existing.id,
+          ? "approve_place_submission"
+          : "reject_place_submission",
+      targetType: "place",
+      targetId: existing.id,
+      metadataJson: {
+        latitude:
+          input.decision === "approve"
+            ? input.latitude ?? existing.latitude
+            : existing.latitude,
+        longitude:
+          input.decision === "approve"
+            ? input.longitude ?? existing.longitude
+            : existing.longitude,
       },
-      categoryMap.get(existing.id),
-      priceItemRows.map((item) => ({
-        id: item.id,
-        label: item.label,
-        amount: item.amount,
-        unitLabel: item.unitLabel ?? undefined,
-        verificationStatus: item.verificationStatus,
-        reportedAt: formatDate(item.latestReportedAt),
-      })),
-    ),
-  };
+    });
+
+    const categoryMap = await loadCategoryMap(tx, [existing.id]);
+    const priceItemRows = await tx
+      .select({
+        id: priceItems.id,
+        label: priceItems.label,
+        amount: priceItems.amount,
+        unitLabel: priceItems.unitLabel,
+        verificationStatus: priceItems.verificationStatus,
+        latestReportedAt: priceItems.latestReportedAt,
+      })
+      .from(priceItems)
+      .where(eq(priceItems.placeId, existing.id))
+      .orderBy(asc(priceItems.amount), asc(priceItems.label));
+
+    return {
+      ok: true,
+      message:
+        input.decision === "approve"
+          ? "장소 제보를 승인했습니다."
+          : "장소 제보를 반려했습니다.",
+      source: "database" as DataSource,
+      item: toPendingPlaceRecord(
+        {
+          ...existing,
+          internalId: existing.id,
+        },
+        categoryMap.get(existing.id),
+        priceItemRows.map((item) => ({
+          id: item.id,
+          label: item.label,
+          amount: item.amount,
+          unitLabel: item.unitLabel ?? undefined,
+          verificationStatus: item.verificationStatus,
+          reportedAt: formatDate(item.latestReportedAt),
+        })),
+      ),
+    };
+  });
 }
 
 export async function listWorkerPendingPriceReports(env: WorkerDatabaseBindings) {
@@ -581,68 +585,211 @@ export async function moderateWorkerPriceReport(
   adminUser: AdminUser,
 ) {
   const db = getWorkerDb(env);
-  const [existingReport] = await db
-    .select({
-      id: priceReports.id,
-      placeId: places.id,
-      placeSlug: places.slug,
-      placeName: places.name,
-      district: places.district,
-      reporterUserId: priceReports.reporterUserId,
-      priceItemId: priceReports.priceItemId,
-      label: priceReports.label,
-      normalizedLabel: priceReports.normalizedLabel,
-      amount: priceReports.amount,
-      unitLabel: priceReports.unitLabel,
-      comment: priceReports.comment,
-      reportStatus: priceReports.reportStatus,
-      createdAt: priceReports.createdAt,
-    })
-    .from(priceReports)
-    .innerJoin(places, eq(priceReports.placeId, places.id))
-    .where(and(eq(priceReports.id, reportId), eq(places.status, "active")))
-    .limit(1);
 
-  if (!existingReport) {
-    return {
-      ok: false,
-      message: "가격 제보를 찾지 못했습니다.",
-      source: "database" as DataSource,
-      item: null,
-    };
-  }
+  return await db.transaction(async (tx) => {
+    const [existingReport] = await tx
+      .select({
+        id: priceReports.id,
+        placeId: places.id,
+        placeSlug: places.slug,
+        placeName: places.name,
+        district: places.district,
+        reporterUserId: priceReports.reporterUserId,
+        priceItemId: priceReports.priceItemId,
+        label: priceReports.label,
+        normalizedLabel: priceReports.normalizedLabel,
+        amount: priceReports.amount,
+        unitLabel: priceReports.unitLabel,
+        comment: priceReports.comment,
+        reportStatus: priceReports.reportStatus,
+        createdAt: priceReports.createdAt,
+      })
+      .from(priceReports)
+      .innerJoin(places, eq(priceReports.placeId, places.id))
+      .where(and(eq(priceReports.id, reportId), eq(places.status, "active")))
+      .limit(1);
 
-  if (existingReport.reportStatus !== "pending_review") {
-    return {
-      ok: false,
-      message: "이미 처리된 가격 제보입니다.",
-      source: "database" as DataSource,
-      item: null,
-    };
-  }
+    if (!existingReport) {
+      return {
+        ok: false,
+        message: "가격 제보를 찾지 못했습니다.",
+        source: "database" as DataSource,
+        item: null,
+      };
+    }
 
-  const changedAt = new Date();
+    if (existingReport.reportStatus !== "pending_review") {
+      return {
+        ok: false,
+        message: "이미 처리된 가격 제보입니다.",
+        source: "database" as DataSource,
+        item: null,
+      };
+    }
 
-  if (input.decision === "reject") {
-    await db
+    const changedAt = new Date();
+
+    if (input.decision === "reject") {
+      await tx
+        .update(priceReports)
+        .set({ reportStatus: "rejected" })
+        .where(eq(priceReports.id, existingReport.id));
+      await tx.insert(adminActions).values({
+        adminUserId: toAdminActionUserId(adminUser.id),
+        actionType: "reject_price_report",
+        targetType: "price_report",
+        targetId: existingReport.id,
+        metadataJson: {
+          placeId: existingReport.placeSlug,
+          label: existingReport.label,
+          amount: existingReport.amount,
+        },
+      });
+
+      return {
+        ok: true,
+        message: "가격 제보를 반려했습니다.",
+        source: "database" as DataSource,
+        item: {
+          id: existingReport.id,
+          placeId: existingReport.placeSlug,
+          placeName: existingReport.placeName,
+          district: existingReport.district,
+          label: existingReport.label,
+          amount: existingReport.amount,
+          unitLabel: existingReport.unitLabel ?? undefined,
+          comment: existingReport.comment ?? undefined,
+          createdAt: formatDate(existingReport.createdAt),
+        },
+      };
+    }
+
+    let matchedPriceItemId = existingReport.priceItemId;
+
+    if (!matchedPriceItemId) {
+      const [matchedPriceItem] = await tx
+        .select({ id: priceItems.id })
+        .from(priceItems)
+        .where(
+          and(
+            eq(priceItems.placeId, existingReport.placeId),
+            eq(priceItems.normalizedLabel, existingReport.normalizedLabel),
+          ),
+        )
+        .limit(1);
+
+      matchedPriceItemId = matchedPriceItem?.id ?? null;
+    }
+
+    const [acceptedCountRow] = await tx
+      .select({ count: sql<number>`count(*)::int` })
+      .from(priceReports)
+      .where(
+        and(
+          eq(priceReports.placeId, existingReport.placeId),
+          eq(priceReports.normalizedLabel, existingReport.normalizedLabel),
+          eq(priceReports.amount, existingReport.amount),
+          eq(priceReports.reportStatus, "accepted"),
+        ),
+      )
+      .limit(1);
+    const nextVerifiedReportCount = Number(acceptedCountRow?.count ?? 0) + 1;
+    const nextVerificationStatus: VerificationStatus =
+      nextVerifiedReportCount >= 2 ? "verified" : "unverified";
+
+    if (matchedPriceItemId) {
+      await tx
+        .update(priceItems)
+        .set({
+          label: existingReport.label,
+          normalizedLabel: existingReport.normalizedLabel,
+          amount: existingReport.amount,
+          unitLabel: existingReport.unitLabel,
+          isActive: true,
+          verificationStatus: nextVerificationStatus,
+          verifiedReportCount: nextVerifiedReportCount,
+          latestReportedAt: changedAt,
+          updatedAt: changedAt,
+        })
+        .where(eq(priceItems.id, matchedPriceItemId));
+    } else {
+      const [createdPriceItem] = await tx
+        .insert(priceItems)
+        .values({
+          placeId: existingReport.placeId,
+          label: existingReport.label,
+          normalizedLabel: existingReport.normalizedLabel,
+          amount: existingReport.amount,
+          currency: "KRW",
+          unitLabel: existingReport.unitLabel,
+          isActive: true,
+          isRepresentative: false,
+          verificationStatus: nextVerificationStatus,
+          verifiedReportCount: nextVerifiedReportCount,
+          latestReportedAt: changedAt,
+          createdByUserId: existingReport.reporterUserId ?? null,
+        })
+        .returning({ id: priceItems.id });
+
+      matchedPriceItemId = createdPriceItem.id;
+    }
+
+    await tx
       .update(priceReports)
-      .set({ reportStatus: "rejected" })
+      .set({
+        priceItemId: matchedPriceItemId,
+        reportStatus: "accepted",
+        snapshotVerificationStatus: nextVerificationStatus,
+      })
       .where(eq(priceReports.id, existingReport.id));
-    await db.insert(adminActions).values({
+
+    if (nextVerificationStatus === "verified") {
+      await tx
+        .update(priceReports)
+        .set({ snapshotVerificationStatus: "verified" })
+        .where(
+          and(
+            eq(priceReports.placeId, existingReport.placeId),
+            eq(priceReports.normalizedLabel, existingReport.normalizedLabel),
+            eq(priceReports.amount, existingReport.amount),
+            eq(priceReports.reportStatus, "accepted"),
+          ),
+        );
+    }
+
+    await refreshWorkerPlacePricingSummary(
+      tx,
+      existingReport.placeId,
+      changedAt,
+    );
+    const [refreshedPriceItem] = await tx
+      .select({
+        label: priceItems.label,
+        amount: priceItems.amount,
+        unitLabel: priceItems.unitLabel,
+        verificationStatus: priceItems.verificationStatus,
+      })
+      .from(priceItems)
+      .where(eq(priceItems.id, matchedPriceItemId))
+      .limit(1);
+
+    await tx.insert(adminActions).values({
       adminUserId: toAdminActionUserId(adminUser.id),
-      actionType: "reject_price_report",
+      actionType: "approve_price_report",
       targetType: "price_report",
       targetId: existingReport.id,
       metadataJson: {
         placeId: existingReport.placeSlug,
         label: existingReport.label,
         amount: existingReport.amount,
+        verifiedReportCount: nextVerifiedReportCount,
+        verificationStatus: nextVerificationStatus,
       },
     });
 
     return {
       ok: true,
-      message: "가격 제보를 반려했습니다.",
+      message: "가격 제보를 반영했습니다.",
       source: "database" as DataSource,
       item: {
         id: existingReport.id,
@@ -654,150 +801,14 @@ export async function moderateWorkerPriceReport(
         unitLabel: existingReport.unitLabel ?? undefined,
         comment: existingReport.comment ?? undefined,
         createdAt: formatDate(existingReport.createdAt),
+        existingPriceLabel: refreshedPriceItem?.label ?? undefined,
+        existingPriceAmount: refreshedPriceItem?.amount ?? undefined,
+        existingPriceUnitLabel: refreshedPriceItem?.unitLabel ?? undefined,
+        existingPriceVerificationStatus:
+          refreshedPriceItem?.verificationStatus ?? undefined,
       },
     };
-  }
-
-  let matchedPriceItemId = existingReport.priceItemId;
-
-  if (!matchedPriceItemId) {
-    const [matchedPriceItem] = await db
-      .select({ id: priceItems.id })
-      .from(priceItems)
-      .where(
-        and(
-          eq(priceItems.placeId, existingReport.placeId),
-          eq(priceItems.normalizedLabel, existingReport.normalizedLabel),
-        ),
-      )
-      .limit(1);
-
-    matchedPriceItemId = matchedPriceItem?.id ?? null;
-  }
-
-  const [acceptedCountRow] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(priceReports)
-    .where(
-      and(
-        eq(priceReports.placeId, existingReport.placeId),
-        eq(priceReports.normalizedLabel, existingReport.normalizedLabel),
-        eq(priceReports.amount, existingReport.amount),
-        eq(priceReports.reportStatus, "accepted"),
-      ),
-    )
-    .limit(1);
-  const nextVerifiedReportCount = Number(acceptedCountRow?.count ?? 0) + 1;
-  const nextVerificationStatus: VerificationStatus =
-    nextVerifiedReportCount >= 2 ? "verified" : "unverified";
-
-  if (matchedPriceItemId) {
-    await db
-      .update(priceItems)
-      .set({
-        label: existingReport.label,
-        normalizedLabel: existingReport.normalizedLabel,
-        amount: existingReport.amount,
-        unitLabel: existingReport.unitLabel,
-        isActive: true,
-        verificationStatus: nextVerificationStatus,
-        verifiedReportCount: nextVerifiedReportCount,
-        latestReportedAt: changedAt,
-        updatedAt: changedAt,
-      })
-      .where(eq(priceItems.id, matchedPriceItemId));
-  } else {
-    const [createdPriceItem] = await db
-      .insert(priceItems)
-      .values({
-        placeId: existingReport.placeId,
-        label: existingReport.label,
-        normalizedLabel: existingReport.normalizedLabel,
-        amount: existingReport.amount,
-        currency: "KRW",
-        unitLabel: existingReport.unitLabel,
-        isActive: true,
-        isRepresentative: false,
-        verificationStatus: nextVerificationStatus,
-        verifiedReportCount: nextVerifiedReportCount,
-        latestReportedAt: changedAt,
-        createdByUserId: existingReport.reporterUserId ?? null,
-      })
-      .returning({ id: priceItems.id });
-
-    matchedPriceItemId = createdPriceItem.id;
-  }
-
-  await db
-    .update(priceReports)
-    .set({
-      priceItemId: matchedPriceItemId,
-      reportStatus: "accepted",
-      snapshotVerificationStatus: nextVerificationStatus,
-    })
-    .where(eq(priceReports.id, existingReport.id));
-
-  if (nextVerificationStatus === "verified") {
-    await db
-      .update(priceReports)
-      .set({ snapshotVerificationStatus: "verified" })
-      .where(
-        and(
-          eq(priceReports.placeId, existingReport.placeId),
-          eq(priceReports.normalizedLabel, existingReport.normalizedLabel),
-          eq(priceReports.amount, existingReport.amount),
-          eq(priceReports.reportStatus, "accepted"),
-        ),
-      );
-  }
-
-  await refreshWorkerPlacePricingSummary(env, existingReport.placeId, changedAt);
-  const [refreshedPriceItem] = await db
-    .select({
-      label: priceItems.label,
-      amount: priceItems.amount,
-      unitLabel: priceItems.unitLabel,
-      verificationStatus: priceItems.verificationStatus,
-    })
-    .from(priceItems)
-    .where(eq(priceItems.id, matchedPriceItemId))
-    .limit(1);
-
-  await db.insert(adminActions).values({
-    adminUserId: toAdminActionUserId(adminUser.id),
-    actionType: "approve_price_report",
-    targetType: "price_report",
-    targetId: existingReport.id,
-    metadataJson: {
-      placeId: existingReport.placeSlug,
-      label: existingReport.label,
-      amount: existingReport.amount,
-      verifiedReportCount: nextVerifiedReportCount,
-      verificationStatus: nextVerificationStatus,
-    },
   });
-
-  return {
-    ok: true,
-    message: "가격 제보를 반영했습니다.",
-    source: "database" as DataSource,
-    item: {
-      id: existingReport.id,
-      placeId: existingReport.placeSlug,
-      placeName: existingReport.placeName,
-      district: existingReport.district,
-      label: existingReport.label,
-      amount: existingReport.amount,
-      unitLabel: existingReport.unitLabel ?? undefined,
-      comment: existingReport.comment ?? undefined,
-      createdAt: formatDate(existingReport.createdAt),
-      existingPriceLabel: refreshedPriceItem?.label ?? undefined,
-      existingPriceAmount: refreshedPriceItem?.amount ?? undefined,
-      existingPriceUnitLabel: refreshedPriceItem?.unitLabel ?? undefined,
-      existingPriceVerificationStatus:
-        refreshedPriceItem?.verificationStatus ?? undefined,
-    },
-  };
 }
 
 export async function getWorkerAdminPlacePriceDetail(
@@ -870,124 +881,127 @@ export async function updateWorkerPriceItem(
   adminUser: AdminUser,
 ) {
   const db = getWorkerDb(env);
-  const [existingItem] = await db
-    .select({
-      id: priceItems.id,
-      placeId: places.id,
-      placeSlug: places.slug,
-      label: priceItems.label,
-      amount: priceItems.amount,
-      verifiedReportCount: priceItems.verifiedReportCount,
-    })
-    .from(priceItems)
-    .innerJoin(places, eq(priceItems.placeId, places.id))
-    .where(and(eq(priceItems.id, itemId), eq(places.status, "active")))
-    .limit(1);
 
-  if (!existingItem) {
-    return {
-      ok: false,
-      message: "가격 항목을 찾지 못했습니다.",
-      source: "database" as DataSource,
-      item: null,
-      placeId: null,
-    };
-  }
+  return await db.transaction(async (tx) => {
+    const [existingItem] = await tx
+      .select({
+        id: priceItems.id,
+        placeId: places.id,
+        placeSlug: places.slug,
+        label: priceItems.label,
+        amount: priceItems.amount,
+        verifiedReportCount: priceItems.verifiedReportCount,
+      })
+      .from(priceItems)
+      .innerJoin(places, eq(priceItems.placeId, places.id))
+      .where(and(eq(priceItems.id, itemId), eq(places.status, "active")))
+      .limit(1);
 
-  const normalizedLabel = normalizePriceLabel(input.label);
-  const [duplicateItem] = await db
-    .select({ id: priceItems.id })
-    .from(priceItems)
-    .where(
-      and(
-        eq(priceItems.placeId, existingItem.placeId),
-        eq(priceItems.normalizedLabel, normalizedLabel),
-        ne(priceItems.id, existingItem.id),
-      ),
-    )
-    .limit(1);
+    if (!existingItem) {
+      return {
+        ok: false,
+        message: "가격 항목을 찾지 못했습니다.",
+        source: "database" as DataSource,
+        item: null,
+        placeId: null,
+      };
+    }
 
-  if (duplicateItem) {
-    return {
-      ok: false,
-      message: "같은 이름의 가격 항목이 이미 있습니다.",
-      source: "database" as DataSource,
-      item: null,
-      placeId: existingItem.placeSlug,
-    };
-  }
+    const normalizedLabel = normalizePriceLabel(input.label);
+    const [duplicateItem] = await tx
+      .select({ id: priceItems.id })
+      .from(priceItems)
+      .where(
+        and(
+          eq(priceItems.placeId, existingItem.placeId),
+          eq(priceItems.normalizedLabel, normalizedLabel),
+          ne(priceItems.id, existingItem.id),
+        ),
+      )
+      .limit(1);
 
-  const changedAt = new Date();
-  const nextIsRepresentative = input.isActive ? input.isRepresentative : false;
-  const nextVerifiedReportCount =
-    input.verificationStatus === "verified"
-      ? Math.max(existingItem.verifiedReportCount, 2)
-      : 0;
+    if (duplicateItem) {
+      return {
+        ok: false,
+        message: "같은 이름의 가격 항목이 이미 있습니다.",
+        source: "database" as DataSource,
+        item: null,
+        placeId: existingItem.placeSlug,
+      };
+    }
 
-  if (nextIsRepresentative) {
-    await db
+    const changedAt = new Date();
+    const nextIsRepresentative = input.isActive ? input.isRepresentative : false;
+    const nextVerifiedReportCount =
+      input.verificationStatus === "verified"
+        ? Math.max(existingItem.verifiedReportCount, 2)
+        : 0;
+
+    if (nextIsRepresentative) {
+      await tx
+        .update(priceItems)
+        .set({
+          isRepresentative: false,
+          updatedAt: changedAt,
+        })
+        .where(eq(priceItems.placeId, existingItem.placeId));
+    }
+
+    const [updatedItem] = await tx
       .update(priceItems)
       .set({
-        isRepresentative: false,
+        label: input.label,
+        normalizedLabel,
+        amount: input.amount,
+        unitLabel: input.unitLabel || null,
+        isActive: input.isActive,
+        isRepresentative: nextIsRepresentative,
+        verificationStatus: input.verificationStatus,
+        verifiedReportCount: nextVerifiedReportCount,
+        latestReportedAt: changedAt,
         updatedAt: changedAt,
       })
-      .where(eq(priceItems.placeId, existingItem.placeId));
-  }
+      .where(eq(priceItems.id, itemId))
+      .returning({
+        id: priceItems.id,
+        label: priceItems.label,
+        amount: priceItems.amount,
+        unitLabel: priceItems.unitLabel,
+        verificationStatus: priceItems.verificationStatus,
+        verifiedReportCount: priceItems.verifiedReportCount,
+        latestReportedAt: priceItems.latestReportedAt,
+        isRepresentative: priceItems.isRepresentative,
+        isActive: priceItems.isActive,
+      });
 
-  const [updatedItem] = await db
-    .update(priceItems)
-    .set({
-      label: input.label,
-      normalizedLabel,
-      amount: input.amount,
-      unitLabel: input.unitLabel || null,
-      isActive: input.isActive,
-      isRepresentative: nextIsRepresentative,
-      verificationStatus: input.verificationStatus,
-      verifiedReportCount: nextVerifiedReportCount,
-      latestReportedAt: changedAt,
-      updatedAt: changedAt,
-    })
-    .where(eq(priceItems.id, itemId))
-    .returning({
-      id: priceItems.id,
-      label: priceItems.label,
-      amount: priceItems.amount,
-      unitLabel: priceItems.unitLabel,
-      verificationStatus: priceItems.verificationStatus,
-      verifiedReportCount: priceItems.verifiedReportCount,
-      latestReportedAt: priceItems.latestReportedAt,
-      isRepresentative: priceItems.isRepresentative,
-      isActive: priceItems.isActive,
+    await refreshWorkerPlacePricingSummary(tx, existingItem.placeId, changedAt);
+    await tx.insert(adminActions).values({
+      adminUserId: toAdminActionUserId(adminUser.id),
+      actionType: "update_price_item",
+      targetType: "price_item",
+      targetId: updatedItem.id,
+      metadataJson: {
+        placeId: existingItem.placeSlug,
+        previousLabel: existingItem.label,
+        previousAmount: existingItem.amount,
+        nextLabel: updatedItem.label,
+        nextAmount: updatedItem.amount,
+        isActive: updatedItem.isActive,
+        isRepresentative: updatedItem.isRepresentative,
+        verificationStatus: updatedItem.verificationStatus,
+      },
     });
 
-  await refreshWorkerPlacePricingSummary(env, existingItem.placeId, changedAt);
-  await db.insert(adminActions).values({
-    adminUserId: toAdminActionUserId(adminUser.id),
-    actionType: "update_price_item",
-    targetType: "price_item",
-    targetId: updatedItem.id,
-    metadataJson: {
+    return {
+      ok: true,
+      message: updatedItem.isActive
+        ? "가격 항목을 업데이트했습니다."
+        : "가격 항목을 숨겼습니다.",
+      source: "database" as DataSource,
+      item: toAdminPriceItemRecord(updatedItem),
       placeId: existingItem.placeSlug,
-      previousLabel: existingItem.label,
-      previousAmount: existingItem.amount,
-      nextLabel: updatedItem.label,
-      nextAmount: updatedItem.amount,
-      isActive: updatedItem.isActive,
-      isRepresentative: updatedItem.isRepresentative,
-      verificationStatus: updatedItem.verificationStatus,
-    },
+    };
   });
-
-  return {
-    ok: true,
-    message: updatedItem.isActive
-      ? "가격 항목을 업데이트했습니다."
-      : "가격 항목을 숨겼습니다.",
-    source: "database" as DataSource,
-    item: toAdminPriceItemRecord(updatedItem),
-    placeId: existingItem.placeSlug,
-  };
 }
 
 export async function listWorkerReports(env: WorkerDatabaseBindings) {
@@ -1064,64 +1078,69 @@ export async function updateWorkerReportStatus(
   adminUser: AdminUser,
 ) {
   const db = getWorkerDb(env);
-  const now = new Date();
-  const [updatedReport] = await db
-    .update(contentReports)
-    .set({
-      status: input.status,
-      resolvedAt:
-        input.status === "resolved" || input.status === "dismissed" ? now : null,
-    })
-    .where(eq(contentReports.id, id))
-    .returning({
-      id: contentReports.id,
-      targetId: contentReports.targetId,
-      reasonType: contentReports.reasonType,
-      detail: contentReports.detail,
-      status: contentReports.status,
-      createdAt: contentReports.createdAt,
+
+  return await db.transaction(async (tx) => {
+    const now = new Date();
+    const [updatedReport] = await tx
+      .update(contentReports)
+      .set({
+        status: input.status,
+        resolvedAt:
+          input.status === "resolved" || input.status === "dismissed"
+            ? now
+            : null,
+      })
+      .where(eq(contentReports.id, id))
+      .returning({
+        id: contentReports.id,
+        targetId: contentReports.targetId,
+        reasonType: contentReports.reasonType,
+        detail: contentReports.detail,
+        status: contentReports.status,
+        createdAt: contentReports.createdAt,
+      });
+
+    if (!updatedReport) {
+      return {
+        ok: false,
+        message: "신고를 찾지 못했습니다.",
+        source: "database" as DataSource,
+        item: null,
+      };
+    }
+
+    const [placeRow] = await tx
+      .select({
+        slug: places.slug,
+        name: places.name,
+      })
+      .from(places)
+      .where(eq(places.id, updatedReport.targetId))
+      .limit(1);
+
+    await tx.insert(adminActions).values({
+      adminUserId: toAdminActionUserId(adminUser.id),
+      actionType: "update_content_report_status",
+      targetType: "content_report",
+      targetId: updatedReport.id,
+      metadataJson: {
+        status: input.status,
+      },
     });
 
-  if (!updatedReport) {
     return {
-      ok: false,
-      message: "신고를 찾지 못했습니다.",
+      ok: true,
+      message: "신고 상태를 업데이트했습니다.",
       source: "database" as DataSource,
-      item: null,
+      item: {
+        id: updatedReport.id,
+        placeId: placeRow?.slug ?? "unknown-place",
+        placeName: placeRow?.name ?? "알 수 없는 장소",
+        reasonType: updatedReport.reasonType as MockReportRecord["reasonType"],
+        detail: updatedReport.detail ?? "",
+        status: updatedReport.status,
+        createdAt: formatDate(updatedReport.createdAt),
+      },
     };
-  }
-
-  const [placeRow] = await db
-    .select({
-      slug: places.slug,
-      name: places.name,
-    })
-    .from(places)
-    .where(eq(places.id, updatedReport.targetId))
-    .limit(1);
-
-  await db.insert(adminActions).values({
-    adminUserId: toAdminActionUserId(adminUser.id),
-    actionType: "update_content_report_status",
-    targetType: "content_report",
-    targetId: updatedReport.id,
-    metadataJson: {
-      status: input.status,
-    },
   });
-
-  return {
-    ok: true,
-    message: "신고 상태를 업데이트했습니다.",
-    source: "database" as DataSource,
-    item: {
-      id: updatedReport.id,
-      placeId: placeRow?.slug ?? "unknown-place",
-      placeName: placeRow?.name ?? "알 수 없는 장소",
-      reasonType: updatedReport.reasonType as MockReportRecord["reasonType"],
-      detail: updatedReport.detail ?? "",
-      status: updatedReport.status,
-      createdAt: formatDate(updatedReport.createdAt),
-    },
-  };
 }
