@@ -6,6 +6,9 @@ import * as schema from "@/db/schema";
 
 export type WorkerDatabaseBindings = {
   DATABASE_URL?: string;
+  HYPERDRIVE?: {
+    connectionString?: string;
+  };
   USE_MOCK_DATA?: string;
 };
 
@@ -39,7 +42,7 @@ function createDb(client: ReturnType<typeof createPostgresClient>) {
 
 type DatabaseState = {
   client: ReturnType<typeof createPostgresClient>;
-  databaseUrl: string;
+  connectionString: string;
   db: ReturnType<typeof createDb>;
 };
 type DatabaseContext = {
@@ -59,12 +62,38 @@ export class WorkerDatabaseUnavailableError extends Error {
   }
 }
 
-function createDbState(databaseUrl: string): DatabaseState {
-  const client = createPostgresClient(databaseUrl);
+function getWorkerDatabaseConnection(env: WorkerDatabaseBindings) {
+  const hyperdriveConnectionString = env.HYPERDRIVE?.connectionString?.trim();
+
+  if (hyperdriveConnectionString) {
+    return {
+      connectionString: hyperdriveConnectionString,
+      source: "hyperdrive" as const,
+    };
+  }
+
+  const databaseUrl = env.DATABASE_URL?.trim();
+
+  if (databaseUrl) {
+    return {
+      connectionString: databaseUrl,
+      source: "database-url" as const,
+    };
+  }
+
+  return null;
+}
+
+export function getWorkerDatabaseConnectionSource(env: WorkerDatabaseBindings) {
+  return getWorkerDatabaseConnection(env)?.source ?? "missing";
+}
+
+function createDbState(connectionString: string): DatabaseState {
+  const client = createPostgresClient(connectionString);
 
   return {
     client,
-    databaseUrl,
+    connectionString,
     db: createDb(client),
   };
 }
@@ -87,7 +116,7 @@ function isDatabaseTemporarilyUnavailable() {
 export function isWorkerDatabaseEnabled(env: WorkerDatabaseBindings) {
   return (
     env.USE_MOCK_DATA !== "true" &&
-    Boolean(env.DATABASE_URL) &&
+    Boolean(getWorkerDatabaseConnection(env)) &&
     !isDatabaseTemporarilyUnavailable()
   );
 }
@@ -104,9 +133,9 @@ export function assertWorkerDatabaseReadEnabled(
     return;
   }
 
-  if (!env.DATABASE_URL) {
+  if (!getWorkerDatabaseConnection(env)) {
     throw new WorkerDatabaseUnavailableError(
-      `${label} requires DATABASE_URL when USE_MOCK_DATA is not true.`,
+      `${label} requires HYPERDRIVE or DATABASE_URL when USE_MOCK_DATA is not true.`,
     );
   }
 
@@ -150,9 +179,11 @@ export function markWorkerDatabaseUnavailable() {
 }
 
 export function getWorkerDb(env: WorkerDatabaseBindings) {
-  if (!isWorkerDatabaseEnabled(env) || !env.DATABASE_URL) {
+  const connection = getWorkerDatabaseConnection(env);
+
+  if (!isWorkerDatabaseEnabled(env) || !connection) {
     throw new Error(
-      "Database access is disabled. Set USE_MOCK_DATA=false and DATABASE_URL to enable it.",
+      "Database access is disabled. Set USE_MOCK_DATA=false and configure HYPERDRIVE or DATABASE_URL to enable it.",
     );
   }
 
@@ -166,7 +197,7 @@ export function getWorkerDb(env: WorkerDatabaseBindings) {
 
   const existing = context?.state;
 
-  if (existing?.databaseUrl === env.DATABASE_URL) {
+  if (existing?.connectionString === connection.connectionString) {
     return existing.db;
   }
 
@@ -175,7 +206,7 @@ export function getWorkerDb(env: WorkerDatabaseBindings) {
     void closeDatabaseState(existing);
   }
 
-  const state = createDbState(env.DATABASE_URL);
+  const state = createDbState(connection.connectionString);
 
   if (context) {
     context.state = state;
