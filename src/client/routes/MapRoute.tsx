@@ -13,9 +13,20 @@ import { Link, useSearchParams } from "react-router-dom";
 import { ViteBookmarkToggleButton } from "@/client/components/ViteBookmarkToggleButton";
 import { VitePlaceReactionButtons } from "@/client/components/VitePlaceReactionButtons";
 import {
-  categoryGroups,
-  getCategoryBySlug,
-} from "@/features/categories/catalog";
+  formatKrw,
+  getVerificationBadgeClassName,
+  getVerificationLabel,
+} from "@/client/features/map/map-format";
+import { getCategoryBySlug } from "@/features/categories/catalog";
+import {
+  buildMapApiPath,
+  CLUSTER_FOCUS_VIEWPORT_LOCK_MS,
+  createBootstrapViewport,
+  createMapHref,
+  VIEWPORT_FETCH_DEBOUNCE_MS,
+} from "@/client/features/map/map-query";
+import { MapCategoryTray } from "@/client/features/map/MapCategoryTray";
+import { PlaceCard } from "@/client/features/map/PlaceCard";
 import { NaverMapPanel } from "@/features/map/naver-map-panel";
 import type { MapViewport } from "@/features/map/naver-map-sdk";
 import { RouteResetDetails } from "@/features/map/route-reset-details";
@@ -78,16 +89,6 @@ type PlaceDetailLoadState =
 
 type MobileSheetMode = "hidden" | "peek" | "expanded";
 
-const SEOUL_BOOTSTRAP_BOUNDS: PlaceBounds = {
-  minLat: 37.4133,
-  maxLat: 37.7151,
-  minLng: 126.7341,
-  maxLng: 127.2693,
-};
-const SEOUL_BOOTSTRAP_ZOOM = 11;
-const VIEWPORT_FETCH_DEBOUNCE_MS = 320;
-const CLUSTER_FOCUS_VIEWPORT_LOCK_MS = 360;
-
 const scopeChipClassName =
   "altteulmap-scope-chip inline-flex min-w-[6.75rem] items-center justify-center whitespace-nowrap rounded-[0.65rem] px-3 py-2 text-xs font-semibold transition sm:text-sm";
 
@@ -115,120 +116,6 @@ function useIsDesktopLayout() {
   return isDesktop;
 }
 
-function formatKrw(amount: number) {
-  return new Intl.NumberFormat("ko-KR").format(amount);
-}
-
-function getVerificationBadgeClassName(status: PlacePreviewRecord["verificationStatus"]) {
-  return status === "verified"
-    ? "altteulmap-badge altteulmap-badge-success"
-    : "altteulmap-badge altteulmap-badge-warning";
-}
-
-function getVerificationLabel(status: PlacePreviewRecord["verificationStatus"]) {
-  return status === "verified" ? "검증됨" : "확인 필요";
-}
-
-function buildMapApiPath(
-  searchParams: URLSearchParams,
-  viewport?: MapViewport | null,
-) {
-  const apiParams = new URLSearchParams();
-  const category = searchParams.get("category");
-  const query = searchParams.get("q")?.trim() || "";
-  const scope = searchParams.get("scope") === "global" ? "global" : "viewport";
-
-  if (category) {
-    apiParams.set("category", category);
-  }
-
-  if (query) {
-    apiParams.set("query", query);
-    apiParams.set("scope", scope);
-  }
-
-  if (scope === "viewport" && viewport) {
-    const snappedBounds = isBootstrapBounds(viewport.bounds)
-      ? viewport.bounds
-      : snapViewportBounds(viewport.bounds, viewport.zoom);
-
-    apiParams.set("minLat", String(snappedBounds.minLat));
-    apiParams.set("maxLat", String(snappedBounds.maxLat));
-    apiParams.set("minLng", String(snappedBounds.minLng));
-    apiParams.set("maxLng", String(snappedBounds.maxLng));
-    apiParams.set("zoom", String(Math.round(viewport.zoom)));
-  }
-
-  const queryString = apiParams.toString();
-
-  return queryString ? `/api/places/map?${queryString}` : "/api/places/map";
-}
-
-function isBootstrapBounds(bounds: PlaceBounds) {
-  return (
-    bounds.minLat === SEOUL_BOOTSTRAP_BOUNDS.minLat &&
-    bounds.maxLat === SEOUL_BOOTSTRAP_BOUNDS.maxLat &&
-    bounds.minLng === SEOUL_BOOTSTRAP_BOUNDS.minLng &&
-    bounds.maxLng === SEOUL_BOOTSTRAP_BOUNDS.maxLng
-  );
-}
-
-function getViewportBoundsSnapFactor(zoom: number) {
-  if (zoom <= 12) {
-    return 200;
-  }
-
-  if (zoom <= 14) {
-    return 500;
-  }
-
-  return 1_000;
-}
-
-function snapViewportBounds(bounds: PlaceBounds, zoom: number): PlaceBounds {
-  const snapFactor = getViewportBoundsSnapFactor(zoom);
-
-  return {
-    minLat: Math.floor(bounds.minLat * snapFactor) / snapFactor,
-    maxLat: Math.ceil(bounds.maxLat * snapFactor) / snapFactor,
-    minLng: Math.floor(bounds.minLng * snapFactor) / snapFactor,
-    maxLng: Math.ceil(bounds.maxLng * snapFactor) / snapFactor,
-  };
-}
-
-function createBootstrapViewport(): MapViewport {
-  return {
-    bounds: SEOUL_BOOTSTRAP_BOUNDS,
-    center: {
-      lat: (SEOUL_BOOTSTRAP_BOUNDS.minLat + SEOUL_BOOTSTRAP_BOUNDS.maxLat) / 2,
-      lng: (SEOUL_BOOTSTRAP_BOUNDS.minLng + SEOUL_BOOTSTRAP_BOUNDS.maxLng) / 2,
-    },
-    zoom: SEOUL_BOOTSTRAP_ZOOM,
-  };
-}
-
-function createMapHref(params: {
-  category?: string | null;
-  query?: string | null;
-  scope?: PlaceSearchScope;
-}) {
-  const search = new URLSearchParams();
-  const query = params.query?.trim();
-
-  if (query) {
-    search.set("q", query);
-    search.set("scope", params.scope ?? "global");
-  }
-
-  if (params.category) {
-    search.set("category", params.category);
-  }
-
-  const queryString = search.toString();
-
-  return queryString ? `/?${queryString}` : "/";
-}
-
 function getLoginHref() {
   const callbackUrl =
     typeof window === "undefined"
@@ -236,252 +123,6 @@ function getLoginHref() {
       : `${window.location.pathname}${window.location.search}`;
 
   return `/login?callbackUrl=${encodeURIComponent(callbackUrl)}`;
-}
-
-function MapCategoryTray({
-  activeCategory,
-  activeQuery,
-  activeSearchScope,
-}: {
-  activeCategory: string | null;
-  activeQuery: string | null;
-  activeSearchScope: PlaceSearchScope;
-}) {
-  const selectedCategory = getCategoryBySlug(activeCategory);
-  const totalCategoryCount = categoryGroups.reduce(
-    (count, group) => count + group.children.length,
-    0,
-  );
-  const [activeGroupSlug, setActiveGroupSlug] = useState(
-    selectedCategory?.parentSlug ?? categoryGroups[0]?.slug ?? null,
-  );
-  const resolvedGroupSlug = selectedCategory?.parentSlug ?? activeGroupSlug;
-  const activeGroup = useMemo(
-    () =>
-      categoryGroups.find((group) => group.slug === resolvedGroupSlug) ??
-      categoryGroups[0] ??
-      null,
-    [resolvedGroupSlug],
-  );
-
-  return (
-    <div className="grid gap-4">
-      <div className="grid gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-medium text-[var(--altteul-text-tertiary)]">
-            전체 {totalCategoryCount}개 업종
-          </span>
-          <Link
-            to={createMapHref({
-              category: null,
-              query: activeQuery,
-              scope: activeSearchScope,
-            })}
-            className={`altteulmap-chip inline-flex min-w-0 items-center justify-center border px-3 py-2 text-center text-xs font-medium leading-tight transition sm:text-sm ${
-              activeCategory
-                ? "border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-surface)] text-[var(--altteul-text-primary)] hover:bg-[var(--altteul-surface-fill-hover)]"
-                : "altteulmap-accent-chip"
-            }`}
-          >
-            전체 보기
-          </Link>
-          <span className="altteulmap-badge whitespace-nowrap px-2.5 py-1 text-[11px] font-medium">
-            {selectedCategory
-              ? `현재 ${selectedCategory.parentName} · ${selectedCategory.name}`
-              : "현재 전체 카테고리"}
-          </span>
-        </div>
-
-        <div className="grid gap-2">
-          <p className="text-xs font-medium text-[var(--altteul-text-tertiary)]">
-            상위 묶음 먼저 고르기
-          </p>
-          <div className="altteulmap-scroll-row">
-            {categoryGroups.map((group) => {
-              const isGroupSelected = group.slug === activeGroup?.slug;
-              const isGroupActive = group.children.some(
-                (category) => category.slug === activeCategory,
-              );
-
-              return (
-                <button
-                  key={group.slug}
-                  type="button"
-                  onClick={() => setActiveGroupSlug(group.slug)}
-                  className={`altteulmap-chip inline-flex shrink-0 items-center gap-2 border px-3 py-2 text-sm font-medium transition ${
-                    isGroupSelected
-                      ? "border-[var(--altteul-primary-border)] bg-[var(--altteul-primary-soft)] text-[var(--altteul-primary-text)]"
-                      : "border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-surface)] text-[var(--altteul-text-primary)] hover:bg-[var(--altteul-surface-fill-hover)]"
-                  }`}
-                >
-                  <span>{group.name}</span>
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-[11px] ${
-                      isGroupSelected || isGroupActive
-                        ? "bg-[var(--altteul-bg-surface)] text-[var(--altteul-primary-text)]"
-                        : "bg-[var(--altteul-bg-subtle)] text-[var(--altteul-text-tertiary)]"
-                    }`}
-                  >
-                    {group.children.length}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {activeGroup ? (
-        <section className="grid gap-3 border-t border-[var(--altteul-surface-border)] pt-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <h3 className="text-sm font-semibold text-[var(--altteul-text-strong)]">
-                {activeGroup.name}
-              </h3>
-              <p className="mt-1 text-xs text-[var(--altteul-text-tertiary)]">
-                세부 업종을 골라 결과를 바로 좁힙니다.
-              </p>
-            </div>
-            <span className="altteulmap-badge whitespace-nowrap px-2.5 py-1 text-[11px] font-medium">
-              {activeGroup.children.length}개 업종
-            </span>
-          </div>
-
-          <div className="altteulmap-chip-grid">
-            {activeGroup.children.map((category) => {
-              const isActive = activeCategory === category.slug;
-
-              return (
-                <Link
-                  key={category.slug}
-                  to={createMapHref({
-                    category: category.slug,
-                    query: activeQuery,
-                    scope: activeSearchScope,
-                  })}
-                  className={`altteulmap-chip inline-flex min-w-0 items-center justify-center border px-3 py-2 text-center text-xs font-medium leading-tight break-keep transition sm:text-sm ${
-                    isActive
-                      ? "altteulmap-accent-chip"
-                      : "border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-surface)] text-[var(--altteul-text-primary)] hover:bg-[var(--altteul-surface-fill-hover)]"
-                  }`}
-                >
-                  {category.name}
-                </Link>
-              );
-            })}
-          </div>
-        </section>
-      ) : null}
-    </div>
-  );
-}
-
-function PlaceCard({
-  bookmarked,
-  isSelected,
-  loginHref,
-  place,
-  onBookmarkUpdate,
-  onSelect,
-}: {
-  bookmarked: boolean;
-  isSelected: boolean;
-  loginHref: string;
-  place: PlacePreviewRecord;
-  onBookmarkUpdate: (placeId: string, bookmarked: boolean) => void;
-  onSelect: (place: PlacePreviewRecord) => void;
-}) {
-  const category = getCategoryBySlug(place.categorySlug);
-  const sharePayload = createPlaceSharePayload(place, "list");
-
-  return (
-    <article
-      role="button"
-      tabIndex={0}
-      onClick={() => onSelect(place)}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          onSelect(place);
-        }
-      }}
-      className={`rounded-[0.85rem] border p-4 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--altteul-primary)] ${
-        isSelected
-          ? "border-[var(--altteul-primary-border)] bg-[var(--altteul-primary-soft)]"
-          : "border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-surface)] hover:border-[var(--altteul-primary-border)] hover:bg-[var(--altteul-surface-fill-hover)]"
-      }`}
-      data-testid={`place-list-item-${place.id}`}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-[11px] font-semibold text-[var(--altteul-primary-text)]">
-            대표가 · {place.representativePriceLabel || "기준 가격"}
-          </p>
-          <p className="altteulmap-price-number mt-1 text-[1.75rem] leading-none">
-            {formatKrw(place.representativePriceAmount)}원
-          </p>
-        </div>
-        <div className="shrink-0" onClick={(event) => event.stopPropagation()}>
-          <ViteBookmarkToggleButton
-            compact
-            initialBookmarked={bookmarked}
-            loginHref={loginHref}
-            placeId={place.id}
-            onUpdate={(nextBookmarked) =>
-              onBookmarkUpdate(place.id, nextBookmarked)
-            }
-          />
-        </div>
-      </div>
-      <h2 className="mt-3 truncate text-base font-bold text-[var(--altteul-text-strong)]">
-        {place.name}
-      </h2>
-      <p className="mt-1 truncate text-xs text-[var(--altteul-text-secondary)]">
-        {[category?.name ?? "기타", place.district].join(" · ")}
-      </p>
-      <p className="mt-3 line-clamp-2 text-sm leading-6 text-[var(--altteul-text-secondary)]">
-        {place.description || place.note || place.address}
-      </p>
-
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap gap-2">
-          <span className={`${getVerificationBadgeClassName(place.verificationStatus)} px-2.5 py-1 text-[11px] font-semibold`}>
-            {getVerificationLabel(place.verificationStatus)}
-          </span>
-          <span className="altteulmap-badge altteulmap-badge-info px-2.5 py-1 text-[11px] font-medium">
-            갱신 {place.lastPriceUpdatedAt}
-          </span>
-          <span
-            className="altteulmap-badge px-2.5 py-1 text-[11px] font-medium"
-            data-testid={`place-list-like-count-${place.id}`}
-          >
-            👍 {place.likeCount}
-          </span>
-        </div>
-        <div
-          className="flex items-center gap-2"
-          onClick={(event) => event.stopPropagation()}
-        >
-          <PlaceShareButton
-            path={sharePayload.path}
-            title={sharePayload.title}
-            text={sharePayload.text}
-            className="altteulmap-button inline-flex items-center gap-1.5 whitespace-nowrap px-3 py-1.5 text-xs font-medium"
-            messageClassName="mt-1 text-right text-[11px] text-[var(--altteul-text-tertiary)]"
-            testId={`place-list-item-share-button-${place.id}`}
-            messageTestId={`place-list-item-share-message-${place.id}`}
-          />
-          <button
-            type="button"
-            onClick={() => onSelect(place)}
-            className="altteulmap-button inline-flex px-3 py-1.5 text-xs font-medium"
-          >
-            가격 보기
-          </button>
-        </div>
-      </div>
-    </article>
-  );
 }
 
 function PlaceDetailSheet({
@@ -784,8 +425,7 @@ function MobilePlaceListSheet({
   if (mode === "hidden") {
     return renderMobilePortal(
       <div
-        className="pointer-events-none fixed inset-x-0 bottom-4 flex justify-center px-4 xl:hidden"
-        style={{ zIndex: 2147483647 }}
+        className="pointer-events-none fixed inset-x-0 bottom-4 z-[2147483647] flex justify-center px-4 xl:hidden"
       >
         <button
           type="button"
@@ -808,10 +448,9 @@ function MobilePlaceListSheet({
     <section
       data-testid="mobile-place-list-sheet"
       data-sheet-mode={mode}
-      className={`fixed inset-x-3 bottom-3 rounded-[1rem] border border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-surface)] p-3 shadow-[var(--altteul-shadow-overlay)] transition-all xl:hidden ${
+      className={`fixed inset-x-3 bottom-3 z-[2147483647] rounded-[1rem] border border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-surface)] p-3 shadow-[var(--altteul-shadow-overlay)] transition-all xl:hidden ${
         isExpanded ? "max-h-[88dvh]" : "max-h-[58dvh]"
       }`}
-      style={{ zIndex: 2147483647 }}
     >
       <button
         type="button"
@@ -849,9 +488,8 @@ function MobilePlaceListSheet({
           <button
             type="button"
             data-testid="mobile-place-list-toggle-size"
-            style={{ pointerEvents: "auto" }}
             onClick={() => onModeChange(isExpanded ? "peek" : "expanded")}
-            className="altteulmap-button min-h-9 px-3 py-1.5 text-xs font-medium"
+            className="altteulmap-button pointer-events-auto min-h-9 px-3 py-1.5 text-xs font-medium"
           >
             {isExpanded ? "줄이기" : "크게"}
           </button>
@@ -887,7 +525,6 @@ function MobilePlaceListSheet({
               role="button"
               tabIndex={0}
               data-testid={`mobile-place-list-item-${place.id}`}
-              style={{ pointerEvents: "auto" }}
               onClick={() => onSelectPlace(place)}
               onKeyDown={(event) => {
                 if (event.key === "Enter" || event.key === " ") {
@@ -895,7 +532,7 @@ function MobilePlaceListSheet({
                   onSelectPlace(place);
                 }
               }}
-              className="rounded-[0.85rem] border border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-surface)] p-3 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--altteul-primary)]"
+              className="pointer-events-auto rounded-[0.85rem] border border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-surface)] p-3 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--altteul-primary)]"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
