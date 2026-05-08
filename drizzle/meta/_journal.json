@@ -78,6 +78,20 @@
       "when": 1775451026296,
       "tag": "0010_military_wildside",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1778213850527,
+      "tag": "0011_wise_mantis",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1778215707535,
+      "tag": "0012_woozy_thunderbolt",
+      "breakpoints": true
     }
   ]
 }

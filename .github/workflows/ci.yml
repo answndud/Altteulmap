@@ -1,6 +1,12 @@
 name: CI
 
 on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - docs/**
+      - README.md
   pull_request:
     paths-ignore:
       - docs/**
@@ -16,7 +22,6 @@ permissions:
 
 jobs:
   verify:
-    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     name: Verify
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -43,9 +48,22 @@ jobs:
       - name: Verify
         run: npm run verify
 
+      - name: Build Vite Worker output
+        run: npm run cf:build:vite
+
+      - name: Check deploy output
+        run: npm run deploy:check:vite
+
+      - name: Check migration drift
+        run: |
+          npm run db:generate
+          git diff --exit-code drizzle src/db/schema.ts
+
+      - name: Check whitespace
+        run: git diff --check
+
   e2e-full:
     name: E2E Full
-    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 35
     services:
@@ -102,3 +120,33 @@ jobs:
 
       - name: Run full E2E
         run: npm run e2e:prepare && npm run build && npm run test:e2e:full:ci
+
+  remote-smoke:
+    name: Remote Smoke
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SMOKE_PUBLIC_URL: ${{ secrets.SMOKE_PUBLIC_URL }}
+      SMOKE_ADMIN_EMAIL: ${{ secrets.SMOKE_ADMIN_EMAIL }}
+      SMOKE_ADMIN_PASSWORD: ${{ secrets.SMOKE_ADMIN_PASSWORD }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run remote smoke
+        run: |
+          if [ -z "$SMOKE_PUBLIC_URL" ]; then
+            echo "SMOKE_PUBLIC_URL is not configured; skipping remote smoke."
+            exit 0
+          fi
+          npm run smoke:remote

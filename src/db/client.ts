@@ -6,6 +6,11 @@ import * as schema from "@/db/schema";
 
 const DATABASE_UNAVAILABLE_TTL_MS = 60_000;
 const DATABASE_READ_TIMEOUT_MS = 5_000;
+const DATABASE_STATEMENT_TIMEOUT_MS = 4_500;
+const DATABASE_LOCK_TIMEOUT_MS = 2_000;
+const DATABASE_IDLE_TRANSACTION_TIMEOUT_MS = 5_000;
+const DATABASE_CONNECT_TIMEOUT_SECONDS = 5;
+const DATABASE_MAX_LIFETIME_SECONDS = 60;
 
 function createPostgresClient() {
   const connectionString = getRequiredServerEnv("DATABASE_URL");
@@ -14,6 +19,14 @@ function createPostgresClient() {
     max: 1,
     prepare: false,
     idle_timeout: 5,
+    connect_timeout: DATABASE_CONNECT_TIMEOUT_SECONDS,
+    max_lifetime: DATABASE_MAX_LIFETIME_SECONDS,
+    connection: {
+      application_name: "altteulmap-server",
+      statement_timeout: DATABASE_STATEMENT_TIMEOUT_MS,
+      lock_timeout: DATABASE_LOCK_TIMEOUT_MS,
+      idle_in_transaction_session_timeout: DATABASE_IDLE_TRANSACTION_TIMEOUT_MS,
+    },
   });
 }
 

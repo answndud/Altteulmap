@@ -41,9 +41,12 @@ import {
   setCachedMapPreviewResult,
 } from "@/features/places/map-preview-cache";
 import {
+  assertWorkerDatabaseReadEnabled,
   getWorkerDb,
   isWorkerDatabaseEnabled,
+  isWorkerMockDataEnabled,
   markWorkerDatabaseUnavailable,
+  WorkerDatabaseUnavailableError,
   type WorkerDatabaseBindings,
   withWorkerDatabaseReadTimeout,
 } from "@/worker/db";
@@ -661,7 +664,11 @@ export async function listWorkerMapPlaces(
   query: PlaceQuery = {},
 ) {
   if (!isWorkerDatabaseEnabled(env)) {
-    return listMockMapPlaces(query);
+    if (isWorkerMockDataEnabled(env)) {
+      return listMockMapPlaces(query);
+    }
+
+    assertWorkerDatabaseReadEnabled(env, "listWorkerMapPlaces");
   }
 
   try {
@@ -671,10 +678,12 @@ export async function listWorkerMapPlaces(
   } catch (error) {
     markWorkerDatabaseUnavailable();
     console.error(
-      "Failed to load worker map places from database. Falling back to mock data.",
+      "Failed to load worker map places from database.",
       error,
     );
-    return listMockMapPlaces(query);
+    throw new WorkerDatabaseUnavailableError(
+      "지도 장소 목록을 운영 DB에서 불러오지 못했습니다.",
+    );
   }
 }
 
@@ -847,7 +856,11 @@ export async function getWorkerPlaceDetail(
   viewer: WorkerPlaceViewer,
 ) {
   if (!isWorkerDatabaseEnabled(env)) {
-    return getMockPlaceDetail(slug, viewer);
+    if (isWorkerMockDataEnabled(env)) {
+      return getMockPlaceDetail(slug, viewer);
+    }
+
+    assertWorkerDatabaseReadEnabled(env, "getWorkerPlaceDetail");
   }
 
   try {
@@ -857,9 +870,11 @@ export async function getWorkerPlaceDetail(
   } catch (error) {
     markWorkerDatabaseUnavailable();
     console.error(
-      "Failed to load worker place detail from database. Falling back to mock data.",
+      "Failed to load worker place detail from database.",
       error,
     );
-    return getMockPlaceDetail(slug, viewer);
+    throw new WorkerDatabaseUnavailableError(
+      "장소 상세 정보를 운영 DB에서 불러오지 못했습니다.",
+    );
   }
 }

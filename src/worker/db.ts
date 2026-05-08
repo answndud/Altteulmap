@@ -11,12 +11,25 @@ export type WorkerDatabaseBindings = {
 
 const DATABASE_UNAVAILABLE_TTL_MS = 60_000;
 const DATABASE_READ_TIMEOUT_MS = 5_000;
+const DATABASE_STATEMENT_TIMEOUT_MS = 4_500;
+const DATABASE_LOCK_TIMEOUT_MS = 2_000;
+const DATABASE_IDLE_TRANSACTION_TIMEOUT_MS = 5_000;
+const DATABASE_CONNECT_TIMEOUT_SECONDS = 5;
+const DATABASE_MAX_LIFETIME_SECONDS = 60;
 
 function createPostgresClient(databaseUrl: string) {
   return postgres(databaseUrl, {
     max: 1,
     prepare: false,
     idle_timeout: 5,
+    connect_timeout: DATABASE_CONNECT_TIMEOUT_SECONDS,
+    max_lifetime: DATABASE_MAX_LIFETIME_SECONDS,
+    connection: {
+      application_name: "altteulmap-worker",
+      statement_timeout: DATABASE_STATEMENT_TIMEOUT_MS,
+      lock_timeout: DATABASE_LOCK_TIMEOUT_MS,
+      idle_in_transaction_session_timeout: DATABASE_IDLE_TRANSACTION_TIMEOUT_MS,
+    },
   });
 }
 
@@ -38,6 +51,13 @@ const globalForWorkerDb = globalThis as typeof globalThis & {
   __altteulmapWorkerDbUnavailableUntil?: number;
 };
 const workerDatabaseStorage = new AsyncLocalStorage<DatabaseContext>();
+
+export class WorkerDatabaseUnavailableError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "WorkerDatabaseUnavailableError";
+  }
+}
 
 function createDbState(databaseUrl: string): DatabaseState {
   const client = createPostgresClient(databaseUrl);
@@ -70,6 +90,31 @@ export function isWorkerDatabaseEnabled(env: WorkerDatabaseBindings) {
     Boolean(env.DATABASE_URL) &&
     !isDatabaseTemporarilyUnavailable()
   );
+}
+
+export function isWorkerMockDataEnabled(env: WorkerDatabaseBindings) {
+  return env.USE_MOCK_DATA === "true";
+}
+
+export function assertWorkerDatabaseReadEnabled(
+  env: WorkerDatabaseBindings,
+  label: string,
+) {
+  if (isWorkerMockDataEnabled(env)) {
+    return;
+  }
+
+  if (!env.DATABASE_URL) {
+    throw new WorkerDatabaseUnavailableError(
+      `${label} requires DATABASE_URL when USE_MOCK_DATA is not true.`,
+    );
+  }
+
+  if (isDatabaseTemporarilyUnavailable()) {
+    throw new WorkerDatabaseUnavailableError(
+      `${label} database is temporarily unavailable after a recent failure.`,
+    );
+  }
 }
 
 async function closeDatabaseState(state: DatabaseState | undefined) {

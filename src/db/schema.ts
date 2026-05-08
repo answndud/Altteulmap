@@ -200,6 +200,17 @@ export const places = pgTable(
       table.status,
       table.primaryCategorySlug,
     ),
+    index("places_status_lat_lng_idx").on(
+      table.status,
+      table.latitude,
+      table.longitude,
+    ),
+    index("places_status_category_lat_lng_idx").on(
+      table.status,
+      table.primaryCategorySlug,
+      table.latitude,
+      table.longitude,
+    ),
     index("places_representative_price_idx").on(
       table.representativePriceAmount,
     ),
@@ -480,6 +491,33 @@ export const visitActivities = pgTable(
     index("visit_activity_visitor_date_idx").on(
       table.visitorId,
       table.visitDate,
+    ),
+  ],
+);
+
+export const publicWriteRateLimits = pgTable(
+  "public_write_rate_limits",
+  {
+    scope: varchar("scope", { length: 80 }).notNull(),
+    actorKey: varchar("actor_key", { length: 160 }).notNull(),
+    bucketStartedAt: timestamp("bucket_started_at", {
+      withTimezone: true,
+    }).notNull(),
+    count: integer("count").default(0).notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.scope, table.actorKey, table.bucketStartedAt],
+      name: "public_write_rate_limits_pk",
+    }),
+    index("public_write_rate_limits_expires_at_idx").on(table.expiresAt),
+    index("public_write_rate_limits_actor_updated_idx").on(
+      table.actorKey,
+      table.updatedAt,
     ),
   ],
 );

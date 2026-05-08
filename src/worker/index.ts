@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
+import { sql } from "drizzle-orm";
 
 import {
   categoryGroups,
@@ -42,7 +43,10 @@ import {
 } from "@/worker/places-read-repository";
 import { invalidateMapPreviewCache } from "@/features/places/map-preview-cache";
 import {
+  getWorkerDb,
   isWorkerDatabaseEnabled,
+  isWorkerMockDataEnabled,
+  WorkerDatabaseUnavailableError,
   withWorkerDatabaseConnection,
 } from "@/worker/db";
 import {
@@ -62,6 +66,9 @@ import {
   type WorkerPublicWriteActor,
 } from "@/worker/public-write-actor";
 import {
+  consumeWorkerPersistentRateLimit,
+} from "@/worker/rate-limit-repository";
+import {
   recordWorkerVisitActivity,
 } from "@/worker/telemetry-repository";
 import {
@@ -77,6 +84,9 @@ import type {
   PlaceBounds,
   PlaceSearchScope,
 } from "@/features/places/types";
+import type {
+  RateLimitPolicyName,
+} from "@/lib/rate-limit";
 
 type AssetFetcher = {
   fetch(request: Request): Promise<Response> | Response;
@@ -119,6 +129,12 @@ type OAuthProfile = {
   id: string | null;
   name: string | null;
 };
+type HealthCheckStatus = "ok" | "degraded" | "fail";
+type HealthCheck = {
+  name: string;
+  status: HealthCheckStatus;
+  [key: string]: unknown;
+};
 
 const app = new Hono<{ Bindings: CloudflareBindings }>();
 const AUTH_SESSION_COOKIE_NAME = "next-auth.session-token";
@@ -131,6 +147,40 @@ const VISITOR_ID_COOKIE_NAME = "altteulmap_visitor_id";
 const noStoreHeaders = {
   "Cache-Control": "no-store, max-age=0",
 };
+const baseSecurityHeaders = {
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+  "Permissions-Policy": [
+    "camera=()",
+    "microphone=()",
+    "payment=()",
+    "usb=()",
+    "geolocation=(self)",
+  ].join(", "),
+};
+const contentSecurityPolicy = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+  "form-action 'self'",
+  "script-src 'self' https://oapi.map.naver.com https://openapi.map.naver.com https://*.pstatic.net",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https:",
+  "font-src 'self' data:",
+  [
+    "connect-src 'self'",
+    "https://oapi.map.naver.com",
+    "https://openapi.map.naver.com",
+    "https://naveropenapi.apigw.ntruss.com",
+    "https://*.naver.com",
+    "https://*.pstatic.net",
+    "https://basemaps.cartocdn.com",
+  ].join(" "),
+  "worker-src 'self' blob:",
+  "manifest-src 'self'",
+].join("; ");
 const PLACE_SHARE_SOURCES = [
   "detail",
   "detail_sheet",
@@ -164,6 +214,34 @@ const mockCommentStore = new Map<
 >();
 const mockReactionStore = new Map<string, PlaceReactionType>();
 const mockBookmarkStore = new Map<string, Set<string>>();
+
+function applySecurityHeaders(response: Response, request: Request) {
+  const headers = new Headers(response.headers);
+
+  for (const [name, value] of Object.entries(baseSecurityHeaders)) {
+    headers.set(name, value);
+  }
+
+  headers.set("Content-Security-Policy", contentSecurityPolicy);
+
+  if (new URL(request.url).protocol === "https:") {
+    headers.set(
+      "Strict-Transport-Security",
+      "max-age=31536000; includeSubDomains; preload",
+    );
+  }
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
+app.use("*", async (c, next) => {
+  await next();
+  c.res = applySecurityHeaders(c.res, c.req.raw);
+});
 
 app.use("/api/*", async (c, next) => {
   await next();
@@ -381,6 +459,18 @@ async function runWorkerDatabaseRoute<T>(
   return withWorkerDatabaseConnection(env, load);
 }
 
+async function consumePublicWriteRateLimit(
+  env: CloudflareBindings,
+  policyName: RateLimitPolicyName,
+  actor: WorkerPublicWriteActor,
+) {
+  return (
+    (await runWorkerDatabaseRoute(env, () =>
+      consumeWorkerPersistentRateLimit(env, policyName, actor),
+    )) ?? consumeWorkerRateLimit(policyName, actor)
+  );
+}
+
 function getOrigin(request: Request, siteUrl?: string) {
   if (siteUrl) {
     try {
@@ -393,12 +483,130 @@ function getOrigin(request: Request, siteUrl?: string) {
   return new URL(request.url).origin;
 }
 
+function getPublicNaverMapKeyId(env: CloudflareBindings) {
+  return (
+    env.NEXT_PUBLIC_NAVER_MAP_KEY_ID ||
+    env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID ||
+    env.NAVER_MAP_CLIENT_ID ||
+    BUILD_TIME_PUBLIC_NAVER_MAP_KEY_ID ||
+    ""
+  );
+}
+
+function getHealthStatus(checks: Array<{ status: HealthCheckStatus }>) {
+  if (checks.some((check) => check.status === "fail")) {
+    return "fail" satisfies HealthCheckStatus;
+  }
+
+  if (checks.some((check) => check.status === "degraded")) {
+    return "degraded" satisfies HealthCheckStatus;
+  }
+
+  return "ok" satisfies HealthCheckStatus;
+}
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
+}
+
+async function getDatabaseHealthCheck(env: CloudflareBindings) {
+  if (isWorkerMockDataEnabled(env)) {
+    return {
+      name: "database",
+      status: "degraded" as const,
+      source: "mock" as const,
+      message: "USE_MOCK_DATA=true",
+    };
+  }
+
+  if (!env.DATABASE_URL) {
+    return {
+      name: "database",
+      status: "fail" as const,
+      source: "missing" as const,
+      message: "DATABASE_URL is missing",
+    };
+  }
+
+  try {
+    const startedAt = Date.now();
+
+    await runWorkerDatabaseRoute(env, async () => {
+      const db = getWorkerDb(env);
+      await db.execute(sql`select 1 as ok`);
+    });
+
+    return {
+      name: "database",
+      status: "ok" as const,
+      source: "database" as const,
+      latencyMs: Date.now() - startedAt,
+    };
+  } catch (error) {
+    return {
+      name: "database",
+      status: "fail" as const,
+      source: "database" as const,
+      message: getErrorMessage(error),
+    };
+  }
+}
+
+async function getStaticAssetHealthCheck(env: CloudflareBindings, request: Request) {
+  try {
+    const assetUrl = new URL("/", request.url);
+    const response = await env.ASSETS.fetch(
+      new Request(assetUrl, {
+        headers: {
+          Accept: "text/html",
+        },
+      }),
+    );
+
+    return {
+      name: "static-assets",
+      status: response.ok ? "ok" as const : "fail" as const,
+      statusCode: response.status,
+      contentType: response.headers.get("content-type") ?? "",
+    };
+  } catch (error) {
+    return {
+      name: "static-assets",
+      status: "fail" as const,
+      message: getErrorMessage(error),
+    };
+  }
+}
+
 function textResponse(body: string, contentType: string) {
   return new Response(body, {
     headers: {
       "content-type": contentType,
     },
   });
+}
+
+function isWorkerDatabaseUnavailableError(error: unknown) {
+  return error instanceof WorkerDatabaseUnavailableError;
+}
+
+function databaseUnavailableResponse(message: string) {
+  return new Response(
+    JSON.stringify({
+      ok: false,
+      error: {
+        code: "DATABASE_UNAVAILABLE",
+        message,
+      },
+    }),
+    {
+      status: 503,
+      headers: {
+        ...noStoreHeaders,
+        "content-type": "application/json; charset=utf-8",
+      },
+    },
+  );
 }
 
 function normalizeCallbackUrl(
@@ -884,13 +1092,64 @@ async function fetchOAuthProfile(
   };
 }
 
-app.get("/api/health", (c) =>
-  c.json({
-    ok: true,
-    runtime: "cloudflare-worker",
-    app: "altteulmap-vite-migration",
-  }),
-);
+app.get("/api/health", async (c) => {
+  const isDeepCheck = c.req.query("deep") === "1";
+  const origin = getOrigin(c.req.raw, c.env.SITE_URL ?? c.env.NEXTAUTH_URL);
+  const oauthProviders = listWorkerSocialAuthProviders(c.env);
+  const checks: HealthCheck[] = [
+    {
+      name: "runtime",
+      status: "ok" as const,
+      runtime: "cloudflare-worker",
+    },
+    {
+      name: "public-config",
+      status: getPublicNaverMapKeyId(c.env) ? "ok" as const : "fail" as const,
+      naverMapKey: Boolean(getPublicNaverMapKeyId(c.env)),
+    },
+    {
+      name: "auth-providers",
+      status: oauthProviders.every((provider) => provider.enabled)
+        ? "ok" as const
+        : "degraded" as const,
+      credentials: true,
+      kakao: oauthProviders.find((provider) => provider.id === "kakao")?.enabled ?? false,
+      naver: oauthProviders.find((provider) => provider.id === "naver")?.enabled ?? false,
+    },
+  ];
+
+  if (isDeepCheck) {
+    checks.push(await getDatabaseHealthCheck(c.env));
+    checks.push(await getStaticAssetHealthCheck(c.env, c.req.raw));
+  } else {
+    checks.push({
+      name: "database-config",
+      status: isWorkerDatabaseEnabled(c.env) ? "ok" as const : "degraded" as const,
+      source: isWorkerMockDataEnabled(c.env)
+        ? "mock"
+        : c.env.DATABASE_URL
+          ? "database"
+          : "missing",
+    });
+  }
+
+  const status = getHealthStatus(checks);
+
+  return c.json(
+    {
+      ok: status === "ok",
+      status,
+      app: "altteulmap",
+      runtime: "cloudflare-worker",
+      origin,
+      checkedAt: new Date().toISOString(),
+      deep: isDeepCheck,
+      checks,
+    },
+    status === "fail" ? 503 : 200,
+    noStoreHeaders,
+  );
+});
 
 app.get("/api/categories", (c) =>
   c.json({
@@ -902,12 +1161,7 @@ app.get("/api/categories", (c) =>
 app.get("/api/config/public", (c) =>
   c.json(
     {
-      naverMapKeyId:
-        c.env.NEXT_PUBLIC_NAVER_MAP_KEY_ID ||
-        c.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID ||
-        c.env.NAVER_MAP_CLIENT_ID ||
-        BUILD_TIME_PUBLIC_NAVER_MAP_KEY_ID ||
-        "",
+      naverMapKeyId: getPublicNaverMapKeyId(c.env),
     },
     200,
     noStoreHeaders,
@@ -1374,7 +1628,17 @@ app.get("/api/places/map", async (c) => {
     query,
     bounds: searchScope === "viewport" ? bounds : null,
     zoom: searchScope === "viewport" ? zoom : null,
+  }).catch((error: unknown) => {
+    if (isWorkerDatabaseUnavailableError(error)) {
+      return null;
+    }
+
+    throw error;
   });
+
+  if (!result) {
+    return databaseUnavailableResponse("지도 장소 목록을 불러오지 못했습니다.");
+  }
 
   const response = c.json(
     {
@@ -1415,7 +1679,18 @@ app.get("/api/places/:id", async (c) => {
     c.env,
     c.req.param("id"),
     getPlaceViewerFromRequest(c.req.raw, c.env),
-  );
+  ).catch((error: unknown) => {
+    if (isWorkerDatabaseUnavailableError(error)) {
+      return null;
+    }
+
+    throw error;
+  });
+
+  if (!result) {
+    return databaseUnavailableResponse("장소 상세 정보를 불러오지 못했습니다.");
+  }
+
   const place = result.item;
 
   if (!place) {
@@ -1457,7 +1732,7 @@ app.post("/api/places/:id/prices", async (c) => {
     c.req.raw,
     getSessionFromRequest(c.req.raw, c.env)?.user ?? null,
   );
-  const rateLimit = consumeWorkerRateLimit("placePriceSubmission", actor);
+  const rateLimit = await consumePublicWriteRateLimit(c.env, "placePriceSubmission", actor);
 
   if (!rateLimit.ok) {
     return applyWorkerWriteHeaders(
@@ -1498,6 +1773,15 @@ app.post("/api/places/:id/prices", async (c) => {
 
     return applyWorkerWriteHeaders(
       c.json(result, result.ok ? 200 : 404),
+      c.req.raw,
+      actor,
+      rateLimit,
+    );
+  }
+
+  if (!isWorkerMockDataEnabled(c.env)) {
+    return applyWorkerWriteHeaders(
+      databaseUnavailableResponse("가격 제보를 저장하지 못했습니다."),
       c.req.raw,
       actor,
       rateLimit,
@@ -1553,7 +1837,7 @@ app.post("/api/places/:id/comments", async (c) => {
     c.req.raw,
     getSessionFromRequest(c.req.raw, c.env)?.user ?? null,
   );
-  const rateLimit = consumeWorkerRateLimit("placeCommentSubmission", actor);
+  const rateLimit = await consumePublicWriteRateLimit(c.env, "placeCommentSubmission", actor);
 
   if (!rateLimit.ok) {
     return applyWorkerWriteHeaders(
@@ -1594,6 +1878,15 @@ app.post("/api/places/:id/comments", async (c) => {
 
     return applyWorkerWriteHeaders(
       c.json(result, result.ok ? 200 : 404),
+      c.req.raw,
+      actor,
+      rateLimit,
+    );
+  }
+
+  if (!isWorkerMockDataEnabled(c.env)) {
+    return applyWorkerWriteHeaders(
+      databaseUnavailableResponse("코멘트를 저장하지 못했습니다."),
       c.req.raw,
       actor,
       rateLimit,
@@ -1689,6 +1982,10 @@ app.delete("/api/places/:id/comments/:commentId", async (c) => {
     return c.json(result, status);
   }
 
+  if (!isWorkerMockDataEnabled(c.env)) {
+    return databaseUnavailableResponse("코멘트를 삭제하지 못했습니다.");
+  }
+
   const comments = mockCommentStore.get(placeId) ?? [];
   const target = comments.find((comment) => comment.id === commentId);
 
@@ -1728,7 +2025,7 @@ app.put("/api/places/:id/reaction", async (c) => {
     c.req.raw,
     getSessionFromRequest(c.req.raw, c.env)?.user ?? null,
   );
-  const rateLimit = consumeWorkerRateLimit("placeReaction", actor);
+  const rateLimit = await consumePublicWriteRateLimit(c.env, "placeReaction", actor);
 
   if (!rateLimit.ok) {
     return applyWorkerWriteHeaders(
@@ -1769,6 +2066,15 @@ app.put("/api/places/:id/reaction", async (c) => {
 
     return applyWorkerWriteHeaders(
       c.json(result, result.ok ? 200 : 404),
+      c.req.raw,
+      actor,
+      rateLimit,
+    );
+  }
+
+  if (!isWorkerMockDataEnabled(c.env)) {
+    return applyWorkerWriteHeaders(
+      databaseUnavailableResponse("장소 반응을 저장하지 못했습니다."),
       c.req.raw,
       actor,
       rateLimit,
@@ -1828,7 +2134,7 @@ app.post("/api/places", async (c) => {
     c.req.raw,
     getSessionFromRequest(c.req.raw, c.env)?.user ?? null,
   );
-  const rateLimit = consumeWorkerRateLimit("placeSubmission", actor);
+  const rateLimit = await consumePublicWriteRateLimit(c.env, "placeSubmission", actor);
 
   if (!rateLimit.ok) {
     return applyWorkerWriteHeaders(
@@ -1875,6 +2181,15 @@ app.post("/api/places", async (c) => {
     );
   }
 
+  if (!isWorkerMockDataEnabled(c.env)) {
+    return applyWorkerWriteHeaders(
+      databaseUnavailableResponse("장소 등록 요청을 저장하지 못했습니다."),
+      c.req.raw,
+      actor,
+      rateLimit,
+    );
+  }
+
   return applyWorkerWriteHeaders(
     c.json({
       ok: true,
@@ -1903,7 +2218,7 @@ app.post("/api/reports", async (c) => {
     c.req.raw,
     getSessionFromRequest(c.req.raw, c.env)?.user ?? null,
   );
-  const rateLimit = consumeWorkerRateLimit("contentReportSubmission", actor);
+  const rateLimit = await consumePublicWriteRateLimit(c.env, "contentReportSubmission", actor);
 
   if (!rateLimit.ok) {
     return applyWorkerWriteHeaders(
@@ -1950,6 +2265,15 @@ app.post("/api/reports", async (c) => {
     );
   }
 
+  if (!isWorkerMockDataEnabled(c.env)) {
+    return applyWorkerWriteHeaders(
+      databaseUnavailableResponse("신고를 저장하지 못했습니다."),
+      c.req.raw,
+      actor,
+      rateLimit,
+    );
+  }
+
   return applyWorkerWriteHeaders(
     c.json({
       ok: true,
@@ -1978,6 +2302,10 @@ app.get("/api/admin/places", async (c) => {
   }
 
   if (!isWorkerDatabaseEnabled(c.env)) {
+    if (!isWorkerMockDataEnabled(c.env)) {
+      return databaseUnavailableResponse("장소 검토 목록을 불러오지 못했습니다.");
+    }
+
     return c.json(
       {
         items: [],
@@ -2027,6 +2355,10 @@ app.get("/api/admin/places/:id", async (c) => {
   }
 
   if (!isWorkerDatabaseEnabled(c.env)) {
+    if (!isWorkerMockDataEnabled(c.env)) {
+      return databaseUnavailableResponse("장소 검토 항목을 불러오지 못했습니다.");
+    }
+
     return c.json(
       {
         item: null,
@@ -2090,6 +2422,10 @@ app.patch("/api/admin/places/:id", async (c) => {
   }
 
   if (!isWorkerDatabaseEnabled(c.env)) {
+    if (!isWorkerMockDataEnabled(c.env)) {
+      return databaseUnavailableResponse("장소 검토 결과를 저장하지 못했습니다.");
+    }
+
     return c.json(
       {
         ok: true,
@@ -2137,6 +2473,10 @@ app.get("/api/admin/prices", async (c) => {
   }
 
   if (!isWorkerDatabaseEnabled(c.env)) {
+    if (!isWorkerMockDataEnabled(c.env)) {
+      return databaseUnavailableResponse("가격 제보 검토 목록을 불러오지 못했습니다.");
+    }
+
     return c.json(
       {
         items: [],
@@ -2201,6 +2541,10 @@ app.patch("/api/admin/prices/:id", async (c) => {
   }
 
   if (!isWorkerDatabaseEnabled(c.env)) {
+    if (!isWorkerMockDataEnabled(c.env)) {
+      return databaseUnavailableResponse("가격 제보 검토 결과를 저장하지 못했습니다.");
+    }
+
     return c.json(
       {
         ok: true,
@@ -2243,6 +2587,10 @@ app.get("/api/admin/prices/places/:id", async (c) => {
   }
 
   if (!isWorkerDatabaseEnabled(c.env)) {
+    if (!isWorkerMockDataEnabled(c.env)) {
+      return databaseUnavailableResponse("장소 가격 정보를 불러오지 못했습니다.");
+    }
+
     const place = getPlaceById(c.req.param("id"));
 
     return c.json(
@@ -2314,6 +2662,10 @@ app.patch("/api/admin/price-items/:id", async (c) => {
   }
 
   if (!isWorkerDatabaseEnabled(c.env)) {
+    if (!isWorkerMockDataEnabled(c.env)) {
+      return databaseUnavailableResponse("가격 항목을 업데이트하지 못했습니다.");
+    }
+
     return c.json(
       {
         ok: true,
@@ -2376,6 +2728,10 @@ app.get("/api/admin/reports", async (c) => {
   }
 
   if (!isWorkerDatabaseEnabled(c.env)) {
+    if (!isWorkerMockDataEnabled(c.env)) {
+      return databaseUnavailableResponse("신고 목록을 불러오지 못했습니다.");
+    }
+
     const result = listWorkerMockReports();
 
     return c.json(
@@ -2442,6 +2798,10 @@ app.patch("/api/admin/reports/:id", async (c) => {
   }
 
   if (!isWorkerDatabaseEnabled(c.env)) {
+    if (!isWorkerMockDataEnabled(c.env)) {
+      return databaseUnavailableResponse("신고 상태를 업데이트하지 못했습니다.");
+    }
+
     return c.json(
       {
         ok: true,
@@ -2633,6 +2993,8 @@ app.all("/api/*", (c) =>
   ),
 );
 
-app.notFound((c) => c.env.ASSETS.fetch(c.req.raw));
+app.notFound(async (c) =>
+  applySecurityHeaders(await c.env.ASSETS.fetch(c.req.raw), c.req.raw),
+);
 
 export default app;

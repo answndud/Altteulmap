@@ -23,6 +23,9 @@ import { getWorkerDb, type WorkerDatabaseBindings } from "@/worker/db";
 import type { WorkerPublicWriteActor } from "@/worker/public-write-actor";
 
 type DataSource = "database";
+type WorkerDb = ReturnType<typeof getWorkerDb>;
+type WorkerDbTransaction = Parameters<Parameters<WorkerDb["transaction"]>[0]>[0];
+type WorkerDbExecutor = WorkerDb | WorkerDbTransaction;
 
 const dateFormatter = new Intl.DateTimeFormat("sv-SE", {
   timeZone: "Asia/Seoul",
@@ -83,10 +86,9 @@ function getPlaceReactionMessage(reaction: PlaceReactionType | null) {
 }
 
 async function createUniquePlaceSlug(
-  env: WorkerDatabaseBindings,
+  db: WorkerDbExecutor,
   baseSlug: string,
 ) {
-  const db = getWorkerDb(env);
   const rootSlug = baseSlug || `place-${Date.now()}`;
   let candidate = rootSlug;
   let suffix = 2;
@@ -108,10 +110,9 @@ async function createUniquePlaceSlug(
 }
 
 async function getActivePlaceIdentityBySlug(
-  env: WorkerDatabaseBindings,
+  db: WorkerDbExecutor,
   slug: string,
 ) {
-  const db = getWorkerDb(env);
   const [placeRow] = await db
     .select({
       id: places.id,
@@ -127,10 +128,9 @@ async function getActivePlaceIdentityBySlug(
 }
 
 async function refreshPlaceReactionSummary(
-  env: WorkerDatabaseBindings,
+  db: WorkerDbExecutor,
   placeId: string,
 ) {
-  const db = getWorkerDb(env);
   const rows = await db
     .select({
       reactionType: placeReactions.reactionType,
@@ -172,120 +172,124 @@ export async function createDatabasePlaceSubmission(
   actor: WorkerPublicWriteActor,
 ) {
   const db = getWorkerDb(env);
-  const [categoryRow] = await db
-    .select({ id: categories.id })
-    .from(categories)
-    .where(eq(categories.slug, input.categorySlug))
-    .limit(1);
 
-  if (!categoryRow) {
-    throw new Error("Selected category does not exist.");
-  }
+  return await db.transaction(async (tx) => {
+    const [categoryRow] = await tx
+      .select({ id: categories.id })
+      .from(categories)
+      .where(eq(categories.slug, input.categorySlug))
+      .limit(1);
 
-  let representativeIndex = 0;
-
-  input.priceItems.forEach((item, index) => {
-    if (item.amount < input.priceItems[representativeIndex].amount) {
-      representativeIndex = index;
+    if (!categoryRow) {
+      throw new Error("Selected category does not exist.");
     }
-  });
 
-  const slug = await createUniquePlaceSlug(env, slugifyPlaceName(input.name));
-  const now = new Date();
-  const [createdPlace] = await db
-    .insert(places)
-    .values({
-      slug,
-      name: input.name,
-      businessName: input.businessName || null,
-      description: null,
-      note: input.note || null,
-      roadAddress: input.roadAddress,
-      district: input.district,
-      latitude: null,
-      longitude: null,
-      status: "pending_review",
-      primaryCategorySlug: input.categorySlug,
-      representativePriceAmount: input.priceItems[representativeIndex].amount,
-      representativePriceLabel: input.priceItems[representativeIndex].label,
-      likeCount: 0,
-      dislikeCount: 0,
-      verifiedPriceItemCount: 0,
-      lastPriceUpdatedAt: now,
-      createdByUserId: actor.user?.id ?? null,
-    })
-    .returning({
-      id: places.id,
-      slug: places.slug,
+    let representativeIndex = 0;
+
+    input.priceItems.forEach((item, index) => {
+      if (item.amount < input.priceItems[representativeIndex].amount) {
+        representativeIndex = index;
+      }
     });
 
-  await db.insert(placeCategories).values({
-    placeId: createdPlace.id,
-    categoryId: categoryRow.id,
-    isPrimary: true,
-  });
+    const slug = await createUniquePlaceSlug(tx, slugifyPlaceName(input.name));
+    const now = new Date();
+    const [createdPlace] = await tx
+      .insert(places)
+      .values({
+        slug,
+        name: input.name,
+        businessName: input.businessName || null,
+        description: null,
+        note: input.note || null,
+        roadAddress: input.roadAddress,
+        district: input.district,
+        latitude: null,
+        longitude: null,
+        status: "pending_review",
+        primaryCategorySlug: input.categorySlug,
+        representativePriceAmount: input.priceItems[representativeIndex].amount,
+        representativePriceLabel: input.priceItems[representativeIndex].label,
+        likeCount: 0,
+        dislikeCount: 0,
+        verifiedPriceItemCount: 0,
+        lastPriceUpdatedAt: now,
+        createdByUserId: actor.user?.id ?? null,
+      })
+      .returning({
+        id: places.id,
+        slug: places.slug,
+      });
 
-  const insertedPriceItems = await db
-    .insert(priceItems)
-    .values(
-      input.priceItems.map((item, index) => ({
+    await tx.insert(placeCategories).values({
+      placeId: createdPlace.id,
+      categoryId: categoryRow.id,
+      isPrimary: true,
+    });
+
+    const insertedPriceItems = await tx
+      .insert(priceItems)
+      .values(
+        input.priceItems.map((item, index) => ({
+          placeId: createdPlace.id,
+          label: item.label,
+          normalizedLabel: normalizePriceLabel(item.label),
+          amount: item.amount,
+          currency: "KRW" as const,
+          unitLabel: item.unitLabel || null,
+          isActive: true,
+          isRepresentative: index === representativeIndex,
+          verificationStatus: "unverified" as const,
+          verifiedReportCount: 0,
+          latestReportedAt: now,
+          createdByUserId: actor.user?.id ?? null,
+        })),
+      )
+      .returning({
+        id: priceItems.id,
+        normalizedLabel: priceItems.normalizedLabel,
+      });
+    const priceItemIdByLabel = new Map(
+      insertedPriceItems.map((item) => [item.normalizedLabel, item.id]),
+    );
+
+    await tx.insert(priceReports).values(
+      input.priceItems.map((item) => ({
         placeId: createdPlace.id,
+        priceItemId:
+          priceItemIdByLabel.get(normalizePriceLabel(item.label)) ?? null,
         label: item.label,
         normalizedLabel: normalizePriceLabel(item.label),
         amount: item.amount,
         currency: "KRW" as const,
         unitLabel: item.unitLabel || null,
-        isActive: true,
-        isRepresentative: index === representativeIndex,
-        verificationStatus: "unverified" as const,
-        verifiedReportCount: 0,
-        latestReportedAt: now,
-        createdByUserId: actor.user?.id ?? null,
+        comment: "신규 제보 등록",
+        reportStatus: "pending_review" as const,
+        snapshotVerificationStatus: "unverified" as const,
+        reporterUserId: actor.user?.id ?? null,
+        createdAt: now,
       })),
-    )
-    .returning({
-      id: priceItems.id,
-      normalizedLabel: priceItems.normalizedLabel,
-    });
-  const priceItemIdByLabel = new Map(
-    insertedPriceItems.map((item) => [item.normalizedLabel, item.id]),
-  );
+    );
 
-  await db.insert(priceReports).values(
-    input.priceItems.map((item) => ({
-      placeId: createdPlace.id,
-      priceItemId: priceItemIdByLabel.get(normalizePriceLabel(item.label)) ?? null,
-      label: item.label,
-      normalizedLabel: normalizePriceLabel(item.label),
-      amount: item.amount,
-      currency: "KRW" as const,
-      unitLabel: item.unitLabel || null,
-      comment: "신규 제보 등록",
-      reportStatus: "pending_review" as const,
-      snapshotVerificationStatus: "unverified" as const,
-      reporterUserId: actor.user?.id ?? null,
-      createdAt: now,
-    })),
-  );
-
-  return {
-    ok: true,
-    message: "장소 등록 요청이 접수되었습니다. 검토 후 공개 목록에 반영됩니다.",
-    mock: false,
-    source: "database" as DataSource,
-    preview: {
-      id: createdPlace.slug,
-      name: input.name,
-      categorySlug: input.categorySlug,
-      roadAddress: input.roadAddress,
-      district: input.district,
-      priceItems: input.priceItems.map((item) => ({
-        label: item.label,
-        amount: item.amount,
-        unitLabel: item.unitLabel || undefined,
-      })),
-    },
-  };
+    return {
+      ok: true,
+      message: "장소 등록 요청이 접수되었습니다. 검토 후 공개 목록에 반영됩니다.",
+      mock: false,
+      source: "database" as DataSource,
+      preview: {
+        id: createdPlace.slug,
+        name: input.name,
+        categorySlug: input.categorySlug,
+        roadAddress: input.roadAddress,
+        district: input.district,
+        priceItems: input.priceItems.map((item) => ({
+          label: item.label,
+          amount: item.amount,
+          unitLabel: item.unitLabel || undefined,
+        })),
+      },
+    };
+  });
 }
 
 export async function createDatabasePlacePriceReport(
@@ -295,7 +299,7 @@ export async function createDatabasePlacePriceReport(
   actor: WorkerPublicWriteActor,
 ) {
   const db = getWorkerDb(env);
-  const placeRow = await getActivePlaceIdentityBySlug(env, slug);
+  const placeRow = await getActivePlaceIdentityBySlug(db, slug);
 
   if (!placeRow) {
     return {
@@ -363,7 +367,7 @@ export async function createDatabasePlaceComment(
   actor: WorkerPublicWriteActor,
 ) {
   const db = getWorkerDb(env);
-  const placeRow = await getActivePlaceIdentityBySlug(env, slug);
+  const placeRow = await getActivePlaceIdentityBySlug(db, slug);
 
   if (!placeRow) {
     return {
@@ -413,7 +417,7 @@ export async function deleteDatabasePlaceComment(
   actor: WorkerPublicWriteActor,
 ) {
   const db = getWorkerDb(env);
-  const placeRow = await getActivePlaceIdentityBySlug(env, slug);
+  const placeRow = await getActivePlaceIdentityBySlug(db, slug);
 
   if (!placeRow) {
     return {
@@ -500,7 +504,7 @@ export async function setDatabasePlaceReaction(
   }
 
   const db = getWorkerDb(env);
-  const place = await getActivePlaceIdentityBySlug(env, placeSlug);
+  const place = await getActivePlaceIdentityBySlug(db, placeSlug);
 
   if (!place) {
     return {
@@ -545,7 +549,7 @@ export async function setDatabasePlaceReaction(
       );
   }
 
-  const summary = await refreshPlaceReactionSummary(env, place.id);
+  const summary = await refreshPlaceReactionSummary(db, place.id);
 
   return {
     ok: true,

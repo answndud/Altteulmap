@@ -47,6 +47,83 @@ function createCookieHeader(cookies) {
     .join("; ");
 }
 
+function parseCookiePair(cookiePair) {
+  const separatorIndex = cookiePair.indexOf("=");
+
+  if (separatorIndex === -1) {
+    return null;
+  }
+
+  return {
+    name: cookiePair.slice(0, separatorIndex),
+    value: cookiePair.slice(separatorIndex + 1),
+  };
+}
+
+function parseSetCookie(cookie) {
+  const [pair = "", ...attributes] = cookie.split(";").map((part) => part.trim());
+  const parsedPair = parseCookiePair(pair);
+
+  if (!parsedPair) {
+    return null;
+  }
+
+  return {
+    ...parsedPair,
+    attributes: attributes.map((attribute) => attribute.toLowerCase()),
+    rawAttributes: attributes,
+  };
+}
+
+function findSetCookie(cookies, name) {
+  return cookies.map(parseSetCookie).find((cookie) => cookie?.name === name) ?? null;
+}
+
+function assertCookieAttributes(cookie, label, { requireSecure = true } = {}) {
+  if (!cookie) {
+    throw new Error(`${label} cookie was not set`);
+  }
+
+  if (!cookie.attributes.includes("httponly")) {
+    throw new Error(`${label} cookie is missing HttpOnly`);
+  }
+
+  if (!cookie.attributes.includes("samesite=lax")) {
+    throw new Error(`${label} cookie is missing SameSite=Lax`);
+  }
+
+  if (requireSecure && !cookie.attributes.includes("secure")) {
+    throw new Error(`${label} cookie is missing Secure`);
+  }
+}
+
+function mergeCookieHeader(cookieHeader, setCookies) {
+  const jar = new Map();
+
+  for (const pair of cookieHeader.split(";").map((part) => part.trim()).filter(Boolean)) {
+    const parsedPair = parseCookiePair(pair);
+
+    if (parsedPair) {
+      jar.set(parsedPair.name, parsedPair.value);
+    }
+  }
+
+  for (const setCookie of setCookies.map(parseSetCookie).filter(Boolean)) {
+    const hasExpired =
+      setCookie.attributes.includes("max-age=0") ||
+      setCookie.attributes.some((attribute) => attribute.startsWith("expires=thu, 01 jan 1970")) ||
+      setCookie.value === "";
+
+    if (hasExpired) {
+      jar.delete(setCookie.name);
+    } else {
+      jar.set(setCookie.name, setCookie.value);
+    }
+  }
+
+  return [...jar.entries()].map(([name, value]) => `${name}=${value}`).join("; ");
+}
+
 async function expectRedirectToHost(pathname, expectedHost, label) {
   const response = await request(pathname);
 
@@ -67,9 +144,17 @@ async function expectRedirectToHost(pathname, expectedHost, label) {
   }
 
   const cookies = extractCookies(response.headers);
+  const state = redirectUrl.searchParams.get("state");
+  const stateCookie = findSetCookie(cookies, "next-auth.state");
 
-  if (!cookies.some((cookie) => cookie.startsWith("next-auth.state="))) {
-    throw new Error(`${label} did not set next-auth.state cookie`);
+  if (!state) {
+    throw new Error(`${label} did not include oauth state`);
+  }
+
+  assertCookieAttributes(stateCookie, `${label} state`);
+
+  if (decodeURIComponent(stateCookie.value) !== state) {
+    throw new Error(`${label} state cookie did not match redirect state`);
   }
 
   return redirectUrl;
@@ -99,6 +184,43 @@ async function expectJson(pathname, label) {
   }
 
   return await response.json();
+}
+
+function expectDatabaseSource(payload, label) {
+  if (payload?.source !== "database" || payload?.mock === true) {
+    throw new Error(
+      `${label} expected database source but received source=${payload?.source} mock=${payload?.mock}`,
+    );
+  }
+}
+
+function expectDeepHealth(payload) {
+  if (payload?.status !== "ok" || payload?.ok !== true || payload?.deep !== true) {
+    throw new Error(`deep health is not ok: status=${payload?.status} ok=${payload?.ok}`);
+  }
+
+  const checks = Array.isArray(payload.checks) ? payload.checks : [];
+  const byName = new Map(checks.map((check) => [check?.name, check]));
+
+  for (const checkName of [
+    "runtime",
+    "public-config",
+    "auth-providers",
+    "database",
+    "static-assets",
+  ]) {
+    const check = byName.get(checkName);
+
+    if (check?.status !== "ok") {
+      throw new Error(`deep health check ${checkName} returned ${check?.status}`);
+    }
+  }
+
+  const database = byName.get("database");
+
+  if (database?.source !== "database") {
+    throw new Error(`deep health database source is ${database?.source}`);
+  }
 }
 
 async function runOptionalCredentialsSmoke() {
@@ -135,9 +257,33 @@ async function runOptionalCredentialsSmoke() {
   }
 
   const cookieHeader = createCookieHeader(extractCookies(loginResponse.headers));
+  const sessionCookie = findSetCookie(extractCookies(loginResponse.headers), "next-auth.session-token");
 
   if (!cookieHeader.includes("next-auth.session-token=")) {
     throw new Error("admin credentials login did not set session cookie");
+  }
+
+  assertCookieAttributes(sessionCookie, "admin credentials session");
+
+  const sessionResponse = await request("/api/auth/session", {
+    headers: {
+      Cookie: cookieHeader,
+    },
+  });
+
+  if (!sessionResponse.ok) {
+    throw new Error(`authenticated session api returned ${sessionResponse.status}`);
+  }
+
+  const sessionPayload = await sessionResponse.json();
+
+  if (
+    sessionPayload?.user?.email !== adminEmail ||
+    sessionPayload?.user?.role !== "admin" ||
+    !sessionPayload?.expires ||
+    Number.isNaN(Date.parse(sessionPayload.expires))
+  ) {
+    throw new Error("authenticated session api returned an unexpected session shape");
   }
 
   const adminResponse = await request("/api/admin/places", {
@@ -150,6 +296,59 @@ async function runOptionalCredentialsSmoke() {
     throw new Error(`authenticated admin api returned ${adminResponse.status}`);
   }
 
+  expectDatabaseSource(await adminResponse.json(), "authenticated admin api");
+
+  const signoutResponse = await request("/api/auth/signout", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Cookie: cookieHeader,
+    },
+    body: new URLSearchParams({
+      callbackUrl: "/bookmarks",
+      json: "true",
+    }),
+  });
+
+  if (!signoutResponse.ok) {
+    throw new Error(`signout returned ${signoutResponse.status}`);
+  }
+
+  const signoutPayload = await signoutResponse.json();
+
+  if (signoutPayload?.url !== "/bookmarks") {
+    throw new Error(`signout returned unexpected url ${signoutPayload?.url}`);
+  }
+
+  const signoutCookies = extractCookies(signoutResponse.headers);
+  const clearedSessionCookie = findSetCookie(signoutCookies, "next-auth.session-token");
+
+  if (
+    !clearedSessionCookie ||
+    !clearedSessionCookie.attributes.includes("max-age=0")
+  ) {
+    throw new Error("signout did not clear the session cookie");
+  }
+
+  const signedOutCookieHeader = mergeCookieHeader(cookieHeader, signoutCookies);
+  const signedOutSessionResponse = await request("/api/auth/session", {
+    headers: signedOutCookieHeader
+      ? {
+          Cookie: signedOutCookieHeader,
+        }
+      : {},
+  });
+
+  if (!signedOutSessionResponse.ok) {
+    throw new Error(`signed-out session api returned ${signedOutSessionResponse.status}`);
+  }
+
+  const signedOutSessionPayload = await signedOutSessionResponse.json();
+
+  if (Object.keys(signedOutSessionPayload).length !== 0) {
+    throw new Error("signed-out session api did not return an empty session");
+  }
+
   logStep("credentials/admin smoke", "ok");
 }
 
@@ -157,6 +356,10 @@ async function main() {
   const normalizedBaseUrl = assertHttpsUrl(baseUrl, "SMOKE_PUBLIC_URL/NEXTAUTH_URL");
 
   printLine(`Running remote smoke against ${normalizedBaseUrl}`);
+
+  const health = await expectJson("/api/health?deep=1", "deep health");
+  expectDeepHealth(health);
+  logStep("deep health", "runtime/db/auth/static ok");
 
   await expectTextOk("/", (body) => body.includes("알뜰맵"), "public /");
   logStep("home", "ok");
@@ -187,6 +390,8 @@ async function main() {
     "/api/places/map?scope=global&query=%EA%B9%80%EB%B0%A5",
     "map api",
   );
+  expectDatabaseSource(mapApiPayload, "map api");
+
   const samplePlaceId = mapApiPayload.items?.[0]?.id;
 
   if (!samplePlaceId) {
@@ -197,6 +402,10 @@ async function main() {
 
   await expectTextOk(`/place/${samplePlaceId}`, (body) => body.includes("알뜰맵"), "place page");
   logStep("place page", samplePlaceId);
+
+  const placeApiPayload = await expectJson(`/api/places/${samplePlaceId}`, "place api");
+  expectDatabaseSource(placeApiPayload, "place api");
+  logStep("place api", "database source");
 
   await expectTextOk(
     "/login",
