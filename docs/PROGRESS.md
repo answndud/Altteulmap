@@ -13,8 +13,8 @@
 - P2. Hyperdrive 도입 판단을 완료했고, 현재는 도입 보류로 결정했다.
 - P2. strict CSP 전환 준비를 완료했고, enforcement 전환은 marker SVG/data URL PoC 이후로 분리했다.
 - P2. global search index 기준 수립을 완료했고, 현재는 인덱스 도입 보류로 결정했다.
-- P3. 큰 파일 분리 리팩터링을 시작했고, Worker HTTP utilities, health/static route, auth, public config/bookmark route, places read route, public write route, admin route, telemetry route, admin reports repository, admin prices repository, admin places repository, map query helper, place card, category tray를 분리했다.
-- 다음 단계는 P3 `src/client/routes/MapRoute.tsx`의 trending section 또는 sheet 영역을 추가 분리하는 것이다.
+- P3. 큰 파일 분리 리팩터링을 시작했고, Worker HTTP utilities, health/static route, auth, public config/bookmark route, places read route, public write route, admin route, telemetry route, admin reports repository, admin prices repository, admin places repository, map query helper, place card, category tray, trending section을 분리했다.
+- 다음 단계는 P3 `src/client/routes/MapRoute.tsx`의 sheet 영역 또는 `src/features/map/naver-map-panel.tsx`의 marker/cluster 영역을 추가 분리하는 것이다.
 
 ### 완료한 변경
 - `docs/PLAN.md`
@@ -212,6 +212,17 @@
 - `src/client/routes/MapRoute.tsx`
   - 업종 필터 tray 컴포넌트를 import하도록 정리했다.
   - 파일 크기는 1466줄에서 1326줄로 감소했다.
+- 현재까지 누적 변경을 작업 단위별로 분리 커밋했다.
+  - `db1b435 refactor(worker): split routes and admin repositories`
+  - `405b42a feat(ops): add production hardening safeguards`
+  - `48469ea refactor(map): split query and list components`
+  - `ab32fa8 docs: document hardening and refactor progress`
+- `src/client/features/map/TrendingPlacesSection.tsx`
+  - 빠른 비교/trending card UI를 `src/client/routes/MapRoute.tsx`에서 분리했다.
+  - `trending-place-*` data-testid, 상세 보기, 공유 버튼, verification badge, 최근 갱신/좋아요 문구를 보존했다.
+- `src/client/routes/MapRoute.tsx`
+  - trending section 컴포넌트를 import하도록 정리했다.
+  - 파일 크기는 1326줄에서 1204줄로 감소했다.
 
 ### 최근 검증
 - `npm run typecheck` 통과
@@ -390,6 +401,12 @@
 - P3 MapCategoryTray 분리 후 `npm run deploy:check:vite` 통과
 - P3 MapCategoryTray 분리 후 `npm run smoke:vite:local` 통과
 - P3 MapCategoryTray 분리 후 `git diff --check` 통과
+- 누적 변경 분리 커밋 중 각 commit hook `npm run lint` 통과
+- P3 TrendingPlacesSection 분리 후 `npm run typecheck` 통과
+- P3 TrendingPlacesSection 분리 후 `npm run lint` 통과
+- P3 TrendingPlacesSection 분리 후 `USE_MOCK_DATA=true node scripts/run-local-e2e.mjs smoke` 통과
+- P3 TrendingPlacesSection 분리 후 `npm run deploy:check:vite` 통과
+- P3 TrendingPlacesSection 분리 후 `git diff --check` 통과
 - 참고:
   - `USE_MOCK_DATA=true NEXTAUTH_URL=http://127.0.0.1:3130 npx playwright test tests/e2e/report-admin.spec.ts tests/e2e/submission-admin.spec.ts tests/e2e/price-review.spec.ts --project chromium` 묶음 실행은 `cf:build:vite` 직후 최소 `.dev.vars` 상태에서 `/api/places/map` 503과 repeated rate limit으로 실패했다.
   - 같은 기능은 `node scripts/run-local-e2e.mjs smoke`로 E2E용 `.dev.vars`를 생성한 뒤 targeted spec을 단독 실행하면 통과한다.
@@ -408,7 +425,7 @@
 
 ### 다음 액션
 - Cloudflare Dashboard에서 운영 Worker `altteulmap`에 `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`를 설정한 뒤 production public write 수동 QA를 진행한다.
-- P3 큰 파일 분리 리팩터링의 다음 slice로 `src/client/routes/MapRoute.tsx`의 trending section 또는 sheet 영역을 추가 분리한다.
+- P3 큰 파일 분리 리팩터링의 다음 slice로 `src/client/routes/MapRoute.tsx`의 sheet 영역 또는 `src/features/map/naver-map-panel.tsx`의 marker/cluster 영역을 추가 분리한다.
 - strict CSP enforcement는 `naver-map-marker-visuals.ts`의 HTML inline style marker를 SVG data URL icon으로 바꾸는 PoC 이후 진행한다.
 - global search index는 1k 기준 p95 300ms 3회 연속 초과, 장소 10k 이상, DB execution 100ms 반복 초과 중 하나가 발생할 때 도입한다.
 - 모바일 바텀시트 E2E 실패는 별도 UI 회귀 작업으로 분리할지 결정한다.
