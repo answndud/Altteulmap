@@ -13,8 +13,8 @@
 - P2. Hyperdrive 도입 판단을 완료했고, 현재는 도입 보류로 결정했다.
 - P2. strict CSP 전환 준비를 완료했고, enforcement 전환은 marker SVG/data URL PoC 이후로 분리했다.
 - P2. global search index 기준 수립을 완료했고, 현재는 인덱스 도입 보류로 결정했다.
-- P3. 큰 파일 분리 리팩터링을 시작했고, Worker HTTP utilities, health/static route, auth, public config/bookmark route, places read route, public write route, admin route, telemetry route, admin reports repository, admin prices repository, admin places repository, map query helper, place card, category tray, trending section, mobile place list sheet, place detail sheet, naver map display marker helper, local fallback tile helper, naver panel helper, preview map fallback component, naver map error fallback wrapper를 분리했다.
-- 다음 단계는 P3 `src/features/map/naver-map-panel.tsx`의 Naver SDK lifecycle 또는 marker synchronization 영역을 추가 분리하는 것이다.
+- P3. 큰 파일 분리 리팩터링을 시작했고, Worker HTTP utilities, health/static route, auth, public config/bookmark route, places read route, public write route, admin route, telemetry route, admin reports repository, admin prices repository, admin places repository, map query helper, place card, category tray, trending section, mobile place list sheet, place detail sheet, naver map display marker helper, local fallback tile helper, naver panel helper, preview map fallback component, naver map error fallback wrapper, naver map marker renderer를 분리했다.
+- 다음 단계는 P3 `src/features/map/naver-map-panel.tsx`의 Naver SDK lifecycle 또는 viewport synchronization 영역을 추가 분리하는 것이다.
 
 ### 완료한 변경
 - `docs/PLAN.md`
@@ -271,6 +271,12 @@
 - `src/client/features/map/PlaceDetailSheet.tsx`
   - 모바일 상세 시트 drag close가 pointerup까지 안정적으로 도달하지 않는 상황에서도 충분한 downward drag 중 즉시 닫히도록 `pointermove` close guard를 추가했다.
   - 기존 닫기 버튼, drag handle test id, pointerup close 동작은 유지했다.
+- `src/features/map/naver-map-markers.ts`
+  - Naver marker instance 생성, icon 선택, marker click event binding을 `src/features/map/naver-map-panel.tsx`에서 분리했다.
+  - cluster click은 기존 `focusCluster`, place click은 기존 `emitPlaceSelect`로 위임해 지도 marker 동작을 보존했다.
+- `src/features/map/naver-map-panel.tsx`
+  - marker synchronization effect가 `renderNaverMapMarkers`를 호출하도록 정리했다.
+  - 파일 크기는 866줄에서 837줄로 감소했다.
   - 파일 크기는 1337줄에서 925줄로 감소했다.
 
 ### 최근 검증
@@ -499,6 +505,12 @@
 - P3 Naver map fallback wrapper 분리 후 `git diff --check` 통과
 - P3 Naver map fallback wrapper 분리 후 `USE_MOCK_DATA=true node scripts/run-local-e2e.mjs smoke` 통과
 - P3 모바일 gesture 안정화 후 `USE_MOCK_DATA=true NEXTAUTH_URL=http://127.0.0.1:3107 npx playwright test tests/e2e/map.mobile.spec.ts --project mobile-chromium` 통과
+- P3 Naver map marker renderer 분리 후 `npm run typecheck` 통과
+- P3 Naver map marker renderer 분리 후 `npm run lint` 통과
+- P3 Naver map marker renderer 분리 후 `npm run deploy:check:vite` 통과
+- P3 Naver map marker renderer 분리 후 `git diff --check` 통과
+- P3 Naver map marker renderer 분리 후 `USE_MOCK_DATA=true node scripts/run-local-e2e.mjs smoke` 통과
+- P3 Naver map marker renderer 분리 후 `USE_MOCK_DATA=true NEXTAUTH_URL=http://127.0.0.1:3107 npx playwright test tests/e2e/map.mobile.spec.ts --project mobile-chromium` 통과
 - 참고:
   - fallback wrapper 분리 직후 모바일 spec 전체 실행에서 `mobile-place-list-sheet` 미탐색과 상세 시트 drag close 1회 실패가 재현됐다.
   - `MobilePlaceListSheet` 열기 버튼의 `pointerdown` open guard와 `PlaceDetailSheet` drag 중 close guard를 추가한 뒤 전체 모바일 spec 2건이 통과했다.
@@ -523,7 +535,7 @@
 
 ### 다음 액션
 - Cloudflare Dashboard에서 운영 Worker `altteulmap`에 `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`를 설정한 뒤 production public write 수동 QA를 진행한다.
-- P3 큰 파일 분리 리팩터링의 다음 slice로 `src/features/map/naver-map-panel.tsx`의 Naver SDK lifecycle 또는 marker synchronization 영역을 추가 분리한다.
+- P3 큰 파일 분리 리팩터링의 다음 slice로 `src/features/map/naver-map-panel.tsx`의 Naver SDK lifecycle 또는 viewport synchronization 영역을 추가 분리한다.
 - strict CSP enforcement는 `naver-map-marker-visuals.ts`의 HTML inline style marker를 SVG data URL icon으로 바꾸는 PoC 이후 진행한다.
 - global search index는 1k 기준 p95 300ms 3회 연속 초과, 장소 10k 이상, DB execution 100ms 반복 초과 중 하나가 발생할 때 도입한다.
 - 모바일 바텀시트 E2E 실패는 별도 UI 회귀 작업으로 분리할지 결정한다.
