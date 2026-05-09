@@ -13,7 +13,7 @@
 - P2. Hyperdrive 도입 판단을 완료했고, 현재는 도입 보류로 결정했다.
 - P2. strict CSP 전환 준비를 완료했고, enforcement 전환은 marker SVG/data URL PoC 이후로 분리했다.
 - P2. global search index 기준 수립을 완료했고, 현재는 인덱스 도입 보류로 결정했다.
-- P3. 큰 파일 분리 리팩터링을 시작했고, Worker HTTP utilities, health/static route, auth, public config/bookmark route, places read route, public write route, admin route, telemetry route, admin reports repository, admin prices repository, admin places repository, map query helper, place card, category tray, trending section, mobile place list sheet, place detail sheet, naver map display marker helper, local fallback tile helper를 분리했다.
+- P3. 큰 파일 분리 리팩터링을 시작했고, Worker HTTP utilities, health/static route, auth, public config/bookmark route, places read route, public write route, admin route, telemetry route, admin reports repository, admin prices repository, admin places repository, map query helper, place card, category tray, trending section, mobile place list sheet, place detail sheet, naver map display marker helper, local fallback tile helper, naver panel helper를 분리했다.
 - 다음 단계는 P3 `src/features/map/naver-map-panel.tsx`의 preview/local fallback 영역 또는 Naver SDK lifecycle 영역을 추가 분리하는 것이다.
 
 ### 완료한 변경
@@ -247,6 +247,12 @@
 - `src/features/map/naver-map-panel.tsx`
   - local fallback tile helper를 import하도록 정리했다.
   - 파일 크기는 1461줄에서 1370줄로 감소했다.
+- `src/features/map/naver-map-panel-helpers.ts`
+  - 지도 초기 zoom, bounds 중심점, marker 중심점, local fallback host 판정 helper를 `src/features/map/naver-map-panel.tsx`에서 분리했다.
+  - 초기 zoom, fallback center, localhost/127.0.0.1/::1 local fallback 판정 동작을 보존했다.
+- `src/features/map/naver-map-panel.tsx`
+  - panel helper를 import하도록 정리했다.
+  - 파일 크기는 1370줄에서 1337줄로 감소했다.
 
 ### 최근 검증
 - `npm run typecheck` 통과
@@ -455,6 +461,12 @@
 - P3 local fallback tile helper 분리 후 `USE_MOCK_DATA=true NEXTAUTH_URL=http://127.0.0.1:3107 npx playwright test tests/e2e/map.mobile.spec.ts --project mobile-chromium` 통과
 - P3 local fallback tile helper 분리 후 `npm run deploy:check:vite` 통과
 - P3 local fallback tile helper 분리 후 `git diff --check` 통과
+- P3 Naver panel helper 분리 후 `npm run typecheck` 통과
+- P3 Naver panel helper 분리 후 `npm run lint` 통과
+- P3 Naver panel helper 분리 후 `USE_MOCK_DATA=true node scripts/run-local-e2e.mjs smoke` 통과
+- P3 Naver panel helper 분리 후 `USE_MOCK_DATA=true NEXTAUTH_URL=http://127.0.0.1:3107 npx playwright test tests/e2e/map.mobile.spec.ts --project mobile-chromium` 통과
+- P3 Naver panel helper 분리 후 `npm run deploy:check:vite` 통과
+- P3 Naver panel helper 분리 후 `git diff --check` 통과
 - 참고:
   - `USE_MOCK_DATA=true NEXTAUTH_URL=http://127.0.0.1:3130 npx playwright test tests/e2e/report-admin.spec.ts tests/e2e/submission-admin.spec.ts tests/e2e/price-review.spec.ts --project chromium` 묶음 실행은 `cf:build:vite` 직후 최소 `.dev.vars` 상태에서 `/api/places/map` 503과 repeated rate limit으로 실패했다.
   - 같은 기능은 `node scripts/run-local-e2e.mjs smoke`로 E2E용 `.dev.vars`를 생성한 뒤 targeted spec을 단독 실행하면 통과한다.
