@@ -113,7 +113,7 @@ export function PlaceDetailSheet({
         type="button"
         aria-label="상세 시트 닫기"
         data-testid="place-detail-drag-handle"
-        className="mx-auto mb-3 block h-2 w-14 touch-none rounded-full bg-[var(--altteul-bg-muted)] xl:hidden"
+        className="mx-auto mb-1 flex h-11 w-20 touch-none items-center justify-center rounded-full xl:hidden"
         onPointerDown={(event) => {
           event.preventDefault();
           event.currentTarget.setPointerCapture(event.pointerId);
@@ -170,7 +170,9 @@ export function PlaceDetailSheet({
           window.addEventListener("pointerup", handlePointerUp);
           window.addEventListener("pointercancel", cleanup);
         }}
-      />
+      >
+        <span className="h-2 w-14 rounded-full bg-[var(--altteul-bg-muted)]" />
+      </button>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="altteulmap-section-kicker">선택한 장소</p>

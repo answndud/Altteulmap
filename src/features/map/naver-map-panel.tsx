@@ -21,10 +21,10 @@ import {
   panNaverMapToActivePlace,
 } from "@/features/map/naver-map-focus";
 import { locateCurrentPositionOnNaverMap } from "@/features/map/naver-map-location";
-import { renderNaverMapMarkers } from "@/features/map/naver-map-markers";
 import { useNaverMapInitialization } from "@/features/map/use-naver-map-initialization";
 import { useNaverMapContainerSize } from "@/features/map/use-naver-map-container-size";
 import { useNaverMapKeyState } from "@/features/map/use-naver-map-key-state";
+import { useNaverMapMarkerRendering } from "@/features/map/use-naver-map-marker-rendering";
 import { useNaverMapWindowResizeSync } from "@/features/map/use-naver-map-window-resize-sync";
 import {
   getClusterFocusZoom,
@@ -371,31 +371,15 @@ function NaverMapPanelContent({
     runLocateCurrentPosition();
   }, [runLocateCurrentPosition, status]);
 
-  useEffect(() => {
-    if (status !== "ready" || !mapInstanceRef.current) {
-      return;
-    }
-
-    const maps = getLoadedNaverMapSdk()?.maps;
-
-    if (!maps?.Marker || !maps?.LatLng || !maps?.Event) {
-      failMap("NAVER Maps marker primitives are unavailable.");
-      return;
-    }
-
-    try {
-      markerInstancesRef.current.forEach((marker) => marker.setMap?.(null));
-      markerInstancesRef.current = renderNaverMapMarkers({
-        displayMarkers,
-        map: mapInstanceRef.current,
-        maps,
-        onClusterClick: focusCluster,
-        onPlaceClick: emitPlaceSelect,
-      });
-    } catch (error) {
-      failMap("Failed to render NAVER map markers.", error);
-    }
-  }, [displayMarkers, emitPlaceSelect, failMap, focusCluster, status]);
+  useNaverMapMarkerRendering({
+    displayMarkers,
+    failMap,
+    isReady: status === "ready",
+    mapInstanceRef,
+    markerInstancesRef,
+    onClusterClick: focusCluster,
+    onPlaceClick: emitPlaceSelect,
+  });
 
   useEffect(() => {
     if (status !== "ready" || !activePlace || !mapInstanceRef.current) {
