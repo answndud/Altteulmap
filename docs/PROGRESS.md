@@ -13,8 +13,8 @@
 - P2. Hyperdrive 도입 판단을 완료했고, 현재는 도입 보류로 결정했다.
 - P2. strict CSP 전환 준비를 완료했고, enforcement 전환은 marker SVG/data URL PoC 이후로 분리했다.
 - P2. global search index 기준 수립을 완료했고, 현재는 인덱스 도입 보류로 결정했다.
-- P3. 큰 파일 분리 리팩터링을 시작했고, Worker HTTP utilities, health/static route, auth, public config/bookmark route, places read route, public write route, admin route, telemetry route, admin reports repository, admin prices repository, admin places repository, map query helper, place card, category tray, trending section, mobile place list sheet, place detail sheet, naver map display marker helper, local fallback tile helper, naver panel helper, preview map fallback component, naver map error fallback wrapper, naver map marker renderer, naver map key state hook, naver map viewport emitter, naver map geolocation helper, naver map focus helper, naver map container size hook, naver map window resize sync hook, naver map initialization hook, naver map marker rendering hook을 분리했다.
-- 다음 단계는 P3 `src/features/map/naver-map-panel.tsx`의 pending cluster/current location action effect 또는 runtime error listener 영역을 추가 분리할지 판단하는 것이다.
+- P3. 큰 파일 분리 리팩터링을 시작했고, Worker HTTP utilities, health/static route, auth, public config/bookmark route, places read route, public write route, admin route, telemetry route, admin reports repository, admin prices repository, admin places repository, map query helper, place card, category tray, trending section, mobile place list sheet, place detail sheet, naver map display marker helper, local fallback tile helper, naver panel helper, preview map fallback component, naver map error fallback wrapper, naver map marker renderer, naver map key state hook, naver map viewport emitter, naver map geolocation helper, naver map focus helper, naver map container size hook, naver map window resize sync hook, naver map initialization hook, naver map marker rendering hook, naver map runtime error hook을 분리했다.
+- 다음 단계는 P3 `src/features/map/naver-map-panel.tsx`의 pending cluster/current location action effect 영역을 추가 분리할지 판단하는 것이다.
 
 ### 완료한 변경
 - `docs/PLAN.md`
@@ -325,6 +325,12 @@
 - `src/features/map/naver-map-panel.tsx`
   - marker rendering effect를 `useNaverMapMarkerRendering` 훅 호출로 정리했다.
   - 파일 크기는 579줄에서 563줄로 감소했다.
+- `src/features/map/use-naver-map-runtime-error.ts`
+  - Naver Maps SDK script runtime error 감지, `preventDefault`, fallback 전환 호출을 `src/features/map/naver-map-panel.tsx`에서 분리했다.
+  - 기존 SDK filename 판정과 `NAVER Maps SDK runtime error.` 메시지, listener 등록/해제 동작을 유지했다.
+- `src/features/map/naver-map-panel.tsx`
+  - runtime error listener effect를 `useNaverMapRuntimeError` 훅 호출로 정리했다.
+  - 파일 크기는 563줄에서 540줄로 감소했다.
 - `src/client/features/map/PlaceDetailSheet.tsx`
   - 모바일 상세 시트 drag close가 빠른 pointer gesture에서 flaky하게 실패하지 않도록 drag 시작 좌표를 React state가 아니라 ref로 관리하도록 변경했다.
   - 기존 drag threshold와 닫기 동작은 유지했다.
@@ -614,6 +620,12 @@
 - P3 Naver map marker rendering hook 분리 후 `git diff --check` 통과
 - P3 Naver map marker rendering hook 분리 후 `USE_MOCK_DATA=true NEXTAUTH_URL=http://127.0.0.1:3107 npx playwright test tests/e2e/map.mobile.spec.ts --project mobile-chromium --repeat-each=3` 통과
 - P3 Naver map marker rendering hook 분리 후 `USE_MOCK_DATA=true node scripts/run-local-e2e.mjs smoke` 통과
+- P3 Naver map runtime error hook 분리 후 `npm run typecheck` 통과
+- P3 Naver map runtime error hook 분리 후 `npm run lint` 통과
+- P3 Naver map runtime error hook 분리 후 `npm run deploy:check:vite` 통과
+- P3 Naver map runtime error hook 분리 후 `git diff --check` 통과
+- P3 Naver map runtime error hook 분리 후 `USE_MOCK_DATA=true node scripts/run-local-e2e.mjs smoke` 통과
+- P3 Naver map runtime error hook 분리 후 `USE_MOCK_DATA=true NEXTAUTH_URL=http://127.0.0.1:3107 npx playwright test tests/e2e/map.mobile.spec.ts --project mobile-chromium --repeat-each=3` 통과
 - 참고:
   - fallback wrapper 분리 직후 모바일 spec 전체 실행에서 `mobile-place-list-sheet` 미탐색과 상세 시트 drag close 1회 실패가 재현됐다.
   - `MobilePlaceListSheet` 열기 버튼의 `pointerdown` open guard와 `PlaceDetailSheet` drag 중 close guard를 추가한 뒤 전체 모바일 spec 2건이 통과했다.

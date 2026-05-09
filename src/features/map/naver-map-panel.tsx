@@ -25,6 +25,7 @@ import { useNaverMapInitialization } from "@/features/map/use-naver-map-initiali
 import { useNaverMapContainerSize } from "@/features/map/use-naver-map-container-size";
 import { useNaverMapKeyState } from "@/features/map/use-naver-map-key-state";
 import { useNaverMapMarkerRendering } from "@/features/map/use-naver-map-marker-rendering";
+import { useNaverMapRuntimeError } from "@/features/map/use-naver-map-runtime-error";
 import { useNaverMapWindowResizeSync } from "@/features/map/use-naver-map-window-resize-sync";
 import {
   getClusterFocusZoom,
@@ -302,34 +303,10 @@ function NaverMapPanelContent({
     runLocateCurrentPosition();
   }, [requestMapBoot, runLocateCurrentPosition, status]);
 
-  useEffect(() => {
-    if (!naverMapKeyId) {
-      return;
-    }
-
-    const handleSdkRuntimeError = (event: ErrorEvent) => {
-      const filename = event.filename ?? "";
-      const isNaverMapsRuntimeError =
-        filename.includes("oapi.map.naver.com/openapi/v3/maps.js") ||
-        filename.includes("map.naver.com/openapi/v3/maps.js");
-
-      if (!isNaverMapsRuntimeError) {
-        return;
-      }
-
-      event.preventDefault();
-      failMap(
-        "NAVER Maps SDK runtime error.",
-        event.error ?? new Error(event.message),
-      );
-    };
-
-    window.addEventListener("error", handleSdkRuntimeError);
-
-    return () => {
-      window.removeEventListener("error", handleSdkRuntimeError);
-    };
-  }, [failMap, naverMapKeyId]);
+  useNaverMapRuntimeError({
+    failMap,
+    naverMapKeyId,
+  });
 
   useNaverMapInitialization({
     containerSize,
