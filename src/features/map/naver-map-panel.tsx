@@ -11,10 +11,8 @@ import {
 
 import {
   getLoadedNaverMapSdk,
-  getNaverMapKeyId,
   getViewportFromMap,
   loadNaverMapSdk,
-  type MapStatus,
   type MapViewport,
   type NaverMapInstance,
   type NaverMarkerInstance,
@@ -25,8 +23,8 @@ import {
   getCenterFromBounds,
   getMapCenter,
   getMapZoom,
-  isLocalMapFallbackHost,
 } from "@/features/map/naver-map-panel-helpers";
+import { useNaverMapKeyState } from "@/features/map/use-naver-map-key-state";
 import {
   getClusterFocusZoom,
   getClusterViewport,
@@ -130,15 +128,15 @@ function NaverMapPanelContent({
   const lastFocusPlacesKeyRef = useRef<string | null>(null);
   const pendingClusterFocusRef = useRef<ClusterDisplayMarker | null>(null);
   const pendingLocateCurrentPositionRef = useRef(false);
-  const buildTimeNaverMapKeyId = getNaverMapKeyId();
-  const shouldUseLocalTileFallback = isLocalMapFallbackHost();
-  const [runtimeNaverMapKeyId, setRuntimeNaverMapKeyId] = useState(
-    buildTimeNaverMapKeyId,
-  );
-  const naverMapKeyId = shouldUseLocalTileFallback ? "" : runtimeNaverMapKeyId;
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
-  const [shouldBootMap, setShouldBootMap] = useState(false);
-  const [status, setStatus] = useState<MapStatus>("loading");
+  const {
+    naverMapKeyId,
+    shouldBootMap,
+    shouldUseLocalTileFallback,
+    setShouldBootMap,
+    setStatus,
+    status,
+  } = useNaverMapKeyState();
   const [isLocating, setIsLocating] = useState(false);
   const [locationMessage, setLocationMessage] = useState<string | null>(null);
   const [internalActivePlaceId, setInternalActivePlaceId] = useState<string | null>(
@@ -228,53 +226,6 @@ function NaverMapPanelContent({
     return viewport;
   }, [onViewportChange]);
 
-  useEffect(() => {
-    if (shouldUseLocalTileFallback) {
-      setRuntimeNaverMapKeyId("");
-      setStatus("missing-key");
-      setShouldBootMap(false);
-      return;
-    }
-
-    if (buildTimeNaverMapKeyId) {
-      setRuntimeNaverMapKeyId(buildTimeNaverMapKeyId);
-      setStatus("loading");
-      setShouldBootMap(true);
-      return;
-    }
-
-    let isDisposed = false;
-
-    fetch("/api/config/public", { cache: "no-store" })
-      .then(async (response) => {
-        if (!response.ok) {
-          return "";
-        }
-
-        const payload = (await response.json()) as { naverMapKeyId?: string };
-
-        return payload.naverMapKeyId?.trim() ?? "";
-      })
-      .then((keyId) => {
-        if (isDisposed) {
-          return;
-        }
-
-        setRuntimeNaverMapKeyId(keyId);
-        setStatus(keyId ? "loading" : "missing-key");
-        setShouldBootMap(Boolean(keyId));
-      })
-      .catch(() => {
-        if (!isDisposed) {
-          setRuntimeNaverMapKeyId("");
-          setStatus("missing-key");
-        }
-      });
-
-    return () => {
-      isDisposed = true;
-    };
-  }, [buildTimeNaverMapKeyId, shouldUseLocalTileFallback]);
   const focusCluster = useCallback(
     (marker: ClusterDisplayMarker) => {
       if (status !== "ready" || !mapInstanceRef.current) {
