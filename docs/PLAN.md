@@ -143,7 +143,7 @@
   - `EXPLAIN ANALYZE` 또는 synthetic query plan
 
 ### P3. 큰 파일 분리 리팩터링
-- 상태: Worker Slice 1~11, Map Slice 1~5, Naver Map Slice 1~4 진행 중. HTTP utilities, health/static route, auth, public config/bookmark route, places read route, public write route, admin route, telemetry route, admin reports/prices/places repository, map query helper, place card, category tray, trending section, mobile place list sheet, place detail sheet, naver map display marker helper, local fallback tile helper, naver panel helper, preview map fallback component 분리 완료.
+- 상태: Worker Slice 1~11, Map Slice 1~5, Naver Map Slice 1~5 진행 중. HTTP utilities, health/static route, auth, public config/bookmark route, places read route, public write route, admin route, telemetry route, admin reports/prices/places repository, map query helper, place card, category tray, trending section, mobile place list sheet, place detail sheet, naver map display marker helper, local fallback tile helper, naver panel helper, preview map fallback component, naver map error fallback wrapper 분리 완료.
 - 이유:
   - `src/worker/index.ts`, `src/client/routes/MapRoute.tsx`, `src/features/map/naver-map-panel.tsx`, `src/worker/admin-repository.ts`는 AI agent 작업 시 회귀 위험이 크다.
 - 작업:

@@ -112,6 +112,12 @@ export function PlaceDetailSheet({
           event.currentTarget.setPointerCapture(event.pointerId);
           setDragStartY(event.clientY);
         }}
+        onPointerMove={(event) => {
+          if (dragStartY !== null && event.clientY - dragStartY > 120) {
+            setDragStartY(null);
+            onClose();
+          }
+        }}
         onPointerUp={(event) => {
           if (dragStartY !== null && event.clientY - dragStartY > 80) {
             onClose();
