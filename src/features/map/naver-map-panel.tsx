@@ -28,6 +28,7 @@ import {
   getMapCenter,
   getMapZoom,
 } from "@/features/map/naver-map-panel-helpers";
+import { useNaverMapContainerSize } from "@/features/map/use-naver-map-container-size";
 import { useNaverMapKeyState } from "@/features/map/use-naver-map-key-state";
 import {
   getClusterFocusZoom,
@@ -131,7 +132,7 @@ function NaverMapPanelContent({
   const lastFocusPlacesKeyRef = useRef<string | null>(null);
   const pendingClusterFocusRef = useRef<ClusterDisplayMarker | null>(null);
   const pendingLocateCurrentPositionRef = useRef(false);
-  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+  const containerSize = useNaverMapContainerSize(mapContainerRef);
   const {
     naverMapKeyId,
     shouldBootMap,
@@ -304,30 +305,6 @@ function NaverMapPanelContent({
     pendingLocateCurrentPositionRef.current = false;
     runLocateCurrentPosition();
   }, [requestMapBoot, runLocateCurrentPosition, status]);
-
-  useEffect(() => {
-    const container = mapContainerRef.current;
-
-    if (!container) {
-      return;
-    }
-
-    const updateSize = () => {
-      setContainerSize({
-        width: container.clientWidth,
-        height: container.clientHeight,
-      });
-    };
-
-    updateSize();
-
-    const resizeObserver = new ResizeObserver(updateSize);
-    resizeObserver.observe(container);
-
-    return () => {
-      resizeObserver.disconnect();
-    };
-  }, []);
 
   useEffect(() => {
     if (!naverMapKeyId) {
