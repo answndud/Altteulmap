@@ -51,6 +51,11 @@ export function MobilePlaceListSheet({
         <button
           type="button"
           data-testid="mobile-place-list-open"
+          onPointerDown={(event) => {
+            if (event.button === 0) {
+              onModeChange("peek");
+            }
+          }}
           onClick={() => onModeChange("peek")}
           className="altteulmap-button altteulmap-accent-solid pointer-events-auto inline-flex min-h-11 items-center justify-center gap-2 px-5 py-3 text-sm font-semibold shadow-[var(--altteul-shadow-overlay)]"
         >
