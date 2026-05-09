@@ -13,8 +13,8 @@
 - P2. Hyperdrive 도입 판단을 완료했고, 현재는 도입 보류로 결정했다.
 - P2. strict CSP 전환 준비를 완료했고, enforcement 전환은 marker SVG/data URL PoC 이후로 분리했다.
 - P2. global search index 기준 수립을 완료했고, 현재는 인덱스 도입 보류로 결정했다.
-- P3. 큰 파일 분리 리팩터링을 시작했고, Worker HTTP utilities, health/static route, auth, public config/bookmark route, places read route, public write route, admin route, telemetry route, admin reports repository, admin prices repository, admin places repository, map query helper, place card, category tray, trending section, mobile place list sheet, place detail sheet, naver map display marker helper, local fallback tile helper, naver panel helper, preview map fallback component, naver map error fallback wrapper, naver map marker renderer, naver map key state hook, naver map viewport emitter, naver map geolocation helper, naver map focus helper, naver map container size hook을 분리했다.
-- 다음 단계는 P3 `src/features/map/naver-map-panel.tsx`의 Naver SDK initialization effect 또는 window resize synchronization 영역을 추가 분리하는 것이다.
+- P3. 큰 파일 분리 리팩터링을 시작했고, Worker HTTP utilities, health/static route, auth, public config/bookmark route, places read route, public write route, admin route, telemetry route, admin reports repository, admin prices repository, admin places repository, map query helper, place card, category tray, trending section, mobile place list sheet, place detail sheet, naver map display marker helper, local fallback tile helper, naver panel helper, preview map fallback component, naver map error fallback wrapper, naver map marker renderer, naver map key state hook, naver map viewport emitter, naver map geolocation helper, naver map focus helper, naver map container size hook, naver map window resize sync hook을 분리했다.
+- 다음 단계는 P3 `src/features/map/naver-map-panel.tsx`의 Naver SDK initialization effect 영역을 추가 분리하는 것이다.
 
 ### 완료한 변경
 - `docs/PLAN.md`
@@ -307,6 +307,12 @@
 - `src/features/map/naver-map-panel.tsx`
   - container size를 `useNaverMapContainerSize` 훅에서 받아 쓰도록 정리했다.
   - 파일 크기는 703줄에서 680줄로 감소했다.
+- `src/features/map/use-naver-map-window-resize-sync.ts`
+  - Naver map ready 이후 window resize listener 등록, 최초 viewport sync, `autoResize`와 viewport emit 동기화를 `src/features/map/naver-map-panel.tsx`에서 분리했다.
+  - 기존 `containerSize.height`/`containerSize.width` 변경 시 재동기화, window resize listener cleanup 동작을 유지했다.
+- `src/features/map/naver-map-panel.tsx`
+  - window resize synchronization을 `useNaverMapWindowResizeSync` 훅 호출로 정리했다.
+  - 파일 크기는 680줄에서 670줄로 감소했다.
   - 파일 크기는 1337줄에서 925줄로 감소했다.
 
 ### 최근 검증
@@ -571,9 +577,18 @@
 - P3 Naver map container size hook 분리 후 `git diff --check` 통과
 - P3 Naver map container size hook 분리 후 `USE_MOCK_DATA=true node scripts/run-local-e2e.mjs smoke` 통과
 - P3 Naver map container size hook 분리 후 `USE_MOCK_DATA=true NEXTAUTH_URL=http://127.0.0.1:3107 npx playwright test tests/e2e/map.mobile.spec.ts --project mobile-chromium` 통과
+- P3 Naver map window resize sync hook 분리 후 `npm run typecheck` 통과
+- P3 Naver map window resize sync hook 분리 후 `npm run lint` 통과
+- P3 Naver map window resize sync hook 분리 후 `npm run deploy:check:vite` 통과
+- P3 Naver map window resize sync hook 분리 후 `git diff --check` 통과
+- P3 Naver map window resize sync hook 분리 후 `USE_MOCK_DATA=true node scripts/run-local-e2e.mjs smoke` 통과
+- P3 Naver map window resize sync hook 분리 후 `USE_MOCK_DATA=true NEXTAUTH_URL=http://127.0.0.1:3107 npx playwright test tests/e2e/map.mobile.spec.ts --project mobile-chromium` 재실행 통과
 - 참고:
   - fallback wrapper 분리 직후 모바일 spec 전체 실행에서 `mobile-place-list-sheet` 미탐색과 상세 시트 drag close 1회 실패가 재현됐다.
   - `MobilePlaceListSheet` 열기 버튼의 `pointerdown` open guard와 `PlaceDetailSheet` drag 중 close guard를 추가한 뒤 전체 모바일 spec 2건이 통과했다.
+- 참고:
+  - window resize sync hook 분리 직후 모바일 spec 첫 실행에서 상세 시트 drag close assertion이 1회 실패했지만, 동일 spec 재실행에서는 2건 모두 통과했다.
+  - 실패 지점은 이번 변경 범위인 Naver map resize synchronization이 아니라 기존 모바일 상세 시트 drag close flaky 영역이다.
 - 참고:
   - `USE_MOCK_DATA=true node scripts/run-local-e2e.mjs smoke`와 `map.mobile.spec.ts`를 병렬 실행했을 때 Playwright webServer port `3107` 충돌로 smoke가 한 번 실패했다.
   - 같은 충돌 직후 mobile spec 2번째 케이스도 drag close assertion에서 1회 실패했지만, 서버 정리 후 해당 케이스 단독 재실행과 전체 mobile spec 재실행은 모두 통과했다.

@@ -30,6 +30,7 @@ import {
 } from "@/features/map/naver-map-panel-helpers";
 import { useNaverMapContainerSize } from "@/features/map/use-naver-map-container-size";
 import { useNaverMapKeyState } from "@/features/map/use-naver-map-key-state";
+import { useNaverMapWindowResizeSync } from "@/features/map/use-naver-map-window-resize-sync";
 import {
   getClusterFocusZoom,
   getClusterViewport,
@@ -528,23 +529,12 @@ function NaverMapPanelContent({
     }
   }, [emitViewportChange, failMap, focusPlacesKey, mapMarkers, status]);
 
-  useEffect(() => {
-    if (status !== "ready" || !mapInstanceRef.current) {
-      return;
-    }
-
-    const syncViewport = () => {
-      mapInstanceRef.current?.autoResize?.();
-      emitViewportChange();
-    };
-
-    syncViewport();
-    window.addEventListener("resize", syncViewport);
-
-    return () => {
-      window.removeEventListener("resize", syncViewport);
-    };
-  }, [containerSize.height, containerSize.width, emitViewportChange, status]);
+  useNaverMapWindowResizeSync({
+    containerSize,
+    emitViewportChange,
+    isReady: status === "ready",
+    mapInstanceRef,
+  });
 
   useEffect(() => {
     if (!locationMessage) {
