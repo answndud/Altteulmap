@@ -30,10 +30,10 @@ import {
   getClusterViewport,
   getDisplayMarkers,
   isPlaceInsideViewport,
-  serializeViewport,
   type ClusterDisplayMarker,
 } from "@/features/map/naver-map-display-markers";
 import { PreviewMap } from "@/features/map/naver-map-preview";
+import { emitNaverMapViewportChange } from "@/features/map/naver-map-viewport";
 import type {
   PlaceBounds,
   PlaceMapMarkerRecord,
@@ -209,21 +209,11 @@ function NaverMapPanelContent({
     [clearMapInstance],
   );
   const emitViewportChange = useCallback(() => {
-    const viewport = getViewportFromMap(mapInstanceRef.current);
-
-    if (!viewport) {
-      return null;
-    }
-
-    const nextKey = serializeViewport(viewport);
-
-    if (lastViewportKeyRef.current === nextKey) {
-      return viewport;
-    }
-
-    lastViewportKeyRef.current = nextKey;
-    onViewportChange?.(viewport);
-    return viewport;
+    return emitNaverMapViewportChange({
+      lastViewportKeyRef,
+      map: mapInstanceRef.current,
+      onViewportChange,
+    });
   }, [onViewportChange]);
 
   const focusCluster = useCallback(
