@@ -143,7 +143,7 @@
   - `EXPLAIN ANALYZE` 또는 synthetic query plan
 
 ### P3. 큰 파일 분리 리팩터링
-- 상태: Worker Slice 1~11, Map Slice 1~5, Naver Map Slice 1~12 진행 중. HTTP utilities, health/static route, auth, public config/bookmark route, places read route, public write route, admin route, telemetry route, admin reports/prices/places repository, map query helper, place card, category tray, trending section, mobile place list sheet, place detail sheet, naver map display marker helper, local fallback tile helper, naver panel helper, preview map fallback component, naver map error fallback wrapper, naver map marker renderer, naver map key state hook, naver map viewport emitter, naver map geolocation helper, naver map focus helper, naver map container size hook, naver map window resize sync hook 분리 완료.
+- 상태: Worker Slice 1~11, Map Slice 1~5, Naver Map Slice 1~13 진행 중. HTTP utilities, health/static route, auth, public config/bookmark route, places read route, public write route, admin route, telemetry route, admin reports/prices/places repository, map query helper, place card, category tray, trending section, mobile place list sheet, place detail sheet, naver map display marker helper, local fallback tile helper, naver panel helper, preview map fallback component, naver map error fallback wrapper, naver map marker renderer, naver map key state hook, naver map viewport emitter, naver map geolocation helper, naver map focus helper, naver map container size hook, naver map window resize sync hook, naver map initialization hook 분리 완료.
 - 이유:
   - `src/worker/index.ts`, `src/client/routes/MapRoute.tsx`, `src/features/map/naver-map-panel.tsx`, `src/worker/admin-repository.ts`는 AI agent 작업 시 회귀 위험이 크다.
 - 작업:
@@ -151,6 +151,7 @@
   - Worker HTTP utilities/health/static route부터 분리한다.
   - auth route, public route, admin route, admin repository, map route, Naver map panel 순으로 작은 slice를 진행한다.
   - 각 slice는 기능 변경 없이 보호 테스트를 통과해야 한다.
+  - 리팩터링 검증 중 반복 재현되는 flaky E2E는 해당 slice의 신뢰도를 떨어뜨리므로 원인을 확인해 작은 안정화 패치로 함께 처리한다.
 - 완료 기준:
   - 각 큰 파일의 책임이 route/domain/component 단위로 분리된다.
   - 기존 E2E data-testid, API path, auth/session contract가 유지된다.

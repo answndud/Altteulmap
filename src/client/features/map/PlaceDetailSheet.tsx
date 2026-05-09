@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { ViteBookmarkToggleButton } from "@/client/components/ViteBookmarkToggleButton";
@@ -50,12 +50,18 @@ export function PlaceDetailSheet({
 }) {
   const category = getCategoryBySlug(place.categorySlug);
   const sharePayload = createPlaceSharePayload(place, "detail_sheet");
-  const [dragStartY, setDragStartY] = useState<number | null>(null);
+  const dragCleanupRef = useRef<(() => void) | null>(null);
   const [detailState, setDetailState] = useState<PlaceDetailLoadState>({
     status: "idle",
     data: null,
     error: null,
   });
+
+  useEffect(() => {
+    return () => {
+      dragCleanupRef.current?.();
+    };
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -107,24 +113,63 @@ export function PlaceDetailSheet({
         type="button"
         aria-label="상세 시트 닫기"
         data-testid="place-detail-drag-handle"
-        className="mx-auto mb-3 block h-2 w-14 rounded-full bg-[var(--altteul-bg-muted)] xl:hidden"
+        className="mx-auto mb-3 block h-2 w-14 touch-none rounded-full bg-[var(--altteul-bg-muted)] xl:hidden"
         onPointerDown={(event) => {
+          event.preventDefault();
           event.currentTarget.setPointerCapture(event.pointerId);
-          setDragStartY(event.clientY);
-        }}
-        onPointerMove={(event) => {
-          if (dragStartY !== null && event.clientY - dragStartY > 120) {
-            setDragStartY(null);
+          dragCleanupRef.current?.();
+
+          const pointerId = event.pointerId;
+          const dragStartY = event.clientY;
+          let didClose = false;
+          const closeOnce = () => {
+            if (didClose) {
+              return;
+            }
+
+            didClose = true;
+            dragCleanupRef.current?.();
             onClose();
-          }
+          };
+          const handlePointerMove = (moveEvent: PointerEvent) => {
+            if (moveEvent.pointerId !== pointerId) {
+              return;
+            }
+
+            moveEvent.preventDefault();
+            if (moveEvent.clientY - dragStartY > 120) {
+              closeOnce();
+            }
+          };
+          const handlePointerUp = (upEvent: PointerEvent) => {
+            if (upEvent.pointerId !== pointerId) {
+              return;
+            }
+
+            if (upEvent.clientY - dragStartY > 80) {
+              closeOnce();
+              return;
+            }
+
+            dragCleanupRef.current?.();
+          };
+          const cleanup = () => {
+            window.removeEventListener("pointermove", handlePointerMove);
+            window.removeEventListener("pointerup", handlePointerUp);
+            window.removeEventListener("pointercancel", cleanup);
+
+            if (dragCleanupRef.current === cleanup) {
+              dragCleanupRef.current = null;
+            }
+          };
+
+          dragCleanupRef.current = cleanup;
+          window.addEventListener("pointermove", handlePointerMove, {
+            passive: false,
+          });
+          window.addEventListener("pointerup", handlePointerUp);
+          window.addEventListener("pointercancel", cleanup);
         }}
-        onPointerUp={(event) => {
-          if (dragStartY !== null && event.clientY - dragStartY > 80) {
-            onClose();
-          }
-          setDragStartY(null);
-        }}
-        onPointerCancel={() => setDragStartY(null)}
       />
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
