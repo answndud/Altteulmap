@@ -11,13 +11,16 @@ import {
 
 import {
   getLoadedNaverMapSdk,
-  getViewportFromMap,
   loadNaverMapSdk,
   type MapViewport,
   type NaverMapInstance,
   type NaverMarkerInstance,
 } from "@/features/map/naver-map-sdk";
 import { NaverMapFallback } from "@/features/map/naver-map-fallback";
+import {
+  focusNaverMapPlaces,
+  panNaverMapToActivePlace,
+} from "@/features/map/naver-map-focus";
 import { locateCurrentPositionOnNaverMap } from "@/features/map/naver-map-location";
 import { renderNaverMapMarkers } from "@/features/map/naver-map-markers";
 import {
@@ -30,7 +33,6 @@ import {
   getClusterFocusZoom,
   getClusterViewport,
   getDisplayMarkers,
-  isPlaceInsideViewport,
   type ClusterDisplayMarker,
 } from "@/features/map/naver-map-display-markers";
 import { PreviewMap } from "@/features/map/naver-map-preview";
@@ -513,60 +515,37 @@ function NaverMapPanelContent({
       return;
     }
 
-    const LatLng = getLoadedNaverMapSdk()?.maps?.LatLng;
-
-    if (!LatLng) {
-      failMap("NAVER Maps LatLng API is unavailable.");
-      return;
-    }
-
     try {
-      const currentViewport = getViewportFromMap(mapInstanceRef.current);
-
-      if (isPlaceInsideViewport(activePlace, currentViewport)) {
-        return;
+      if (
+        !panNaverMapToActivePlace({
+          activePlace,
+          map: mapInstanceRef.current,
+        })
+      ) {
+        failMap("NAVER Maps LatLng API is unavailable.");
       }
-
-      mapInstanceRef.current.panTo?.(
-        new LatLng(activePlace.latitude, activePlace.longitude),
-      );
     } catch (error) {
       failMap("Failed to move the NAVER map viewport.", error);
     }
   }, [activePlace, failMap, status]);
 
   useEffect(() => {
-    if (
-      status !== "ready" ||
-      !mapInstanceRef.current ||
-      !focusPlacesKey ||
-      mapMarkers.length === 0
-    ) {
-      return;
-    }
-
-    if (lastFocusPlacesKeyRef.current === focusPlacesKey) {
-      return;
-    }
-
-    const LatLng = getLoadedNaverMapSdk()?.maps?.LatLng;
-
-    if (!LatLng) {
-      failMap("NAVER Maps LatLng API is unavailable.");
+    if (status !== "ready" || !mapInstanceRef.current) {
       return;
     }
 
     try {
-      const focusCenter = getMapCenter(mapMarkers);
-      const point = new LatLng(focusCenter.lat, focusCenter.lng);
-
-      lastFocusPlacesKeyRef.current = focusPlacesKey;
-      mapInstanceRef.current.setCenter?.(point);
-      mapInstanceRef.current.setZoom?.(getMapZoom(mapMarkers.length));
-      mapInstanceRef.current.panTo?.(point);
-      window.setTimeout(() => {
-        emitViewportChange();
-      }, 100);
+      if (
+        !focusNaverMapPlaces({
+          emitViewportChange,
+          focusPlacesKey,
+          lastFocusPlacesKeyRef,
+          map: mapInstanceRef.current,
+          mapMarkers,
+        })
+      ) {
+        failMap("NAVER Maps LatLng API is unavailable.");
+      }
     } catch (error) {
       failMap("Failed to focus the NAVER map viewport.", error);
     }
