@@ -13,8 +13,8 @@
 - P2. Hyperdrive 도입 판단을 완료했고, 현재는 도입 보류로 결정했다.
 - P2. strict CSP 전환 준비를 완료했고, enforcement 전환은 marker SVG/data URL PoC 이후로 분리했다.
 - P2. global search index 기준 수립을 완료했고, 현재는 인덱스 도입 보류로 결정했다.
-- P3. 큰 파일 분리 리팩터링을 시작했고, Worker HTTP utilities, health/static route, auth, public config/bookmark route, places read route, public write route, admin route, telemetry route, admin reports repository, admin prices repository, admin places repository, map query helper, place card, category tray, trending section, mobile place list sheet, place detail sheet, naver map display marker helper, local fallback tile helper, naver panel helper, preview map fallback component, naver map error fallback wrapper, naver map marker renderer, naver map key state hook, naver map viewport emitter를 분리했다.
-- 다음 단계는 P3 `src/features/map/naver-map-panel.tsx`의 Naver SDK lifecycle 또는 viewport synchronization 영역을 추가 분리하는 것이다.
+- P3. 큰 파일 분리 리팩터링을 시작했고, Worker HTTP utilities, health/static route, auth, public config/bookmark route, places read route, public write route, admin route, telemetry route, admin reports repository, admin prices repository, admin places repository, map query helper, place card, category tray, trending section, mobile place list sheet, place detail sheet, naver map display marker helper, local fallback tile helper, naver panel helper, preview map fallback component, naver map error fallback wrapper, naver map marker renderer, naver map key state hook, naver map viewport emitter, naver map geolocation helper를 분리했다.
+- 다음 단계는 P3 `src/features/map/naver-map-panel.tsx`의 Naver SDK initialization effect 또는 focus/active-place viewport 영역을 추가 분리하는 것이다.
 
 ### 완료한 변경
 - `docs/PLAN.md`
@@ -289,6 +289,12 @@
 - `src/features/map/naver-map-panel.tsx`
   - viewport 변경 emit은 `emitNaverMapViewportChange` 호출로 정리했다.
   - 파일 크기는 788줄에서 778줄로 감소했다.
+- `src/features/map/naver-map-location.ts`
+  - 현재 위치 권한 확인, geolocation 요청, 현재 위치 marker 생성, 현재 위치 이동 후 viewport 재동기화 로직을 `src/features/map/naver-map-panel.tsx`에서 분리했다.
+  - 기존 현재 위치 실패/성공 문구, marker 교체, zoom 15 이동, 100ms 후 viewport emit 동작을 유지했다.
+- `src/features/map/naver-map-panel.tsx`
+  - `runLocateCurrentPosition`이 `locateCurrentPositionOnNaverMap`을 호출하도록 정리했다.
+  - 파일 크기는 778줄에서 724줄로 감소했다.
   - 파일 크기는 1337줄에서 925줄로 감소했다.
 
 ### 최근 검증
@@ -535,6 +541,12 @@
 - P3 Naver map viewport emitter 분리 후 `git diff --check` 통과
 - P3 Naver map viewport emitter 분리 후 `USE_MOCK_DATA=true node scripts/run-local-e2e.mjs smoke` 통과
 - P3 Naver map viewport emitter 분리 후 `USE_MOCK_DATA=true NEXTAUTH_URL=http://127.0.0.1:3107 npx playwright test tests/e2e/map.mobile.spec.ts --project mobile-chromium` 통과
+- P3 Naver map geolocation helper 분리 후 `npm run typecheck` 통과
+- P3 Naver map geolocation helper 분리 후 `npm run lint` 통과
+- P3 Naver map geolocation helper 분리 후 `npm run deploy:check:vite` 통과
+- P3 Naver map geolocation helper 분리 후 `git diff --check` 통과
+- P3 Naver map geolocation helper 분리 후 `USE_MOCK_DATA=true node scripts/run-local-e2e.mjs smoke` 통과
+- P3 Naver map geolocation helper 분리 후 `USE_MOCK_DATA=true NEXTAUTH_URL=http://127.0.0.1:3107 npx playwright test tests/e2e/map.mobile.spec.ts --project mobile-chromium` 통과
 - 참고:
   - fallback wrapper 분리 직후 모바일 spec 전체 실행에서 `mobile-place-list-sheet` 미탐색과 상세 시트 drag close 1회 실패가 재현됐다.
   - `MobilePlaceListSheet` 열기 버튼의 `pointerdown` open guard와 `PlaceDetailSheet` drag 중 close guard를 추가한 뒤 전체 모바일 spec 2건이 통과했다.
