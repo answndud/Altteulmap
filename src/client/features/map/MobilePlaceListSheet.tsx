@@ -37,6 +37,7 @@ export function MobilePlaceListSheet({
   totalPlaceCount: number;
 }) {
   const [dragStartY, setDragStartY] = useState<number | null>(null);
+  const openSheet = () => onModeChange("peek");
   const renderMobilePortal = (content: ReactNode) => {
     if (typeof document === "undefined") {
       return content;
@@ -51,12 +52,10 @@ export function MobilePlaceListSheet({
         <button
           type="button"
           data-testid="mobile-place-list-open"
-          onPointerDown={(event) => {
-            if (event.button === 0) {
-              onModeChange("peek");
-            }
-          }}
-          onClick={() => onModeChange("peek")}
+          onPointerDown={openSheet}
+          onMouseDown={openSheet}
+          onTouchStart={openSheet}
+          onClick={openSheet}
           className="altteulmap-button altteulmap-accent-solid pointer-events-auto inline-flex min-h-11 items-center justify-center gap-2 px-5 py-3 text-sm font-semibold shadow-[var(--altteul-shadow-overlay)]"
         >
           목록 열기
@@ -82,7 +81,7 @@ export function MobilePlaceListSheet({
         type="button"
         aria-label="목록 시트 크기 조절"
         data-testid="mobile-place-list-drag-handle"
-        className="mx-auto mb-3 block h-2 w-14 rounded-full bg-[var(--altteul-bg-muted)]"
+        className="mx-auto mb-1 flex h-11 w-20 touch-none items-center justify-center rounded-full"
         onPointerDown={(event) => {
           event.currentTarget.setPointerCapture(event.pointerId);
           setDragStartY(event.clientY);
@@ -99,7 +98,9 @@ export function MobilePlaceListSheet({
           setDragStartY(null);
         }}
         onPointerCancel={() => setDragStartY(null)}
-      />
+      >
+        <span className="h-2 w-14 rounded-full bg-[var(--altteul-bg-muted)]" />
+      </button>
       <div className="flex items-center justify-between gap-3 border-b border-[var(--altteul-surface-border)] pb-3">
         <div>
           <p className="altteulmap-section-kicker text-[11px]">목록</p>
