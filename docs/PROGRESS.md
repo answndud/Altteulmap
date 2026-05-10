@@ -43,6 +43,11 @@ React Doctor식 코드베이스 품질 개선 계획
   - `src/client/routes/admin/AdminReportsRoute.tsx`
 - `src/client/routes/admin/AdminRoutes.tsx`는 1324줄에서 19줄 route assembly로 감소했다.
 - admin route 파일은 모두 225줄 이하가 됐다.
+- P1 Async data/loading/error 패턴 정리를 완료했다.
+  - `src/client/lib/useSession.ts`를 추가해 shell session fetch와 logout 후 session clear를 분리했다.
+  - `src/client/routes/bookmarks/useBookmarkedPlaces.ts`를 추가해 bookmark 목록 fetch, place detail 병렬 fetch, unauthorized/error/loading state를 route-specific hook으로 분리했다.
+  - `src/client/App.tsx`와 `src/client/routes/BookmarksRoute.tsx`는 UI 조립과 optimistic removal만 담당하도록 축소했다.
+  - 지도 viewport fetch와 Turnstile widget lifecycle은 일반 async hook으로 묶으면 의미가 흐려지는 domain-specific effect라 유지했다.
 
 ### 최근 검증
 - 문서 계획 작성 전 필수 문서 확인:
@@ -71,11 +76,16 @@ React Doctor식 코드베이스 품질 개선 계획
   - `npm run lint` 통과, warning 8건
   - `npm run deploy:check:vite`
   - `npm run test:e2e:smoke` 통과, 10 passed
+- Async data/loading/error 패턴 정리 후 검증 통과:
+  - `npm run typecheck`
+  - `npm run lint` 통과, warning 8건
+  - `npm run test:e2e:smoke` 통과, 10 passed
+  - `git diff --check`
 - 참고:
   - admin targeted spec을 seed/rate-limit 초기화 없이 직접 실행했을 때 fixture/rate-limit 실패가 발생했다.
   - 정식 래퍼 `npm run test:e2e:smoke`는 DB push/seed/build를 포함해 통과했다.
 
 ### 다음 액션
-- P1. Async data/loading/error 패턴 정리를 진행한다.
-- 우선 public shell/session과 bookmark loading을 별도 hook으로 분리한다.
-- 지도 viewport fetch와 Turnstile widget lifecycle은 domain-specific effect라 억지 공용화하지 않는다.
+- P2. Accessibility semantic cleanup을 진행한다.
+- `PlaceCard`, `MobilePlaceListSheet`의 clickable `article role="button"` 패턴과 stop-propagation wrapper warning 8건을 semantic button/link 구조로 정리한다.
+- 기존 `data-testid`, 모바일 목록 선택 흐름, 북마크/공유 버튼 동작은 유지한다.

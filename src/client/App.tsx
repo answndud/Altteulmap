@@ -1,6 +1,6 @@
 import { Link, NavLink, Route, Routes } from "react-router-dom";
-import { useEffect, useState } from "react";
 
+import { useSession } from "@/client/lib/useSession";
 import { BookmarksRoute } from "@/client/routes/BookmarksRoute";
 import { MapRoute } from "@/client/routes/MapRoute";
 import { LoginRoute } from "@/client/routes/LoginRoute";
@@ -16,47 +16,8 @@ const navItems = [
   { href: "/bookmarks", label: "북마크" },
 ];
 
-type SessionUser = {
-  email?: string | null;
-  name?: string | null;
-  role?: "user" | "admin" | null;
-};
-
-type SessionResponse = {
-  user?: SessionUser;
-};
-
 function Shell({ children }: { children: React.ReactNode }) {
-  const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    fetch("/api/auth/session", { cache: "no-store" })
-      .then(async (response) => {
-        if (!response.ok) {
-          return null;
-        }
-
-        return (await response.json()) as SessionResponse;
-      })
-      .then((session) => {
-        if (!isMounted) {
-          return;
-        }
-
-        setSessionUser(session?.user ?? null);
-      })
-      .catch(() => {
-        if (isMounted) {
-          setSessionUser(null);
-        }
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  const { clearSession, sessionUser } = useSession();
 
   async function signOut() {
     await fetch("/api/auth/signout", {
@@ -70,7 +31,7 @@ function Shell({ children }: { children: React.ReactNode }) {
       }),
     }).catch(() => null);
 
-    setSessionUser(null);
+    clearSession();
     window.location.assign("/");
   }
 

@@ -153,7 +153,7 @@ React Doctor식 코드베이스 품질 개선 계획
   - State & Effects `+1`
 
 ### P1. Async data/loading/error 패턴 정리
-- 상태: 대기.
+- 상태: 완료. public shell session fetch와 bookmarks route loading을 route-specific hook으로 분리했다. 지도 viewport fetch와 Turnstile lifecycle은 domain-specific effect로 유지했다.
 - 목적:
   - 반복되는 `useEffect + fetch + mounted flag + local state` 패턴을 줄여 state/effects 점수를 올리고 회귀 가능성을 낮춘다.
 - 현재 근거:
@@ -169,15 +169,14 @@ React Doctor식 코드베이스 품질 개선 계획
   - map viewport fetch는 이미 특수 로직이 많으므로 공용 hook에 억지로 넣지 않는다.
   - Turnstile widget lifecycle은 외부 script/widget id cleanup이 핵심이므로 현 구조 유지 여부를 먼저 검토한다.
 - 완료 기준:
-  - 단순 fetch route는 공용 패턴을 따른다.
+  - 단순 fetch route는 route-specific hook 패턴을 따른다.
   - 지도 viewport fetch처럼 domain-specific한 effect는 별도 hook 또는 명확한 이름으로 유지된다.
   - Abort/cancel 동작이 약해지지 않는다.
 - 검증:
   - `npm run typecheck`
   - `npm run lint`
-  - `npm run smoke:vite:local`
-  - `NEXTAUTH_URL=http://127.0.0.1:3130 npx playwright test tests/e2e/login.spec.ts tests/e2e/signup.spec.ts tests/e2e/bookmarks.spec.ts --project chromium`
-  - 지도 관련 수정이 생기면 `USE_MOCK_DATA=true NEXTAUTH_URL=http://127.0.0.1:3107 npx playwright test tests/e2e/map.mobile.spec.ts --project mobile-chromium`
+  - `npm run test:e2e:smoke`
+  - `git diff --check`
 - 예상 점수 개선:
   - State & Effects `+2~3`
   - Architecture `+1`
