@@ -66,6 +66,7 @@ export function TrendingPlacesSection({
               <button
                 type="button"
                 onClick={() => onSelectPlace(place)}
+                aria-label={`${place.name} 가격 보기`}
                 data-testid={`trending-place-primary-link-${place.id}`}
                 className="block w-full rounded-[0.75rem] text-left transition hover:bg-[var(--altteul-surface-fill-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--altteul-primary)]"
               >

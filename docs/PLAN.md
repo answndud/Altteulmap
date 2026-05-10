@@ -3,176 +3,357 @@
 ## Active 작업
 
 ### 작업명
-운영 하드닝 후속 과제 계획
+React Doctor식 코드베이스 품질 개선 계획
 
 ### 배경
-- `docs/project/production-hardening-report-2026-05-08.md`의 남은 후속 과제를 실행 가능한 순서로 정리한다.
-- 오늘 완료한 pre-mortem 하드닝은 운영 배포와 remote smoke까지 완료됐지만, 보안/운영 성숙도와 유지보수성 측면에서 남은 과제가 있다.
-- 이번 계획은 모든 후속 과제를 한 번에 구현하겠다는 의미가 아니라, 우선순위와 완료 기준을 고정해 다음 개발 세션에서 바로 이어가기 위한 active 계획이다.
+- `millionco/react-doctor`를 설치하거나 실행하지 않고, 해당 도구의 공개 README 기준 평가 축을 참고해 현재 Vite + React 코드베이스를 수동 진단했다.
+- 진단 기준은 React 프로젝트의 `state/effects`, `performance`, `architecture`, `security`, `accessibility`, `dead code/hygiene`를 종합해 0-100점으로 보는 방식이다.
+- 현재 알뜰맵은 운영 smoke, Cloudflare 배포, Turnstile, 관리자 QA, Worker route 분리, 지도 회귀 테스트가 강화되어 운영 안정성은 개선됐지만, React 전용 정적 분석과 프론트엔드 구조 품질 하네스는 아직 얕다.
+- 수동 진단 점수는 `74/100`으로, `Needs work` 상단이다. 목표는 기능 변경 없이 `80+ Great` 수준으로 올리는 것이다.
 
-### 목표
-- 운영 리스크가 큰 항목부터 작은 단위로 처리한다.
-- DB schema/API/auth/deploy 변경이 필요한 작업은 별도 검증과 rollback 기준을 둔다.
-- 외부 설정이 필요한 작업은 코드 변경과 dashboard/provider 설정을 분리해 진행한다.
-- 큰 파일 분리는 기능 변경이 아니라 회귀 방지 테스트를 먼저 둔 동작 보존형 리팩터링으로 진행한다.
+### 현재 기준 점수
+- 총점: `74/100`
+- State & Effects: `15/20`
+- Architecture: `14/20`
+- Performance: `15/20`
+- Security: `16/20`
+- Accessibility: `13/20`
+- Dead Code / Hygiene: `11/20`
 
-### 범위
-- 포함:
-  - 가격 제보 동시 승인 DB-level idempotency 강화
-  - Turnstile 기반 public write bot 방어 도입 계획 및 적용
-  - Supabase 직접 연결 안정성 평가와 Hyperdrive 도입 판단
-  - Sentry 또는 Cloudflare Logs/Logpush 기반 운영 알림
-  - strict CSP 전환을 위한 inline style/marker 구조 개선 계획
-  - global search 성능 악화 대비 `pg_trgm` 또는 full-text index 도입 기준
-  - `docs/refactoring-large-files.md` 기준 큰 파일 분리 리팩터링 실행 계획
-- 제외:
-  - 신규 사용자 기능
-  - 지도 UX/디자인 재작업
-  - DB destructive migration
-  - Next.js 구조 복원
-  - Cloudflare Workers 이외의 배포 플랫폼 전환
+### 목표 점수
+- 1차 목표: `80/100` 이상
+- 2차 목표: `85/100` 이상
+- 목표 달성 조건:
+  - React 전용 lint/a11y/hook 검사가 CI와 local verify에 포함된다.
+  - `src/client/routes/admin/AdminRoutes.tsx`가 route shell, type, API, hook, page component 단위로 분리된다.
+  - 반복되는 `useEffect + fetch + mounted flag` 패턴이 공용 async/data hook 또는 route-specific hook으로 정리된다.
+  - 클릭 가능한 `article role="button"` 패턴이 실제 semantic button/link 또는 명확한 접근성 보강 패턴으로 줄어든다.
+  - CSP blocker inventory가 감소하고 strict CSP 전환 판단이 더 쉬워진다.
+  - dead-code/hygiene 검사가 최소 preview 또는 opt-in 스크립트로 추가된다.
+
+### 비목표
+- 신규 기능 추가
+- UI/디자인 대규모 변경
+- API path, response shape 변경
+- DB schema 변경
+- 인증/session cookie contract 변경
+- Cloudflare 배포 구조 변경
+- React Query/TanStack Query 즉시 도입
+- `react-doctor` 자체 설치 또는 실행
+
+### 적용 원칙
+- 동작 보존형 리팩터링만 수행한다.
+- 기존 E2E `data-testid`, route path, API contract, admin 권한 경계는 유지한다.
+- 자동 검사 도입은 먼저 `warn` 또는 별도 script로 시작하고, 기존 코드 수정이 끝난 뒤 CI 필수 검사로 승격한다.
+- 접근성 수정은 시각 디자인을 흔들지 않는 범위에서 semantic HTML과 keyboard behavior를 우선한다.
+- `useMemo`/`useCallback`은 무조건 제거하지 않는다. React Compiler 관점에서 불필요한 곳만 줄이고, 지도/marker처럼 identity 안정성이 필요한 곳은 유지한다.
+- Cloudflare Worker runtime 호환성을 유지한다. Node-only 검사 도구는 devDependency와 local/CI 검사에만 사용한다.
 
 ## 우선순위
 
-### P0. 가격 제보 동시 승인 DB-level idempotency
-- 상태: 구현 및 로컬 검증 완료.
-- 이유:
-  - 현재 transaction은 partial write를 막지만, 같은 가격 제보가 동시에 승인될 때 검증 count/대표 가격이 중복 반영될 가능성은 남아 있다.
+### P0. React 품질 하네스 기준선 고정
+- 상태: 완료.
+- 목적:
+  - 이후 리팩터링이 주관적 판단에 머물지 않도록 현재 점수와 검사 공백을 문서/스크립트 기준으로 고정한다.
 - 작업:
-  - 현재 `price_reports`, `price_items`, `price_histories`, `admin_actions` 흐름을 다시 추적한다.
-  - 동시 승인 재현 테스트 또는 targeted API smoke를 먼저 만든다.
-  - `select ... for update`가 필요한지, status 조건부 update가 충분한지 판단한다.
-  - 필요한 경우 DB-level unique/index 또는 optimistic guard migration을 추가한다.
-  - 이미 처리된 report 재승인은 기존 response shape를 유지하면서 idempotent하게 처리한다.
+  - `docs/project/react-quality-audit-2026-05-10.md`를 생성한다.
+  - 현재 수동 점수 `74/100`과 카테고리별 점수, 근거 파일, 주요 리스크를 기록한다.
+  - `react-doctor` 설치/실행 없이 참고한 평가 축을 명시한다.
+  - 현재 통과 검증을 기준선으로 기록한다:
+    - `npm run lint`
+    - `npm run typecheck`
+    - `npm run deploy:check:vite`
+    - `npm run csp:inventory`
+  - `docs/PROGRESS.md`에는 기준선 점수와 이번 작업의 active 상태를 짧게 남긴다.
 - 완료 기준:
-  - 같은 가격 제보를 동시에 승인해도 대표 가격, verified count, price history, admin action이 중복 반영되지 않는다.
-  - 관련 migration이 있다면 운영 적용 순서가 문서화된다.
+  - 기준선 문서가 있어 다음 세션에서 점수 변화와 개선 근거를 비교할 수 있다.
+  - 현재 리스크가 파일/라인 단위로 추적 가능하다.
 - 검증:
-  - `npm run typecheck`
-  - `npm run lint`
-  - targeted API concurrency smoke
-  - `tests/e2e/price-review.spec.ts`
   - `git diff --check`
 
-### P1. Turnstile public write bot 방어
-- 상태: 코드 구현 및 로컬/E2E 검증 완료. 운영 Dashboard site key/secret 설정과 production 수동 QA 필요.
-- 이유:
-  - DB-backed rate limit은 abuse 방어를 강화하지만 bot proof는 아니다.
-  - 장소 등록, 가격 제보, 댓글, 신고는 공개 쓰기 표면이다.
+### P1. React 전용 lint/a11y/hook 검사 도입
+- 상태: 구현 완료. React Hooks error, JSX a11y warning, React Refresh warning 감시망을 추가했다. 남은 a11y warning 8건은 P2 semantic cleanup에서 처리한다.
+- 목적:
+  - 현재 ESLint는 JS/TS recommended 중심이라 React Hooks, JSX accessibility, React DOM anti-pattern을 충분히 잡지 못한다.
+- 현재 근거:
+  - `eslint.config.mjs`는 `@eslint/js`, `typescript-eslint`, `globals` 중심이다.
+  - `react-hooks/exhaustive-deps`, `jsx-a11y/*`, React refresh/compiler 친화 rule이 없다.
 - 작업:
-  - 보호 대상 route를 확정한다: 장소 등록, 가격 제보, 댓글, 신고.
-  - Cloudflare Turnstile site key/secret 운영 설정 방식을 정리한다.
-  - client form에 Turnstile token을 붙이고 Worker에서 token 검증을 수행한다.
-  - local/test 환경에서는 명시 mock bypass를 두되 production bypass는 금지한다.
-  - token 실패 response와 UX copy를 정리한다.
+  - devDependency 후보를 검토한다:
+    - `eslint-plugin-react-hooks`
+    - `eslint-plugin-jsx-a11y`
+    - 필요 시 `eslint-plugin-react-refresh`
+  - Flat config 방식으로 `eslint.config.mjs`에 React client 파일 대상 rule set을 추가한다.
+  - Worker/server-only 파일에 browser/JSX rule이 과도하게 적용되지 않도록 scope를 분리한다.
+  - 초기 도입에서는 회귀 위험이 큰 rule만 `warn`으로 시작한다.
+  - lint 결과를 보고 실제 버그성 warning과 스타일성 warning을 분리한다.
+  - false positive가 많으면 rule별 disable이 아니라 파일 scope 또는 rule level을 조정한다.
 - 완료 기준:
-  - production public write는 Turnstile 검증 없이 성공하지 않는다.
-  - local/test에서는 자동화 검증 가능한 안전한 bypass가 있다.
-  - 기존 API response shape와 UX flow가 불필요하게 깨지지 않는다.
+  - `npm run lint`가 React hook/a11y 최소 검사까지 포함한다.
+  - 새 lint 설정이 기존 lint 우회를 만들지 않는다.
+  - warning이 남는다면 `docs/PROGRESS.md`에 남은 warning과 처리 방침이 명시된다.
+- 검증:
+  - `npm run lint`
+  - `npm run typecheck`
+  - `git diff --check`
+- 예상 점수 개선:
+  - Accessibility `+2~3`
+  - State & Effects `+1~2`
+  - Dead Code / Hygiene `+1`
+
+### P1. Admin UI 큰 파일 분리
+- 상태: 진행 중. Slice 1~4 일부를 완료해 type, API helper, `useAdminData`, access gate, shared frame을 분리했다. 남은 작업은 page/card/filter component 분리와 `AdminRoutes.tsx` 250줄 이하 축소다.
+- 목적:
+  - `src/client/routes/admin/AdminRoutes.tsx` 1324줄 파일을 작은 모듈로 나눠 AI agent 작업 회귀 위험을 줄인다.
+- 현재 근거:
+  - 같은 파일에 admin type, API helper, `useAdminData`, access gate, layout, dashboard, place queue, price queue, report queue, card component가 함께 있다.
+  - 이전 `PLAN.md`의 P3 다음 작업도 Admin UI Slice 1이었다.
+- 작업 순서:
+  - Slice 1: 타입 분리
+    - `src/client/routes/admin/types.ts` 생성
+    - `AdminSessionUser`, `AdminSession`, `AdminListResponse`, `AdminActionResult`, `ModerationSuggestion`, `PendingPlace`, `PendingPriceReport`, `AdminReport`, `AdminPriceItem`, `AdminPlacePriceDetail`, `LoadState` 이동
+  - Slice 2: API helper 분리
+    - `src/client/routes/admin/api.ts` 생성
+    - `fetchJson`, `loadAdminSession`, admin list/action fetcher 이동
+    - response shape와 error message는 변경하지 않음
+  - Slice 3: data hook/access shell 분리
+    - `src/client/routes/admin/useAdminData.ts` 생성
+    - `src/client/routes/admin/AdminAccessGate.tsx` 생성
+    - unauthenticated/forbidden/loading/error UI 의미와 copy 유지
+  - Slice 4: layout/nav 분리
+    - `src/client/routes/admin/AdminFrame.tsx` 생성
+    - `adminNavItems`, `DataBadge`, `EmptyPanel`, common formatter 이동
+  - Slice 5: page 단위 분리
+    - `AdminDashboardRoute.tsx`
+    - `AdminPlacesRoute.tsx`
+    - `AdminPricesRoute.tsx`
+    - `AdminReportsRoute.tsx`
+  - Slice 6: card/filter component 분리
+    - `PlaceSubmissionCard.tsx`
+    - `PriceReportCard.tsx`
+    - `ReportCard.tsx`
+    - `ReportFilterBar.tsx`
+    - `ModerationSuggestionPanel.tsx`
+  - Slice 7: 최종 route file 축소
+    - `AdminRoutes.tsx`는 `Routes` 조립만 담당하도록 축소
+- 완료 기준:
+  - `AdminRoutes.tsx`가 250줄 이하가 된다.
+  - 각 page/card 파일은 350줄 이하를 목표로 한다.
+  - `admin-ai-review-panel`, `admin-price-report-list`, `admin-price-reject-button`, `admin-report-list`, report filter/status test id가 유지된다.
+  - `/api/admin/*` 서버 권한 경계는 변경하지 않는다.
+- 검증:
+  - 각 slice 후 `npm run typecheck`
+  - 각 slice 후 `npm run lint`
+  - admin slice 완료 후 `USE_MOCK_DATA=true NEXTAUTH_URL=http://127.0.0.1:3130 npx playwright test tests/e2e/report-admin.spec.ts tests/e2e/submission-admin.spec.ts tests/e2e/price-review.spec.ts --project chromium`
+  - 최종 `npm run smoke:vite:local`
+  - 최종 `git diff --check`
+- 예상 점수 개선:
+  - Architecture `+3~4`
+  - Dead Code / Hygiene `+1`
+  - State & Effects `+1`
+
+### P1. Async data/loading/error 패턴 정리
+- 상태: 대기.
+- 목적:
+  - 반복되는 `useEffect + fetch + mounted flag + local state` 패턴을 줄여 state/effects 점수를 올리고 회귀 가능성을 낮춘다.
+- 현재 근거:
+  - `src/client/App.tsx`는 session fetch를 직접 수행한다.
+  - `src/client/routes/MapRoute.tsx`는 map fetch, bookmark fetch, viewport fetch를 직접 관리한다.
+  - `src/client/routes/PlaceDetailRoute.tsx`, `BookmarksRoute.tsx`, admin route도 유사 패턴을 반복한다.
+- 작업:
+  - 먼저 범위를 public shell/session과 admin data hook으로 제한한다.
+  - `src/client/lib/async-state.ts` 또는 `src/client/lib/useAsyncResource.ts`를 추가할지 판단한다.
+  - AbortController가 필요한 fetch와 단순 mounted guard fetch를 구분한다.
+  - session은 `useSession()` hook으로 분리한다.
+  - bookmark loading은 `useBookmarks()` 또는 map route 내부 hook으로 분리한다.
+  - map viewport fetch는 이미 특수 로직이 많으므로 공용 hook에 억지로 넣지 않는다.
+  - Turnstile widget lifecycle은 외부 script/widget id cleanup이 핵심이므로 현 구조 유지 여부를 먼저 검토한다.
+- 완료 기준:
+  - 단순 fetch route는 공용 패턴을 따른다.
+  - 지도 viewport fetch처럼 domain-specific한 effect는 별도 hook 또는 명확한 이름으로 유지된다.
+  - Abort/cancel 동작이 약해지지 않는다.
 - 검증:
   - `npm run typecheck`
   - `npm run lint`
-  - public write targeted E2E/API smoke
   - `npm run smoke:vite:local`
-  - 운영 Turnstile 수동 QA
+  - `NEXTAUTH_URL=http://127.0.0.1:3130 npx playwright test tests/e2e/login.spec.ts tests/e2e/signup.spec.ts tests/e2e/bookmarks.spec.ts --project chromium`
+  - 지도 관련 수정이 생기면 `USE_MOCK_DATA=true NEXTAUTH_URL=http://127.0.0.1:3107 npx playwright test tests/e2e/map.mobile.spec.ts --project mobile-chromium`
+- 예상 점수 개선:
+  - State & Effects `+2~3`
+  - Architecture `+1`
 
-### P1. 운영 알림과 에러 추적
-- 상태: 1차 구현 및 로컬 검증 완료.
-- 이유:
-  - `/api/health?deep=1`과 remote smoke는 상태 확인 도구지만, 아직 실패를 자동으로 알려주는 경로가 없다.
+### P2. Accessibility semantic cleanup
+- 상태: 대기.
+- 목적:
+  - 클릭 가능한 비의미 요소를 줄이고 keyboard/screen reader contract를 더 명확하게 만든다.
+- 현재 근거:
+  - `PlaceCard`와 `MobilePlaceListSheet`는 `article role="button"` 패턴을 사용한다.
+  - 현재 Enter/Space 처리는 있으나, 실제 `<button>` 또는 링크보다 유지보수와 접근성 검사에서 불리하다.
 - 작업:
-  - Sentry Free와 Cloudflare Logs/Logpush 중 MVP 운영에 맞는 1차 도입안을 선택한다.
-  - Worker error boundary 또는 `app.onError`에서 request id, route, status, error class를 기록한다.
-  - smoke 실패 알림은 GitHub Actions schedule 또는 Cloudflare Cron Trigger 중 하나로 계획한다.
-  - secret redaction 기준을 문서화한다.
+  - `PlaceCard` 전체 클릭 영역을 실제 `<button type="button">` 내부 구조로 바꿀 수 있는지 검토한다.
+  - 내부 북마크/공유/가격 보기 버튼과 nested interactive element 충돌이 생기면 카드 전체 클릭을 제거하고 명시 버튼/링크 중심으로 바꾼다.
+  - `MobilePlaceListSheet`도 동일하게 `button` 또는 `li > button` 구조를 검토한다.
+  - 접근성 label, focus ring, touch target 44px 이상을 유지한다.
+  - `eslint-plugin-jsx-a11y` 도입 후 남는 경고를 우선순위화한다.
 - 완료 기준:
-  - 운영 5xx/DB unavailable/auth failure를 최소 하나의 외부 관측 채널에서 확인할 수 있다.
-  - 알림이 없더라도 scheduled remote smoke 실패를 확인할 수 있는 자동 루틴이 있다.
+  - 클릭 가능한 `article role="button"` 사용이 0건이거나, 불가피한 경우 문서화된 예외만 남는다.
+  - keyboard Enter/Space, focus visible, nested button 충돌이 없다.
+  - 모바일 목록 열기/선택 E2E가 통과한다.
 - 검증:
+  - `npm run lint`
+  - `npm run typecheck`
+  - `USE_MOCK_DATA=true NEXTAUTH_URL=http://127.0.0.1:3107 npx playwright test tests/e2e/map.mobile.spec.ts --project mobile-chromium --repeat-each=3`
+  - `npm run test:e2e:smoke`
+- 예상 점수 개선:
+  - Accessibility `+3~4`
+  - Architecture `+1`
+
+### P2. CSP blocker와 marker inline style 축소
+- 상태: 대기.
+- 목적:
+  - strict CSP 전환을 막는 inline style blocker를 줄이고 security 점수를 올린다.
+- 현재 근거:
+  - `npm run csp:inventory` 기준 total findings는 12건이다.
+  - `src/features/map/naver-map-preview.tsx` 7건
+  - `src/features/map/naver-map-marker-visuals.ts` 5건
+  - `public/_headers`는 `unsafe-inline`을 유지 중이다.
+- 작업:
+  - Preview map tile 위치 style은 CSS custom property 또는 transform class 방식으로 대체 가능한지 PoC한다.
+  - Naver marker HTML은 다음 중 하나를 선택한다:
+    - 사전 정의 class + CSS variables
+    - SVG data URL marker
+    - Canvas-generated data URL marker
+  - Naver SDK marker content가 style attribute 없이 동일한 hitbox/anchor를 유지하는지 확인한다.
+  - marker visual parity를 깨지 않도록 cluster/place marker size, anchor, z-index, focus 동작을 테스트한다.
+  - `public/_headers`의 `unsafe-inline` 제거는 마지막 단계에서만 시도한다.
+- 완료 기준:
+  - `npm run csp:inventory` findings가 12건에서 5건 이하로 줄어든다.
+  - strict CSP 전환에 필요한 남은 blocker가 명확하다.
+  - 지도 marker click, cluster click, preview fallback이 깨지지 않는다.
+- 검증:
+  - `npm run csp:inventory`
   - `npm run typecheck`
   - `npm run lint`
-  - forced error local smoke
-  - remote smoke scheduled/manual run
+  - `npm run smoke:vite:local`
+  - `USE_MOCK_DATA=true NEXTAUTH_URL=http://127.0.0.1:3107 npx playwright test tests/e2e/map.spec.ts tests/e2e/map.mobile.spec.ts --project chromium`
+  - 실제 Naver map browser QA
+- 예상 점수 개선:
+  - Security `+2~3`
+  - Performance `+1` 가능
 
-### P2. Hyperdrive 도입 판단
-- 상태: 도입 보류 판단 및 optional binding 호환 코드 준비 완료.
-- 이유:
-  - 현재는 Supabase 직접 연결이다. timeout baseline은 생겼지만 connection churn이 반복되면 Hyperdrive가 필요할 수 있다.
+### P2. Dead-code/hygiene 검사 추가
+- 상태: 대기.
+- 목적:
+  - 사용하지 않는 파일/export/legacy artifact를 사람이 추적하는 상태에서 자동 검출 가능한 상태로 바꾼다.
+- 현재 근거:
+  - `react-doctor`식 평가에서는 dead code가 별도 축이다.
+  - 현재 `npm run lint`는 unused local variable 중심이고 unused exports/files를 강하게 잡지 않는다.
+  - `next-env.d.ts`, legacy alias, migration 중 남은 호환 파일처럼 사람이 판단해야 하는 항목이 있다.
 - 작업:
-  - 현재 운영 DB latency, connection error, timeout 발생 빈도를 Cloudflare logs/smoke 기준으로 본다.
-  - Hyperdrive binding 추가 시 env/secret/connection string 영향 범위를 정리한다.
-  - PoC Worker 또는 staging-like local config로 Hyperdrive 연결 가능성을 검증한다.
+  - `knip` 또는 동등한 dead-code checker를 설치하지 않고 먼저 dry-run 후보를 조사한다.
+  - devDependency 추가가 적절하면 `knip`을 optional script로 도입한다.
+  - 초기 script 이름은 `hygiene:dead-code`로 두고 CI 필수에는 바로 넣지 않는다.
+  - false positive가 예상되는 entrypoints를 config에 명시한다:
+    - `src/client/main.tsx`
+    - `src/worker/index.ts`
+    - `scripts/*.mjs`
+    - `tests/**/*.ts`
+    - Cloudflare/Vite generated entry
+  - 실제 삭제는 별도 커밋으로만 진행한다.
 - 완료 기준:
-  - 당장 도입/보류 판단 근거가 문서화된다.
-  - 도입한다면 rollback 가능한 binding/env 변경 순서가 있다.
+  - dead-code 검사 명령이 생긴다.
+  - false positive 기준이 문서화된다.
+  - 삭제 가능한 후보와 보존해야 하는 compatibility 후보가 분리된다.
 - 검증:
-  - deep health DB check
-  - map API measure
-  - admin credentials remote smoke
+  - `npm run hygiene:dead-code` 또는 preview command
+  - `npm run typecheck`
+  - `npm run lint`
+  - `git diff --check`
+- 예상 점수 개선:
+  - Dead Code / Hygiene `+3~4`
 
-### P2. Strict CSP 전환 준비
-- 상태: inventory 작성 및 단순 inline style 일부 제거 완료. Enforcement 전환은 marker SVG/data URL PoC 이후 진행.
-- 이유:
-  - 현재 CSP는 React inline style과 Naver marker HTML style 때문에 `style-src 'unsafe-inline'`을 허용한다.
+### P3. Performance 측정 하네스 보강
+- 상태: 대기.
+- 목적:
+  - 지도 전환, 클러스터, 모바일 바텀시트, admin queue 렌더링이 느려지는 문제를 감으로 판단하지 않도록 한다.
+- 현재 근거:
+  - API 측정은 `npm run map:measure`가 있으나 React render/interaction 측정은 약하다.
+  - 지도 UX는 이전에 클러스터/전환 성능 이슈가 반복됐다.
 - 작업:
-  - inline style 사용처를 inventory로 만든다.
-  - Naver marker HTML을 class 기반 또는 precomputed stylesheet 기반으로 바꿀 수 있는지 확인한다.
-  - CSP report-only 모드를 먼저 검토한다.
+  - Playwright 기반 interaction timing smoke를 추가할지 검토한다.
+  - 최소 측정 대상:
+    - `/map` 초기 렌더 후 marker/cluster 표시까지
+    - 지도 viewport change 후 `검색중` 해제까지
+    - cluster click 후 place marker 또는 상세 선택 가능 상태까지
+    - `/admin/prices` 목록 표시까지
+  - 결과를 절대값 pass/fail로 바로 고정하지 말고 baseline JSON으로 기록한다.
+  - 임계값은 3회 이상 측정 후 p95 기준으로 잡는다.
 - 완료 기준:
-  - `unsafe-inline` 제거 가능 여부와 필요한 코드 변경량이 명확하다.
-  - strict CSP 전환이 지도 marker와 OAuth 흐름을 깨지 않는 검증 계획이 있다.
+  - 성능 회귀를 감지할 수 있는 최소 smoke 또는 측정 스크립트가 있다.
+  - 지도 UX 성능 수치가 `docs/PROGRESS.md`에 남는다.
 - 검증:
-  - browser smoke
-  - Naver map live QA
-  - CSP violation 확인
-
-### P2. Global search index 기준
-- 상태: 도입 보류 판단, query plan 분석 스크립트, pg_trgm 도입 기준 문서화 완료.
-- 이유:
-  - 현재 global keyword search는 `ILIKE '%query%'` 기반이다.
-  - 데이터가 커지면 p95가 목표를 넘을 수 있다.
-- 작업:
-  - `npm run map:measure` 운영/로컬 측정 결과를 기록한다.
-  - `pg_trgm` index와 full-text search 중 MVP에 맞는 방식을 비교한다.
-  - 데이터 10k/100k synthetic 또는 query plan 기준으로 도입 시점을 정한다.
-- 완료 기준:
-  - global search p95 목표 초과 시 적용할 migration 전략이 문서화된다.
-  - 아직 필요 없다면 보류 기준도 수치로 남긴다.
-- 검증:
+  - 새 performance smoke
+  - `npm run test:e2e:smoke`
   - `npm run map:measure`
-  - `EXPLAIN ANALYZE` 또는 synthetic query plan
+- 예상 점수 개선:
+  - Performance `+2~3`
 
-### P3. 큰 파일 분리 리팩터링
-- 상태: 사용자 요청으로 현재 리팩터링 루프는 일시 중단한다. Worker Slice 1~11, Map Slice 1~5, Naver Map Slice 1~20 진행 완료. 다음 리팩터링을 재개한다면 Admin UI Slice 1이 우선이다. HTTP utilities, health/static route, auth, public config/bookmark route, places read route, public write route, admin route, telemetry route, admin reports/prices/places repository, map query helper, place card, category tray, trending section, mobile place list sheet, place detail sheet, naver map display marker helper, local fallback tile helper, naver panel helper, preview map fallback component, naver map error fallback wrapper, naver map marker renderer, naver map key state hook, naver map viewport emitter, naver map geolocation helper, naver map focus helper, naver map container size hook, naver map window resize sync hook, naver map initialization hook, naver map marker rendering hook, naver map runtime error hook, naver map pending action hook, naver map viewport focus hook, naver map cleanup hook, transient map message hook, naver map action orchestration hook, 모바일 바텀시트 visual viewport 터치 안정화 완료.
-- 이유:
-  - `src/worker/index.ts`, `src/client/routes/MapRoute.tsx`, `src/features/map/naver-map-panel.tsx`, `src/worker/admin-repository.ts`는 AI agent 작업 시 회귀 위험이 크다.
-- 작업:
-  - `docs/refactoring-large-files.md` 순서를 따른다.
-  - Worker HTTP utilities/health/static route부터 분리한다.
-  - auth route, public route, admin route, admin repository, map route, Naver map panel 순으로 작은 slice를 진행한다.
-  - Naver map panel은 408줄까지 축소되어 추가 분리 이득이 낮으므로 현재 수준에서 중단한다.
-  - 다음 slice는 `src/client/routes/admin/AdminRoutes.tsx`에서 admin 공용 type, API helper, `useAdminData`, access gate/shared shell을 먼저 분리한다.
-  - 각 slice는 기능 변경 없이 보호 테스트를 통과해야 한다.
-  - 리팩터링 검증 중 반복 재현되는 flaky E2E는 해당 slice의 신뢰도를 떨어뜨리므로 원인을 확인해 작은 안정화 패치로 함께 처리한다.
-- 완료 기준:
-  - 각 큰 파일의 책임이 route/domain/component 단위로 분리된다.
-  - 기존 E2E data-testid, API path, auth/session contract가 유지된다.
-- 검증:
-  - `npm run typecheck`
+## 실행 순서
+- 먼저 P0 기준선 문서를 만든다.
+- 다음으로 P1 React lint/a11y/hook 검사를 도입한다.
+- 이어서 P1 Admin UI 큰 파일 분리를 진행한다.
+- 그 다음 P1 async data/loading/error 패턴을 정리한다.
+- 이후 P2 accessibility semantic cleanup과 CSP blocker 축소를 진행한다.
+- 마지막으로 P2 dead-code/hygiene 검사와 P3 performance 측정 하네스를 추가한다.
+
+## 검증 매트릭스
+- 모든 코드 변경 후 기본 검증:
   - `npm run lint`
-  - `npm run smoke:vite:local`
-  - targeted E2E specs
-  - `npm run deploy:check:vite`
+  - `npm run typecheck`
   - `git diff --check`
+- Worker 또는 build output 영향이 있으면:
+  - `npm run cf:build:vite`
+  - `npm run deploy:check:vite`
+  - `npm run smoke:vite:local`
+- Admin UI 영향이 있으면:
+  - `USE_MOCK_DATA=true NEXTAUTH_URL=http://127.0.0.1:3130 npx playwright test tests/e2e/report-admin.spec.ts tests/e2e/submission-admin.spec.ts tests/e2e/price-review.spec.ts --project chromium`
+  - 필요 시 `npm run qa:production:admin`은 운영 데이터 생성/cleanup이 있으므로 명시 판단 후만 실행한다.
+- Map/mobile 영향이 있으면:
+  - `USE_MOCK_DATA=true NEXTAUTH_URL=http://127.0.0.1:3107 npx playwright test tests/e2e/map.spec.ts tests/e2e/map.mobile.spec.ts --project chromium`
+  - `USE_MOCK_DATA=true NEXTAUTH_URL=http://127.0.0.1:3107 npx playwright test tests/e2e/map.mobile.spec.ts --project mobile-chromium --repeat-each=3`
+- Public write/auth 영향이 있으면:
+  - `NEXTAUTH_URL=http://127.0.0.1:3130 npx playwright test tests/e2e/login.spec.ts tests/e2e/signup.spec.ts tests/e2e/comments.spec.ts tests/e2e/bookmarks.spec.ts --project chromium`
+- CSP/marker 영향이 있으면:
+  - `npm run csp:inventory`
+  - 실제 Naver map browser QA
+- 최종 검증:
+  - `npm run verify`
+  - `npm run test:e2e:full`
+  - `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev npm run smoke:remote`
 
-## 실행 순서 제안
-- 먼저 P0 idempotency를 처리한다.
-- 그 다음 P1 Turnstile과 운영 알림 중 외부 설정 준비가 쉬운 항목부터 진행한다.
-- Hyperdrive, strict CSP, global search index는 수치와 로그를 보고 도입 여부를 판단한다.
-- 큰 파일 분리는 위 운영 안정성 과제가 막히거나 완료된 뒤 별도 리팩터링 세션으로 진행한다.
+## 완료 기준
+- 수동 React Doctor식 점수가 `80/100` 이상으로 재평가된다.
+- 점수 변경 근거가 `docs/project/react-quality-audit-2026-05-10.md`에 기록된다.
+- active 작업 완료 시 `docs/PROGRESS.md` 내용을 요약해 `docs/COMPLETED.md`에 archive한다.
+- 완료 후 `docs/PLAN.md`, `docs/PROGRESS.md`는 `현재 active 작업 없음`으로 정리한다.
 
-## 전체 완료 기준
-- P0/P1 항목은 구현 또는 명확한 보류 사유가 archive된다.
-- P2 항목은 수치 기반 도입/보류 판단이 문서화된다.
-- P3는 최소 첫 Worker split slice까지 진행하거나 별도 리팩터링 active 계획으로 분리된다.
-- 완료 시 `docs/PROGRESS.md`를 `docs/COMPLETED.md`로 archive하고, `docs/PLAN.md`, `docs/PROGRESS.md`는 `현재 active 작업 없음`으로 정리한다.
+## 자체 리뷰
+
+### 강점
+- 계획이 도구 설치에 의존하지 않고 현재 코드 근거를 기준으로 한다.
+- 큰 위험인 Admin UI 파일 분리와 React lint 공백을 P1로 올렸다.
+- 운영 contract 변경 금지, Worker runtime 호환성, E2E data-testid 유지 조건을 명시했다.
+- 접근성, CSP, dead-code, performance를 각각 독립 slice로 나눠 검증 가능하게 만들었다.
+
+### 리스크
+- ESLint plugin 추가는 기존 코드에서 warning이 대량 발생할 수 있다. 초기에는 `warn`으로 시작하고 rule별 적용 범위를 좁혀야 한다.
+- Admin UI 분리는 import 경로 변경만으로도 E2E fixture와 data-testid를 깨뜨릴 수 있다. slice별 커밋과 targeted admin E2E가 필요하다.
+- `article role="button"`을 실제 button으로 바꾸면 nested interactive element 문제가 생길 수 있다. 이 경우 카드 전체 클릭 UX를 포기하고 명시 버튼 중심으로 정리하는 편이 안전하다.
+- CSP marker 개선은 Naver SDK icon anchor/hitbox와 직접 맞물린다. 시각 동일성보다 click target과 cluster focus 동작 검증을 우선해야 한다.
+- dead-code checker는 Cloudflare/Vite entrypoint와 script entrypoint에서 false positive가 많을 수 있다. 삭제 자동화는 금지하고 후보 분류까지만 1차 목표로 둔다.
+
+### 보완 결정
+- 첫 구현 배치는 P0 기준선 문서 + P1 lint rule 도입까지만 묶는다.
+- Admin UI 분리는 별도 배치로 진행하고, 화면별 분리 전에 type/API/hook부터 이동한다.
+- Map/CSP 작업은 Admin 분리와 같은 배치에 섞지 않는다.
+- 운영 QA 스크립트는 기본 검증이 아니라 운영 반영 직전 선택 검증으로 둔다.
