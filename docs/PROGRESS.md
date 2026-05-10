@@ -13,9 +13,9 @@
 - P2. Hyperdrive 도입 판단을 완료했고, 현재는 도입 보류로 결정했다.
 - P2. strict CSP 전환 준비를 완료했고, enforcement 전환은 marker SVG/data URL PoC 이후로 분리했다.
 - P2. global search index 기준 수립을 완료했고, 현재는 인덱스 도입 보류로 결정했다.
-- P3. 큰 파일 분리 리팩터링을 시작했고, Worker HTTP utilities, health/static route, auth, public config/bookmark route, places read route, public write route, admin route, telemetry route, admin reports repository, admin prices repository, admin places repository, map query helper, place card, category tray, trending section, mobile place list sheet, place detail sheet, naver map display marker helper, local fallback tile helper, naver panel helper, preview map fallback component, naver map error fallback wrapper, naver map marker renderer, naver map key state hook, naver map viewport emitter, naver map geolocation helper, naver map focus helper, naver map container size hook, naver map window resize sync hook, naver map initialization hook, naver map marker rendering hook, naver map runtime error hook, naver map pending action hook, naver map viewport focus hook, naver map cleanup hook, transient map message hook을 분리했다.
+- P3. 큰 파일 분리 리팩터링을 시작했고, Worker HTTP utilities, health/static route, auth, public config/bookmark route, places read route, public write route, admin route, telemetry route, admin reports repository, admin prices repository, admin places repository, map query helper, place card, category tray, trending section, mobile place list sheet, place detail sheet, naver map display marker helper, local fallback tile helper, naver panel helper, preview map fallback component, naver map error fallback wrapper, naver map marker renderer, naver map key state hook, naver map viewport emitter, naver map geolocation helper, naver map focus helper, naver map container size hook, naver map window resize sync hook, naver map initialization hook, naver map marker rendering hook, naver map runtime error hook, naver map pending action hook, naver map viewport focus hook, naver map cleanup hook, transient map message hook, naver map action orchestration hook을 분리했다.
 - 모바일 바텀시트 open/sheet 포털을 `dvw`/`dvh` 기준으로 보정해 모바일 Chromium visual viewport에서 open 버튼과 sheet가 실제 터치 좌표 안에 들어오도록 안정화했다.
-- 다음 단계는 P3 `src/features/map/naver-map-panel.tsx`에 남은 cluster focus/location action orchestration을 추가 분리할지 판단하는 것이다.
+- 다음 단계는 P3 `src/features/map/naver-map-panel.tsx`의 남은 props/derived state 조립부를 추가 분리할지, 또는 Naver map panel 리팩터링을 현재 수준에서 멈추고 다음 큰 파일 후보로 이동할지 판단하는 것이다.
 
 ### 완료한 변경
 - `docs/PLAN.md`
@@ -280,6 +280,13 @@
 - `src/features/map/naver-map-panel.tsx`
   - cleanup/transient message hook을 import하도록 정리했다.
   - panel 내부의 직접 `useEffect` 사용을 제거했고 파일 크기는 490줄에서 481줄로 감소했다.
+- `src/features/map/use-naver-map-actions.ts`
+  - cluster click focus, preview cluster activation, 현재 위치 실행/대기 action orchestration을 `src/features/map/naver-map-panel.tsx`에서 분리했다.
+  - cluster focus 시 map center/zoom/pan, preview bounds callback, marker instance clear 동작을 보존했다.
+  - 현재 위치 버튼이 map boot 전이면 pending locate로 대기하고, map key가 없으면 기존 안내 메시지를 보여주는 동작을 보존했다.
+- `src/features/map/naver-map-panel.tsx`
+  - map action orchestration hook을 import하도록 정리했다.
+  - 파일 크기는 481줄에서 408줄로 감소했다.
   - 파일 크기는 1337줄에서 925줄로 감소했다.
 - `src/features/map/naver-map-fallback.tsx`
   - Error boundary에서 쓰는 Naver map fallback wrapper를 `src/features/map/naver-map-panel.tsx`에서 분리했다.
@@ -677,6 +684,12 @@
 - P3 Naver map cleanup/transient message hook 분리 후 `git diff --check` 통과
 - P3 Naver map cleanup/transient message hook 분리 후 `USE_MOCK_DATA=true node scripts/run-local-e2e.mjs smoke` 통과
 - P3 Naver map cleanup/transient message hook 분리 후 `USE_MOCK_DATA=true NEXTAUTH_URL=http://127.0.0.1:3107 npx playwright test tests/e2e/map.mobile.spec.ts --project mobile-chromium` 통과
+- P3 Naver map action orchestration hook 분리 후 `npm run typecheck` 통과
+- P3 Naver map action orchestration hook 분리 후 `npm run lint` 통과
+- P3 Naver map action orchestration hook 분리 후 `npm run deploy:check:vite` 통과
+- P3 Naver map action orchestration hook 분리 후 `git diff --check` 통과
+- P3 Naver map action orchestration hook 분리 후 `USE_MOCK_DATA=true node scripts/run-local-e2e.mjs smoke` 통과
+- P3 Naver map action orchestration hook 분리 후 `USE_MOCK_DATA=true NEXTAUTH_URL=http://127.0.0.1:3107 npx playwright test tests/e2e/map.mobile.spec.ts --project mobile-chromium` 통과
 - 참고:
   - `npx playwright test tests/e2e/map.mobile.spec.ts --project mobile-chromium --repeat-each=3`를 정식 래퍼 없이 직접 실행했을 때는 `dist/altteulmap/.dev.vars`가 E2E용으로 생성되지 않아 0곳 상태로 실패했다.
   - 정식 래퍼인 `npm run test:e2e:full`은 DB push/seed와 `.dev.vars` 생성을 포함하며, 같은 모바일 spec 2건을 포함해 전체 E2E가 통과했다.
@@ -704,7 +717,7 @@
 - Cloudflare Dashboard에서 운영 Worker `altteulmap`에 `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`를 설정한 뒤 production public write 수동 QA를 진행한다.
 - strict CSP enforcement는 `naver-map-marker-visuals.ts`의 HTML inline style marker를 SVG data URL icon으로 바꾸는 PoC 이후 진행한다.
 - global search index는 1k 기준 p95 300ms 3회 연속 초과, 장소 10k 이상, DB execution 100ms 반복 초과 중 하나가 발생할 때 도입한다.
-- P3 큰 파일 분리 리팩터링의 다음 slice로 `src/features/map/naver-map-panel.tsx`에 남은 cluster focus/location action orchestration을 추가 분리할지 판단한다.
+- P3 큰 파일 분리 리팩터링의 다음 slice로 `src/features/map/naver-map-panel.tsx`를 더 쪼갤지, 아니면 다음 큰 파일 후보로 이동할지 판단한다.
 
 ### Blocker
 - 없음.
