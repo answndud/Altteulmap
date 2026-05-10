@@ -62,7 +62,7 @@ function LocalFallbackTileLayer({
           src={tile.url}
           alt=""
           draggable={false}
-          className="absolute h-64 w-64 select-none"
+          className="pointer-events-none absolute h-64 w-64 select-none"
           style={{
             left: tile.left,
             top: tile.top,

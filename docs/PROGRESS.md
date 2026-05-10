@@ -13,8 +13,9 @@
 - P2. Hyperdrive 도입 판단을 완료했고, 현재는 도입 보류로 결정했다.
 - P2. strict CSP 전환 준비를 완료했고, enforcement 전환은 marker SVG/data URL PoC 이후로 분리했다.
 - P2. global search index 기준 수립을 완료했고, 현재는 인덱스 도입 보류로 결정했다.
-- P3. 큰 파일 분리 리팩터링을 시작했고, Worker HTTP utilities, health/static route, auth, public config/bookmark route, places read route, public write route, admin route, telemetry route, admin reports repository, admin prices repository, admin places repository, map query helper, place card, category tray, trending section, mobile place list sheet, place detail sheet, naver map display marker helper, local fallback tile helper, naver panel helper, preview map fallback component, naver map error fallback wrapper, naver map marker renderer, naver map key state hook, naver map viewport emitter, naver map geolocation helper, naver map focus helper, naver map container size hook, naver map window resize sync hook, naver map initialization hook, naver map marker rendering hook, naver map runtime error hook, naver map pending action hook을 분리했다.
-- 다음 단계는 P3 `src/features/map/naver-map-panel.tsx`의 active place/focusPlacesKey viewport effect 또는 cleanup effect 영역을 추가 분리할지 판단하는 것이다.
+- P3. 큰 파일 분리 리팩터링을 시작했고, Worker HTTP utilities, health/static route, auth, public config/bookmark route, places read route, public write route, admin route, telemetry route, admin reports repository, admin prices repository, admin places repository, map query helper, place card, category tray, trending section, mobile place list sheet, place detail sheet, naver map display marker helper, local fallback tile helper, naver panel helper, preview map fallback component, naver map error fallback wrapper, naver map marker renderer, naver map key state hook, naver map viewport emitter, naver map geolocation helper, naver map focus helper, naver map container size hook, naver map window resize sync hook, naver map initialization hook, naver map marker rendering hook, naver map runtime error hook, naver map pending action hook, naver map viewport focus hook을 분리했다.
+- 모바일 바텀시트 open/sheet 포털을 `dvw`/`dvh` 기준으로 보정해 모바일 Chromium visual viewport에서 open 버튼과 sheet가 실제 터치 좌표 안에 들어오도록 안정화했다.
+- 다음 단계는 P3 `src/features/map/naver-map-panel.tsx`의 cleanup effect와 transient location message effect를 추가 분리할지 판단하는 것이다.
 
 ### 완료한 변경
 - `docs/PLAN.md`
@@ -258,6 +259,20 @@
   - `map-panel-preview`, `map-preview-marker-*`, local tile drag/zoom, cluster preview click, place preview marker click, fallback overlay 문구를 보존했다.
 - `src/features/map/naver-map-panel.tsx`
   - preview map fallback component를 import하도록 정리했다.
+- `src/features/map/use-naver-map-viewport-focus.ts`
+  - active place가 현재 viewport 밖에 있을 때 Naver map을 해당 장소로 pan하는 effect를 `src/features/map/naver-map-panel.tsx`에서 분리했다.
+  - `focusPlacesKey` 변경 시 map marker bounds로 지도 중심/줌을 맞추는 effect를 같은 hook으로 분리했다.
+- `src/features/map/naver-map-panel.tsx`
+  - viewport focus hook을 import하도록 정리했다.
+  - 파일 크기는 523줄에서 492줄로 감소했다.
+- `src/client/features/map/MobilePlaceListSheet.tsx`
+  - hidden open 버튼과 sheet 포털의 위치를 layout viewport `bottom` 기준에서 visual viewport `dvh`/`dvw` 기준으로 바꿨다.
+  - Playwright 모바일 Chromium과 실기기성 visual viewport에서 버튼 중심 좌표가 지도 fallback layer 뒤로 밀리지 않도록 했다.
+- `src/features/map/naver-map-preview.tsx`
+  - local fallback tile image에 `pointer-events-none`을 적용해 지도 미리보기 타일이 모바일 floating control 터치를 가로채지 않도록 했다.
+- `tests/e2e/map.mobile.spec.ts`
+  - 모바일 목록 open 버튼이 실제 장소 수를 로드한 뒤 일반 click으로 열리는지 검증하도록 강화했다.
+  - 기존 `force` click 의존을 제거해 pointer event 회귀를 테스트가 잡을 수 있게 했다.
   - 파일 크기는 1337줄에서 925줄로 감소했다.
 - `src/features/map/naver-map-fallback.tsx`
   - Error boundary에서 쓰는 Naver map fallback wrapper를 `src/features/map/naver-map-panel.tsx`에서 분리했다.
@@ -337,6 +352,12 @@
 - `src/features/map/naver-map-panel.tsx`
   - pending action effect를 `useNaverMapPendingActions` 훅 호출로 정리했다.
   - 파일 크기는 540줄에서 523줄로 감소했다.
+- `src/features/map/use-naver-map-viewport-focus.ts`
+  - active place가 현재 viewport 밖에 있을 때 pan 처리하는 effect와 `focusPlacesKey` 기반 지도 중심/zoom 이동 effect를 `src/features/map/naver-map-panel.tsx`에서 분리했다.
+  - 기존 `panNaverMapToActivePlace`, `focusNaverMapPlaces`, `lastFocusPlacesKeyRef`, viewport emit 재동기화 동작을 유지했다.
+- `src/features/map/naver-map-panel.tsx`
+  - active place/focusPlacesKey viewport effect를 `useNaverMapViewportFocus` 훅 호출로 정리했다.
+  - 파일 크기는 523줄에서 492줄로 감소했다.
 - `src/client/features/map/PlaceDetailSheet.tsx`
   - 모바일 상세 시트 drag close가 빠른 pointer gesture에서 flaky하게 실패하지 않도록 drag 시작 좌표를 React state가 아니라 ref로 관리하도록 변경했다.
   - 기존 drag threshold와 닫기 동작은 유지했다.
@@ -638,6 +659,14 @@
 - P3 Naver map pending action hook 분리 후 `git diff --check` 통과
 - P3 Naver map pending action hook 분리 후 `USE_MOCK_DATA=true node scripts/run-local-e2e.mjs smoke` 통과
 - P3 Naver map pending action hook 분리 후 `USE_MOCK_DATA=true NEXTAUTH_URL=http://127.0.0.1:3107 npx playwright test tests/e2e/map.mobile.spec.ts --project mobile-chromium --repeat-each=3` 통과
+- P3 Naver map viewport focus hook 및 모바일 바텀시트 터치 안정화 후 `npm run test:e2e:full` 통과
+- P3 Naver map viewport focus hook 및 모바일 바텀시트 터치 안정화 후 `npm run typecheck` 통과
+- P3 Naver map viewport focus hook 및 모바일 바텀시트 터치 안정화 후 `npm run lint` 통과
+- P3 Naver map viewport focus hook 및 모바일 바텀시트 터치 안정화 후 `npm run deploy:check:vite` 통과
+- P3 Naver map viewport focus hook 및 모바일 바텀시트 터치 안정화 후 `git diff --check` 통과
+- 참고:
+  - `npx playwright test tests/e2e/map.mobile.spec.ts --project mobile-chromium --repeat-each=3`를 정식 래퍼 없이 직접 실행했을 때는 `dist/altteulmap/.dev.vars`가 E2E용으로 생성되지 않아 0곳 상태로 실패했다.
+  - 정식 래퍼인 `npm run test:e2e:full`은 DB push/seed와 `.dev.vars` 생성을 포함하며, 같은 모바일 spec 2건을 포함해 전체 E2E가 통과했다.
 - 참고:
   - fallback wrapper 분리 직후 모바일 spec 전체 실행에서 `mobile-place-list-sheet` 미탐색과 상세 시트 drag close 1회 실패가 재현됐다.
   - `MobilePlaceListSheet` 열기 버튼의 `pointerdown` open guard와 `PlaceDetailSheet` drag 중 close guard를 추가한 뒤 전체 모바일 spec 2건이 통과했다.
@@ -658,20 +687,11 @@
   - `NEXTAUTH_URL=http://127.0.0.1:3130 npx playwright test tests/e2e/map.spec.ts --project chromium`는 `/api/places/map` 503 응답으로 실패했다.
   - 원인은 직전 `dist/altteulmap/.dev.vars`가 `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap`, `USE_MOCK_DATA=false`, `NEXTAUTH_URL=http://127.0.0.1:3130` 상태라 Playwright webServer 3107에서 로컬 DB 없는 DB-backed 실행을 시도했기 때문이다.
   - 같은 spec은 `USE_MOCK_DATA=true`, `NEXTAUTH_URL=http://127.0.0.1:3107` 환경에서 6건 모두 통과했다.
-- 참고:
-  - `npx playwright test tests/e2e/price-review.spec.ts --project chromium` 단독 실행은 `NEXTAUTH_URL` origin mismatch로 실패했다.
-  - `NEXTAUTH_URL=http://127.0.0.1:3107`를 명시하면 통과한다.
-  - `tests/e2e/bookmarks.spec.ts`는 현재 `dist/altteulmap/.dev.vars`의 auth origin이 `http://127.0.0.1:3130`으로 남아 있어 `NEXTAUTH_URL=http://127.0.0.1:3107`로 실행하면 login helper의 redirect origin assertion에서 실패한다.
-  - `NEXTAUTH_URL=http://127.0.0.1:3130`로 실행하면 bookmark E2E는 통과한다.
-  - `npm run test:e2e:full`은 smoke 10건 통과 후 `tests/e2e/map.mobile.spec.ts`의 `mobile-place-list-sheet` 미표시 실패로 중단됐다.
-  - 위 모바일 실패는 이번 가격 제보 idempotency 변경과 직접 관련 없는 기존 모바일 UI 회귀 영역이다.
-
 ### 다음 액션
 - Cloudflare Dashboard에서 운영 Worker `altteulmap`에 `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`를 설정한 뒤 production public write 수동 QA를 진행한다.
-- P3 큰 파일 분리 리팩터링의 다음 slice로 `src/features/map/naver-map-panel.tsx`의 Naver SDK lifecycle 또는 viewport synchronization 영역을 추가 분리한다.
 - strict CSP enforcement는 `naver-map-marker-visuals.ts`의 HTML inline style marker를 SVG data URL icon으로 바꾸는 PoC 이후 진행한다.
 - global search index는 1k 기준 p95 300ms 3회 연속 초과, 장소 10k 이상, DB execution 100ms 반복 초과 중 하나가 발생할 때 도입한다.
-- 모바일 바텀시트 E2E 실패는 별도 UI 회귀 작업으로 분리할지 결정한다.
+- P3 큰 파일 분리 리팩터링의 다음 slice로 `src/features/map/naver-map-panel.tsx`의 cleanup effect와 transient location message effect를 추가 분리할지 판단한다.
 
 ### Blocker
 - 없음.

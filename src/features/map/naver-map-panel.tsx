@@ -16,10 +16,6 @@ import {
   type NaverMarkerInstance,
 } from "@/features/map/naver-map-sdk";
 import { NaverMapFallback } from "@/features/map/naver-map-fallback";
-import {
-  focusNaverMapPlaces,
-  panNaverMapToActivePlace,
-} from "@/features/map/naver-map-focus";
 import { locateCurrentPositionOnNaverMap } from "@/features/map/naver-map-location";
 import { useNaverMapInitialization } from "@/features/map/use-naver-map-initialization";
 import { useNaverMapContainerSize } from "@/features/map/use-naver-map-container-size";
@@ -27,6 +23,7 @@ import { useNaverMapKeyState } from "@/features/map/use-naver-map-key-state";
 import { useNaverMapMarkerRendering } from "@/features/map/use-naver-map-marker-rendering";
 import { useNaverMapPendingActions } from "@/features/map/use-naver-map-pending-actions";
 import { useNaverMapRuntimeError } from "@/features/map/use-naver-map-runtime-error";
+import { useNaverMapViewportFocus } from "@/features/map/use-naver-map-viewport-focus";
 import { useNaverMapWindowResizeSync } from "@/features/map/use-naver-map-window-resize-sync";
 import {
   getClusterFocusZoom,
@@ -341,46 +338,16 @@ function NaverMapPanelContent({
     onPlaceClick: emitPlaceSelect,
   });
 
-  useEffect(() => {
-    if (status !== "ready" || !activePlace || !mapInstanceRef.current) {
-      return;
-    }
-
-    try {
-      if (
-        !panNaverMapToActivePlace({
-          activePlace,
-          map: mapInstanceRef.current,
-        })
-      ) {
-        failMap("NAVER Maps LatLng API is unavailable.");
-      }
-    } catch (error) {
-      failMap("Failed to move the NAVER map viewport.", error);
-    }
-  }, [activePlace, failMap, status]);
-
-  useEffect(() => {
-    if (status !== "ready" || !mapInstanceRef.current) {
-      return;
-    }
-
-    try {
-      if (
-        !focusNaverMapPlaces({
-          emitViewportChange,
-          focusPlacesKey,
-          lastFocusPlacesKeyRef,
-          map: mapInstanceRef.current,
-          mapMarkers,
-        })
-      ) {
-        failMap("NAVER Maps LatLng API is unavailable.");
-      }
-    } catch (error) {
-      failMap("Failed to focus the NAVER map viewport.", error);
-    }
-  }, [emitViewportChange, failMap, focusPlacesKey, mapMarkers, status]);
+  useNaverMapViewportFocus({
+    activePlace,
+    emitViewportChange,
+    failMap,
+    focusPlacesKey,
+    isReady: status === "ready",
+    lastFocusPlacesKeyRef,
+    mapInstanceRef,
+    mapMarkers,
+  });
 
   useNaverMapWindowResizeSync({
     containerSize,
