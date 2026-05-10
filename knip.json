@@ -1,0 +1,28 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": [
+    "src/client/main.tsx",
+    "src/worker/index.ts",
+    "src/worker/legacy-admin-redirect.mjs",
+    "scripts/**/*.{js,mjs,ts}",
+    "tests/**/*.ts",
+    "eslint.config.mjs",
+    "vite.config.mts",
+    "playwright.config.ts",
+    "drizzle.config.ts"
+  ],
+  "project": [
+    "src/**/*.{ts,tsx,mjs}",
+    "scripts/**/*.{js,mjs,ts}",
+    "tests/**/*.ts",
+    "*.config.{js,mjs,ts,mts}",
+    "eslint.config.mjs"
+  ],
+  "ignore": [
+    ".agents/**",
+    "dist/**",
+    "test-results/**",
+    "playwright-report/**"
+  ],
+  "ignoreBinaries": ["lsof"]
+}

@@ -241,7 +241,7 @@ React Doctor식 코드베이스 품질 개선 계획
   - Performance `+1` 가능
 
 ### P2. Dead-code/hygiene 검사 추가
-- 상태: 대기.
+- 상태: 완료. `knip` 기반 opt-in preview 스크립트 `npm run hygiene:dead-code`를 추가했다. CI 필수화와 자동 삭제는 하지 않았다.
 - 목적:
   - 사용하지 않는 파일/export/legacy artifact를 사람이 추적하는 상태에서 자동 검출 가능한 상태로 바꾼다.
 - 현재 근거:

@@ -60,6 +60,16 @@ React Doctor식 코드베이스 품질 개선 계획
   - 기존 marker size/anchor 계산 함수는 유지해 Naver SDK marker anchor contract를 보존했다.
   - `npm run csp:inventory` total findings는 12건에서 7건으로 감소했다.
   - 남은 7건은 `src/features/map/naver-map-preview.tsx`의 로컬 fallback preview 동적 tile/marker 좌표 style이다.
+- P2 Dead-code/hygiene 검사 추가를 완료했다.
+  - `knip`을 devDependency로 추가하고 `knip.json`을 생성했다.
+  - `npm run hygiene:dead-code`를 opt-in preview 스크립트로 추가했다.
+  - `@eslint/js`와 `playwright`는 실제 import가 있으므로 명시 devDependency로 고정했다.
+  - false positive를 줄이기 위해 client/worker/script/test/config entrypoint와 `.agents`, build artifact ignore를 명시했다.
+  - 현재 preview 후보:
+    - unused file: `src/components/placeholder-screen.tsx`
+    - unused devDependency 의심: `tailwindcss`는 CSS `@import "tailwindcss"` 기반이라 보존 대상
+    - unused exports 15건, unused exported types 5건, duplicate exports 1건
+  - 삭제/축소는 다음 별도 cleanup 배치에서 처리한다.
 
 ### 최근 검증
 - 문서 계획 작성 전 필수 문서 확인:
@@ -104,11 +114,15 @@ React Doctor식 코드베이스 품질 개선 계획
   - `npm run csp:inventory` 통과, total findings 7
   - `npm run test:e2e:smoke` 통과, 10 passed
   - `npm run deploy:check:vite`
+- Dead-code/hygiene 검사 추가 후 검증 통과:
+  - `npm run hygiene:dead-code` 통과, preview findings 출력
+  - `npm run lint`
+  - `npm run typecheck`
 - 참고:
   - admin targeted spec을 seed/rate-limit 초기화 없이 직접 실행했을 때 fixture/rate-limit 실패가 발생했다.
   - 정식 래퍼 `npm run test:e2e:smoke`는 DB push/seed/build를 포함해 통과했다.
 
 ### 다음 액션
-- P2. dead-code/hygiene 검사 스크립트 preview를 진행한다.
-- `ts-prune`, `knip` 등 도구 도입 전 `package.json` script와 false positive 범위를 확인한다.
-- 첫 단계는 CI 필수화가 아니라 local preview/report 용도로 제한한다.
+- P2 dead-code 후보 cleanup을 별도 배치로 진행할지 판단한다.
+- 저위험 후보는 `src/components/placeholder-screen.tsx` 삭제와 명백한 unused export 비공개화다.
+- 보존 후보는 Tailwind devDependency와 future-facing compatibility export이며, 삭제 전 호출 경로를 재확인한다.
