@@ -54,6 +54,12 @@ React Doctor식 코드베이스 품질 개선 계획
   - `src/client/features/map/MobilePlaceListSheet.tsx`의 모바일 목록 항목은 실제 `button`이 선택을 담당하도록 바꿨다.
   - `tests/e2e/map.spec.ts`, `tests/e2e/map.mobile.spec.ts`는 semantic button contract에 맞게 조정했다.
   - ESLint a11y warning 8건은 0건으로 감소했다.
+- P2 CSP blocker와 marker inline style 축소를 완료했다.
+  - `src/features/map/naver-map-marker-visuals.ts`의 운영 Naver marker HTML 문자열에서 inline `style="..."` 5건을 제거했다.
+  - marker 시각 스타일은 `src/client/styles.css`의 `altteulmap-marker-icon`, `altteulmap-cluster-marker` class로 이동했다.
+  - 기존 marker size/anchor 계산 함수는 유지해 Naver SDK marker anchor contract를 보존했다.
+  - `npm run csp:inventory` total findings는 12건에서 7건으로 감소했다.
+  - 남은 7건은 `src/features/map/naver-map-preview.tsx`의 로컬 fallback preview 동적 tile/marker 좌표 style이다.
 
 ### 최근 검증
 - 문서 계획 작성 전 필수 문서 확인:
@@ -92,11 +98,17 @@ React Doctor식 코드베이스 품질 개선 계획
   - `npm run typecheck`
   - `USE_MOCK_DATA=true NEXTAUTH_URL=http://127.0.0.1:3107 npx playwright test tests/e2e/map.mobile.spec.ts --project mobile-chromium` 통과, 2 passed
   - `npm run test:e2e:smoke` 통과, 10 passed
+- CSP marker style 축소 후 검증 통과:
+  - `npm run typecheck`
+  - `npm run lint` 통과, warning 0건
+  - `npm run csp:inventory` 통과, total findings 7
+  - `npm run test:e2e:smoke` 통과, 10 passed
+  - `npm run deploy:check:vite`
 - 참고:
   - admin targeted spec을 seed/rate-limit 초기화 없이 직접 실행했을 때 fixture/rate-limit 실패가 발생했다.
   - 정식 래퍼 `npm run test:e2e:smoke`는 DB push/seed/build를 포함해 통과했다.
 
 ### 다음 액션
-- P2. CSP blocker와 marker inline style 축소를 진행한다.
-- `npm run csp:inventory` 결과를 기준으로 `src/features/map/naver-map-preview.tsx`, `src/features/map/naver-map-marker-visuals.ts`의 inline style blocker를 줄인다.
-- marker anchor/hitbox/cluster 시각 회귀가 생기지 않도록 지도 E2E와 smoke를 함께 유지한다.
+- P2. dead-code/hygiene 검사 스크립트 preview를 진행한다.
+- `ts-prune`, `knip` 등 도구 도입 전 `package.json` script와 false positive 범위를 확인한다.
+- 첫 단계는 CI 필수화가 아니라 local preview/report 용도로 제한한다.

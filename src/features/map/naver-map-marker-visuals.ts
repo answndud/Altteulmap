@@ -130,13 +130,17 @@ function createPlaceMarkerIconHtml(
   place: PlaceMarkerPriceInput,
   isActive: boolean,
 ) {
-  const visual = getPlaceMarkerVisual(place, isActive);
-  const safeLabel = escapeHtml(visual.label);
+  const safeLabel = escapeHtml(formatMarkerPrice(place.representativePriceAmount));
+  const toneClass = isActive
+    ? "altteulmap-marker-icon--active"
+    : place.verificationStatus === "verified"
+      ? "altteulmap-marker-icon--verified"
+      : "altteulmap-marker-icon--unverified";
 
   return `
-    <div style="width:${visual.canvasWidth}px;height:${visual.canvasHeight}px;display:flex;align-items:flex-start;justify-content:center;position:relative;padding-top:2px;">
-      <span style="position:absolute;left:50%;top:${visual.height - 1}px;width:${visual.tailSize}px;height:${visual.tailSize}px;background:${visual.tailBackground};border-right:1.5px solid ${visual.tailBorder};border-bottom:1.5px solid ${visual.tailBorder};box-shadow:0 5px 10px rgba(15,23,42,0.12);transform:translateX(-50%) rotate(45deg);"></span>
-      <span style="position:relative;z-index:1;display:flex;align-items:center;justify-content:center;width:${visual.width}px;height:${visual.height}px;border-radius:999px;background:${visual.background};border:1.5px solid ${visual.border};box-shadow:${visual.shadow};color:${visual.text};font-size:${visual.fontSize}px;font-weight:${visual.fontWeight};line-height:1;letter-spacing:0;font-variant-numeric:tabular-nums;font-family:IBM Plex Sans KR, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;white-space:nowrap;">
+    <div class="altteulmap-marker-icon ${toneClass}">
+      <span class="altteulmap-marker-icon__tail"></span>
+      <span class="altteulmap-marker-icon__label">
         ${safeLabel}
       </span>
     </div>
@@ -169,11 +173,16 @@ export function createMapMarkerIcon(
 }
 
 function createClusterIconHtml(placeCount: number) {
-  const visual = getClusterMarkerVisual(placeCount);
+  const sizeClass =
+    placeCount >= 100
+      ? "altteulmap-cluster-marker--lg"
+      : placeCount >= 20
+        ? "altteulmap-cluster-marker--md"
+        : "altteulmap-cluster-marker--sm";
 
   return `
-    <div style="width:${visual.hitSize}px;height:${visual.hitSize}px;display:flex;align-items:center;justify-content:center;">
-      <span style="display:flex;align-items:center;justify-content:center;width:${visual.badgeSize}px;height:${visual.badgeSize}px;border-radius:999px;background:${CLUSTER_MARKER_THEME.background};border:1px solid ${CLUSTER_MARKER_THEME.border};box-shadow:${CLUSTER_MARKER_THEME.shadow}, inset 0 0 0 ${visual.ringInset}px ${CLUSTER_MARKER_THEME.ring};color:${CLUSTER_MARKER_THEME.text};font-size:${visual.fontSize}px;font-weight:600;line-height:1;letter-spacing:0;font-variant-numeric:tabular-nums;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);">
+    <div class="altteulmap-cluster-marker ${sizeClass}">
+      <span class="altteulmap-cluster-marker__badge">
         ${formatMarkerCount(placeCount)}
       </span>
     </div>

@@ -208,7 +208,7 @@ React Doctor식 코드베이스 품질 개선 계획
   - Architecture `+1`
 
 ### P2. CSP blocker와 marker inline style 축소
-- 상태: 대기.
+- 상태: 완료. 운영 Naver marker HTML 문자열의 inline style 5건을 CSS class 기반으로 제거해 CSP inventory를 12건에서 7건으로 줄였다. 남은 7건은 로컬 preview tile/marker의 동적 좌표 style이다.
 - 목적:
   - strict CSP 전환을 막는 inline style blocker를 줄이고 security 점수를 올린다.
 - 현재 근거:
