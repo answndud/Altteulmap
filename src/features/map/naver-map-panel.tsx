@@ -9,13 +9,12 @@ import {
 } from "react";
 
 import {
-  getLoadedNaverMapSdk,
   type MapViewport,
   type NaverMapInstance,
   type NaverMarkerInstance,
 } from "@/features/map/naver-map-sdk";
 import { NaverMapFallback } from "@/features/map/naver-map-fallback";
-import { locateCurrentPositionOnNaverMap } from "@/features/map/naver-map-location";
+import { useNaverMapActions } from "@/features/map/use-naver-map-actions";
 import { useNaverMapCleanup } from "@/features/map/use-naver-map-cleanup";
 import { useNaverMapInitialization } from "@/features/map/use-naver-map-initialization";
 import { useNaverMapContainerSize } from "@/features/map/use-naver-map-container-size";
@@ -27,8 +26,6 @@ import { useNaverMapViewportFocus } from "@/features/map/use-naver-map-viewport-
 import { useNaverMapWindowResizeSync } from "@/features/map/use-naver-map-window-resize-sync";
 import { useTransientMapMessage } from "@/features/map/use-transient-map-message";
 import {
-  getClusterFocusZoom,
-  getClusterViewport,
   getDisplayMarkers,
   type ClusterDisplayMarker,
 } from "@/features/map/naver-map-display-markers";
@@ -137,8 +134,6 @@ function NaverMapPanelContent({
     setStatus,
     status,
   } = useNaverMapKeyState();
-  const [isLocating, setIsLocating] = useState(false);
-  const [locationMessage, setLocationMessage] = useState<string | null>(null);
   const [internalActivePlaceId, setInternalActivePlaceId] = useState<string | null>(
     mapMarkers.find((marker) => marker.kind === "place")?.id ?? null,
   );
@@ -216,94 +211,26 @@ function NaverMapPanelContent({
     });
   }, [onViewportChange]);
 
-  const focusCluster = useCallback(
-    (marker: ClusterDisplayMarker) => {
-      if (status !== "ready" || !mapInstanceRef.current) {
-        return;
-      }
-
-      const maps = getLoadedNaverMapSdk()?.maps;
-
-      if (!maps?.LatLng) {
-        failMap("NAVER Maps LatLng API is unavailable.");
-        return;
-      }
-
-      try {
-        const nextCenter = new maps.LatLng(marker.latitude, marker.longitude);
-        const currentZoom = mapInstanceRef.current.getZoom?.() ?? 13;
-        const nextZoom = Math.min(getClusterFocusZoom(marker, currentZoom), 17);
-
-        onClusterFocusViewport?.(
-          getClusterViewport(marker, nextZoom),
-          marker.previewPlaces,
-        );
-        mapInstanceRef.current.setCenter?.(nextCenter);
-        mapInstanceRef.current.setZoom?.(nextZoom);
-        mapInstanceRef.current.panTo?.(nextCenter);
-
-        markerInstancesRef.current.forEach((markerInstance) =>
-          markerInstance.setMap?.(null),
-        );
-        markerInstancesRef.current = [];
-      } catch (error) {
-        failMap("Failed to focus the NAVER map cluster.", error);
-      }
-    },
-    [failMap, onClusterFocusViewport, status],
-  );
-  const runLocateCurrentPosition = useCallback(() => {
-    locateCurrentPositionOnNaverMap({
-      currentLocationMarkerRef,
-      emitViewportChange,
-      mapInstanceRef,
-      setIsLocating,
-      setLocationMessage,
-    });
-  }, [emitViewportChange]);
-  const clearLocationMessage = useCallback(() => {
-    setLocationMessage(null);
-  }, []);
-
-  const handlePreviewClusterActivate = useCallback(
-    (marker: ClusterDisplayMarker) => {
-      const canBootMap = requestMapBoot();
-
-      if (status !== "ready" || !mapInstanceRef.current) {
-        pendingClusterFocusRef.current = marker;
-
-        if (!canBootMap) {
-          onClusterFocusViewport?.(
-            getClusterViewport(marker, 16),
-            marker.previewPlaces,
-          );
-        }
-
-        return;
-      }
-
-      focusCluster(marker);
-    },
-    [focusCluster, onClusterFocusViewport, requestMapBoot, status],
-  );
-
-  const locateCurrentPosition = useCallback(() => {
-    const canBootMap = requestMapBoot();
-
-    if (status !== "ready" || !mapInstanceRef.current) {
-      if (canBootMap) {
-        pendingLocateCurrentPositionRef.current = true;
-        setLocationMessage("지도를 준비한 뒤 현재 위치를 찾습니다.");
-      } else {
-        setLocationMessage("지도 설정이 아직 준비되지 않아 현재 위치를 사용할 수 없습니다.");
-      }
-
-      return;
-    }
-
-    pendingLocateCurrentPositionRef.current = false;
-    runLocateCurrentPosition();
-  }, [requestMapBoot, runLocateCurrentPosition, status]);
+  const {
+    clearLocationMessage,
+    focusCluster,
+    handlePreviewClusterActivate,
+    isLocating,
+    locateCurrentPosition,
+    locationMessage,
+    runLocateCurrentPosition,
+  } = useNaverMapActions({
+    currentLocationMarkerRef,
+    emitViewportChange,
+    failMap,
+    isReady: status === "ready",
+    mapInstanceRef,
+    markerInstancesRef,
+    onClusterFocusViewport,
+    pendingClusterFocusRef,
+    pendingLocateCurrentPositionRef,
+    requestMapBoot,
+  });
 
   useNaverMapRuntimeError({
     failMap,
