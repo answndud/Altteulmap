@@ -29,6 +29,7 @@
 - `2026-05-10T06:00Z` 기준 운영 `/api/config/public`은 Turnstile site key를 반환하고, `/api/health?deep=1`은 `public-config`, `database`, `auth-providers`, `static-assets` 모두 `ok`다.
 - `scripts/smoke-remote.mjs`가 Hyperdrive 준비 이후 health database source `database-url`을 정상 운영 값으로 인정하지 못하던 false negative를 수정했다.
 - `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev npm run smoke:remote`가 통과했다. credentials/admin smoke는 `SMOKE_ADMIN_EMAIL`, `SMOKE_ADMIN_PASSWORD` 미설정으로 skip됐다.
+- `2026-05-10T06:03Z` 기준 재확인 결과, Wrangler 최신 배포 이력은 `712ceaa7-4a2e-4d07-aaf5-508d89db8056`, Git `main`은 `edf634b`로 로컬/원격이 일치한다. 운영 `/api/health?deep=1`과 remote smoke는 모두 통과했다.
 
 ### 완료한 변경
 - `docs/PLAN.md`
