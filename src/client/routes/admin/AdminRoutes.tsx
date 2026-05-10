@@ -1,129 +1,26 @@
 import {
   Link,
-  NavLink,
   Route,
   Routes,
   useParams,
   useSearchParams,
 } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
-type AdminSessionUser = {
-  id: string;
-  email: string;
-  name: string;
-  role: "admin" | "user";
-};
-
-type AdminSession = {
-  user?: AdminSessionUser;
-  expires?: string;
-};
-
-type AdminListResponse<T> = {
-  items: T[];
-  count: number;
-  source: "database" | "mock";
-  mock: boolean;
-};
-
-type AdminActionResult<T> = {
-  ok: boolean;
-  message: string;
-  source: "database" | "mock";
-  item: T | null;
-};
-
-type ModerationSuggestion = {
-  suggestedAction: "approve" | "review" | "reject";
-  confidence: number;
-  summary: string;
-  checks: string[];
-  flags: string[];
-};
-
-type PendingPlace = {
-  id: string;
-  name: string;
-  businessName?: string;
-  categorySlug: string;
-  address: string;
-  district: string;
-  note: string;
-  representativePriceAmount: number;
-  representativePriceLabel: string;
-  createdAt: string;
-  latitude?: number;
-  longitude?: number;
-  priceItems: Array<{
-    id: string;
-    label: string;
-    amount: number;
-    unitLabel?: string;
-  }>;
-};
-
-type PendingPriceReport = {
-  id: string;
-  placeId: string;
-  placeName: string;
-  district: string;
-  label: string;
-  amount: number;
-  unitLabel?: string;
-  comment?: string;
-  createdAt: string;
-  existingPriceLabel?: string;
-  existingPriceAmount?: number;
-  existingPriceUnitLabel?: string;
-  moderationSuggestion?: ModerationSuggestion;
-};
-
-type AdminReport = {
-  id: string;
-  placeId: string;
-  placeName: string;
-  reasonType:
-    | "price_error"
-    | "duplicate_place"
-    | "closed_or_wrong_info"
-    | "promotional_content"
-    | "other";
-  detail: string;
-  status: "open" | "reviewing" | "resolved" | "dismissed";
-  createdAt: string;
-  moderationSuggestion?: ModerationSuggestion;
-};
-type AdminPriceItem = {
-  id: string;
-  label: string;
-  amount: number;
-  unitLabel?: string;
-  verificationStatus: "verified" | "unverified";
-  verifiedReportCount: number;
-  reportedAt: string;
-  isRepresentative: boolean;
-  isActive: boolean;
-};
-type AdminPlacePriceDetail = {
-  item: {
-    id: string;
-    name: string;
-    district: string;
-    representativePriceAmount: number;
-    representativePriceLabel: string;
-    verificationStatus: "verified" | "unverified";
-    priceItems: AdminPriceItem[];
-  } | null;
-  source: "database" | "mock";
-};
-
-type LoadState<T> =
-  | { status: "loading" }
-  | { status: "unauthenticated" }
-  | { status: "forbidden"; user: AdminSessionUser }
-  | { status: "ready"; user: AdminSessionUser; data: T }
-  | { status: "error"; message: string };
+import { fetchJson } from "@/client/routes/admin/api";
+import { AdminAccessGate } from "@/client/routes/admin/AdminAccessGate";
+import { AdminFrame } from "@/client/routes/admin/AdminFrame";
+import { useAdminData } from "@/client/routes/admin/useAdminData";
+import type {
+  AdminActionResult,
+  AdminListResponse,
+  AdminPlacePriceDetail,
+  AdminPriceItem,
+  AdminReport,
+  ModerationSuggestion,
+  PendingPlace,
+  PendingPriceReport,
+} from "@/client/routes/admin/types";
 
 const reportReasonMap: Record<AdminReport["reasonType"], string> = {
   price_error: "가격 오류",
@@ -143,210 +40,9 @@ const moderationActionMap: Record<ModerationSuggestion["suggestedAction"], strin
   review: "수동 검토",
   reject: "반려 권장",
 };
-const adminNavItems = [
-  { href: "/admin", label: "대시보드" },
-  { href: "/admin/places", label: "장소 승인" },
-  { href: "/admin/prices", label: "가격 제보" },
-  { href: "/admin/reports", label: "신고 검토" },
-];
 
 function formatKrw(amount: number) {
   return new Intl.NumberFormat("ko-KR").format(amount);
-}
-
-async function fetchJson<T>(input: RequestInfo | URL, init?: RequestInit) {
-  const response = await fetch(input, {
-    ...init,
-    headers: {
-      ...(init?.body ? { "content-type": "application/json" } : {}),
-      ...init?.headers,
-    },
-  });
-  const data = (await response.json().catch(() => null)) as T & {
-    message?: string;
-  };
-
-  if (!response.ok) {
-    throw new Error(data?.message || "요청을 처리하지 못했습니다.");
-  }
-
-  return data;
-}
-
-async function loadAdminSession() {
-  const session = await fetchJson<AdminSession>("/api/auth/session", {
-    cache: "no-store",
-  });
-
-  return session.user ?? null;
-}
-
-function useAdminData<T>(load: () => Promise<T>, deps: React.DependencyList) {
-  const [state, setState] = useState<LoadState<T>>({ status: "loading" });
-
-  useEffect(() => {
-    let active = true;
-
-    async function run() {
-      setState({ status: "loading" });
-
-      try {
-        const user = await loadAdminSession();
-
-        if (!active) {
-          return;
-        }
-
-        if (!user) {
-          setState({ status: "unauthenticated" });
-          return;
-        }
-
-        if (user.role !== "admin") {
-          setState({ status: "forbidden", user });
-          return;
-        }
-
-        const data = await load();
-
-        if (active) {
-          setState({ status: "ready", user, data });
-        }
-      } catch (error) {
-        if (!active) {
-          return;
-        }
-
-        setState({
-          status: "error",
-          message:
-            error instanceof Error
-              ? error.message
-              : "관리자 데이터를 불러오지 못했습니다.",
-        });
-      }
-    }
-
-    void run();
-
-    return () => {
-      active = false;
-    };
-  }, deps);
-
-  return state;
-}
-
-function AdminFrame({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <main className="mx-auto grid max-w-6xl gap-5 px-4 py-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="altteulmap-section-kicker">운영</p>
-          <h1 className="mt-1 text-3xl font-semibold text-stone-950">{title}</h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-stone-600">
-            {description}
-          </p>
-        </div>
-        <Link
-          to="/"
-          className="altteulmap-button border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700"
-        >
-          지도 화면
-        </Link>
-      </div>
-      <nav className="altteulmap-segmented altteulmap-scroll-row">
-        {adminNavItems.map((item) => (
-          <NavLink
-            key={item.href}
-            to={item.href}
-            end={item.href === "/admin"}
-            className={({ isActive }) =>
-              [
-                "altteulmap-chip inline-flex border px-4 py-2 text-sm",
-                isActive
-                  ? "border-[rgba(151,70,29,0.38)] bg-[rgba(181,90,43,0.12)] text-[var(--altteul-accent-text)]"
-                  : "border-stone-300 bg-white text-stone-700",
-              ].join(" ")
-            }
-          >
-            {item.label}
-          </NavLink>
-        ))}
-      </nav>
-      {children}
-    </main>
-  );
-}
-
-function AdminAccessGate<T>({
-  state,
-  children,
-}: {
-  state: LoadState<T>;
-  children: (data: T, user: AdminSessionUser) => React.ReactNode;
-}) {
-  if (state.status === "loading") {
-    return (
-      <div className="altteulmap-panel-muted p-6 text-sm text-stone-600">
-        관리자 데이터를 불러오는 중입니다.
-      </div>
-    );
-  }
-
-  if (state.status === "unauthenticated") {
-    return (
-      <div className="altteulmap-panel-muted p-6">
-        <h2 className="text-xl font-semibold text-stone-950">로그인이 필요합니다</h2>
-        <p className="mt-2 text-sm leading-6 text-stone-600">
-          관리자 화면은 운영자 계정으로 로그인해야 볼 수 있습니다.
-        </p>
-        <Link
-          to="/login?callbackUrl=/admin"
-          className="altteulmap-button altteulmap-accent-solid mt-4 inline-flex px-4 py-2 text-sm"
-        >
-          로그인하기
-        </Link>
-      </div>
-    );
-  }
-
-  if (state.status === "forbidden") {
-    return (
-      <div className="altteulmap-panel-muted p-6">
-        <h2 className="text-xl font-semibold text-stone-950">
-          운영자 권한이 필요합니다
-        </h2>
-        <p className="mt-2 text-sm leading-6 text-stone-600">
-          {state.user.name} 계정은 관리자 작업을 수행할 수 없습니다.
-        </p>
-        <Link
-          to="/login?callbackUrl=/admin"
-          className="altteulmap-button border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700"
-        >
-          다른 계정으로 로그인
-        </Link>
-      </div>
-    );
-  }
-
-  if (state.status === "error") {
-    return (
-      <div className="rounded-[1.25rem] border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">
-        {state.message}
-      </div>
-    );
-  }
-
-  return children(state.data, state.user);
 }
 
 function DataBadge({ source, mock }: { source: string; mock: boolean }) {
@@ -401,18 +97,16 @@ function AdminAiReviewPanel({
 }
 
 function AdminDashboardRoute() {
-  const state = useAdminData(
-    async () => {
-      const [places, prices, reports] = await Promise.all([
-        fetchJson<AdminListResponse<PendingPlace>>("/api/admin/places"),
-        fetchJson<AdminListResponse<PendingPriceReport>>("/api/admin/prices"),
-        fetchJson<AdminListResponse<AdminReport>>("/api/admin/reports"),
-      ]);
+  const loadDashboard = useCallback(async () => {
+    const [places, prices, reports] = await Promise.all([
+      fetchJson<AdminListResponse<PendingPlace>>("/api/admin/places"),
+      fetchJson<AdminListResponse<PendingPriceReport>>("/api/admin/prices"),
+      fetchJson<AdminListResponse<AdminReport>>("/api/admin/reports"),
+    ]);
 
-      return { places, prices, reports };
-    },
-    [],
-  );
+    return { places, prices, reports };
+  }, []);
+  const state = useAdminData(loadDashboard);
 
   return (
     <AdminFrame
@@ -575,10 +269,14 @@ function DashboardCard({
 
 function AdminPlacesRoute() {
   const [version, setVersion] = useState(0);
-  const state = useAdminData(
-    () => fetchJson<AdminListResponse<PendingPlace>>("/api/admin/places"),
+  const loadPlaces = useCallback(
+    () => {
+      void version;
+      return fetchJson<AdminListResponse<PendingPlace>>("/api/admin/places");
+    },
     [version],
   );
+  const state = useAdminData(loadPlaces);
 
   return (
     <AdminFrame
@@ -752,10 +450,14 @@ function PendingPlaceCard({
 
 function AdminPricesRoute() {
   const [version, setVersion] = useState(0);
-  const state = useAdminData(
-    () => fetchJson<AdminListResponse<PendingPriceReport>>("/api/admin/prices"),
+  const loadPrices = useCallback(
+    () => {
+      void version;
+      return fetchJson<AdminListResponse<PendingPriceReport>>("/api/admin/prices");
+    },
     [version],
   );
+  const state = useAdminData(loadPrices);
 
   return (
     <AdminFrame
@@ -903,13 +605,16 @@ function PendingPriceCard({
 function AdminPlacePricesRoute() {
   const { id } = useParams();
   const [version, setVersion] = useState(0);
-  const state = useAdminData(
-    () =>
-      fetchJson<AdminPlacePriceDetail>(
+  const loadPlacePriceDetail = useCallback(
+    () => {
+      void version;
+      return fetchJson<AdminPlacePriceDetail>(
         `/api/admin/prices/places/${encodeURIComponent(id ?? "")}`,
-      ),
+      );
+    },
     [id, version],
   );
+  const state = useAdminData(loadPlacePriceDetail);
 
   return (
     <AdminFrame
@@ -1097,10 +802,14 @@ function AdminReportsRoute() {
   const [version, setVersion] = useState(0);
   const [params] = useSearchParams();
   const statusFilter = params.get("status") ?? "all";
-  const state = useAdminData(
-    () => fetchJson<AdminListResponse<AdminReport>>("/api/admin/reports"),
+  const loadReports = useCallback(
+    () => {
+      void version;
+      return fetchJson<AdminListResponse<AdminReport>>("/api/admin/reports");
+    },
     [version],
   );
+  const state = useAdminData(loadReports);
 
   return (
     <AdminFrame

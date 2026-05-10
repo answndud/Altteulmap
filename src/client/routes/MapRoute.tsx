@@ -316,7 +316,7 @@ export function MapRoute() {
 
       setViewport(nextViewport);
     },
-    [searchParams, searchScope],
+    [searchScope],
   );
 
   const handleClusterFocusViewport = useCallback(
@@ -355,7 +355,7 @@ export function MapRoute() {
     [loadPlaces, searchParams],
   );
 
-  const places = state.data?.items ?? [];
+  const places = useMemo(() => state.data?.items ?? [], [state.data?.items]);
   const mapMarkers = useMemo<PlaceMapMarkerRecord[]>(() => {
     if (optimisticClusterPlaces?.length) {
       return optimisticClusterPlaces.map((place) => ({

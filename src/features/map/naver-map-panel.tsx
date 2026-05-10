@@ -167,7 +167,7 @@ function NaverMapPanelContent({
 
       onSelectPlace?.(place);
     },
-    [controlledActivePlaceId, naverMapKeyId, onSelectPlace],
+    [controlledActivePlaceId, naverMapKeyId, onSelectPlace, setShouldBootMap],
   );
   const emitPlaceSelect = useCallback(
     (place: PlacePreviewRecord) => {
@@ -182,7 +182,7 @@ function NaverMapPanelContent({
 
     setShouldBootMap(true);
     return true;
-  }, [naverMapKeyId]);
+  }, [naverMapKeyId, setShouldBootMap]);
   const clearMapInstance = useCallback(() => {
     markerInstancesRef.current.forEach((marker) => marker.setMap?.(null));
     markerInstancesRef.current = [];
@@ -201,7 +201,7 @@ function NaverMapPanelContent({
       clearMapInstance();
       setStatus("error");
     },
-    [clearMapInstance],
+    [clearMapInstance, setStatus],
   );
   const emitViewportChange = useCallback(() => {
     return emitNaverMapViewportChange({
