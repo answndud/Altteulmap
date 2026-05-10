@@ -19,6 +19,10 @@
 - 다음 P3 대상은 현재 가장 큰 프론트엔드 파일인 `src/client/routes/admin/AdminRoutes.tsx` 1324줄이다.
 - Admin UI Slice 1은 화면별 분리 전에 공용 type, API helper, `useAdminData`, access gate/shared shell을 먼저 분리한다.
 - 사용자 요청으로 현재 리팩터링 루프는 여기서 일시 중단한다.
+- Cloudflare 최신 배포 상태 확인을 진행했다. `origin/main`과 로컬 `HEAD`는 `12fb595`로 일치하고, `npm run cf:build:vite`, `npm run deploy:check:vite`, `npx wrangler deploy --config dist/altteulmap/wrangler.json --name altteulmap --dry-run`은 통과했다.
+- `npx wrangler deployments list --name altteulmap` 기준 최신 Worker 배포 이력은 `2026-05-10T05:37:31.382Z`까지 확인된다.
+- 운영 remote smoke는 `/api/health` 503으로 실패한다. 원인은 `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`가 운영 Worker secret/var에 아직 없어서 `public-config` check가 fail인 상태다.
+- `npx wrangler secret list --name altteulmap`에서도 Turnstile 키 2종은 확인되지 않았다. 다음 액션은 Cloudflare Turnstile widget 생성 후 운영 Worker에 site key/secret을 설정하고 remote smoke를 재실행하는 것이다.
 
 ### 완료한 변경
 - `docs/PLAN.md`
