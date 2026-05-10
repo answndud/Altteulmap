@@ -39,6 +39,9 @@
 - Git 자동 빌드 배포 후 운영 `/api/health?deep=1`과 credentials/admin 포함 remote smoke를 재실행해 production runtime 상태를 확인했다.
 - 운영 Turnstile 실사용 QA 중 Dashboard의 Site key/Secret key가 Worker runtime에 서로 반대로 들어간 것을 확인했다. Wrangler CLI로 `NEXT_PUBLIC_TURNSTILE_SITE_KEY`와 `TURNSTILE_SECRET_KEY`를 실제 Turnstile widget 값에 맞춰 교정하고 CLI 재배포했다.
 - Brave 실제 브라우저에서 가격 제보 Turnstile widget이 `성공!` 상태로 렌더링되고, 실제 가격 제보 submit이 성공하는 것을 확인했다. 생성된 테스트 가격 제보 row는 운영 DB에서 즉시 삭제했다.
+- 최종 문서 커밋 `5536afc`까지 `origin/main`과 로컬 `HEAD`가 일치한다.
+- Cloudflare Dashboard Build history 기준 최신 `5536afc` Git 자동 빌드는 main 브랜치에서 성공 상태다.
+- 최종 운영 remote smoke와 credentials/admin smoke를 재실행해 최신 Git 빌드 이후 production runtime 상태를 확인했다.
 
 ### 완료한 변경
 - `docs/PLAN.md`
@@ -467,6 +470,16 @@
   - Brave에서 `/place/goodprice-13038` 가격 제보 Turnstile widget `성공!` 렌더링 확인
   - `운영 QA Turnstile 테스트` 가격 제보 submit 성공 확인
   - 운영 DB cleanup: 생성된 pending price report 1건 삭제 완료
+- 최종 Git 자동 빌드 상태 확인
+  - `git status --short` 기준 작업 트리 변경 없음
+  - `git rev-parse --short HEAD`와 `git rev-parse --short origin/main` 모두 `5536afc`
+  - Cloudflare Dashboard Build history 최신 row `5536afc docs: record turnstile production qa` 성공 확인
+- 최종 운영 remote smoke 통과
+  - `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev npm run smoke:remote`
+  - health, home, robots, sitemap, public config, map/place API, login route, admin route, admin API boundary, Kakao/Naver provider redirect 확인
+- 최종 운영 credentials/admin smoke 통과
+  - `.env.production.local`의 `AUTH_ADMIN_PASSWORD`를 `SMOKE_ADMIN_PASSWORD`로 주입해 실행
+  - credentials login, admin route, signout 확인
 - Turnstile public write bot 방어 후 `npm run typecheck` 통과
 - Turnstile public write bot 방어 후 `npm run lint` 통과
 - Turnstile public write bot 방어 후 `npm run cf:build:vite` 통과
