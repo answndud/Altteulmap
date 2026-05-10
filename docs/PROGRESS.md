@@ -48,6 +48,12 @@ React Doctor식 코드베이스 품질 개선 계획
   - `src/client/routes/bookmarks/useBookmarkedPlaces.ts`를 추가해 bookmark 목록 fetch, place detail 병렬 fetch, unauthorized/error/loading state를 route-specific hook으로 분리했다.
   - `src/client/App.tsx`와 `src/client/routes/BookmarksRoute.tsx`는 UI 조립과 optimistic removal만 담당하도록 축소했다.
   - 지도 viewport fetch와 Turnstile widget lifecycle은 일반 async hook으로 묶으면 의미가 흐려지는 domain-specific effect라 유지했다.
+- P2 Accessibility semantic cleanup을 완료했다.
+  - `src/client/features/map/PlaceCard.tsx`의 clickable `article role="button"` 패턴을 제거했다.
+  - 장소 카드 선택은 명시적 `place-list-item-open-*` 버튼이 담당하고, 북마크/공유 버튼은 독립 interactive control로 유지했다.
+  - `src/client/features/map/MobilePlaceListSheet.tsx`의 모바일 목록 항목은 실제 `button`이 선택을 담당하도록 바꿨다.
+  - `tests/e2e/map.spec.ts`, `tests/e2e/map.mobile.spec.ts`는 semantic button contract에 맞게 조정했다.
+  - ESLint a11y warning 8건은 0건으로 감소했다.
 
 ### 최근 검증
 - 문서 계획 작성 전 필수 문서 확인:
@@ -81,11 +87,16 @@ React Doctor식 코드베이스 품질 개선 계획
   - `npm run lint` 통과, warning 8건
   - `npm run test:e2e:smoke` 통과, 10 passed
   - `git diff --check`
+- Accessibility semantic cleanup 후 검증 통과:
+  - `npm run lint` 통과, warning 0건
+  - `npm run typecheck`
+  - `USE_MOCK_DATA=true NEXTAUTH_URL=http://127.0.0.1:3107 npx playwright test tests/e2e/map.mobile.spec.ts --project mobile-chromium` 통과, 2 passed
+  - `npm run test:e2e:smoke` 통과, 10 passed
 - 참고:
   - admin targeted spec을 seed/rate-limit 초기화 없이 직접 실행했을 때 fixture/rate-limit 실패가 발생했다.
   - 정식 래퍼 `npm run test:e2e:smoke`는 DB push/seed/build를 포함해 통과했다.
 
 ### 다음 액션
-- P2. Accessibility semantic cleanup을 진행한다.
-- `PlaceCard`, `MobilePlaceListSheet`의 clickable `article role="button"` 패턴과 stop-propagation wrapper warning 8건을 semantic button/link 구조로 정리한다.
-- 기존 `data-testid`, 모바일 목록 선택 흐름, 북마크/공유 버튼 동작은 유지한다.
+- P2. CSP blocker와 marker inline style 축소를 진행한다.
+- `npm run csp:inventory` 결과를 기준으로 `src/features/map/naver-map-preview.tsx`, `src/features/map/naver-map-marker-visuals.ts`의 inline style blocker를 줄인다.
+- marker anchor/hitbox/cluster 시각 회귀가 생기지 않도록 지도 E2E와 smoke를 함께 유지한다.

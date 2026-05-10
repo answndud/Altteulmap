@@ -182,7 +182,7 @@ React Doctor식 코드베이스 품질 개선 계획
   - Architecture `+1`
 
 ### P2. Accessibility semantic cleanup
-- 상태: 대기.
+- 상태: 완료. `PlaceCard`와 `MobilePlaceListSheet`의 clickable `article role="button"` 패턴을 제거하고 실제 button/link 중심 구조로 정리했다.
 - 목적:
   - 클릭 가능한 비의미 요소를 줄이고 keyboard/screen reader contract를 더 명확하게 만든다.
 - 현재 근거:
@@ -201,7 +201,7 @@ React Doctor식 코드베이스 품질 개선 계획
 - 검증:
   - `npm run lint`
   - `npm run typecheck`
-  - `USE_MOCK_DATA=true NEXTAUTH_URL=http://127.0.0.1:3107 npx playwright test tests/e2e/map.mobile.spec.ts --project mobile-chromium --repeat-each=3`
+  - `USE_MOCK_DATA=true NEXTAUTH_URL=http://127.0.0.1:3107 npx playwright test tests/e2e/map.mobile.spec.ts --project mobile-chromium`
   - `npm run test:e2e:smoke`
 - 예상 점수 개선:
   - Accessibility `+3~4`

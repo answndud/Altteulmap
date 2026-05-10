@@ -29,16 +29,7 @@ export function PlaceCard({
 
   return (
     <article
-      role="button"
-      tabIndex={0}
-      onClick={() => onSelect(place)}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          onSelect(place);
-        }
-      }}
-      className={`rounded-[0.85rem] border p-4 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--altteul-primary)] ${
+      className={`rounded-[0.85rem] border p-4 text-left transition ${
         isSelected
           ? "border-[var(--altteul-primary-border)] bg-[var(--altteul-primary-soft)]"
           : "border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-surface)] hover:border-[var(--altteul-primary-border)] hover:bg-[var(--altteul-surface-fill-hover)]"
@@ -54,7 +45,7 @@ export function PlaceCard({
             {formatKrw(place.representativePriceAmount)}원
           </p>
         </div>
-        <div className="shrink-0" onClick={(event) => event.stopPropagation()}>
+        <div className="shrink-0">
           <ViteBookmarkToggleButton
             compact
             initialBookmarked={bookmarked}
@@ -95,10 +86,7 @@ export function PlaceCard({
             👍 {place.likeCount}
           </span>
         </div>
-        <div
-          className="flex items-center gap-2"
-          onClick={(event) => event.stopPropagation()}
-        >
+        <div className="flex items-center gap-2">
           <PlaceShareButton
             path={sharePayload.path}
             title={sharePayload.title}
@@ -111,6 +99,7 @@ export function PlaceCard({
           <button
             type="button"
             onClick={() => onSelect(place)}
+            data-testid={`place-list-item-open-${place.id}`}
             className="altteulmap-button inline-flex px-3 py-1.5 text-xs font-medium"
           >
             가격 보기
