@@ -25,6 +25,10 @@
 - `npx wrangler secret list --name altteulmap`에서도 Turnstile 키 2종은 확인되지 않았다. 다음 액션은 Cloudflare Turnstile widget 생성 후 운영 Worker에 site key/secret을 설정하고 remote smoke를 재실행하는 것이다.
 - 사용자가 Turnstile 키 설정 후 배포를 완료했다고 알려 재검증했지만, `2026-05-10T05:50Z` 기준 운영 `/api/health`, `/api/health?deep=1`, `/api/config/public`은 여전히 Turnstile site key/secret을 받지 못한다. `npx wrangler secret list --name altteulmap`에도 두 키가 없으므로 키가 Git build 변수, 다른 Worker, 또는 production runtime이 아닌 위치에 들어갔을 가능성이 높다.
 - `2026-05-10T05:51Z` 재확인에서도 `npx wrangler secret list --name altteulmap`에는 Turnstile 키가 없고, 운영 `/api/config/public`의 `turnstileSiteKey`는 빈 문자열이다. Cloudflare Dashboard에서 `Workers & Pages > altteulmap > Settings > Variables and Secrets > Production runtime` 위치를 다시 확인해야 한다.
+- Turnstile site key/secret을 Wrangler CLI로 `altteulmap` Worker runtime secret에 직접 등록하고 CLI 배포를 완료했다. 배포 Version ID는 `6c3875fc-f37f-40de-b81e-21db9163c87d`다.
+- `2026-05-10T06:00Z` 기준 운영 `/api/config/public`은 Turnstile site key를 반환하고, `/api/health?deep=1`은 `public-config`, `database`, `auth-providers`, `static-assets` 모두 `ok`다.
+- `scripts/smoke-remote.mjs`가 Hyperdrive 준비 이후 health database source `database-url`을 정상 운영 값으로 인정하지 못하던 false negative를 수정했다.
+- `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev npm run smoke:remote`가 통과했다. credentials/admin smoke는 `SMOKE_ADMIN_EMAIL`, `SMOKE_ADMIN_PASSWORD` 미설정으로 skip됐다.
 
 ### 완료한 변경
 - `docs/PLAN.md`

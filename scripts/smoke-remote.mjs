@@ -194,6 +194,10 @@ function expectDatabaseSource(payload, label) {
   }
 }
 
+function isRemoteDatabaseHealthSource(source) {
+  return source === "database" || source === "database-url" || source === "hyperdrive";
+}
+
 function expectDeepHealth(payload) {
   if (payload?.status !== "ok" || payload?.ok !== true || payload?.deep !== true) {
     throw new Error(`deep health is not ok: status=${payload?.status} ok=${payload?.ok}`);
@@ -218,7 +222,7 @@ function expectDeepHealth(payload) {
 
   const database = byName.get("database");
 
-  if (database?.source !== "database") {
+  if (!isRemoteDatabaseHealthSource(database?.source)) {
     throw new Error(`deep health database source is ${database?.source}`);
   }
 }
