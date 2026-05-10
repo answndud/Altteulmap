@@ -82,6 +82,15 @@ React Doctor식 코드베이스 품질 개선 계획
     - `PlaceReactionInput`
   - `src/features/places/queries.ts`의 미사용 local `formatKrw` helper를 제거했다.
   - `npm run hygiene:dead-code` 기준 unused file은 1건에서 0건, unused exports는 15건에서 11건, unused exported types는 5건에서 2건으로 감소했다.
+- P3 Performance 측정 하네스 보강을 완료했다.
+  - `tests/e2e/performance.spec.ts`를 추가했다.
+  - `scripts/run-local-e2e.mjs`에 `performance` mode를 추가했다.
+  - `package.json`에 `npm run perf:client` 스크립트를 추가했다.
+  - 현재 baseline:
+    - `map.initial_place_list_visible`: 325ms
+    - `map.refresh_to_place_list_visible`: 98ms
+    - `map.cluster_click_to_detail_or_marker_visible`: skipped, 현재 fixture viewport에 cluster marker 없음
+    - `admin.price_queue_visible`: 175ms
 
 ### 최근 검증
 - 문서 계획 작성 전 필수 문서 확인:
@@ -136,11 +145,17 @@ React Doctor식 코드베이스 품질 개선 계획
   - `npm run typecheck`
   - `npm run test:e2e:smoke` 통과, 10 passed
   - `git diff --check`
+- Performance 하네스 추가 후 검증 통과:
+  - `npm run lint`
+  - `npm run typecheck`
+  - `npm run perf:client` 통과, 1 passed
+  - `npm run test:e2e:smoke` 통과, 10 passed
+  - `git diff --check`
 - 참고:
   - admin targeted spec을 seed/rate-limit 초기화 없이 직접 실행했을 때 fixture/rate-limit 실패가 발생했다.
   - 정식 래퍼 `npm run test:e2e:smoke`는 DB push/seed/build를 포함해 통과했다.
 
 ### 다음 액션
-- P3. Performance 측정 하네스 보강을 진행한다.
-- 지도 초기 표시, viewport 검색중 해제, cluster click 이후 표시 상태, admin queue 표시 시간을 Playwright 기반 baseline으로 기록할지 검토한다.
-- 남은 dead-code 후보는 compatibility 성격이 섞여 있으므로 P3 이후 별도 판단한다.
+- React Doctor식 코드베이스 품질 개선 결과를 재평가한다.
+- `docs/project/react-quality-audit-2026-05-10.md`에 개선 후 점수와 근거를 업데이트한다.
+- 완료 처리 시 `docs/COMPLETED.md`에 archive하고 `docs/PLAN.md`, `docs/PROGRESS.md`를 active 없음으로 정리한다.

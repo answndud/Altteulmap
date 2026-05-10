@@ -38,6 +38,7 @@
     "smoke:price-concurrency": "tsx scripts/smoke-price-report-concurrency.ts",
     "qa:production:admin": "tsx scripts/qa-production-admin-flows.ts",
     "map:measure": "node scripts/measure-map-api.mjs",
+    "perf:client": "node scripts/run-local-e2e.mjs performance",
     "search:analyze": "node scripts/analyze-global-search-query.mjs",
     "migration:contract": "node scripts/compare-vite-contract.mjs",
     "readme:screenshots": "node scripts/capture-readme-screenshots.mjs",

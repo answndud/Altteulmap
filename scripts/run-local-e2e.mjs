@@ -36,6 +36,11 @@ const commandsByMode = {
     "USE_MOCK_DATA=true npm run build",
     "playwright test --ui",
   ],
+  performance: [
+    "npm run e2e:prepare",
+    "npm run build",
+    "playwright test tests/e2e/performance.spec.ts --project chromium",
+  ],
 };
 
 const commands = commandsByMode[mode];

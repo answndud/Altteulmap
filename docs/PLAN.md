@@ -272,7 +272,7 @@ React Doctor식 코드베이스 품질 개선 계획
   - Dead Code / Hygiene `+3~4`
 
 ### P3. Performance 측정 하네스 보강
-- 상태: 대기.
+- 상태: 완료. `npm run perf:client` Playwright baseline을 추가해 지도 초기 표시, 지도 refresh, admin price queue 표시 시간을 출력한다. cluster click은 현재 fixture viewport에 cluster marker가 없으면 skipped note로 남긴다.
 - 목적:
   - 지도 전환, 클러스터, 모바일 바텀시트, admin queue 렌더링이 느려지는 문제를 감으로 판단하지 않도록 한다.
 - 현재 근거:
