@@ -31,6 +31,7 @@
 - `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev npm run smoke:remote`가 통과했다. credentials/admin smoke는 `SMOKE_ADMIN_EMAIL`, `SMOKE_ADMIN_PASSWORD` 미설정으로 skip됐다.
 - `2026-05-10T06:03Z` 기준 재확인 결과, Wrangler 최신 배포 이력은 `712ceaa7-4a2e-4d07-aaf5-508d89db8056`, Git `main`은 `edf634b`로 로컬/원격이 일치한다. 운영 `/api/health?deep=1`과 remote smoke는 모두 통과했다.
 - Cloudflare Git 재연결 후 Dashboard Build variables가 초기화됐다는 보고를 받고 확인했다. `2026-05-10T06:09Z` 기준 `altteulmap` Worker runtime secret은 유지되어 있으며, 운영 `/api/health?deep=1`과 `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev npm run smoke:remote`는 모두 통과했다.
+- Cloudflare Dashboard Build configuration의 production deploy command를 canonical 경로 `npx wrangler deploy --config dist/altteulmap/wrangler.json --name altteulmap`로 수정했다. `2026-05-10T06:15Z` 기준 운영 `/api/health?deep=1`과 remote smoke는 모두 통과했다.
 
 ### 완료한 변경
 - `docs/PLAN.md`
