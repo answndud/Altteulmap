@@ -8,8 +8,17 @@ import {
   loginWithCredentials,
 } from "./helpers/auth";
 
+const PERFORMANCE_BUDGET_MS = {
+  "map.initial_place_list_visible": 1_500,
+  "map.refresh_to_place_list_visible": 1_000,
+  "map.cluster_click_to_detail_or_marker_visible": 1_500,
+  "admin.price_queue_visible": 1_500,
+} satisfies Record<string, number>;
+
+type PerformanceMeasurementName = keyof typeof PERFORMANCE_BUDGET_MS;
+
 type PerformanceMeasurement = {
-  name: string;
+  name: PerformanceMeasurementName;
   durationMs: number;
   note?: string;
 };
@@ -19,7 +28,7 @@ function roundMs(value: number) {
 }
 
 async function measure(
-  name: string,
+  name: PerformanceMeasurementName,
   action: () => Promise<void>,
   note?: string,
 ): Promise<PerformanceMeasurement> {
@@ -100,10 +109,24 @@ test("client interaction performance baseline", async ({ page }) => {
     }),
   );
 
-  console.log(
+  for (const measurement of measurements) {
+    if (measurement.note) {
+      continue;
+    }
+
+    const budgetMs = PERFORMANCE_BUDGET_MS[measurement.name];
+
+    expect(
+      measurement.durationMs,
+      `${measurement.name} exceeded ${budgetMs}ms budget`,
+    ).toBeLessThanOrEqual(budgetMs);
+  }
+
+  console.info(
     `[client-performance] ${JSON.stringify(
       {
         measuredAt: new Date().toISOString(),
+        budgetsMs: PERFORMANCE_BUDGET_MS,
         baseURL: page.url().replace(/\/admin\/prices.*/, ""),
         measurements,
       },
