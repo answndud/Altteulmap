@@ -15,7 +15,9 @@
 - P2. global search index 기준 수립을 완료했고, 현재는 인덱스 도입 보류로 결정했다.
 - P3. 큰 파일 분리 리팩터링을 시작했고, Worker HTTP utilities, health/static route, auth, public config/bookmark route, places read route, public write route, admin route, telemetry route, admin reports repository, admin prices repository, admin places repository, map query helper, place card, category tray, trending section, mobile place list sheet, place detail sheet, naver map display marker helper, local fallback tile helper, naver panel helper, preview map fallback component, naver map error fallback wrapper, naver map marker renderer, naver map key state hook, naver map viewport emitter, naver map geolocation helper, naver map focus helper, naver map container size hook, naver map window resize sync hook, naver map initialization hook, naver map marker rendering hook, naver map runtime error hook, naver map pending action hook, naver map viewport focus hook, naver map cleanup hook, transient map message hook, naver map action orchestration hook을 분리했다.
 - 모바일 바텀시트 open/sheet 포털을 `dvw`/`dvh` 기준으로 보정해 모바일 Chromium visual viewport에서 open 버튼과 sheet가 실제 터치 좌표 안에 들어오도록 안정화했다.
-- 다음 단계는 P3 `src/features/map/naver-map-panel.tsx`의 남은 props/derived state 조립부를 추가 분리할지, 또는 Naver map panel 리팩터링을 현재 수준에서 멈추고 다음 큰 파일 후보로 이동할지 판단하는 것이다.
+- 판단 결과: `src/features/map/naver-map-panel.tsx`는 408줄까지 줄었고 남은 코드는 props/derived state 조립과 JSX 중심이라 추가 분리 이득보다 과분해/회귀 위험이 크다.
+- 다음 P3 대상은 현재 가장 큰 프론트엔드 파일인 `src/client/routes/admin/AdminRoutes.tsx` 1324줄이다.
+- Admin UI Slice 1은 화면별 분리 전에 공용 type, API helper, `useAdminData`, access gate/shared shell을 먼저 분리한다.
 
 ### 완료한 변경
 - `docs/PLAN.md`
@@ -717,7 +719,7 @@
 - Cloudflare Dashboard에서 운영 Worker `altteulmap`에 `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`를 설정한 뒤 production public write 수동 QA를 진행한다.
 - strict CSP enforcement는 `naver-map-marker-visuals.ts`의 HTML inline style marker를 SVG data URL icon으로 바꾸는 PoC 이후 진행한다.
 - global search index는 1k 기준 p95 300ms 3회 연속 초과, 장소 10k 이상, DB execution 100ms 반복 초과 중 하나가 발생할 때 도입한다.
-- P3 큰 파일 분리 리팩터링의 다음 slice로 `src/features/map/naver-map-panel.tsx`를 더 쪼갤지, 아니면 다음 큰 파일 후보로 이동할지 판단한다.
+- P3 큰 파일 분리 리팩터링의 다음 slice로 `src/client/routes/admin/AdminRoutes.tsx`의 공용 type/API/data hook/access shell을 분리한다.
 
 ### Blocker
 - 없음.
