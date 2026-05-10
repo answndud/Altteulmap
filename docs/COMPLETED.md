@@ -2044,3 +2044,45 @@
   - 다음 개선은 SVG/canvas/custom overlay 기반 fallback map renderer로 별도 설계해야 한다.
   - 참고로 `npm run test:e2e:smoke`와 `npm run perf:client`를 병렬 실행하면 DB seed lock timeout이 발생할 수 있다. 검증은 단독 순차 실행해야 한다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `054` Client interaction performance threshold 적용
+
+- 배경:
+  - `npm run perf:client`는 지도 초기 표시, 지도 refresh, admin price queue 표시 시간을 측정했지만 threshold를 강제하지 않았다.
+  - 성능이 크게 나빠져도 테스트가 실패하지 않아 회귀 감지력이 약했다.
+  - 최근 baseline은 지도 초기 표시 257~325ms, 지도 refresh 98~116ms, admin price queue 175~177ms 수준이었다.
+- 변경 내용:
+  - `tests/e2e/performance.spec.ts`에 보수적인 performance budget을 추가했다.
+  - 적용 budget:
+    - `map.initial_place_list_visible`: 1500ms
+    - `map.refresh_to_place_list_visible`: 1000ms
+    - `map.cluster_click_to_detail_or_marker_visible`: 1500ms
+    - `admin.price_queue_visible`: 1500ms
+  - skipped measurement는 threshold 검사에서 제외한다.
+  - 현재 fixture viewport에 cluster marker가 없으면 cluster click 항목은 기존처럼 skipped note로 남긴다.
+  - 결과 출력은 `console.log`에서 `console.info`로 바꿔 pre-commit warning을 줄였다.
+- 코드/문서:
+  - `tests/e2e/performance.spec.ts`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run lint`
+    - 통과
+  - `npm run typecheck`
+    - 통과
+  - `npm run perf:client`
+    - 통과, 1 passed
+    - `map.initial_place_list_visible`: 308ms / 1500ms
+    - `map.refresh_to_place_list_visible`: 131ms / 1000ms
+    - `map.cluster_click_to_detail_or_marker_visible`: skipped
+    - `admin.price_queue_visible`: 184ms / 1500ms
+  - `npm run test:e2e:smoke`
+    - 통과, 10 passed
+  - `git diff --check`
+    - 통과
+- 결과:
+  - `npm run perf:client`가 단순 측정용에서 회귀 감지용 테스트로 강화됐다.
+  - budget은 현재 baseline 대비 약 4~8배 여유를 둔 보수적 값이라 로컬/CI 편차로 인한 flaky 실패 가능성을 낮췄다.
+  - 다음 개선은 cluster marker가 항상 존재하는 전용 fixture를 만들고, 3회 반복 측정 기반 p95 budget으로 좁히는 것이다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
