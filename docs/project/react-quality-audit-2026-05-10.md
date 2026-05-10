@@ -29,6 +29,30 @@
 - Accessibility: `13/20`
 - Dead Code / Hygiene: `11/20`
 
+## 개선 후 점수
+- 총점: `85/100`
+- State & Effects: `17/20`
+- Architecture: `18/20`
+- Performance: `17/20`
+- Security: `18/20`
+- Accessibility: `17/20`
+- Dead Code / Hygiene: `15/20`
+
+## 개선 후 주요 결과
+- React Hooks, JSX a11y, React Refresh lint 감시망을 추가했다.
+- Admin UI는 1324줄 단일 route 파일에서 19줄 route assembly와 page/API/hook/access/frame 모듈로 분리됐다.
+- shell session fetch와 bookmarks loading을 route-specific hook으로 분리했다.
+- `PlaceCard`, `MobilePlaceListSheet`의 clickable `article role="button"` 패턴을 실제 button/link 중심 구조로 바꿨고, ESLint a11y warning은 8건에서 0건이 됐다.
+- Naver SDK marker HTML 문자열의 inline style 5건을 CSS class 기반으로 이동해 CSP inventory findings는 12건에서 7건으로 줄었다.
+- `knip` 기반 `npm run hygiene:dead-code` preview를 추가했고, 저위험 unused file/export 일부를 정리했다.
+- `npm run perf:client` Playwright baseline을 추가해 client interaction timing을 기록한다.
+
+## 남은 리스크
+- `src/features/map/naver-map-preview.tsx`에는 로컬 fallback preview의 동적 좌표 style 7건이 남아 strict CSP 전환 전 추가 설계가 필요하다.
+- `npm run hygiene:dead-code`에는 Tailwind devDependency false positive와 compatibility 성격의 unused export 후보가 남아 있다.
+- performance baseline은 아직 임계값을 강제하지 않는다. 최소 3회 이상 측정 후 p95 기준을 별도 작업으로 정해야 한다.
+- 현재 fixture viewport에서는 cluster marker가 없어 `perf:client`의 cluster click 항목은 skipped note로 남는다.
+
 ## 주요 근거
 
 ### State & Effects
@@ -134,3 +158,24 @@
 - 1차 목표: `80/100` 이상
 - 2차 목표: `85/100` 이상
 - 점수 개선은 기능 변경이 아니라 자동 감시망, 모듈 경계, 접근성, CSP, hygiene 기준 개선으로 달성한다.
+
+## 개선 후 검증 결과
+- `npm run lint`: 통과, warning 0건
+- `npm run typecheck`: 통과
+- `npm run hygiene:dead-code`: 통과, preview findings 출력
+- `npm run csp:inventory`: 통과, total findings 7
+- `npm run perf:client`: 통과, 1 passed
+  - `map.initial_place_list_visible`: 325ms
+  - `map.refresh_to_place_list_visible`: 98ms
+  - `map.cluster_click_to_detail_or_marker_visible`: skipped
+  - `admin.price_queue_visible`: 175ms
+- `npm run test:e2e:smoke`: 통과, 10 passed
+  - 지도 map API cluster/marker mode
+  - home bootstrap bounds
+  - map refresh/search/detail/share
+  - admin dashboard
+  - signup
+  - public submission/admin approval
+- `USE_MOCK_DATA=true NEXTAUTH_URL=http://127.0.0.1:3107 npx playwright test tests/e2e/map.mobile.spec.ts --project mobile-chromium`: 통과, 2 passed
+- `npm run deploy:check:vite`: 통과
+- `git diff --check`: 통과

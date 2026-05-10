@@ -1939,3 +1939,65 @@
   - 배포/관측/성능/보안 기준이 문서와 스크립트에 남아 다음 세션에서도 재검증할 수 있다.
   - 남은 후속 과제는 가격 제보 동시 승인 DB-level idempotency, Turnstile, Hyperdrive, Sentry/Logpush, strict CSP, global search index, 큰 파일 분리 리팩터링이다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `052` React Doctor식 코드베이스 품질 개선
+
+- 배경:
+  - `millionco/react-doctor`를 설치/실행하지 않고, 공개 README의 React 품질 평가 축을 현재 Vite + React 코드베이스에 수동 적용했다.
+  - 기준선은 `74/100`이었다.
+  - 핵심 약점은 React 전용 lint 부재, admin route 대형 파일, 반복 fetch/effect 패턴, clickable `article role="button"`, Naver marker inline style, unused export/file 감시 부재, client interaction 성능 기준 부재였다.
+- 변경 내용:
+  - React Hooks, JSX a11y, React Refresh lint rule을 도입했다.
+  - Admin UI를 type/API/hook/access/frame/page 단위로 분리했다.
+  - `AdminRoutes.tsx`는 1324줄에서 19줄 route assembly로 축소했다.
+  - shell session fetch는 `useSession`, bookmarks loading은 `useBookmarkedPlaces` route hook으로 분리했다.
+  - `PlaceCard`, `MobilePlaceListSheet`의 가짜 interactive article 구조를 실제 button/link 중심 구조로 바꿨다.
+  - Naver SDK marker HTML 문자열의 inline style 5건을 CSS class 기반 marker style로 이동했다.
+  - `knip` 기반 `npm run hygiene:dead-code` preview 스크립트와 `knip.json`을 추가했다.
+  - 저위험 unused file/export 일부를 정리했다.
+  - `npm run perf:client` Playwright baseline을 추가했다.
+- 코드/문서:
+  - `docs/project/react-quality-audit-2026-05-10.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `eslint.config.mjs`
+  - `knip.json`
+  - `package.json`
+  - `scripts/run-local-e2e.mjs`
+  - `src/client/routes/admin/*`
+  - `src/client/lib/useSession.ts`
+  - `src/client/routes/bookmarks/useBookmarkedPlaces.ts`
+  - `src/client/features/map/PlaceCard.tsx`
+  - `src/client/features/map/MobilePlaceListSheet.tsx`
+  - `src/client/styles.css`
+  - `src/features/map/naver-map-marker-visuals.ts`
+  - `tests/e2e/performance.spec.ts`
+- 검증:
+  - `npm run lint`
+    - 통과, warning 0건
+  - `npm run typecheck`
+    - 통과
+  - `npm run test:e2e:smoke`
+    - 통과, 10 passed
+  - `USE_MOCK_DATA=true NEXTAUTH_URL=http://127.0.0.1:3107 npx playwright test tests/e2e/map.mobile.spec.ts --project mobile-chromium`
+    - 통과, 2 passed
+  - `npm run deploy:check:vite`
+    - 통과
+  - `npm run csp:inventory`
+    - 통과, total findings 12건에서 7건으로 감소
+  - `npm run hygiene:dead-code`
+    - 통과, preview findings 출력
+  - `npm run perf:client`
+    - 통과, 1 passed
+  - `git diff --check`
+    - 통과
+- 결과:
+  - 수동 React Doctor식 점수는 `74/100`에서 `85/100`으로 재평가했다.
+  - Accessibility는 a11y warning 8건에서 0건으로 개선됐다.
+  - Architecture는 admin 대형 route 분리와 async hook 분리로 AI agent 작업 표면적이 줄었다.
+  - Security는 운영 Naver marker inline style blocker가 제거됐지만, local preview 동적 style 7건과 `public/_headers`의 `unsafe-inline`은 남아 있다.
+  - Dead-code/Hygiene은 unused file 1건을 0건으로 줄였고, unused exports 후보는 15건에서 11건으로 줄었다.
+  - Performance baseline은 `map.initial_place_list_visible` 325ms, `map.refresh_to_place_list_visible` 98ms, `admin.price_queue_visible` 175ms로 기록했다.
+  - cluster click performance 항목은 현재 fixture viewport에 cluster marker가 없어 skipped note로 남겼다.
+  - 남은 후속 과제는 preview map inline style 제거, compatibility export 판단, Tailwind false positive 처리, performance threshold 설정이다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
