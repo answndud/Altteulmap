@@ -32,6 +32,9 @@
 - `2026-05-10T06:03Z` 기준 재확인 결과, Wrangler 최신 배포 이력은 `712ceaa7-4a2e-4d07-aaf5-508d89db8056`, Git `main`은 `edf634b`로 로컬/원격이 일치한다. 운영 `/api/health?deep=1`과 remote smoke는 모두 통과했다.
 - Cloudflare Git 재연결 후 Dashboard Build variables가 초기화됐다는 보고를 받고 확인했다. `2026-05-10T06:09Z` 기준 `altteulmap` Worker runtime secret은 유지되어 있으며, 운영 `/api/health?deep=1`과 `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev npm run smoke:remote`는 모두 통과했다.
 - Cloudflare Dashboard Build configuration의 production deploy command를 canonical 경로 `npx wrangler deploy --config dist/altteulmap/wrangler.json --name altteulmap`로 수정했다. `2026-05-10T06:15Z` 기준 운영 `/api/health?deep=1`과 remote smoke는 모두 통과했다.
+- 운영 Turnstile server-side 방어를 실제 production endpoint에서 확인했다. 가격 제보, 댓글, 장소 등록, 신고 API는 `turnstileToken` 없이 모두 `400`과 `보안 확인을 완료해주세요.`를 반환했다.
+- 운영 credentials/admin smoke를 실제 관리자 비밀번호로 재실행해 health, public route, map/place API, 로그인, 관리자 route/API boundary, Kakao/Naver redirect, signout을 확인했다.
+- 운영 관리자 처리 플로우 QA 스크립트를 추가하고 실행했다. 임시 pending 장소 승인, pending 가격 제보 승인, 신고 resolved 처리, 관리자 목록 노출, 생성 데이터 cleanup이 모두 통과했다.
 
 ### 완료한 변경
 - `docs/PLAN.md`
@@ -47,8 +50,12 @@
 - `scripts/smoke-price-report-concurrency.ts`
   - 임시 active place와 pending price report를 만든 뒤 같은 report에 approve 요청 2개를 동시에 실행하는 targeted smoke를 추가했다.
   - 검증 후 임시 place/report/action은 정리한다.
+- `scripts/qa-production-admin-flows.ts`
+  - 운영 DB에 임시 pending 장소, pending 가격 제보, 신고 데이터를 만들고 production admin API로 승인/처리하는 QA 스크립트를 추가했다.
+  - 관리자 session cookie 획득, admin 목록 노출 확인, 승인/처리 API 호출, 임시 데이터 cleanup을 한 흐름으로 검증한다.
 - `package.json`
   - `npm run smoke:price-concurrency` 스크립트를 추가했다.
+  - `npm run qa:production:admin` 스크립트를 추가했다.
 - `.github/workflows/ci.yml`
   - `remote-smoke` job을 `workflow_dispatch`뿐 아니라 6시간 간격 schedule에서도 실행하도록 변경했다.
   - `SMOKE_PUBLIC_URL` secret이 없으면 기본 운영 URL `https://altteulmap.altteul-lab.workers.dev`를 사용하도록 했다.
@@ -418,6 +425,22 @@
 - 운영 알림/에러 추적 보강 후 `git diff --check` 통과
 - `NEXTAUTH_URL=http://127.0.0.1:3107 npx playwright test tests/e2e/price-review.spec.ts --project chromium` 통과
 - `git diff --check` 통과
+- 운영 Turnstile 무토큰 차단 QA 통과
+  - `POST /api/places/goodprice-13038/prices` -> `400`, `보안 확인을 완료해주세요.`
+  - `POST /api/places/goodprice-13038/comments` -> `400`, `보안 확인을 완료해주세요.`
+  - `POST /api/places` -> `400`, `보안 확인을 완료해주세요.`
+  - `POST /api/reports` -> `400`, `보안 확인을 완료해주세요.`
+- 운영 credentials/admin remote smoke 통과
+  - `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev`, `.env.production.local`의 관리자 비밀번호 사용
+  - health, public route, map/place API, credentials login, admin API boundary, Kakao/Naver redirect, signout 확인
+- `npm run qa:production:admin` 통과
+  - pending 장소 승인 메시지 `장소 제보를 승인했습니다.` 확인
+  - pending 가격 제보 승인 메시지 `가격 제보를 반영했습니다.` 확인
+  - 신고 처리 상태 `resolved` 확인
+  - pending 장소/가격/신고 목록 노출 확인 및 임시 데이터 cleanup 완료
+- 운영 QA 스크립트 추가 후 `npm run lint` 통과
+- 운영 QA 스크립트 추가 후 `npm run typecheck` 통과
+- 운영 QA 스크립트 추가 후 `git diff --check` 통과
 - Turnstile public write bot 방어 후 `npm run typecheck` 통과
 - Turnstile public write bot 방어 후 `npm run lint` 통과
 - Turnstile public write bot 방어 후 `npm run cf:build:vite` 통과
@@ -730,11 +753,12 @@
   - 원인은 직전 `dist/altteulmap/.dev.vars`가 `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap`, `USE_MOCK_DATA=false`, `NEXTAUTH_URL=http://127.0.0.1:3130` 상태라 Playwright webServer 3107에서 로컬 DB 없는 DB-backed 실행을 시도했기 때문이다.
   - 같은 spec은 `USE_MOCK_DATA=true`, `NEXTAUTH_URL=http://127.0.0.1:3107` 환경에서 6건 모두 통과했다.
 ### 다음 액션
-- Cloudflare Dashboard에서 운영 Worker `altteulmap`에 `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`를 설정한 뒤 production public write 수동 QA를 진행한다.
+- 새 QA 스크립트와 진행 문서를 커밋/푸시해 Cloudflare Git 자동 빌드가 canonical deploy command로 성공하는지 확인한다.
+- Turnstile widget이 실제 브라우저에서 렌더링되는지 수동 UI QA를 진행한다. 단, Cloudflare challenge가 나타나면 자동화로 풀지 않고 사용자 수동 확인으로 처리한다.
 - strict CSP enforcement는 `naver-map-marker-visuals.ts`의 HTML inline style marker를 SVG data URL icon으로 바꾸는 PoC 이후 진행한다.
 - global search index는 1k 기준 p95 300ms 3회 연속 초과, 장소 10k 이상, DB execution 100ms 반복 초과 중 하나가 발생할 때 도입한다.
 - 리팩터링을 재개할 경우 P3 다음 slice는 `src/client/routes/admin/AdminRoutes.tsx`의 공용 type/API/data hook/access shell 분리다.
-- 리팩터링이 아니라 출시/운영 준비로 전환할 경우 우선순위는 운영 Turnstile 수동 QA, 실제 OAuth 로그인 QA, Cloudflare 최신 build 상태 확인이다.
+- 리팩터링이 아니라 출시/운영 준비로 전환할 경우 우선순위는 실제 OAuth 로그인 QA와 시각적/모바일 최종 QA다.
 
 ### Blocker
 - 없음.
