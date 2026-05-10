@@ -43,12 +43,12 @@
 - Admin UI는 1324줄 단일 route 파일에서 19줄 route assembly와 page/API/hook/access/frame 모듈로 분리됐다.
 - shell session fetch와 bookmarks loading을 route-specific hook으로 분리했다.
 - `PlaceCard`, `MobilePlaceListSheet`의 clickable `article role="button"` 패턴을 실제 button/link 중심 구조로 바꿨고, ESLint a11y warning은 8건에서 0건이 됐다.
-- Naver SDK marker HTML 문자열의 inline style 5건을 CSS class 기반으로 이동해 CSP inventory findings는 12건에서 7건으로 줄었다.
+- Naver SDK marker HTML 문자열과 로컬 preview marker 내부 시각 style을 CSS class 기반으로 이동해 CSP inventory findings는 12건에서 3건으로 줄었다.
 - `knip` 기반 `npm run hygiene:dead-code` preview를 추가했고, 저위험 unused file/export 일부를 정리했다.
 - `npm run perf:client` Playwright baseline을 추가해 client interaction timing을 기록한다.
 
 ## 남은 리스크
-- `src/features/map/naver-map-preview.tsx`에는 로컬 fallback preview의 동적 좌표 style 7건이 남아 strict CSP 전환 전 추가 설계가 필요하다.
+- `src/features/map/naver-map-preview.tsx`에는 로컬 fallback preview의 동적 좌표 style 3건이 남아 strict CSP 전환 전 추가 설계가 필요하다.
 - `npm run hygiene:dead-code`에는 Tailwind devDependency false positive와 compatibility 성격의 unused export 후보가 남아 있다.
 - performance baseline은 아직 임계값을 강제하지 않는다. 최소 3회 이상 측정 후 p95 기준을 별도 작업으로 정해야 한다.
 - 현재 fixture viewport에서는 cluster marker가 없어 `perf:client`의 cluster click 항목은 skipped note로 남는다.
@@ -163,7 +163,7 @@
 - `npm run lint`: 통과, warning 0건
 - `npm run typecheck`: 통과
 - `npm run hygiene:dead-code`: 통과, preview findings 출력
-- `npm run csp:inventory`: 통과, total findings 7
+- `npm run csp:inventory`: 통과, total findings 3
 - `npm run perf:client`: 통과, 1 passed
   - `map.initial_place_list_visible`: 325ms
   - `map.refresh_to_place_list_visible`: 98ms

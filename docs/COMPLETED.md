@@ -2001,3 +2001,46 @@
   - cluster click performance 항목은 현재 fixture viewport에 cluster marker가 없어 skipped note로 남겼다.
   - 남은 후속 과제는 preview map inline style 제거, compatibility export 판단, Tailwind false positive 처리, performance threshold 설정이다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `053` 로컬 지도 preview CSP blocker 추가 축소
+
+- 배경:
+  - 직전 품질 개선 후 `npm run csp:inventory` findings는 7건이었다.
+  - 남은 7건은 모두 `src/features/map/naver-map-preview.tsx`의 React `style={{...}}` 사용이었다.
+  - 이 파일은 Naver SDK가 로드되지 않는 로컬/테스트 fallback 지도 preview에 사용된다.
+- 변경 내용:
+  - cluster preview marker 내부 시각 스타일을 `altteulmap-cluster-marker` CSS class와 size variant로 대체했다.
+  - place preview marker 내부 시각 스타일을 `altteulmap-marker-icon` CSS class와 tone variant로 대체했다.
+  - 운영 Naver SDK marker와 로컬 preview marker가 같은 CSS 기반 시각 체계를 공유하도록 정리했다.
+  - `getClusterMarkerVisual` 및 `CLUSTER_MARKER_THEME` import를 preview에서 제거했다.
+  - 남은 inline style 3건은 런타임 좌표 계산에 필요한 항목으로 분리했다.
+- 코드/문서:
+  - `src/features/map/naver-map-preview.tsx`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/project/react-quality-audit-2026-05-10.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run csp:inventory`
+    - 통과, total findings 7건에서 3건으로 감소
+  - `npm run lint`
+    - 통과
+  - `npm run typecheck`
+    - 통과
+  - `npm run perf:client`
+    - 통과, 1 passed
+    - `map.initial_place_list_visible`: 257ms
+    - `map.refresh_to_place_list_visible`: 116ms
+    - `admin.price_queue_visible`: 177ms
+  - `npm run test:e2e:smoke`
+    - 단독 재실행 통과, 10 passed
+  - `git diff --check`
+    - 통과
+- 결과:
+  - CSP inventory total findings는 7건에서 3건으로 줄었다.
+  - strict CSP 전환 전 남은 blocker는 local fallback tile image 좌표, cluster marker 좌표, place marker 좌표/offset style 3건이다.
+  - 남은 3건은 실제 런타임 위치 값이라 단순 class 치환이 어렵다.
+  - CSSOM 또는 동적 stylesheet로 숨기는 방식은 strict CSP 개선이 아니라 검사 회피에 가까워 이번 작업에서 적용하지 않았다.
+  - 다음 개선은 SVG/canvas/custom overlay 기반 fallback map renderer로 별도 설계해야 한다.
+  - 참고로 `npm run test:e2e:smoke`와 `npm run perf:client`를 병렬 실행하면 DB seed lock timeout이 발생할 수 있다. 검증은 단독 순차 실행해야 한다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
