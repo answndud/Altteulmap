@@ -18,6 +18,7 @@
 - 판단 결과: `src/features/map/naver-map-panel.tsx`는 408줄까지 줄었고 남은 코드는 props/derived state 조립과 JSX 중심이라 추가 분리 이득보다 과분해/회귀 위험이 크다.
 - 다음 P3 대상은 현재 가장 큰 프론트엔드 파일인 `src/client/routes/admin/AdminRoutes.tsx` 1324줄이다.
 - Admin UI Slice 1은 화면별 분리 전에 공용 type, API helper, `useAdminData`, access gate/shared shell을 먼저 분리한다.
+- 사용자 요청으로 현재 리팩터링 루프는 여기서 일시 중단한다.
 
 ### 완료한 변경
 - `docs/PLAN.md`
@@ -719,7 +720,8 @@
 - Cloudflare Dashboard에서 운영 Worker `altteulmap`에 `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`를 설정한 뒤 production public write 수동 QA를 진행한다.
 - strict CSP enforcement는 `naver-map-marker-visuals.ts`의 HTML inline style marker를 SVG data URL icon으로 바꾸는 PoC 이후 진행한다.
 - global search index는 1k 기준 p95 300ms 3회 연속 초과, 장소 10k 이상, DB execution 100ms 반복 초과 중 하나가 발생할 때 도입한다.
-- P3 큰 파일 분리 리팩터링의 다음 slice로 `src/client/routes/admin/AdminRoutes.tsx`의 공용 type/API/data hook/access shell을 분리한다.
+- 리팩터링을 재개할 경우 P3 다음 slice는 `src/client/routes/admin/AdminRoutes.tsx`의 공용 type/API/data hook/access shell 분리다.
+- 리팩터링이 아니라 출시/운영 준비로 전환할 경우 우선순위는 운영 Turnstile 수동 QA, 실제 OAuth 로그인 QA, Cloudflare 최신 build 상태 확인이다.
 
 ### Blocker
 - 없음.
