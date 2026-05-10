@@ -52,7 +52,7 @@ test("모바일에서 장소 목록 바텀시트를 열고 닫을 수 있다", a
   expect(peekMetrics.top).toBeGreaterThan(40);
   expect(peekMetrics.height).toBeLessThan(peekMetrics.viewportHeight * 0.9);
   await expect(
-    list.locator('[data-testid^="mobile-place-list-item-"]').first(),
+    list.locator('button[data-testid^="mobile-place-list-item-"]').first(),
   ).toBeVisible();
 
   await sheet.getByTestId("mobile-place-list-toggle-size").click({ force: true });
@@ -94,9 +94,11 @@ test("모바일에서 목록에서 플레이스를 고르면 상세 시트가 �
   await expect(openButton).toContainText(/\d+곳/);
   await openButton.click();
   await expect(sheet).toBeVisible();
-  const firstItem = list.locator('[data-testid^="mobile-place-list-item-"]').first();
+  const firstItem = list.locator('button[data-testid^="mobile-place-list-item-"]').first();
   await expect(firstItem).toBeVisible();
-  const expectedPlaceName = await firstItem.getByRole("heading").innerText();
+  const expectedPlaceName = await firstItem
+    .locator('[data-testid^="mobile-place-list-item-name-"]')
+    .innerText();
   await firstItem.click({ force: true });
   await expect(sheet).toBeHidden();
 

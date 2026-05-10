@@ -237,8 +237,9 @@ test("지도 검색, 상세 시트, 비회원 좋아요, 공유, 닫기 흐름",
   expect(listShareCall?.title).toContain("원");
   expect(listShareCall?.text).toContain("원");
 
-  await placeListItem.focus();
-  await placeListItem.press("Enter");
+  const openButton = page.getByTestId(`place-list-item-open-${place.id}`);
+  await openButton.focus();
+  await openButton.press("Enter");
 
   const detailSheet = page.getByTestId("place-detail-sheet");
   await expect(detailSheet).toBeVisible();

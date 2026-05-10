@@ -158,31 +158,32 @@ export function MobilePlaceListSheet({
           return (
             <article
               key={place.id}
-              role="button"
-              tabIndex={0}
-              data-testid={`mobile-place-list-item-${place.id}`}
-              onClick={() => onSelectPlace(place)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  onSelectPlace(place);
-                }
-              }}
-              className="pointer-events-auto rounded-[0.85rem] border border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-surface)] p-3 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--altteul-primary)]"
+              className="pointer-events-auto rounded-[0.85rem] border border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-surface)] p-3 text-left"
             >
               <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-[11px] font-semibold text-[var(--altteul-primary-text)]">
-                    대표가 · {place.representativePriceLabel || "기준 가격"}
-                  </p>
-                  <p className="altteulmap-price-number mt-1 text-xl">
-                    {formatKrw(place.representativePriceAmount)}원
-                  </p>
-                </div>
-                <div
-                  className="shrink-0"
-                  onClick={(event) => event.stopPropagation()}
+                <button
+                  type="button"
+                  data-testid={`mobile-place-list-item-${place.id}`}
+                  onClick={() => onSelectPlace(place)}
+                  className="min-w-0 flex-1 rounded-[0.65rem] text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--altteul-primary)]"
                 >
+                  <span className="block text-[11px] font-semibold text-[var(--altteul-primary-text)]">
+                    대표가 · {place.representativePriceLabel || "기준 가격"}
+                  </span>
+                  <span className="altteulmap-price-number mt-1 block text-xl">
+                    {formatKrw(place.representativePriceAmount)}원
+                  </span>
+                  <span
+                    data-testid={`mobile-place-list-item-name-${place.id}`}
+                    className="mt-2 block truncate text-base font-semibold text-[var(--altteul-text-strong)]"
+                  >
+                    {place.name}
+                  </span>
+                  <span className="mt-1 block truncate text-xs text-[var(--altteul-text-secondary)]">
+                    {[category?.name ?? "기타", place.district].join(" · ")}
+                  </span>
+                </button>
+                <div className="shrink-0">
                   <ViteBookmarkToggleButton
                     compact
                     initialBookmarked={bookmarkedPlaceIds.has(place.id)}
@@ -194,12 +195,6 @@ export function MobilePlaceListSheet({
                   />
                 </div>
               </div>
-              <h3 className="mt-2 truncate text-base font-semibold text-[var(--altteul-text-strong)]">
-                {place.name}
-              </h3>
-              <p className="mt-1 truncate text-xs text-[var(--altteul-text-secondary)]">
-                {[category?.name ?? "기타", place.district].join(" · ")}
-              </p>
             </article>
           );
         })}
