@@ -35,6 +35,8 @@
 - 운영 Turnstile server-side 방어를 실제 production endpoint에서 확인했다. 가격 제보, 댓글, 장소 등록, 신고 API는 `turnstileToken` 없이 모두 `400`과 `보안 확인을 완료해주세요.`를 반환했다.
 - 운영 credentials/admin smoke를 실제 관리자 비밀번호로 재실행해 health, public route, map/place API, 로그인, 관리자 route/API boundary, Kakao/Naver redirect, signout을 확인했다.
 - 운영 관리자 처리 플로우 QA 스크립트를 추가하고 실행했다. 임시 pending 장소 승인, pending 가격 제보 승인, 신고 resolved 처리, 관리자 목록 노출, 생성 데이터 cleanup이 모두 통과했다.
+- `fff7b9b` 푸시 후 Cloudflare Git 자동 빌드가 성공했다. Dashboard build history 기준 `test: add production admin flow qa` 빌드는 main 브랜치에서 성공했고 duration은 30초다.
+- Git 자동 빌드 배포 후 운영 `/api/health?deep=1`과 credentials/admin 포함 remote smoke를 재실행해 production runtime 상태를 확인했다.
 
 ### 완료한 변경
 - `docs/PLAN.md`
@@ -441,6 +443,16 @@
 - 운영 QA 스크립트 추가 후 `npm run lint` 통과
 - 운영 QA 스크립트 추가 후 `npm run typecheck` 통과
 - 운영 QA 스크립트 추가 후 `git diff --check` 통과
+- Cloudflare Git 자동 빌드 성공 확인
+  - commit: `fff7b9b`
+  - build id: `d57b6fe2-15b4-404c-a5d4-e64f5191ec68`
+  - duration: 30초
+  - deploy command: `npx wrangler deploy --config dist/altteulmap/wrangler.json --name altteulmap`
+- Git 자동 빌드 배포 후 `curl -fsS 'https://altteulmap.altteul-lab.workers.dev/api/health?deep=1'` 통과
+  - `public-config`, `auth-providers`, `database`, `static-assets` 모두 `ok`
+  - Turnstile site key/secret runtime 인식 확인
+- Git 자동 빌드 배포 후 credentials/admin 포함 remote smoke 통과
+  - health, public route, map/place API, credentials login, admin API boundary, Kakao/Naver redirect, signout 확인
 - Turnstile public write bot 방어 후 `npm run typecheck` 통과
 - Turnstile public write bot 방어 후 `npm run lint` 통과
 - Turnstile public write bot 방어 후 `npm run cf:build:vite` 통과
@@ -753,7 +765,6 @@
   - 원인은 직전 `dist/altteulmap/.dev.vars`가 `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap`, `USE_MOCK_DATA=false`, `NEXTAUTH_URL=http://127.0.0.1:3130` 상태라 Playwright webServer 3107에서 로컬 DB 없는 DB-backed 실행을 시도했기 때문이다.
   - 같은 spec은 `USE_MOCK_DATA=true`, `NEXTAUTH_URL=http://127.0.0.1:3107` 환경에서 6건 모두 통과했다.
 ### 다음 액션
-- 새 QA 스크립트와 진행 문서를 커밋/푸시해 Cloudflare Git 자동 빌드가 canonical deploy command로 성공하는지 확인한다.
 - Turnstile widget이 실제 브라우저에서 렌더링되는지 수동 UI QA를 진행한다. 단, Cloudflare challenge가 나타나면 자동화로 풀지 않고 사용자 수동 확인으로 처리한다.
 - strict CSP enforcement는 `naver-map-marker-visuals.ts`의 HTML inline style marker를 SVG data URL icon으로 바꾸는 PoC 이후 진행한다.
 - global search index는 1k 기준 p95 300ms 3회 연속 초과, 장소 10k 이상, DB execution 100ms 반복 초과 중 하나가 발생할 때 도입한다.
