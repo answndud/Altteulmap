@@ -37,6 +37,8 @@
 - 운영 관리자 처리 플로우 QA 스크립트를 추가하고 실행했다. 임시 pending 장소 승인, pending 가격 제보 승인, 신고 resolved 처리, 관리자 목록 노출, 생성 데이터 cleanup이 모두 통과했다.
 - `fff7b9b` 푸시 후 Cloudflare Git 자동 빌드가 성공했다. Dashboard build history 기준 `test: add production admin flow qa` 빌드는 main 브랜치에서 성공했고 duration은 30초다.
 - Git 자동 빌드 배포 후 운영 `/api/health?deep=1`과 credentials/admin 포함 remote smoke를 재실행해 production runtime 상태를 확인했다.
+- 운영 Turnstile 실사용 QA 중 Dashboard의 Site key/Secret key가 Worker runtime에 서로 반대로 들어간 것을 확인했다. Wrangler CLI로 `NEXT_PUBLIC_TURNSTILE_SITE_KEY`와 `TURNSTILE_SECRET_KEY`를 실제 Turnstile widget 값에 맞춰 교정하고 CLI 재배포했다.
+- Brave 실제 브라우저에서 가격 제보 Turnstile widget이 `성공!` 상태로 렌더링되고, 실제 가격 제보 submit이 성공하는 것을 확인했다. 생성된 테스트 가격 제보 row는 운영 DB에서 즉시 삭제했다.
 
 ### 완료한 변경
 - `docs/PLAN.md`
@@ -453,6 +455,18 @@
   - Turnstile site key/secret runtime 인식 확인
 - Git 자동 빌드 배포 후 credentials/admin 포함 remote smoke 통과
   - health, public route, map/place API, credentials login, admin API boundary, Kakao/Naver redirect, signout 확인
+- Turnstile runtime key 교정 후 `npm run build` 통과
+- Turnstile runtime key 교정 후 `npx wrangler deploy --config dist/altteulmap/wrangler.json --name altteulmap` 통과
+  - Version ID: `e1990d2b-370d-4c70-8f05-91bac123a87e`
+- Turnstile runtime key 교정 후 `curl -fsS 'https://altteulmap.altteul-lab.workers.dev/api/config/public'` 확인
+  - 운영 public config가 실제 Turnstile Site key를 반환한다.
+- Turnstile runtime key 교정 후 `curl -fsS 'https://altteulmap.altteul-lab.workers.dev/api/health?deep=1'` 통과
+  - `public-config`, `auth-providers`, `database`, `static-assets` 모두 `ok`
+- Turnstile runtime key 교정 후 `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev npm run smoke:remote` 통과
+- Turnstile 실제 브라우저 QA 통과
+  - Brave에서 `/place/goodprice-13038` 가격 제보 Turnstile widget `성공!` 렌더링 확인
+  - `운영 QA Turnstile 테스트` 가격 제보 submit 성공 확인
+  - 운영 DB cleanup: 생성된 pending price report 1건 삭제 완료
 - Turnstile public write bot 방어 후 `npm run typecheck` 통과
 - Turnstile public write bot 방어 후 `npm run lint` 통과
 - Turnstile public write bot 방어 후 `npm run cf:build:vite` 통과
@@ -765,7 +779,7 @@
   - 원인은 직전 `dist/altteulmap/.dev.vars`가 `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap`, `USE_MOCK_DATA=false`, `NEXTAUTH_URL=http://127.0.0.1:3130` 상태라 Playwright webServer 3107에서 로컬 DB 없는 DB-backed 실행을 시도했기 때문이다.
   - 같은 spec은 `USE_MOCK_DATA=true`, `NEXTAUTH_URL=http://127.0.0.1:3107` 환경에서 6건 모두 통과했다.
 ### 다음 액션
-- Turnstile widget이 실제 브라우저에서 렌더링되는지 수동 UI QA를 진행한다. 단, Cloudflare challenge가 나타나면 자동화로 풀지 않고 사용자 수동 확인으로 처리한다.
+- 실제 OAuth 로그인 QA를 진행한다.
 - strict CSP enforcement는 `naver-map-marker-visuals.ts`의 HTML inline style marker를 SVG data URL icon으로 바꾸는 PoC 이후 진행한다.
 - global search index는 1k 기준 p95 300ms 3회 연속 초과, 장소 10k 이상, DB execution 100ms 반복 초과 중 하나가 발생할 때 도입한다.
 - 리팩터링을 재개할 경우 P3 다음 slice는 `src/client/routes/admin/AdminRoutes.tsx`의 공용 type/API/data hook/access shell 분리다.
