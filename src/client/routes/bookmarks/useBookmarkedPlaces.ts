@@ -7,7 +7,7 @@ type BookmarkRecord = {
   createdAt: string;
 };
 
-export type BookmarkedPlace = {
+type BookmarkedPlace = {
   bookmarkCreatedAt: string;
   place: PlaceRecord;
 };

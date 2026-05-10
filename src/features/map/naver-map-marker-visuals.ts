@@ -51,7 +51,7 @@ export function formatMarkerCount(count: number) {
   return new Intl.NumberFormat("ko-KR").format(count);
 }
 
-export function formatMarkerPrice(amount: number) {
+function formatMarkerPrice(amount: number) {
   return `${new Intl.NumberFormat("ko-KR").format(amount)}원`;
 }
 
