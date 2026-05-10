@@ -36,7 +36,7 @@ const optionalLongitudeSchema = z.preprocess(
     .optional(),
 );
 
-export const placePriceItemInputSchema = z.object({
+const placePriceItemInputSchema = z.object({
   label: z
     .string()
     .trim()
