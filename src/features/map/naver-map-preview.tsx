@@ -12,9 +12,7 @@ import {
 import type { ClusterDisplayMarker, MapDisplayMarker } from "@/features/map/naver-map-display-markers";
 import { getPreviewBounds } from "@/features/map/naver-map-display-markers";
 import {
-  CLUSTER_MARKER_THEME,
   formatMarkerCount,
-  getClusterMarkerVisual,
   getPlaceMarkerVisual,
 } from "@/features/map/naver-map-marker-visuals";
 import {
@@ -44,6 +42,30 @@ type LocalFallbackDragState = {
   startClientY: number;
   startCenterTile: TilePoint;
 };
+
+function getClusterMarkerSizeClass(placeCount: number) {
+  if (placeCount >= 100) {
+    return "altteulmap-cluster-marker--lg";
+  }
+
+  if (placeCount >= 20) {
+    return "altteulmap-cluster-marker--md";
+  }
+
+  return "altteulmap-cluster-marker--sm";
+}
+
+function getPlaceMarkerToneClass(
+  marker: Extract<MapDisplayMarker, { kind: "place" }>,
+) {
+  if (marker.isActive) {
+    return "altteulmap-marker-icon--active";
+  }
+
+  return marker.place.verificationStatus === "verified"
+    ? "altteulmap-marker-icon--verified"
+    : "altteulmap-marker-icon--unverified";
+}
 
 function LocalFallbackTileLayer({
   center,
@@ -311,7 +333,7 @@ export function PreviewMap({
           shouldShowLocalTiles && enableLocalWheelZoom ? "px" : "%";
 
         if (marker.kind === "cluster") {
-          const clusterVisual = getClusterMarkerVisual(marker.placeCount);
+          const clusterSizeClass = getClusterMarkerSizeClass(marker.placeCount);
 
           return (
             <button
@@ -319,31 +341,13 @@ export function PreviewMap({
               type="button"
               data-testid={`map-preview-marker-${marker.id}`}
               onClick={() => onActivateCluster?.(marker)}
-              className="pointer-events-auto absolute -translate-x-1/2 -translate-y-1/2 transition-transform hover:scale-[1.03]"
+              className={`altteulmap-cluster-marker pointer-events-auto absolute -translate-x-1/2 -translate-y-1/2 transition-transform hover:scale-[1.03] ${clusterSizeClass}`}
               style={{
                 top: `${top}${markerPositionUnit}`,
                 left: `${left}${markerPositionUnit}`,
-                width: `${clusterVisual.hitSize}px`,
-                height: `${clusterVisual.hitSize}px`,
               }}
             >
-              <span
-                className="flex items-center justify-center rounded-full"
-                style={{
-                  width: `${clusterVisual.badgeSize}px`,
-                  height: `${clusterVisual.badgeSize}px`,
-                  background: CLUSTER_MARKER_THEME.background,
-                  border: `1px solid ${CLUSTER_MARKER_THEME.border}`,
-                  boxShadow: `${CLUSTER_MARKER_THEME.shadow}, inset 0 0 0 ${clusterVisual.ringInset}px ${CLUSTER_MARKER_THEME.ring}`,
-                  color: CLUSTER_MARKER_THEME.text,
-                  fontSize: `${clusterVisual.fontSize}px`,
-                  fontWeight: 600,
-                  letterSpacing: "0",
-                  fontVariantNumeric: "tabular-nums",
-                  backdropFilter: "blur(8px)",
-                  WebkitBackdropFilter: "blur(8px)",
-                }}
-              >
+              <span className="altteulmap-cluster-marker__badge">
                 {formatMarkerCount(marker.placeCount)}
               </span>
             </button>
@@ -351,6 +355,7 @@ export function PreviewMap({
         }
 
         const placeVisual = getPlaceMarkerVisual(marker.place, marker.isActive);
+        const placeToneClass = getPlaceMarkerToneClass(marker);
         const transformPrefix =
           marker.offsetX === 0 && marker.offsetY === 0
             ? ""
@@ -371,43 +376,9 @@ export function PreviewMap({
               transform: `${transformPrefix}translate(-50%, -100%)`,
             }}
           >
-            <span
-              className="relative flex items-start justify-center pt-0.5"
-              style={{
-                width: `${placeVisual.canvasWidth}px`,
-                height: `${placeVisual.canvasHeight}px`,
-              }}
-            >
-              <span
-                aria-hidden="true"
-                className="absolute left-1/2 block"
-                style={{
-                  top: `${placeVisual.height - 1}px`,
-                  width: `${placeVisual.tailSize}px`,
-                  height: `${placeVisual.tailSize}px`,
-                  background: placeVisual.tailBackground,
-                  borderRight: `1.5px solid ${placeVisual.tailBorder}`,
-                  borderBottom: `1.5px solid ${placeVisual.tailBorder}`,
-                  boxShadow: "0 5px 10px rgba(15, 23, 42, 0.12)",
-                  transform: "translateX(-50%) rotate(45deg)",
-                }}
-              />
-              <span
-                className="relative z-[1] flex items-center justify-center whitespace-nowrap rounded-full"
-                style={{
-                  width: `${placeVisual.width}px`,
-                  height: `${placeVisual.height}px`,
-                  background: placeVisual.background,
-                  border: `1.5px solid ${placeVisual.border}`,
-                  boxShadow: placeVisual.shadow,
-                  color: placeVisual.text,
-                  fontSize: `${placeVisual.fontSize}px`,
-                  fontWeight: placeVisual.fontWeight,
-                  letterSpacing: "0",
-                  lineHeight: 1,
-                  fontVariantNumeric: "tabular-nums",
-                }}
-              >
+            <span className={`altteulmap-marker-icon ${placeToneClass}`}>
+              <span aria-hidden="true" className="altteulmap-marker-icon__tail" />
+              <span className="altteulmap-marker-icon__label">
                 {placeVisual.label}
               </span>
             </span>
