@@ -33,7 +33,16 @@ React Doctor식 코드베이스 품질 개선 계획
   - `src/client/routes/admin/AdminAccessGate.tsx`
   - `src/client/routes/admin/AdminFrame.tsx`
 - `src/client/routes/admin/AdminRoutes.tsx`는 1324줄에서 1033줄로 감소했다.
-- 남은 Admin UI 분리 작업은 page/card/filter component 분리와 `AdminRoutes.tsx` route assembly 축소다.
+- P1 Admin UI 큰 파일 분리를 완료했다.
+  - `src/client/routes/admin/labels.ts`
+  - `src/client/routes/admin/AdminShared.tsx`
+  - `src/client/routes/admin/AdminDashboardRoute.tsx`
+  - `src/client/routes/admin/AdminPlacesRoute.tsx`
+  - `src/client/routes/admin/AdminPricesRoute.tsx`
+  - `src/client/routes/admin/AdminPlacePricesRoute.tsx`
+  - `src/client/routes/admin/AdminReportsRoute.tsx`
+- `src/client/routes/admin/AdminRoutes.tsx`는 1324줄에서 19줄 route assembly로 감소했다.
+- admin route 파일은 모두 225줄 이하가 됐다.
 
 ### 최근 검증
 - 문서 계획 작성 전 필수 문서 확인:
@@ -57,11 +66,16 @@ React Doctor식 코드베이스 품질 개선 계획
   - `npm run lint` 통과, warning 8건
   - `npm run deploy:check:vite`
   - `npm run test:e2e:smoke` 통과, 10 passed
+- Admin UI page/card/filter 분리 후 검증 통과:
+  - `npm run typecheck`
+  - `npm run lint` 통과, warning 8건
+  - `npm run deploy:check:vite`
+  - `npm run test:e2e:smoke` 통과, 10 passed
 - 참고:
   - admin targeted spec을 seed/rate-limit 초기화 없이 직접 실행했을 때 fixture/rate-limit 실패가 발생했다.
   - 정식 래퍼 `npm run test:e2e:smoke`는 DB push/seed/build를 포함해 통과했다.
 
 ### 다음 액션
-- P1. Admin UI page/card/filter component 분리를 이어서 진행한다.
-- 목표는 `AdminRoutes.tsx`를 route assembly 중심으로 줄이고, 각 page/card 파일을 350줄 이하로 유지하는 것이다.
-- Admin split 다음 검증은 `npm run typecheck`, `npm run lint`, `npm run test:e2e:smoke`, 필요 시 admin targeted E2E를 정식 seed 래퍼 기준으로 실행한다.
+- P1. Async data/loading/error 패턴 정리를 진행한다.
+- 우선 public shell/session과 bookmark loading을 별도 hook으로 분리한다.
+- 지도 viewport fetch와 Turnstile widget lifecycle은 domain-specific effect라 억지 공용화하지 않는다.

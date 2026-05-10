@@ -102,7 +102,7 @@ React Doctor식 코드베이스 품질 개선 계획
   - Dead Code / Hygiene `+1`
 
 ### P1. Admin UI 큰 파일 분리
-- 상태: 진행 중. Slice 1~4 일부를 완료해 type, API helper, `useAdminData`, access gate, shared frame을 분리했다. 남은 작업은 page/card/filter component 분리와 `AdminRoutes.tsx` 250줄 이하 축소다.
+- 상태: 완료. type, API helper, `useAdminData`, access gate, shared frame, dashboard, places, prices, place price editor, reports page/card/filter를 분리했다.
 - 목적:
   - `src/client/routes/admin/AdminRoutes.tsx` 1324줄 파일을 작은 모듈로 나눠 AI agent 작업 회귀 위험을 줄인다.
 - 현재 근거:
