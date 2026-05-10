@@ -25,6 +25,7 @@ import { useNaverMapInitialization } from "@/features/map/use-naver-map-initiali
 import { useNaverMapContainerSize } from "@/features/map/use-naver-map-container-size";
 import { useNaverMapKeyState } from "@/features/map/use-naver-map-key-state";
 import { useNaverMapMarkerRendering } from "@/features/map/use-naver-map-marker-rendering";
+import { useNaverMapPendingActions } from "@/features/map/use-naver-map-pending-actions";
 import { useNaverMapRuntimeError } from "@/features/map/use-naver-map-runtime-error";
 import { useNaverMapWindowResizeSync } from "@/features/map/use-naver-map-window-resize-sync";
 import {
@@ -321,32 +322,14 @@ function NaverMapPanelContent({
     shouldBootMap,
   });
 
-  useEffect(() => {
-    if (
-      status !== "ready" ||
-      !mapInstanceRef.current ||
-      !pendingClusterFocusRef.current
-    ) {
-      return;
-    }
-
-    const nextCluster = pendingClusterFocusRef.current;
-    pendingClusterFocusRef.current = null;
-    focusCluster(nextCluster);
-  }, [focusCluster, status]);
-
-  useEffect(() => {
-    if (
-      status !== "ready" ||
-      !mapInstanceRef.current ||
-      !pendingLocateCurrentPositionRef.current
-    ) {
-      return;
-    }
-
-    pendingLocateCurrentPositionRef.current = false;
-    runLocateCurrentPosition();
-  }, [runLocateCurrentPosition, status]);
+  useNaverMapPendingActions({
+    focusCluster,
+    isReady: status === "ready",
+    mapInstanceRef,
+    pendingClusterFocusRef,
+    pendingLocateCurrentPositionRef,
+    runLocateCurrentPosition,
+  });
 
   useNaverMapMarkerRendering({
     displayMarkers,
