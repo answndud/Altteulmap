@@ -48,7 +48,12 @@ export function MobilePlaceListSheet({
 
   if (mode === "hidden") {
     return renderMobilePortal(
-      <div className="pointer-events-none fixed inset-x-0 bottom-4 z-[2147483647] flex justify-center px-4 xl:hidden">
+      <div
+        className="pointer-events-auto fixed left-4 top-[calc(100dvh-4.75rem)] z-[2147483647] flex w-[calc(100dvw-2rem)] justify-start xl:hidden"
+        onClickCapture={openSheet}
+        onPointerDownCapture={openSheet}
+        onTouchStartCapture={openSheet}
+      >
         <button
           type="button"
           data-testid="mobile-place-list-open"
@@ -73,8 +78,10 @@ export function MobilePlaceListSheet({
     <section
       data-testid="mobile-place-list-sheet"
       data-sheet-mode={mode}
-      className={`fixed inset-x-3 bottom-3 z-[2147483647] rounded-[1rem] border border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-surface)] p-3 shadow-[var(--altteul-shadow-overlay)] transition-all xl:hidden ${
-        isExpanded ? "max-h-[88dvh]" : "max-h-[58dvh]"
+      className={`fixed left-3 z-[2147483647] w-[calc(100dvw-1.5rem)] rounded-[1rem] border border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-surface)] p-3 shadow-[var(--altteul-shadow-overlay)] transition-all xl:hidden ${
+        isExpanded
+          ? "top-[calc(100dvh-88dvh-0.75rem)] max-h-[88dvh]"
+          : "top-[calc(100dvh-58dvh-0.75rem)] max-h-[58dvh]"
       }`}
     >
       <button
