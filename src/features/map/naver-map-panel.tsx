@@ -3,7 +3,6 @@
 import {
   Component,
   useCallback,
-  useEffect,
   useMemo,
   useRef,
   useState,
@@ -17,6 +16,7 @@ import {
 } from "@/features/map/naver-map-sdk";
 import { NaverMapFallback } from "@/features/map/naver-map-fallback";
 import { locateCurrentPositionOnNaverMap } from "@/features/map/naver-map-location";
+import { useNaverMapCleanup } from "@/features/map/use-naver-map-cleanup";
 import { useNaverMapInitialization } from "@/features/map/use-naver-map-initialization";
 import { useNaverMapContainerSize } from "@/features/map/use-naver-map-container-size";
 import { useNaverMapKeyState } from "@/features/map/use-naver-map-key-state";
@@ -25,6 +25,7 @@ import { useNaverMapPendingActions } from "@/features/map/use-naver-map-pending-
 import { useNaverMapRuntimeError } from "@/features/map/use-naver-map-runtime-error";
 import { useNaverMapViewportFocus } from "@/features/map/use-naver-map-viewport-focus";
 import { useNaverMapWindowResizeSync } from "@/features/map/use-naver-map-window-resize-sync";
+import { useTransientMapMessage } from "@/features/map/use-transient-map-message";
 import {
   getClusterFocusZoom,
   getClusterViewport,
@@ -260,6 +261,9 @@ function NaverMapPanelContent({
       setLocationMessage,
     });
   }, [emitViewportChange]);
+  const clearLocationMessage = useCallback(() => {
+    setLocationMessage(null);
+  }, []);
 
   const handlePreviewClusterActivate = useCallback(
     (marker: ClusterDisplayMarker) => {
@@ -356,25 +360,12 @@ function NaverMapPanelContent({
     mapInstanceRef,
   });
 
-  useEffect(() => {
-    if (!locationMessage) {
-      return;
-    }
+  useTransientMapMessage({
+    clearMessage: clearLocationMessage,
+    message: locationMessage,
+  });
 
-    const timeoutId = window.setTimeout(() => {
-      setLocationMessage(null);
-    }, 2800);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
-  }, [locationMessage]);
-
-  useEffect(() => {
-    return () => {
-      clearMapInstance();
-    };
-  }, [clearMapInstance]);
+  useNaverMapCleanup(clearMapInstance);
 
   const statusMessage =
     shouldUseLocalTileFallback
