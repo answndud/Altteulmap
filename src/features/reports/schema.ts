@@ -12,17 +12,6 @@ export const reportReasonMap = Object.fromEntries(
   reportReasonOptions.map((option) => [option.value, option.label]),
 ) as Record<(typeof reportReasonOptions)[number]["value"], string>;
 
-export const reportStatusOptions = [
-  { value: "open", label: "열림" },
-  { value: "reviewing", label: "검토 중" },
-  { value: "resolved", label: "처리 완료" },
-  { value: "dismissed", label: "기각" },
-] as const;
-
-export const reportStatusMap = Object.fromEntries(
-  reportStatusOptions.map((option) => [option.value, option.label]),
-) as Record<(typeof reportStatusOptions)[number]["value"], string>;
-
 export const reportModerationSchema = z.object({
   status: z.enum(["open", "reviewing", "resolved", "dismissed"]),
 });

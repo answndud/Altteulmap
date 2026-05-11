@@ -19,8 +19,8 @@ const globalForVisitTelemetry = globalThis as typeof globalThis & {
 };
 
 export type WorkerVisitActivityScope = "public" | "admin";
-export type WorkerVisitEntryRef = "share";
-export type WorkerPlaceShareSource =
+type WorkerVisitEntryRef = "share";
+type WorkerPlaceShareSource =
   | "detail"
   | "detail_sheet"
   | "list"

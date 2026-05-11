@@ -39,7 +39,7 @@ function shouldUseSecureCookie(requestUrl: string) {
   return url.protocol === "https:";
 }
 
-export function getCookieValue(cookieHeader: string | null, cookieName: string) {
+function getCookieValue(cookieHeader: string | null, cookieName: string) {
   if (!cookieHeader) {
     return null;
   }
@@ -67,11 +67,11 @@ export function getCookieValue(cookieHeader: string | null, cookieName: string) 
   return null;
 }
 
-export function getVisitorIdFromRequest(request: Request) {
+function getVisitorIdFromRequest(request: Request) {
   return getCookieValue(request.headers.get("cookie"), VISITOR_ID_COOKIE_NAME);
 }
 
-export function buildCookieParts({
+function buildCookieParts({
   name,
   value,
   maxAge,
@@ -100,7 +100,7 @@ export function buildCookieParts({
   return cookieParts;
 }
 
-export function appendCookie(
+function appendCookie(
   response: Response,
   request: Request,
   cookie: {
@@ -116,20 +116,6 @@ export function appendCookie(
       requestUrl: request.url,
     }).join("; "),
   );
-
-  return response;
-}
-
-export function getOrCreateVisitorId(request: Request) {
-  return getVisitorIdFromRequest(request) ?? crypto.randomUUID();
-}
-
-export function appendVisitorCookie(response: Response, request: Request) {
-  appendCookie(response, request, {
-    name: VISITOR_ID_COOKIE_NAME,
-    value: getOrCreateVisitorId(request),
-    maxAge: VISITOR_ID_COOKIE_MAX_AGE,
-  });
 
   return response;
 }
@@ -165,7 +151,7 @@ export function getWorkerPublicWriteActor(
   };
 }
 
-export function appendPublicWriteActorCookie(
+function appendPublicWriteActorCookie(
   response: Response,
   request: Request,
   actor: WorkerPublicWriteActor,

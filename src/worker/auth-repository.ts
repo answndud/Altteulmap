@@ -127,7 +127,7 @@ function toLocalUser(email: string) {
   return localAuthUsers.find((user) => user.email === normalizedEmail) ?? null;
 }
 
-export async function getWorkerAuthUserByEmail(
+async function getWorkerAuthUserByEmail(
   env: WorkerAuthBindings,
   email: string,
 ) {

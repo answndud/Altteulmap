@@ -1,4 +1,4 @@
-import { and, eq, lt, sql } from "drizzle-orm";
+import { lt, sql } from "drizzle-orm";
 
 import { publicWriteRateLimits } from "@/db/schema";
 import {
@@ -97,29 +97,4 @@ export async function consumeWorkerPersistentRateLimit(
     policyName,
     resetAt: row.expiresAt,
   });
-}
-
-export async function resetWorkerPersistentRateLimit(
-  env: WorkerDatabaseBindings,
-  policyName: RateLimitPolicyName,
-  actor: WorkerPublicWriteActor,
-) {
-  if (!isWorkerDatabaseEnabled(env)) {
-    return;
-  }
-
-  const policy = RATE_LIMIT_POLICIES[policyName];
-  const db = getWorkerDb(env);
-  const now = new Date();
-  const bucketStartedAt = getBucketStartedAt(now, policy.windowMs);
-
-  await db
-    .delete(publicWriteRateLimits)
-    .where(
-      and(
-        eq(publicWriteRateLimits.scope, policy.scope),
-        eq(publicWriteRateLimits.actorKey, actor.key),
-        eq(publicWriteRateLimits.bucketStartedAt, bucketStartedAt),
-      ),
-    );
 }

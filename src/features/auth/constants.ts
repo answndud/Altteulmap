@@ -1,11 +1,4 @@
 export type AppUserRole = "user" | "admin";
-export type SocialAuthProviderId = "kakao" | "naver";
-export type SocialAuthProviderAvailability = {
-  id: SocialAuthProviderId;
-  label: string;
-  enabled: boolean;
-  unavailableReason?: string;
-};
 
 export const authAccountHints = [
   {
@@ -21,24 +14,3 @@ export const authAccountHints = [
     passwordEnv: "AUTH_ADMIN_PASSWORD",
   },
 ];
-
-export const appUserRoleLabelMap: Record<AppUserRole, string> = {
-  user: "일반 사용자",
-  admin: "운영자",
-};
-
-export const socialAuthProviderLabelMap: Record<
-  SocialAuthProviderId,
-  string
-> = {
-  kakao: "카카오",
-  naver: "네이버",
-};
-
-export const socialAuthProviderMonogramMap: Record<
-  SocialAuthProviderId,
-  string
-> = {
-  kakao: "K",
-  naver: "N",
-};

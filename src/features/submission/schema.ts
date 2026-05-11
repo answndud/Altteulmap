@@ -111,11 +111,13 @@ function refinePlaceSubmissionLabels(
   });
 }
 
-export const placeSubmissionFormSchema = placeSubmissionBaseSchema.superRefine(
-  refinePlaceSubmissionLabels,
-);
+function createPlaceSubmissionSchema() {
+  return placeSubmissionBaseSchema.superRefine(refinePlaceSubmissionLabels);
+}
 
-export const placeSubmissionSchema = placeSubmissionFormSchema;
+export const placeSubmissionFormSchema = createPlaceSubmissionSchema();
+
+export const placeSubmissionSchema = createPlaceSubmissionSchema();
 
 export const placeModerationSchema = z
   .object({

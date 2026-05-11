@@ -168,7 +168,7 @@ export async function closeWorkerDatabaseConnection() {
   await closeDatabaseState(state);
 }
 
-export function resetWorkerDatabaseConnection() {
+function resetWorkerDatabaseConnection() {
   void closeWorkerDatabaseConnection();
 }
 
