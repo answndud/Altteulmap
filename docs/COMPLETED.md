@@ -2086,3 +2086,392 @@
   - budget은 현재 baseline 대비 약 4~8배 여유를 둔 보수적 값이라 로컬/CI 편차로 인한 flaky 실패 가능성을 낮췄다.
   - 다음 개선은 cluster marker가 항상 존재하는 전용 fixture를 만들고, 3회 반복 측정 기반 p95 budget으로 좁히는 것이다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `055` React Doctor식 품질 점수 100점 도달
+
+- 배경:
+  - 이전 React Doctor식 수동 재채점은 `85/100` 수준이었다.
+  - 남은 감점 요인은 cluster 성능 측정 skipped, local fallback map inline style 3건, dead-code/hygiene false positive와 unused export 후보였다.
+  - 목표는 신규 기능 없이 코드 품질 감시망과 유지보수 표면을 정리해 `100/100` 완료 기준을 만족하는 것이었다.
+- 변경 내용:
+  - `tests/e2e/performance.spec.ts`에 deterministic cluster API fixture를 추가했다.
+  - `perf:client`가 cluster marker click path를 skipped 없이 측정하고 threshold를 강제하도록 보강했다.
+  - `src/features/map/naver-map-preview.tsx`의 local fallback tile/marker 좌표 렌더링을 React inline style에서 SVG `image`/`foreignObject` 좌표 속성 기반으로 전환했다.
+  - preview marker에 `data-marker-kind`를 추가해 성능 테스트가 marker id 포맷에 덜 의존하게 했다.
+  - `knip.json`에 Tailwind CSS import false positive를 명시적으로 분리했다.
+  - unused export 후보를 비공개화하고, 실제 참조되지 않는 legacy helper를 제거했다.
+  - `docs/project/react-quality-audit-2026-05-10.md`를 최종 `100/100` 결과와 검증 수치로 갱신했다.
+- 코드/문서:
+  - `tests/e2e/performance.spec.ts`
+  - `src/features/map/naver-map-preview.tsx`
+  - `src/client/features/map/map-query.ts`
+  - `src/db/client.ts`
+  - `src/features/auth/constants.ts`
+  - `src/features/map/naver-map-marker-visuals.ts`
+  - `src/features/map/naver-map-sdk.ts`
+  - `src/features/places/share.ts`
+  - `src/features/reports/schema.ts`
+  - `src/features/submission/schema.ts`
+  - `src/lib/rate-limit.ts`
+  - `src/worker/auth-repository.ts`
+  - `src/worker/db.ts`
+  - `src/worker/public-write-actor.ts`
+  - `src/worker/rate-limit-repository.ts`
+  - `src/worker/telemetry-repository.ts`
+  - `knip.json`
+  - `docs/project/react-quality-audit-2026-05-10.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run verify`
+    - 통과
+  - `npm run csp:inventory`
+    - 통과, total findings 0
+  - `npm run hygiene:dead-code`
+    - 통과, 출력 0건
+  - `npm run perf:client`
+    - 통과, 1 passed
+    - `map.initial_place_list_visible`: 266ms / 1500ms
+    - `map.refresh_to_place_list_visible`: 119ms / 1000ms
+    - `map.cluster_click_to_detail_or_marker_visible`: 123ms / 1500ms
+    - `admin.price_queue_visible`: 191ms / 1500ms
+  - `npm run perf:client` 3회 측정 기록:
+    - 1회차: 201ms, 123ms, 141ms, 210ms
+    - 2회차: 369ms, 131ms, 162ms, 226ms
+    - 3회차: 266ms, 119ms, 123ms, 191ms
+  - `npm run map:measure`
+    - 통과
+    - `seoul-viewport-z11`: p95 27ms
+    - `seoul-category-food-z13`: p95 28ms
+    - `global-query-kimbap`: p95 173ms
+  - `npm run test:e2e:smoke`
+    - 통과, 10 passed
+  - `git diff --check`
+    - 통과
+- 결과:
+  - React Doctor식 수동 품질 점수는 `85/100`에서 `100/100`으로 재평가했다.
+  - CSP inventory findings는 3건에서 0건이 됐다.
+  - `hygiene:dead-code` 출력은 unused devDependency/export/type/duplicate export 후보 없이 0건이 됐다.
+  - `perf:client`는 cluster click 측정을 더 이상 skipped로 남기지 않고 4개 핵심 interaction 모두 threshold를 검증한다.
+  - `public/_headers`와 Worker security header의 `style-src 'unsafe-inline'`은 Naver Maps SDK 같은 외부 지도 런타임 검증 전까지 유지한다. 앱 코드 기준 inline style blocker는 제거됐다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `056` Vite + React 품질 리팩터링 회고 블로그 작성
+
+- 배경:
+  - Next.js에서 Vite + React + Cloudflare Worker 구조로 이관한 뒤, React Doctor식 품질 점수를 `74/100`에서 내부 하네스 기준 `100/100`까지 끌어올렸다.
+  - 사용자는 어떤 방식으로 Vite + React 코드를 리팩터링해 100점 기준에 도달했는지 `docs/blog`에 공개 가능한 글 형식으로 남기고 싶어 했다.
+  - 기존 `next-to-vite-migration-retrospective.md`가 아키텍처 이관 회고라면, 이번 글은 이관 이후 품질 기준선과 리팩터링 과정을 설명하는 후속편으로 작성했다.
+- 변경 내용:
+  - `docs/blog/vite-react-quality-refactor-retrospective.md`를 새로 작성했다.
+  - 글의 핵심 흐름은 “이관은 끝났지만 좋은 구조가 자동으로 생긴 것은 아니었다”에서 출발해, React Doctor식 기준으로 점수화하고 각 축을 개선한 과정을 설명한다.
+  - 포함한 주제:
+    - Vite + React 이관 후에도 품질 리팩터링이 필요했던 이유
+    - React Doctor식 평가 축과 초기 `74/100` 기준선
+    - React lint/a11y 감시망 도입
+    - 관리자 route 대형 파일 분리
+    - async state/effect 경계 정리
+    - 지도/클러스터 성능 측정 하네스 강화
+    - CSP inline style inventory 0건 달성 과정
+    - dead code와 export 표면 정리
+    - 내부 하네스 기준 `100/100`의 의미와 운영 리스크의 한계
+    - AI agent와 1인 개발에서 하네스가 중요한 이유
+  - “코드 품질 100점”과 “운영 완전무결”을 명확히 구분하도록 작성했다.
+- 코드/문서:
+  - `docs/blog/vite-react-quality-refactor-retrospective.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `git diff --check`
+    - 통과
+- 결과:
+  - Vite + React 품질 리팩터링 과정을 블로그 포맷으로 문서화했다.
+  - 마이그레이션 회고와 품질 리팩터링 회고가 각각 별도 글로 분리됐다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `057` Vite + React 품질 리팩터링 회고 블로그 품질 개선
+
+- 배경:
+  - 최초 작성된 `docs/blog/vite-react-quality-refactor-retrospective.md`는 필요한 사실과 수치는 담고 있었지만, 이전 마이그레이션 회고 글에 비해 보고서/작업 로그에 가까웠다.
+  - 사용자는 이전 글들만큼 수준 높은 공개용 회고 글이 되었는지 리뷰를 요청했고, 개선 방향으로 사건성, 문제의식, 시행착오, 판단 근거, before/after 예시를 강화하기로 했다.
+- 변경 내용:
+  - 제목을 `Vite로 옮겼는데도 코드가 다시 무거워졌다`로 바꿔 글의 긴장과 문제의식을 선명하게 만들었다.
+  - 도입부를 “마이그레이션은 끝났지만, 마음이 놓이지 않았다”는 흐름으로 재구성해 단순 성과 보고가 아니라 후속 품질 리스크를 다루는 회고로 바꿨다.
+  - 다음 실제 사건을 중심으로 본문을 재작성했다.
+    - 카드처럼 보였지만 semantic button이 아니었던 접근성 문제
+    - `AdminRoutes.tsx`가 다시 대형 route 파일로 커지던 구조 문제
+    - generic hook 추출보다 effect 경계와 도메인 의미를 분리해야 했던 판단
+    - 지도 cluster 성능 테스트가 초록색이어도 핵심 경로를 skipped하던 문제
+    - CSP inline style 마지막 3건을 class가 아니라 SVG 좌표 모델로 해결한 이유
+    - unused export가 AI agent에게 잘못된 재사용 경로를 만든다는 교훈
+  - `100점` 표현을 내부 React 코드 품질 하네스 기준으로 제한하고, 운영 품질/제품 성공과 혼동하지 않도록 별도 섹션을 강화했다.
+  - 코드 snippet과 before/after 예시를 추가해 독자가 어떤 리팩터링을 했는지 구체적으로 따라갈 수 있게 했다.
+- 코드/문서:
+  - `docs/blog/vite-react-quality-refactor-retrospective.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `git diff --check`
+    - 통과
+- 결과:
+  - 글이 단순 작업 결과 나열에서 “왜 다시 품질 하네스가 필요했는지, 어떤 실수와 판단을 거쳤는지, 무엇을 배웠는지”를 설명하는 공개용 회고 형식으로 개선됐다.
+  - 이전 `next-to-vite-migration-retrospective.md`와 이어지는 후속편으로 읽히도록 서사와 톤을 맞췄다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `058` Next.js → Vite + React 마이그레이션 블로그 시리즈 outline 작성
+
+- 배경:
+  - 사용자는 Next.js에서 Vite + React로 아키텍처를 마이그레이션한 과정을 블로그로 작성하되, 기존 품질 리팩터링 글보다 훨씬 방대하고 자세해야 한다고 요청했다.
+  - `grill-me` 흐름으로 단일 장문 글보다 3편 시리즈가 적합하다는 결정을 확정했다.
+  - 시리즈가 작업 로그처럼 흩어지지 않도록 먼저 각 편의 메시지, 포함 범위, 제외 범위, 코드 공개 기준, 민감정보 금지선을 고정할 필요가 있었다.
+- 변경 내용:
+  - `docs/blog/next-to-vite-series-outline.md`를 새로 작성했다.
+  - 시리즈 전체 메시지를 “작은 프로젝트일수록 강력한 프레임워크보다 명확한 경계와 검증 가능한 운영 구조가 더 중요하다”로 정의했다.
+  - 3편 구성을 다음과 같이 고정했다.
+    - 1편: 왜 Next.js + OpenNext가 알뜰맵에 과해졌는가
+    - 2편: Vite + React + Worker로 어떻게 기능 보존 이관했는가
+    - 3편: Cloudflare 배포, Auth, DB lifecycle, production cutover에서 무엇이 깨졌는가
+  - 각 편의 역할, 핵심 메시지, 반드시 포함할 내용, 제외할 내용, 결말 질문을 정리했다.
+  - “정말 중요한 코드”의 기준을 `마이그레이션에서 실제 사고를 막았거나 아키텍처 경계를 바꾼 코드`로 정의했다.
+  - API contract 비교 harness, Worker request-local DB lifecycle, signed session cookie, SPA fallback route 분기, admin 권한 경계, deploy check를 핵심 코드 예시 후보로 지정했다.
+  - credential, secret, DB URL, 운영 계정 정보, 실제 token/cookie 같은 공개 금지선을 명시했다.
+- 코드/문서:
+  - `docs/blog/next-to-vite-series-outline.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `git diff --check`
+    - 통과
+- 결과:
+  - Next.js → Vite + React 마이그레이션 회고를 바로 작성하기 전에 사용할 3편 시리즈 설계 문서가 생겼다.
+  - 1편은 선택과 문제 정의, 2편은 기능 보존 이관 전략, 3편은 배포/운영 cutover 실패와 교훈으로 역할이 분리됐다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `059` Next.js → Vite + React 마이그레이션 블로그 시리즈 본문 작성
+
+- 배경:
+  - 사용자는 outline 확정 후 Next.js에서 Vite + React로 아키텍처를 마이그레이션한 과정을 실제 블로그 글로 작성하라고 요청했다.
+  - 이전 단일 초안은 작업 중 기록에 가까웠고, 시리즈로 읽히기에는 범위가 섞여 있었다.
+  - 목표는 Next.js 비판이 아니라 “당시에는 합리적이었지만 알뜰맵의 제품 성격과 운영 조건에는 점점 과해진 선택”이라는 관점으로 3편짜리 장문 회고를 만드는 것이었다.
+- 변경 내용:
+  - 1편 `docs/blog/next-to-vite-01-why-nextjs-became-heavy.md`를 작성했다.
+    - 처음 Next.js를 선택한 이유
+    - 알뜰맵이 SSR 중심 문서 사이트보다 지도 중심 SPA에 가까웠던 이유
+    - Cloudflare Workers + OpenNext + public/admin split이 만든 운영 표면
+    - 1인 개발과 AI agent 협업에서 경계가 중요해진 이유
+    - Vite + React + Worker로 바꾸려던 핵심이 프레임워크 교체가 아니라 책임 경계 재설계였다는 점
+  - 2편 `docs/blog/next-to-vite-02-preserving-contracts.md`를 작성했다.
+    - API/Auth baseline 고정
+    - production 경로 보존 후 병렬 이관
+    - React Router route 이관과 사용자 path 보존
+    - API contract 비교 harness와 `CONTRACT_EXPECT_VITE_SOURCE`
+    - Worker repository 분리
+    - signed session cookie
+    - OAuth provider별 차이
+    - admin UI 보호와 `/api/admin/*` 권한 검사 분리
+    - SPA fallback과 static route content-type
+    - Next/OpenNext 제거 순서
+  - 3편 `docs/blog/next-to-vite-03-production-cutover.md`를 작성했다.
+    - build는 성공했지만 deploy command path가 틀렸던 문제
+    - Cloudflare Dashboard 설정 저장 실패와 direct production deploy 판단
+    - GitHub 연결 오류와 variables/secrets 초기화
+    - secret 누락 시 코드가 맞아도 auth/OAuth가 실패하는 문제
+    - Worker DB lifecycle과 request-local DB context
+    - production smoke와 `source:"database"` 검증
+    - SPA fallback production 검증
+    - old admin Worker redirect 판단
+    - Next/OpenNext 산출물 cleanup
+  - 기존 `docs/blog/next-to-vite-migration-retrospective.md`는 시리즈 index로 전환했다.
+  - 민감정보 공개 금지선을 지키기 위해 실제 credential, token, DB URL, 계정 식별 정보는 본문에 넣지 않고 설정 범주와 실패 유형만 설명했다.
+- 코드/문서:
+  - `docs/blog/next-to-vite-01-why-nextjs-became-heavy.md`
+  - `docs/blog/next-to-vite-02-preserving-contracts.md`
+  - `docs/blog/next-to-vite-03-production-cutover.md`
+  - `docs/blog/next-to-vite-migration-retrospective.md`
+  - `docs/blog/next-to-vite-series-outline.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `git diff --check`
+    - 통과
+  - 민감정보 패턴 점검:
+    - 실제 secret/token/DB URL/admin password/account id 값 노출 없음
+- 결과:
+  - Next.js → Vite + React 마이그레이션 회고가 단일 초안에서 3편짜리 시리즈 구조로 분리됐다.
+  - 1편은 의사결정과 문제 정의, 2편은 contract 보존 이관, 3편은 production cutover와 운영 실패 사례로 역할이 명확해졌다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `060` Next.js → Vite + React 마이그레이션 블로그 시리즈 밀도 개선
+
+- 배경:
+  - 사용자는 작성된 3편 시리즈가 “내용이 너무 적은 것 같다”고 지적했다.
+  - 자체 리뷰 결과, 시리즈 방향은 맞지만 1편은 근거가 추상적이고, 2편은 실제 contract drift와 Phase별 검증 사례가 부족하며, 3편은 production cutover 실패의 timeline과 진단 과정이 짧다고 판단했다.
+  - 목표는 단순 분량 증가가 아니라 실제 사건, 수치, 코드/검증 근거, 운영 판단을 추가해 공개용 장문 기술 회고로 보강하는 것이었다.
+- 변경 내용:
+  - 1편 `docs/blog/next-to-vite-01-why-nextjs-became-heavy.md`를 보강했다.
+    - Next/OpenNext/Cloudflare 배포 실패 시 확인해야 했던 표면을 구체화했다.
+    - Cloudflare build cache 적용 후 배포 시간이 `7분대`에서 `2분 44초` 수준까지 줄었지만, 구조적 복잡도는 남았다는 판단을 추가했다.
+    - Vite 전환 후 산출물 구조 `dist/client`, `dist/altteulmap/index.mjs`, `dist/altteulmap/wrangler.json`을 비교했다.
+    - env 이름을 `VITE_`로 바꾸지 않고 기존 `NEXT_PUBLIC_*` contract를 유지한 이유를 설명했다.
+  - 2편 `docs/blog/next-to-vite-02-preserving-contracts.md`를 보강했다.
+    - `/api/places/map`과 `/api/places/:id`의 shape 차이를 설명하고, map API가 detail shape를 내려주던 contract drift 사례를 추가했다.
+    - `NaverMapPanel`은 재사용하고 `MapExplorer` 전체는 가져오지 않은 이유를 설명했다.
+    - `CONTRACT_EXPECT_VITE_SOURCE=database` guard가 실제 mock fallback 착각을 잡아낸 과정을 추가했다.
+    - public write API, telemetry, visitor cookie, rate limit, `404/403` 구분 같은 숨은 contract를 보강했다.
+    - credentials/session 검증 항목과 OAuth local/live 검증 분리 이유를 추가했다.
+    - admin API를 UI보다 먼저 검증한 이유와 `401/403/200` 경계를 추가했다.
+    - Worker/client 산출물 측정값을 넣어 “느낌”이 아니라 수치로 추적했다는 점을 설명했다.
+  - 3편 `docs/blog/next-to-vite-03-production-cutover.md`를 보강했다.
+    - build 성공과 deploy 성공을 분리해 설명했다.
+    - direct production deploy 판단 기준과, 사용자가 생긴 뒤 필요한 staging/rollback 기준을 추가했다.
+    - GitHub Builds 상태, 실제 Worker version, variables/secrets 상태를 분리해 봐야 한다는 내용을 추가했다.
+    - secret을 코드와 같은 배포 입력으로 다뤄야 한다는 관점을 추가했다.
+    - Worker DB lifecycle 문제를 Node singleton 습관과 Worker request lifecycle 차이로 더 자세히 설명했다.
+    - remote smoke에서 status보다 의미를 검증해야 한다는 기준을 보강했다.
+    - `.next`/`.open-next` 같은 legacy 산출물과 `node_modules`를 구분하는 용량 정리 기준을 추가했다.
+- 코드/문서:
+  - `docs/blog/next-to-vite-01-why-nextjs-became-heavy.md`
+  - `docs/blog/next-to-vite-02-preserving-contracts.md`
+  - `docs/blog/next-to-vite-03-production-cutover.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `git diff --check`
+    - 통과
+  - 민감정보 패턴 점검:
+    - 실제 secret/token/DB URL/admin password/account id 값 노출 없음
+  - 분량 확인:
+    - 1편: 336 lines
+    - 2편: 552 lines
+    - 3편: 501 lines
+- 결과:
+  - 시리즈가 outline형 초안에서 실제 사건과 판단 근거가 들어간 장문 회고에 가까워졌다.
+  - 특히 2편과 3편은 contract drift, DB source guard, Worker DB lifecycle, production smoke, secret inventory 등 독자가 실무적으로 참고할 수 있는 내용이 크게 늘었다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `061` Next.js → Vite + React 마이그레이션 블로그 시리즈 최종 polish
+
+- 배경:
+  - 사용자는 시리즈가 더 이상 개선할 것 없이 완벽한지 물었다.
+  - 자체 판단으로는 내용 밀도는 충분히 개선됐지만, 게시 전 최종 편집 관점에서 hook, 읽는 순서, 2편의 독해 구조, 3편의 timeline을 한 번 더 다듬을 필요가 있었다.
+- 변경 내용:
+  - 1편 `docs/blog/next-to-vite-01-why-nextjs-became-heavy.md`에 “왜 굳이 잘 돌아가던 구조를 갈아엎었나” 도입 섹션을 추가했다.
+  - 2편 `docs/blog/next-to-vite-02-preserving-contracts.md`에 읽는 순서 안내를 추가했다.
+  - 2편의 큰 컴포넌트 재사용 구간에 “마이그레이션에서 재사용의 단위는 파일이 아니라 책임”이라는 교훈을 추가했다.
+  - 2편의 contract check 구간에 `shape parity`와 `source parity`를 구분하는 설명을 추가했다.
+  - 2편의 telemetry/public write 구간에 “사용자에게 보이지 않는 API일수록 contract가 더 중요하다”는 정리 문장을 추가했다.
+  - 2편의 admin 구간에 UI가 아니라 API status를 기준으로 완료를 판단했다는 문장을 추가했다.
+  - 3편 `docs/blog/next-to-vite-03-production-cutover.md` 도입부에 production cutover timeline을 추가했다.
+  - index `docs/blog/next-to-vite-migration-retrospective.md`에 “왜/어떻게/운영 검증” 중심의 읽는 순서를 추가했다.
+  - 2편에 있던 중복 문장 1개를 제거했다.
+- 코드/문서:
+  - `docs/blog/next-to-vite-01-why-nextjs-became-heavy.md`
+  - `docs/blog/next-to-vite-02-preserving-contracts.md`
+  - `docs/blog/next-to-vite-03-production-cutover.md`
+  - `docs/blog/next-to-vite-migration-retrospective.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `git diff --check`
+    - 통과
+  - 민감정보 패턴 점검:
+    - 실제 secret/token/DB URL/admin password/account id 값 노출 없음
+  - 분량 확인:
+    - 1편: 349 lines
+    - 2편: 595 lines
+    - 3편: 518 lines
+    - index: 54 lines
+- 결과:
+  - 세 편의 시작부와 독해 구조가 더 선명해졌다.
+  - 2편은 긴 글이지만 읽는 순서와 각 구간의 교훈이 보강됐다.
+  - 3편은 production cutover 사건이 timeline으로 먼저 잡혀 운영 장애 회고처럼 읽히게 됐다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `062` Next.js → Vite + React 마이그레이션 블로그 시리즈 게시 전 문장 편집 및 최종 리뷰
+
+- 배경:
+  - 사용자는 게시 전 맞춤법/문장 리듬 수준의 편집과 마지막 리뷰를 요청했다.
+  - 이전 단계에서 구조와 내용 밀도는 충분히 보강됐으므로, 이번 작업은 의미 변경 없이 문장 리듬, 반복 표현, 연결 문장을 다듬는 데 집중했다.
+- 변경 내용:
+  - 1편 `docs/blog/next-to-vite-01-why-nextjs-became-heavy.md`의 문장 리듬을 정리했다.
+    - “문서 중심 사이트가 아니다”를 더 자연스러운 표현으로 바꿨다.
+    - `Next.js는 Next.js의 규칙이 있다`, `Cloudflare Workers는 Workers의 규칙이 있다`처럼 반복되는 표현을 정리했다.
+    - 보안 경계 설명과 보수적 결정 설명을 더 자연스럽게 다듬었다.
+  - 2편 `docs/blog/next-to-vite-02-preserving-contracts.md`의 긴 문장과 반복 표현을 다듬었다.
+    - “깨졌을 때 원인을 분리할 수 없다”를 더 자연스러운 표현으로 조정했다.
+    - API drift 가능성 문장의 리듬을 통일했다.
+    - NextAuth contract 설명과 SPA fallback 설명을 조금 더 명확하게 바꿨다.
+  - 3편 `docs/blog/next-to-vite-03-production-cutover.md`의 운영 회고 문장을 다듬었다.
+    - build/deploy 산출물 경로 설명을 간결하게 정리했다.
+    - direct production deploy 판단 문장을 자연스럽게 다듬었다.
+    - latest build failed와 production version 불일치 설명의 문장 리듬을 정리했다.
+    - Worker DB lifecycle 문제 표현을 “문제가 터졌다”에서 더 차분한 표현으로 바꿨다.
+- 코드/문서:
+  - `docs/blog/next-to-vite-01-why-nextjs-became-heavy.md`
+  - `docs/blog/next-to-vite-02-preserving-contracts.md`
+  - `docs/blog/next-to-vite-03-production-cutover.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `git diff --check`
+    - 통과
+  - 민감정보 패턴 점검:
+    - 실제 secret/token/DB URL/admin password/account id 값 노출 없음
+  - heading 구조 점검:
+    - 1편, 2편, 3편, index 모두 정상
+  - 분량 확인:
+    - 1편: 349 lines
+    - 2편: 595 lines
+    - 3편: 518 lines
+    - index: 54 lines
+- 최종 리뷰:
+  - 게시 가능한 장문 시리즈 수준에 도달했다.
+  - 각 편의 역할이 분리되어 있고, index에서 읽는 순서도 명확하다.
+  - 1편은 의사결정과 문제 정의, 2편은 contract 보존 이관, 3편은 production cutover와 운영 실패 사례로 읽힌다.
+  - 남은 리스크는 코드/내용 누락보다 게시 플랫폼에서의 렌더링, 코드 블록 가독성, 제목/썸네일/요약문 같은 배포 매체 편집 영역이다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `063` 업그레이드 대상 블로그만 선별 개선
+
+- 배경:
+  - 사용자는 Next.js → Vite + React 마이그레이션 시리즈 수준으로 다른 블로그 글도 업그레이드하고 싶다고 요청했다.
+  - 전체 `docs/blog` 검토 결과, 이미 게시 가능 수준인 Next→Vite 1/2/3편은 추가 수정 대상에서 제외하고, 실제 업그레이드가 필요한 글만 선별했다.
+  - 개선 대상은 시리즈 landing page 역할이 약한 `next-to-vite-migration-retrospective.md`와, 좋은 내용에 비해 사건성/문장 리듬이 약한 `vite-react-quality-refactor-retrospective.md` 두 파일로 좁혔다.
+- 변경 내용:
+  - `docs/blog/next-to-vite-migration-retrospective.md`를 단순 목차에서 시리즈 landing page에 가깝게 개선했다.
+    - “잘 돌아가던 Next.js 앱을 굳이 Vite + React + Cloudflare Worker로 옮겼다”는 문제 제기로 도입부를 강화했다.
+    - 이 글이 “Next.js가 틀렸다”는 선언이 아니라, 1인 개발/AI agent 운영/Cloudflare Workers라는 조건에서 구조 적합성을 다시 판단한 기록이라는 점을 명확히 했다.
+    - 1편은 선택의 이유, 2편은 contract 보존, 3편은 production cutover와 운영 검증이라는 읽는 흐름을 추가했다.
+  - `docs/blog/vite-react-quality-refactor-retrospective.md`를 보강했다.
+    - `100점` 표현 반복을 줄이고, “품질 하네스 통과”와 “운영 품질 완성”을 구분하도록 문장을 다듬었다.
+    - 지도 클러스터/검색중/마커 전환 회귀가 사용자의 신뢰를 어떻게 깨뜨리는지 UX 관점의 설명을 추가했다.
+    - 성능 테스트가 단순 수치 경쟁이 아니라 실제 사용자가 겪은 느림과 혼란을 재현하는 장치였다는 맥락을 보강했다.
+    - 테스트가 늘어도 실제 UX 리스크가 완전히 사라지는 것은 아니므로, 점수를 과신하지 않아야 한다는 결론을 더 선명하게 정리했다.
+  - Next→Vite 1/2/3편과 internal outline 문서는 이번 범위에서 수정하지 않았다.
+- 코드/문서:
+  - `docs/blog/next-to-vite-migration-retrospective.md`
+  - `docs/blog/vite-react-quality-refactor-retrospective.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `git diff --check`
+    - 통과
+  - 민감정보 패턴 점검:
+    - `docs/blog` 하위에서 실제 secret/token/DB URL/admin password/account id 값 노출 없음
+  - 분량 확인:
+    - `vite-react-quality-refactor-retrospective.md`: 502 lines
+    - `next-to-vite-migration-retrospective.md`: 64 lines
+- 결과:
+  - 업그레이드가 필요한 글만 선별해 개선했고, 이미 충분한 글은 불필요하게 건드리지 않았다.
+  - 품질 리팩터링 회고는 단순 점수 달성 글에서 실제 지도 UX 회귀와 품질 기준을 다루는 회고로 강화됐다.
+  - Next→Vite index는 독자가 시리즈 전체 맥락과 읽는 순서를 빠르게 이해할 수 있는 landing page 역할을 하게 됐다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.

@@ -38,15 +38,6 @@ const ACTIVE_PRICE_TONE: PlaceMarkerTone = {
   tailBorder: "rgba(24, 70, 145, 0.72)",
 };
 
-export const CLUSTER_MARKER_THEME = {
-  background:
-    "linear-gradient(180deg, rgba(239, 246, 255, 0.98) 0%, rgba(219, 234, 254, 0.96) 100%)",
-  border: "rgba(37, 99, 235, 0.22)",
-  ring: "rgba(191, 219, 254, 0.94)",
-  text: "#1e40af",
-  shadow: "0 7px 16px rgba(15, 23, 42, 0.14)",
-} as const;
-
 export function formatMarkerCount(count: number) {
   return new Intl.NumberFormat("ko-KR").format(count);
 }

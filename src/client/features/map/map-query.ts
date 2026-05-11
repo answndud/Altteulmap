@@ -4,13 +4,13 @@ import type {
   PlaceSearchScope,
 } from "@/features/places/types";
 
-export const SEOUL_BOOTSTRAP_BOUNDS: PlaceBounds = {
+const SEOUL_BOOTSTRAP_BOUNDS: PlaceBounds = {
   minLat: 37.4133,
   maxLat: 37.7151,
   minLng: 126.7341,
   maxLng: 127.2693,
 };
-export const SEOUL_BOOTSTRAP_ZOOM = 11;
+const SEOUL_BOOTSTRAP_ZOOM = 11;
 export const VIEWPORT_FETCH_DEBOUNCE_MS = 320;
 export const CLUSTER_FOCUS_VIEWPORT_LOCK_MS = 360;
 
@@ -49,7 +49,7 @@ export function buildMapApiPath(
   return queryString ? `/api/places/map?${queryString}` : "/api/places/map";
 }
 
-export function isBootstrapBounds(bounds: PlaceBounds) {
+function isBootstrapBounds(bounds: PlaceBounds) {
   return (
     bounds.minLat === SEOUL_BOOTSTRAP_BOUNDS.minLat &&
     bounds.maxLat === SEOUL_BOOTSTRAP_BOUNDS.maxLat &&
@@ -58,7 +58,7 @@ export function isBootstrapBounds(bounds: PlaceBounds) {
   );
 }
 
-export function getViewportBoundsSnapFactor(zoom: number) {
+function getViewportBoundsSnapFactor(zoom: number) {
   if (zoom <= 12) {
     return 200;
   }
@@ -70,7 +70,7 @@ export function getViewportBoundsSnapFactor(zoom: number) {
   return 1_000;
 }
 
-export function snapViewportBounds(bounds: PlaceBounds, zoom: number): PlaceBounds {
+function snapViewportBounds(bounds: PlaceBounds, zoom: number): PlaceBounds {
   const snapFactor = getViewportBoundsSnapFactor(zoom);
 
   return {
