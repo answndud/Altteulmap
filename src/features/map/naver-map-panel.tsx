@@ -38,7 +38,7 @@ import type {
   PlacePreviewRecord,
 } from "@/features/places/types";
 
-type NaverMapPanelProps = {
+export type NaverMapPanelProps = {
   initialBounds?: PlaceBounds | null;
   isLoading?: boolean;
   mapMarkers: PlaceMapMarkerRecord[];
