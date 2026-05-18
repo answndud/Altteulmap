@@ -3627,3 +3627,43 @@
   - viewport bootstrap, debounce, duplicate request guard, cluster focus lock, optimistic cluster preview, manual refresh semantics는 변경하지 않았다.
   - 다음 구조 개선 후보는 MapRoute의 desktop result rail component 분리 또는 bookmark/reaction interaction hook 분리다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `091` MapRoute desktop result rail component 분리
+
+- 배경:
+  - viewport fetch hook 분리 후 `src/client/routes/MapRoute.tsx`에는 desktop result rail aside JSX가 남아 있었다.
+  - 이 aside는 selected place detail, result count, loading/error/empty/list rendering을 포함해 route component 안에서 가장 큰 UI 덩어리였다.
+  - 이번 slice는 desktop rail UI를 feature component로 이동하고, selection/bookmark/reaction semantics와 map/list data flow는 그대로 유지하는 동작 보존형 리팩터링으로 제한했다.
+- 변경 내용:
+  - `src/client/features/map/MapDesktopResultsRail.tsx`를 추가했다.
+  - desktop selected detail sheet, result count badge, trimmed result 안내, loading/error/empty state, place card list rendering을 새 component로 이동했다.
+  - 기존 `places.length` 기준 empty/list 표시 조건과 `displayedPlaces` 기반 list rendering을 분리해 기존 semantics를 유지했다.
+  - `src/client/routes/MapRoute.tsx`는 rail에 필요한 state와 handler를 props로 연결하도록 정리했다.
+  - `docs/refactoring-large-files.md`의 MapRoute hotspot line count와 분리 상태를 갱신했다.
+- 코드/문서:
+  - `src/client/routes/MapRoute.tsx`
+  - `src/client/features/map/MapDesktopResultsRail.tsx`
+  - `docs/refactoring-large-files.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run typecheck`
+    - 통과.
+  - `npm run lint`
+    - 통과.
+  - `npm run verify`
+    - 통과. lint, typecheck, unit test 11개 통과.
+  - `npm run test:e2e:full -- tests/e2e/map.spec.ts`
+    - 통과.
+    - runner 특성상 full E2E 세트가 실행되어 desktop smoke 10개, desktop full 7개, mobile 3개가 통과했다.
+    - 로컬 Node `v20.13.1`에서 Vite의 Node `20.19+` 권장 경고가 출력됐지만 build/test는 통과했다.
+  - `npm run hygiene:dead-code`
+    - 통과.
+  - `git diff --check`
+    - 통과.
+- 결과:
+  - `src/client/routes/MapRoute.tsx`는 479 lines에서 428 lines로 줄었다.
+  - desktop selected detail, result summary, loading/error/empty/list display semantics는 변경하지 않았다.
+  - 다음 구조 개선 후보는 MapRoute의 bookmark/reaction interaction hook 분리 또는 category/search controls component 분리다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
