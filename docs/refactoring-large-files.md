@@ -9,8 +9,9 @@
 - `src/worker/places-read-repository.ts`: 77 lines
   - public read entry point와 DB/mock fallback gating만 남아 있다.
   - map list query, place detail query, pure mapper, response type, marker/cluster helper, mock fallback은 `src/worker/places-read-map-repository.ts`, `src/worker/places-read-detail-repository.ts`, `src/worker/places-read-mappers.ts`, `src/worker/places-read-types.ts`, `src/worker/places-read-markers.ts`, `src/worker/places-read-mock.ts`로 분리되었다.
-- `src/worker/admin-prices-repository.ts`: 162 lines
-  - price review queue와 admin place price detail read가 repository에 남아 있다.
+- `src/worker/admin-prices-repository.ts`: 6 lines
+  - admin price repository import contract를 유지하는 re-export hub 역할만 남아 있다.
+  - price review queue와 admin place price detail read는 `src/worker/admin/admin-price-read-repository.ts`로 분리되었다.
   - pricing summary refresh, moderation suggestion mapping, admin price item mapping은 `src/worker/admin/admin-price-helpers.ts`로 분리되었다.
   - price report moderation transaction은 `src/worker/admin/admin-price-review-repository.ts`로 분리되었다.
   - price item update transaction은 `src/worker/admin/admin-price-items-repository.ts`로 분리되었다.

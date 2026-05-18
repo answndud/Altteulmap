@@ -3994,3 +3994,44 @@
   - 비회원 반응 optimistic update, 인기 장소 선택 시 지도 focus, 모바일 목록 선택 시 상세 sheet 전환 semantics는 변경하지 않았다.
   - 다음 구조 개선 후보는 `src/db/schema.ts`의 schema module 분할 준비 또는 `src/worker/admin-prices-repository.ts` read query 분리다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `100` admin price read repository 분리
+
+- 배경:
+  - `src/worker/admin-prices-repository.ts`는 transaction 분리 이후에도 pending price report queue와 admin place price detail read query를 직접 보유하고 있었다.
+  - price moderation transaction, price item update transaction, helper는 이미 `src/worker/admin/` 하위로 분리되어 있어 read query도 같은 admin price 경계로 옮기는 것이 자연스러웠다.
+  - 이번 slice는 admin price API path, authorization, response shape, 정렬, moderation suggestion mapping을 바꾸지 않는 동작 보존형 리팩터링으로 제한했다.
+- 변경 내용:
+  - `src/worker/admin/admin-price-read-repository.ts`를 추가했다.
+  - `listWorkerPendingPriceReports`와 `getWorkerAdminPlacePriceDetail` 구현을 새 read repository로 이동했다.
+  - pending price report query의 pending/active filter, newest-first 정렬, existing price left join, moderation suggestion lookup/mapping을 유지했다.
+  - admin place price detail query의 active place lookup, active/representative/amount/label 정렬, representative price fallback, verification status 계산을 유지했다.
+  - `src/worker/admin-prices-repository.ts`는 read/update/moderation repository를 re-export하는 compatibility hub로 축소했다.
+  - `docs/refactoring-large-files.md`의 admin price hotspot line count와 분리 상태를 갱신했다.
+- 코드/문서:
+  - `src/worker/admin-prices-repository.ts`
+  - `src/worker/admin/admin-price-read-repository.ts`
+  - `docs/refactoring-large-files.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run typecheck`
+    - 통과.
+  - `npm run lint`
+    - 통과.
+  - `npm run hygiene:dead-code`
+    - 통과.
+  - `git diff --check`
+    - 통과.
+  - `npm run verify`
+    - 통과. lint, typecheck, unit test 11개 통과.
+  - `npm run test:e2e:full -- tests/e2e/price-review.spec.ts`
+    - 통과.
+    - runner 특성상 DB push/seed/build 후 desktop smoke 10개, desktop full 7개, mobile 3개가 실행되어 모두 통과했다.
+    - 로컬 Node `v20.13.1`에서 Vite의 Node `20.19+` 권장 경고가 출력됐지만 build/test는 통과했다.
+- 결과:
+  - `src/worker/admin-prices-repository.ts`는 162 lines에서 6 lines로 줄었다.
+  - admin price queue/detail read semantics와 기존 import contract는 변경하지 않았다.
+  - 다음 구조 개선 후보는 `src/db/schema.ts`의 schema module 분할 준비 또는 admin price read repository의 pure mapper 테스트 보강이다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
