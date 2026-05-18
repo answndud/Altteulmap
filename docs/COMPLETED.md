@@ -3828,3 +3828,43 @@
   - desktop/mobile layout split 기준과 detail/list surface 노출 semantics는 변경하지 않았다.
   - 다음 구조 개선 후보는 MapRoute top-level derived state hook 분리 또는 `getLoginHref` helper 분리다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `096` MapRoute view model hook 분리
+
+- 배경:
+  - desktop layout hook 분리 후 `src/client/routes/MapRoute.tsx`에는 query/category/scope 해석과 map/list/trending/count 파생 계산이 남아 있었다.
+  - 이 계산들은 route markup보다 route view model에 가까워 별도 hook으로 분리하면 route component가 orchestration에 집중할 수 있다.
+  - 이번 slice는 selected place merge, optimistic cluster marker, trending hide/sort, count/trimmed semantics를 바꾸지 않는 동작 보존형 리팩터링으로 제한했다.
+- 변경 내용:
+  - `src/client/features/map/use-map-route-view-model.ts`를 추가했다.
+  - `useMapRouteSearchModel`로 `q`, `category`, `scope` URL parameter 해석과 selected category/category label 계산을 이동했다.
+  - `useMapRouteViewModel`로 places, optimistic cluster marker merge, selected place list merge, trending places, total/visible count, server-trimmed flag 계산을 이동했다.
+  - `src/client/routes/MapRoute.tsx`는 새 hook들의 반환값을 받아 map/search/rail/mobile/trending component에 전달하도록 정리했다.
+  - `docs/refactoring-large-files.md`의 MapRoute hotspot line count와 분리 상태를 갱신했다.
+- 코드/문서:
+  - `src/client/routes/MapRoute.tsx`
+  - `src/client/features/map/use-map-route-view-model.ts`
+  - `docs/refactoring-large-files.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run typecheck`
+    - 통과.
+  - `npm run lint`
+    - 통과.
+  - `npm run verify`
+    - 통과. lint, typecheck, unit test 11개 통과.
+  - `npm run test:e2e:full -- tests/e2e/map.spec.ts`
+    - 통과.
+    - runner 특성상 full E2E 세트가 실행되어 desktop smoke 10개, desktop full 7개, mobile 3개가 통과했다.
+    - 로컬 Node `v20.13.1`에서 Vite의 Node `20.19+` 권장 경고가 출력됐지만 build/test는 통과했다.
+  - `npm run hygiene:dead-code`
+    - 통과.
+  - `git diff --check`
+    - 통과.
+- 결과:
+  - `src/client/routes/MapRoute.tsx`는 187 lines에서 177 lines로 줄었다.
+  - query/category/scope URL semantics, selected category label, optimistic marker merge, selected place merge, trending hide/sort, count/trimmed semantics는 변경하지 않았다.
+  - 다음 구조 개선 후보는 `getLoginHref` helper 분리 또는 MapRoute map panel props adapter 분리다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
