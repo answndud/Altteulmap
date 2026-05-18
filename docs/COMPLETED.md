@@ -2757,3 +2757,43 @@
   - 가격 제보 승인/반려 API의 route path, response shape, transaction boundary는 변경하지 않았다.
   - 다음 구조 개선 후보는 `updateWorkerPriceItem` transaction을 `src/worker/admin/admin-price-items-repository.ts`로 분리하는 작업이다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `070` 가격 항목 수정 transaction 분리
+
+- 배경:
+  - 이전 작업에서 가격 제보 moderation transaction을 분리한 뒤, `admin-prices-repository`에는 가격 항목 수정 transaction이 남아 있었다.
+  - `updateWorkerPriceItem`는 가격 항목 조회, 중복 label 검사, representative reset, item update, pricing summary refresh, admin action insert를 하나의 transaction에서 처리하고 있었다.
+  - 이번 slice는 transaction 내부 동작, route import, response shape를 바꾸지 않고 module 경계만 분리했다.
+- 변경 내용:
+  - `src/worker/admin/admin-price-items-repository.ts`를 추가했다.
+  - `updateWorkerPriceItem` transaction을 새 module로 이동했다.
+  - 기존 `src/worker/admin-prices-repository.ts`에서는 `updateWorkerPriceItem`을 re-export해 `src/worker/routes/admin.ts`와 `src/worker/admin-repository.ts`의 import contract를 유지했다.
+  - `src/worker/admin-prices-repository.ts`는 pending price report queue와 admin place price detail read 중심으로 남겼다.
+  - `docs/refactoring-large-files.md`의 line count와 Repository Slice 3 상태를 현재 구조 기준으로 갱신했다.
+- 코드/문서:
+  - `src/worker/admin-prices-repository.ts`
+  - `src/worker/admin/admin-price-items-repository.ts`
+  - `docs/refactoring-large-files.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run typecheck`
+    - 통과.
+  - `npm run lint`
+    - 통과.
+  - `npm run verify`
+    - 통과. lint, typecheck, unit test 8개 통과.
+  - `npm run test:e2e:full -- tests/e2e/price-review.spec.ts`
+    - 통과.
+    - runner 특성상 full E2E 세트가 실행되어 desktop smoke 10개, desktop full 7개, mobile 3개가 통과했다.
+    - 로컬 Node `v20.13.1`에서 Vite의 Node `20.19+` 권장 경고가 출력됐지만 build/test는 통과했다.
+  - `npm run hygiene:dead-code`
+    - 통과.
+  - `git diff --check`
+    - 통과.
+- 결과:
+  - `src/worker/admin-prices-repository.ts`는 303 lines에서 162 lines로 줄었다.
+  - 가격 항목 수정 API의 route path, response shape, transaction boundary는 변경하지 않았다.
+  - Repository Slice 3의 핵심 분리는 완료됐고, 다음 구조 개선 후보는 admin route registration 분리 또는 public write handler 분리다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
