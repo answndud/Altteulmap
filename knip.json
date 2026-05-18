@@ -6,7 +6,8 @@
     "src/worker/legacy-admin-redirect.mjs",
     "scripts/**/*.{js,mjs,ts}",
     "tests/**/*.ts",
-    "eslint.config.mjs",
+    "eslint.config.js",
+    "postcss.config.mjs",
     "vite.config.mts",
     "playwright.config.ts",
     "drizzle.config.ts"
@@ -16,7 +17,8 @@
     "scripts/**/*.{js,mjs,ts}",
     "tests/**/*.ts",
     "*.config.{js,mjs,ts,mts}",
-    "eslint.config.mjs"
+    "eslint.config.js",
+    "postcss.config.mjs"
   ],
   "ignore": [
     ".agents/**",
@@ -24,6 +26,6 @@
     "test-results/**",
     "playwright-report/**"
   ],
-  "ignoreDependencies": ["tailwindcss"],
+  "ignoreDependencies": ["@tailwindcss/postcss", "tailwindcss"],
   "ignoreBinaries": ["lsof"]
 }

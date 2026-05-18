@@ -1,4 +1,4 @@
-export type CategoryGroup = {
+type CategoryGroup = {
   slug: string;
   name: string;
   children: Array<{

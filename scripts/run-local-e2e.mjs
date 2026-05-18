@@ -1,14 +1,12 @@
 import {
-  existsSync,
   mkdirSync,
-  readFileSync,
   writeFileSync,
 } from "node:fs";
-import { spawnSync } from "node:child_process";
 import path from "node:path";
 import process from "node:process";
 
-import dotenv from "dotenv";
+import { loadEnvFilesWithShellPrecedence } from "./lib/load-env-files.mjs";
+import { runCommand } from "./lib/run-command.mjs";
 
 const cwd = process.cwd();
 const mode = process.argv[2] ?? "full";
@@ -24,11 +22,16 @@ const commandsByMode = {
     "npm run build",
     "npm run test:e2e:full:ci",
   ],
+  all: [
+    "npm run e2e:prepare",
+    "npm run build",
+    "npm run test:e2e:all:ci",
+  ],
   headed: [
     "npm run e2e:prepare",
     "npm run build",
-    "playwright test --headed tests/e2e/map.spec.ts tests/e2e/signup.spec.ts tests/e2e/submission-admin.spec.ts",
-    "USE_MOCK_DATA=true playwright test --headed tests/e2e/map.mobile.spec.ts --project mobile-chromium",
+    "playwright test --headed tests/e2e/map.spec.ts tests/e2e/login.spec.ts tests/e2e/map-price-filter.spec.ts tests/e2e/signup.spec.ts tests/e2e/submission-admin.spec.ts",
+    "USE_MOCK_DATA=true playwright test --headed tests/e2e/map.mobile.spec.ts tests/e2e/map-price-filter.mobile.spec.ts --project mobile-chromium",
     "playwright test --headed tests/e2e/bookmarks.spec.ts tests/e2e/comments.spec.ts tests/e2e/price-review.spec.ts tests/e2e/report-admin.spec.ts",
   ],
   ui: [
@@ -50,20 +53,14 @@ if (!commands) {
   process.exit(1);
 }
 
+loadEnvFilesWithShellPrecedence({
+  cwd,
+  filenames: [".env", ".env.local"],
+});
+
 const env = {
   ...process.env,
 };
-
-for (const filename of [".env", ".env.local"]) {
-  const filePath = path.join(cwd, filename);
-
-  if (!existsSync(filePath)) {
-    continue;
-  }
-
-  const parsed = dotenv.parse(readFileSync(filePath));
-  Object.assign(env, parsed);
-}
 
 env.AUTH_SECRET ??= "altteulmap-local-auth-secret-change-me";
 env.NEXTAUTH_URL = "http://127.0.0.1:3107";
@@ -113,16 +110,7 @@ if (mode !== "ui" && env.USE_MOCK_DATA !== "true" && env.DATABASE_URL) {
 }
 
 for (const command of commandsToRun) {
-  const result = spawnSync(command, {
-    cwd,
-    env,
-    shell: true,
-    stdio: "inherit",
-  });
-
-  if (result.status !== 0) {
-    process.exit(result.status ?? 1);
-  }
+  runCommand(command, { cwd, env });
 
   if (command.includes("npm run build")) {
     writeGeneratedDevVars();

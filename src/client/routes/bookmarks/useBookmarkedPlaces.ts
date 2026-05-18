@@ -32,7 +32,7 @@ type BookmarkedPlacesData = {
   userLabel: string;
 };
 
-export type BookmarkedPlacesState =
+type BookmarkedPlacesState =
   | { status: "loading"; data: null; error: null }
   | { status: "success"; data: BookmarkedPlacesData; error: null }
   | { status: "unauthorized"; data: null; error: string }

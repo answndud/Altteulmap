@@ -1,6 +1,6 @@
 import type { PlacePreviewRecord } from "@/features/places/types";
 
-export type PlaceShareSource = "detail" | "detail_sheet" | "list" | "trending";
+type PlaceShareSource = "detail" | "detail_sheet" | "list" | "trending";
 
 type PlaceShareSummary = Pick<
   PlacePreviewRecord,

@@ -18,7 +18,7 @@ const globalForVisitTelemetry = globalThis as typeof globalThis & {
   __altteulmapWorkerVisitActivityLastPrunedAt?: number;
 };
 
-export type WorkerVisitActivityScope = "public" | "admin";
+type WorkerVisitActivityScope = "public" | "admin";
 type WorkerVisitEntryRef = "share";
 type WorkerPlaceShareSource =
   | "detail"
@@ -26,7 +26,7 @@ type WorkerPlaceShareSource =
   | "list"
   | "trending";
 
-export type RecordWorkerVisitActivityInput = {
+type RecordWorkerVisitActivityInput = {
   actorKey: string;
   entryRef?: WorkerVisitEntryRef | null;
   entrySource?: WorkerPlaceShareSource | null;
