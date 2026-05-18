@@ -20,11 +20,11 @@ import {
   MobilePlaceListSheet,
   type MobileSheetMode,
 } from "@/client/features/map/MobilePlaceListSheet";
+import { MapDesktopResultsRail } from "@/client/features/map/MapDesktopResultsRail";
 import {
   PlaceDetailSheet,
   type PlaceReactionUpdate,
 } from "@/client/features/map/PlaceDetailSheet";
-import { PlaceCard } from "@/client/features/map/PlaceCard";
 import { TrendingPlacesSection } from "@/client/features/map/TrendingPlacesSection";
 import { NaverMapPanel } from "@/features/map/naver-map-panel";
 import { RouteResetDetails } from "@/features/map/route-reset-details";
@@ -371,74 +371,23 @@ export function MapRoute() {
             onViewportChange={handleViewportChange}
           />
 
-          <aside className="hidden content-start gap-3 overflow-auto rounded-[0.875rem] border border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-surface)] p-3 shadow-[var(--altteul-shadow-overlay)] xl:absolute xl:right-3 xl:top-3 xl:z-20 xl:grid xl:max-h-[calc(100%-1.5rem)] xl:w-[18rem] 2xl:w-[20rem]">
-            {selectedPlace && isDesktopLayout ? (
-              <PlaceDetailSheet
-                bookmarked={bookmarkedPlaceIds.has(selectedPlace.id)}
-                loginHref={loginHref}
-                place={selectedPlace}
-                onBookmarkUpdate={updateBookmark}
-                onClose={() => setSelectedPlace(null)}
-                onReactionUpdate={updateReaction}
-              />
-            ) : null}
-
-            <div className="flex items-center justify-between border-b border-[var(--altteul-surface-border)] pb-3">
-              <div>
-                <p className="altteulmap-section-kicker text-[11px]">목록</p>
-                <h2 className="mt-1 text-base font-semibold text-[var(--altteul-text-strong)]">
-                  지도 결과
-                </h2>
-              </div>
-              <span className="altteulmap-badge px-3 py-1 text-xs font-medium">
-                {state.status === "success" ? state.data.count : "..."}곳
-              </span>
-            </div>
-
-            {state.status === "success" && (isServerTrimmed || visiblePlaceCount > 0) ? (
-              <div className="flex flex-wrap gap-2 text-xs text-[var(--altteul-text-secondary)]">
-                {isServerTrimmed ? (
-                  <span className="altteulmap-badge px-2.5 py-1 text-[11px] font-medium">
-                    총 {totalPlaceCount}곳 중 {visiblePlaceCount}곳 먼저 표시
-                  </span>
-                ) : null}
-                <span className="altteulmap-badge px-2.5 py-1 text-[11px] font-medium">
-                  {searchScope === "global" ? "전체 지역 검색" : "지도 영역 검색"}
-                </span>
-              </div>
-            ) : null}
-
-            {state.status === "loading" ? (
-              <div className="rounded-[0.85rem] border border-dashed border-[var(--altteul-surface-border-strong)] bg-[var(--altteul-bg-surface)] p-6 text-center text-sm text-[var(--altteul-text-tertiary)]">
-                지도 결과를 불러오는 중입니다.
-              </div>
-            ) : null}
-            {state.status === "error" ? (
-              <div className="rounded-[0.85rem] border border-[var(--altteul-warning-border)] bg-[var(--altteul-warning-soft)] px-4 py-3 text-sm text-[var(--altteul-warning-text)]">
-                {state.error}
-              </div>
-            ) : null}
-            {state.status === "success" && places.length === 0 ? (
-              <div className="rounded-[0.85rem] border border-dashed border-[var(--altteul-surface-border-strong)] bg-[var(--altteul-bg-surface)] p-6 text-center text-sm leading-7 text-[var(--altteul-text-tertiary)]">
-                조건에 맞는 장소가 없습니다.
-              </div>
-            ) : null}
-            {state.status === "success" && places.length > 0 ? (
-              <div className="grid gap-3 pr-1" data-testid="place-list">
-                {displayedPlaces.map((place) => (
-                  <PlaceCard
-                    key={place.id}
-                    bookmarked={bookmarkedPlaceIds.has(place.id)}
-                    isSelected={selectedPlace?.id === place.id}
-                    loginHref={loginHref}
-                    place={place}
-                    onBookmarkUpdate={updateBookmark}
-                    onSelect={selectPlace}
-                  />
-                ))}
-              </div>
-            ) : null}
-          </aside>
+          <MapDesktopResultsRail
+            bookmarkedPlaceIds={bookmarkedPlaceIds}
+            displayedPlaces={displayedPlaces}
+            isDesktopLayout={isDesktopLayout}
+            isServerTrimmed={isServerTrimmed}
+            loginHref={loginHref}
+            onBookmarkUpdate={updateBookmark}
+            onCloseSelectedPlace={resetSelectedPlace}
+            onReactionUpdate={updateReaction}
+            onSelectPlace={selectPlace}
+            placesLength={places.length}
+            searchScope={searchScope}
+            selectedPlace={selectedPlace}
+            state={state}
+            totalPlaceCount={totalPlaceCount}
+            visiblePlaceCount={visiblePlaceCount}
+          />
         </section>
 
         {!selectedPlace ? (
