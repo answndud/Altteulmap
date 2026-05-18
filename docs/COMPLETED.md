@@ -2797,3 +2797,44 @@
   - 가격 항목 수정 API의 route path, response shape, transaction boundary는 변경하지 않았다.
   - Repository Slice 3의 핵심 분리는 완료됐고, 다음 구조 개선 후보는 admin route registration 분리 또는 public write handler 분리다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `071` public write 댓글 route 분리
+
+- 배경:
+  - `docs/refactoring-large-files.md` 기준 다음 hotspot은 `src/worker/routes/public-write.ts`였다.
+  - 해당 파일은 가격 제보, 댓글 등록/삭제, 반응, 장소 등록, 신고 route를 한 module에서 처리하고 있었다.
+  - API route refactor이므로 기존 response shape, status code, rate limit, Turnstile, DB/mock fallback 동작을 유지하는 얇은 slice로 진행했다.
+- 변경 내용:
+  - `src/worker/routes/public-write-comments.ts`를 추가했다.
+  - `POST /api/places/:id/comments`와 `DELETE /api/places/:id/comments/:commentId` 등록을 새 module로 이동했다.
+  - 기존 `registerPublicWriteRoutes`에서는 같은 위치에서 `registerPublicWriteCommentRoutes(app, dependencies)`를 호출해 route 등록 순서를 유지했다.
+  - 댓글 등록의 rate limit, zod validation, Turnstile 검증, DB write, mock fallback response를 그대로 유지했다.
+  - 댓글 삭제의 DB/mock 권한 검사와 status mapping을 그대로 유지했다.
+  - `docs/refactoring-large-files.md`의 public write hotspot line count와 Worker Slice 4 상태를 갱신했다.
+- 코드/문서:
+  - `src/worker/routes/public-write.ts`
+  - `src/worker/routes/public-write-comments.ts`
+  - `docs/refactoring-large-files.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run typecheck`
+    - 통과.
+  - `npm run lint`
+    - 통과.
+  - `npm run verify`
+    - 통과. lint, typecheck, unit test 8개 통과.
+  - `npm run test:e2e:full -- tests/e2e/comments.spec.ts`
+    - 통과.
+    - runner 특성상 full E2E 세트가 실행되어 desktop smoke 10개, desktop full 7개, mobile 3개가 통과했다.
+    - 로컬 Node `v20.13.1`에서 Vite의 Node `20.19+` 권장 경고가 출력됐지만 build/test는 통과했다.
+  - `npm run hygiene:dead-code`
+    - 통과.
+  - `git diff --check`
+    - 통과.
+- 결과:
+  - `src/worker/routes/public-write.ts`는 720 lines에서 500 lines로 줄었다.
+  - 댓글 route path, response shape, rate limit, Turnstile, DB/mock fallback 동작은 변경하지 않았다.
+  - 다음 구조 개선 후보는 public write의 reaction route 또는 submission/report route 분리다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.

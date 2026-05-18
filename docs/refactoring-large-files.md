@@ -16,8 +16,10 @@
   - price item update transaction은 `src/worker/admin/admin-price-items-repository.ts`로 분리되었다.
 - `src/client/routes/MapRoute.tsx`: 734 lines
   - route state, viewport fetch, map/list sync, category tray, place cards, detail sheet, mobile list sheet, bookmark/reaction update가 한 route component에 섞여 있다.
-- `src/worker/routes/public-write.ts`: 720 lines
-  - route body parsing and write handlers are still together, but rate limit/Turnstile/mock write helpers have been moved to `src/worker/routes/public-write-support.ts`.
+- `src/worker/routes/public-write.ts`: 500 lines
+  - price report, reaction, place submission, report submission handlers are still together.
+  - comments create/delete route handlers moved to `src/worker/routes/public-write-comments.ts`.
+  - rate limit/Turnstile/mock write helpers have been moved to `src/worker/routes/public-write-support.ts`.
 - `src/worker/routes/admin.ts`: 643 lines
   - admin place, price, and report route registration still share one route module.
 - `src/worker/routes/auth.ts`: 595 lines
@@ -128,7 +130,7 @@
   - Manual Kakao/Naver live login QA when OAuth callback code changes.
 
 ### Worker Slice 4: Public Read and Write Routes
-상태: 부분 완료. Public read route는 `src/worker/routes/places-read.ts`로 분리되어 있고, `places-read-repository`의 mapper/type/marker helper도 별도 module로 분리되었다. public write route는 support helper만 분리된 상태다. 다음 작업은 write handler를 comments, reactions, submissions, reports 단위로 얇게 나누는 것이다.
+상태: 부분 완료. Public read route는 `src/worker/routes/places-read.ts`로 분리되어 있고, `places-read-repository`의 mapper/type/marker helper도 별도 module로 분리되었다. public write route는 support helper와 comments create/delete route가 분리된 상태다. 다음 작업은 write handler를 reactions, submissions, reports 단위로 얇게 나누는 것이다.
 
 - Extract:
   - categories/config/bookmarks
