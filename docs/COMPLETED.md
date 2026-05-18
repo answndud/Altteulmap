@@ -3587,3 +3587,43 @@
   - optimistic cluster marker, selected place merge, trending sort/query hide semantics는 변경하지 않았다.
   - 다음 구조 개선 후보는 MapRoute의 viewport fetch hook 분리 또는 desktop result rail component 분리다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `090` MapRoute viewport fetch hook 분리
+
+- 배경:
+  - MapRoute 파생 데이터 helper 분리 후에도 `src/client/routes/MapRoute.tsx`에는 initial fetch, viewport debounce fetch, manual refresh, cluster focus fetch, optimistic cluster preview state가 남아 있었다.
+  - 이 로직은 지도 UI markup보다 map query lifecycle과 viewport sync에 가까워 별도 hook으로 분리하는 편이 route component의 책임을 줄인다.
+  - 이번 slice는 UI 구조, API path, viewport bootstrap, debounce, cluster lock semantics를 바꾸지 않는 동작 보존형 리팩터링으로 제한했다.
+- 변경 내용:
+  - `src/client/features/map/use-map-route-places.ts`를 추가했다.
+  - map places response/load state, `loadPlaces`, initial fetch, viewport debounce fetch, manual refresh, cluster focus fetch/lock, optimistic cluster places state를 새 hook으로 이동했다.
+  - reaction optimistic update를 위해 hook에서 `updatePlaceInResults`를 제공하도록 했다.
+  - `src/client/routes/MapRoute.tsx`는 새 hook을 사용하고 selected place, bookmark, mobile sheet, rendering 책임을 주로 남기도록 정리했다.
+  - `docs/refactoring-large-files.md`의 MapRoute hotspot line count와 분리 상태를 갱신했다.
+- 코드/문서:
+  - `src/client/routes/MapRoute.tsx`
+  - `src/client/features/map/use-map-route-places.ts`
+  - `docs/refactoring-large-files.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run typecheck`
+    - 통과.
+  - `npm run lint`
+    - 통과.
+  - `npm run verify`
+    - 통과. lint, typecheck, unit test 11개 통과.
+  - `npm run test:e2e:full -- tests/e2e/map.spec.ts`
+    - 통과.
+    - runner 특성상 full E2E 세트가 실행되어 desktop smoke 10개, desktop full 7개, mobile 3개가 통과했다.
+    - 로컬 Node `v20.13.1`에서 Vite의 Node `20.19+` 권장 경고가 출력됐지만 build/test는 통과했다.
+  - `npm run hygiene:dead-code`
+    - 통과.
+  - `git diff --check`
+    - 통과.
+- 결과:
+  - `src/client/routes/MapRoute.tsx`는 711 lines에서 479 lines로 줄었다.
+  - viewport bootstrap, debounce, duplicate request guard, cluster focus lock, optimistic cluster preview, manual refresh semantics는 변경하지 않았다.
+  - 다음 구조 개선 후보는 MapRoute의 desktop result rail component 분리 또는 bookmark/reaction interaction hook 분리다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
