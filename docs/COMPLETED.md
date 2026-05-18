@@ -3287,3 +3287,46 @@
   - OAuth signin/callback과 csrf/session/signout/providers route wiring은 후속 auth split 후보로 남았다.
   - 다음 구조 개선 후보는 OAuth route 분리 또는 csrf/session/signout/provider route 분리다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `083` auth OAuth route 분리
+
+- 배경:
+  - credentials route 분리 후 `src/worker/routes/auth.ts`에는 OAuth helper와 OAuth signin/callback route가 크게 남아 있었다.
+  - OAuth 영역은 provider id/type, state encode/decode, provider config, token exchange, profile fetch, user sync, session cookie 설정이 함께 움직이므로 별도 route module로 분리하기 적합했다.
+  - 이번 slice는 route path와 OAuth cookie/session semantics를 바꾸지 않고 Kakao/Naver OAuth route registration만 분리했다.
+- 변경 내용:
+  - `src/worker/routes/auth-oauth.ts`를 추가했다.
+  - `/api/auth/signin/:provider`, `/api/auth/callback/:provider` route 등록을 새 module로 이동했다.
+  - OAuth provider id/type, signed state encode/decode, provider config, token exchange, profile fetch, login error redirect helper를 OAuth route module로 이동했다.
+  - `registerAuthRoutes`는 provider discovery route 이후 `registerAuthOAuthRoutes(app, dependencies)`, `registerAuthCredentialsRoutes(app, dependencies)` 순서로 하위 auth route를 등록한다.
+  - `/api/auth/providers` response shape와 enabled provider discovery는 기존 `listWorkerSocialAuthProviders` 기반으로 유지했다.
+  - Kakao/Naver authorization URL, state cookie, callback state 검증, session cookie, callback cookie semantics를 유지했다.
+  - `docs/refactoring-large-files.md`의 auth hotspot line count와 Worker Slice 3 상태를 갱신했다.
+- 코드/문서:
+  - `src/worker/routes/auth.ts`
+  - `src/worker/routes/auth-oauth.ts`
+  - `docs/refactoring-large-files.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run typecheck`
+    - 통과.
+  - `npm run lint`
+    - 통과.
+  - `npm run verify`
+    - 통과. lint, typecheck, unit test 8개 통과.
+  - `npm run test:e2e:full -- tests/e2e/login.spec.ts tests/e2e/signup.spec.ts`
+    - 통과.
+    - runner 특성상 full E2E 세트가 실행되어 desktop smoke 10개, desktop full 7개, mobile 3개가 통과했다.
+    - 로컬 Node `v20.13.1`에서 Vite의 Node `20.19+` 권장 경고가 출력됐지만 build/test는 통과했다.
+  - `npm run hygiene:dead-code`
+    - 통과.
+  - `git diff --check`
+    - 통과.
+- 결과:
+  - `src/worker/routes/auth.ts`는 493 lines에서 116 lines로 줄었다.
+  - OAuth signin/callback API path, redirect URL, state cookie, callback validation, session cookie semantics는 변경하지 않았다.
+  - auth route hub에는 csrf/session/signout/providers route wiring과 하위 auth route module 등록만 남았다.
+  - 다음 구조 개선 후보는 csrf/session/signout/provider route 분리 또는 `MapRoute.tsx` query/list/sheet 책임 분리다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
