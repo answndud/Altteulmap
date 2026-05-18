@@ -14,8 +14,9 @@
   - pricing summary refresh, moderation suggestion mapping, admin price item mapping은 `src/worker/admin/admin-price-helpers.ts`로 분리되었다.
   - price report moderation transaction은 `src/worker/admin/admin-price-review-repository.ts`로 분리되었다.
   - price item update transaction은 `src/worker/admin/admin-price-items-repository.ts`로 분리되었다.
-- `src/client/routes/MapRoute.tsx`: 734 lines
+- `src/client/routes/MapRoute.tsx`: 711 lines
   - route state, viewport fetch, map/list sync, category tray, place cards, detail sheet, mobile list sheet, bookmark/reaction update가 한 route component에 섞여 있다.
+  - map marker, selected place merge, trending places 파생 계산은 `src/client/features/map/map-route-derived.ts`로 분리되었다.
 - `src/worker/routes/public-write.ts`: 30 lines
   - public write route hub now only wires focused route modules.
   - price report route handler moved to `src/worker/routes/public-write-price-reports.ts`.

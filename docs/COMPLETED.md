@@ -3542,3 +3542,48 @@
   - place submission category lookup, slug 생성, pending place/price item/price report transaction, response preview shape는 변경하지 않았다.
   - 다음 구조 개선 후보는 `MapRoute.tsx` query/list/sheet 책임 분리 또는 `src/db/schema.ts` 분리 전 사전 점검이다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `089` MapRoute 파생 데이터 helper 분리
+
+- 배경:
+  - public write repository split 완료 후 다음 구조 개선 후보는 `src/client/routes/MapRoute.tsx`였다.
+  - `MapRoute.tsx`에는 route state, viewport fetch, map/list sync, selected place merge, category tray, detail sheet, mobile list sheet가 한 파일에 섞여 있었다.
+  - 첫 프론트 slice는 UI markup과 fetch 흐름을 바꾸지 않고 순수 파생 계산만 분리해 회귀 위험을 낮췄다.
+- 변경 내용:
+  - `src/client/features/map/map-route-derived.ts`를 추가했다.
+  - optimistic cluster preview를 map place marker로 바꾸는 `deriveMapMarkers`를 분리했다.
+  - selected place의 최신 reaction/bookmark state를 list에 반영하는 `mergeSelectedPlaceIntoList`를 분리했다.
+  - 좋아요 수와 최신 가격 갱신일 기준으로 인기 장소를 계산하고 검색 중에는 숨기는 `deriveTrendingPlaces`를 분리했다.
+  - `src/client/routes/MapRoute.tsx`는 기존 `useMemo`에서 새 helper를 호출하도록 변경했다.
+  - `tests/unit/map-route-derived.test.ts`를 추가해 marker/list/trending 파생 동작을 고정했다.
+  - `docs/refactoring-large-files.md`의 MapRoute hotspot line count와 분리 상태를 갱신했다.
+- 코드/문서:
+  - `src/client/routes/MapRoute.tsx`
+  - `src/client/features/map/map-route-derived.ts`
+  - `tests/unit/map-route-derived.test.ts`
+  - `docs/refactoring-large-files.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run typecheck`
+    - 통과.
+  - `npm run test:unit`
+    - 통과. 기존 unit test와 신규 map-route-derived test 포함 11개 통과.
+  - `npm run lint`
+    - 통과.
+  - `npm run verify`
+    - 통과. lint, typecheck, unit test 11개 통과.
+  - `npm run test:e2e:full -- tests/e2e/map.spec.ts`
+    - 통과.
+    - runner 특성상 full E2E 세트가 실행되어 desktop smoke 10개, desktop full 7개, mobile 3개가 통과했다.
+    - 로컬 Node `v20.13.1`에서 Vite의 Node `20.19+` 권장 경고가 출력됐지만 build/test는 통과했다.
+  - `npm run hygiene:dead-code`
+    - 통과.
+  - `git diff --check`
+    - 통과.
+- 결과:
+  - `src/client/routes/MapRoute.tsx`는 734 lines에서 711 lines로 줄었다.
+  - optimistic cluster marker, selected place merge, trending sort/query hide semantics는 변경하지 않았다.
+  - 다음 구조 개선 후보는 MapRoute의 viewport fetch hook 분리 또는 desktop result rail component 분리다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
