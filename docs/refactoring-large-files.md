@@ -6,9 +6,9 @@
 - 이 계획은 신규 기능, API shape 변경, DB schema 변경, env 이름 변경, route path 변경, Cloudflare 배포 방식 변경을 포함하지 않는다.
 
 ## Current Hotspots
-- `src/worker/places-read-repository.ts`: 502 lines
-  - map list query, place detail query, comment/reaction aggregation이 한 repository에 남아 있다.
-  - pure mapper, response type, marker/cluster helper, mock fallback은 `src/worker/places-read-mappers.ts`, `src/worker/places-read-types.ts`, `src/worker/places-read-markers.ts`, `src/worker/places-read-mock.ts`로 분리되었다.
+- `src/worker/places-read-repository.ts`: 256 lines
+  - place detail query와 comment/reaction aggregation이 repository에 남아 있다.
+  - map list query, pure mapper, response type, marker/cluster helper, mock fallback은 `src/worker/places-read-map-repository.ts`, `src/worker/places-read-mappers.ts`, `src/worker/places-read-types.ts`, `src/worker/places-read-markers.ts`, `src/worker/places-read-mock.ts`로 분리되었다.
 - `src/worker/admin-prices-repository.ts`: 162 lines
   - price review queue와 admin place price detail read가 repository에 남아 있다.
   - pricing summary refresh, moderation suggestion mapping, admin price item mapping은 `src/worker/admin/admin-price-helpers.ts`로 분리되었다.
@@ -345,7 +345,7 @@ Candidate file:
 - `npm run smoke:remote` only after deployment to an environment containing the same Worker code and required DB migrations.
 
 ## Suggested Order
-1. Continue splitting `src/worker/places-read-repository.ts` into query and aggregation modules.
+1. Continue splitting `src/worker/places-read-repository.ts` detail query aggregation.
 2. Split `src/worker/routes/admin.ts` by place/price/report route registration.
 3. Split `src/worker/routes/auth.ts` by session, credentials, and OAuth route registration.
 4. Extract `MapRoute.tsx` query/list/sheet responsibilities.
