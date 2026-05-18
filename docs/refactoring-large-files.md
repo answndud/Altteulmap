@@ -54,8 +54,9 @@
   - reaction repository logic moved to `src/worker/places-write-reactions-repository.ts`.
   - comment create/delete repository logic moved to `src/worker/places-write-comments-repository.ts`.
   - shared active place lookup and write repository DB executor types moved to `src/worker/places-write-support.ts`.
-- `src/db/schema.ts`: 557 lines
+- `src/db/schema.ts`: 539 lines
   - all table definitions and relations remain in one schema module.
+  - Drizzle enum definitions moved to `src/db/schema-enums.ts`; `src/db/schema.ts` keeps the existing enum re-export contract.
 - 이미 줄어든 파일:
   - `src/worker/index.ts`: 190 lines. Route registration hub 역할만 남았다.
   - `src/features/map/naver-map-panel.tsx`: 408 lines. Local fallback tile logic is already split into focused helpers.

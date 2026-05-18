@@ -4035,3 +4035,46 @@
   - admin price queue/detail read semantics와 기존 import contract는 변경하지 않았다.
   - 다음 구조 개선 후보는 `src/db/schema.ts`의 schema module 분할 준비 또는 admin price read repository의 pure mapper 테스트 보강이다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `101` Drizzle schema enum module 분리
+
+- 배경:
+  - `src/db/schema.ts`는 enum, table, index, relation reference가 한 파일에 모여 있어 다음 schema 분할 작업의 진입점이 무거웠다.
+  - 테이블 정의는 서로 참조가 많아 바로 분리하면 circular dependency와 migration drift 리스크가 크다.
+  - 이번 slice는 DB 구조를 바꾸지 않고 의존성이 낮은 Drizzle `pgEnum` 정의만 별도 module로 이동하는 준비 작업으로 제한했다.
+- 변경 내용:
+  - `src/db/schema-enums.ts`를 추가했다.
+  - 기존 `userRoleEnum`, `placeStatusEnum`, `verificationStatusEnum`, `priceReportStatusEnum`, `commentStatusEnum`, `placeReactionTypeEnum`, `contentReportTargetTypeEnum`, `contentReportStatusEnum`, `moderationSuggestionSubjectTypeEnum`, `moderationSuggestionActionEnum` 정의를 새 module로 이동했다.
+  - `src/db/schema.ts`는 새 enum module을 import해 기존 table 정의에 사용한다.
+  - `src/db/schema.ts`에서 enum들을 다시 export해 기존 `@/db/schema` import contract를 유지했다.
+  - `docs/refactoring-large-files.md`의 schema hotspot line count와 분리 상태를 갱신했다.
+- 코드/문서:
+  - `src/db/schema.ts`
+  - `src/db/schema-enums.ts`
+  - `docs/refactoring-large-files.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run typecheck`
+    - 통과.
+  - `npm run lint`
+    - 통과.
+  - `npm run db:generate`
+    - 통과. `No schema changes, nothing to migrate`로 새 migration이 생성되지 않았다.
+  - `npm run hygiene:dead-code`
+    - 통과.
+  - `git diff --check`
+    - 통과.
+  - `npm run verify`
+    - 통과. lint, typecheck, unit test 11개 통과.
+  - `npm run test:e2e:full -- tests/e2e/map.spec.ts`
+    - 통과.
+    - runner 특성상 DB push/seed/build 후 desktop smoke 10개, desktop full 7개, mobile 3개가 실행되어 모두 통과했다.
+    - `db:push`에서도 no changes detected가 확인됐다.
+    - 로컬 Node `v20.13.1`에서 Vite의 Node `20.19+` 권장 경고가 출력됐지만 build/test는 통과했다.
+- 결과:
+  - `src/db/schema.ts`는 557 lines에서 539 lines로 줄었다.
+  - DB table/column/index/FK/migration semantics와 기존 enum export contract는 변경하지 않았다.
+  - 다음 구조 개선 후보는 `src/db/schema.ts`의 timestamp helper 분리 또는 auth/user table group 분리 전 dependency map 작성이다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
