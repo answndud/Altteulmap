@@ -4120,3 +4120,46 @@
   - DB table/column/index/FK/migration semantics는 변경하지 않았다.
   - 다음 구조 개선 후보는 auth/user table group 분리 전 dependency map 작성 또는 schema table group 첫 분리 slice다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `103` Drizzle auth/user table group 분리
+
+- 배경:
+  - enum과 timestamp helper 분리 후 `src/db/schema.ts`에는 여전히 모든 table 정의가 모여 있었다.
+  - `users`, `auth_accounts`, `auth_sessions`, `auth_verification_tokens`는 auth/user 경계로 묶을 수 있고, 다른 domain table은 `users.id`만 FK 대상으로 참조하므로 첫 table group 분리 대상으로 적합했다.
+  - 이번 slice는 DB 구조를 바꾸지 않고 auth/user table 정의 위치와 re-export 경계만 바꾸는 동작 보존형 리팩터링으로 제한했다.
+- 변경 내용:
+  - `src/db/schema-auth.ts`를 추가했다.
+  - `users`, `authAccounts`, `authSessions`, `authVerificationTokens` table 정의를 새 module로 이동했다.
+  - `src/db/schema.ts`는 `users`를 FK 참조용으로 import하고, auth/user table group을 다시 export해 기존 `@/db/schema` import contract를 유지했다.
+  - 기존 `users` email/role index, auth account provider unique index, auth session user index, verification token primary key definition을 유지했다.
+  - `docs/refactoring-large-files.md`의 schema hotspot line count와 분리 상태를 갱신했다.
+- 코드/문서:
+  - `src/db/schema.ts`
+  - `src/db/schema-auth.ts`
+  - `docs/refactoring-large-files.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run typecheck`
+    - 통과.
+  - `npm run lint`
+    - 통과.
+  - `npm run db:generate`
+    - 통과. `No schema changes, nothing to migrate`로 새 migration이 생성되지 않았다.
+  - `npm run hygiene:dead-code`
+    - 통과.
+  - `git diff --check`
+    - 통과.
+  - `npm run verify`
+    - 통과. lint, typecheck, unit test 11개 통과.
+  - `npm run test:e2e:full -- tests/e2e/signup.spec.ts`
+    - 통과.
+    - runner 특성상 DB push/seed/build 후 desktop smoke 10개, desktop full 7개, mobile 3개가 실행되어 모두 통과했다.
+    - `db:push`에서도 no changes detected가 확인됐다.
+    - 로컬 Node `v20.13.1`에서 Vite의 Node `20.19+` 권장 경고가 출력됐지만 build/test는 통과했다.
+- 결과:
+  - `src/db/schema.ts`는 531 lines에서 464 lines로 줄었다.
+  - Auth/user table schema, FK/index/PK semantics, seed/auth repository import contract는 변경하지 않았다.
+  - 다음 구조 개선 후보는 category/place table group 분리 전 dependency map 작성 또는 rate-limit/telemetry leaf table 분리다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.

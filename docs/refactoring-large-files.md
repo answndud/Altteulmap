@@ -54,8 +54,9 @@
   - reaction repository logic moved to `src/worker/places-write-reactions-repository.ts`.
   - comment create/delete repository logic moved to `src/worker/places-write-comments-repository.ts`.
   - shared active place lookup and write repository DB executor types moved to `src/worker/places-write-support.ts`.
-- `src/db/schema.ts`: 531 lines
-  - all table definitions and relations remain in one schema module.
+- `src/db/schema.ts`: 464 lines
+  - most domain table definitions and cross-domain relations remain in one schema module.
+  - Auth/user table group moved to `src/db/schema-auth.ts`; `src/db/schema.ts` keeps the existing table re-export contract.
   - Drizzle enum definitions moved to `src/db/schema-enums.ts`; `src/db/schema.ts` keeps the existing enum re-export contract.
   - Shared timestamp column helper moved to `src/db/schema-helpers.ts`.
 - 이미 줄어든 파일:
