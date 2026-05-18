@@ -1,10 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
 import { getCategoryBySlug } from "@/features/categories/catalog";
@@ -14,6 +8,7 @@ import {
   deriveTrendingPlaces,
   mergeSelectedPlaceIntoList,
 } from "@/client/features/map/map-route-derived";
+import { useMapRouteInteractions } from "@/client/features/map/use-map-route-interactions";
 import { useMapRoutePlaces } from "@/client/features/map/use-map-route-places";
 import { MapCategoryTray } from "@/client/features/map/MapCategoryTray";
 import {
@@ -33,10 +28,6 @@ import type {
   PlacePreviewRecord,
   PlaceSearchScope,
 } from "@/features/places/types";
-
-type BookmarksResponse = {
-  items?: Array<{ placeId: string }>;
-};
 
 const scopeChipClassName =
   "altteulmap-scope-chip inline-flex min-w-[6.75rem] items-center justify-center whitespace-nowrap rounded-[0.65rem] px-3 py-2 text-xs font-semibold transition sm:text-sm";
@@ -76,16 +67,10 @@ function getLoginHref() {
 
 export function MapRoute() {
   const [searchParams] = useSearchParams();
-  const [selectedPlace, setSelectedPlace] = useState<PlacePreviewRecord | null>(
-    null,
-  );
   const isDesktopLayout = useIsDesktopLayout();
   const [mobileListMode, setMobileListMode] =
     useState<MobileSheetMode>("hidden");
   const mapSectionRef = useRef<HTMLElement | null>(null);
-  const [bookmarkedPlaceIds, setBookmarkedPlaceIds] = useState<Set<string>>(
-    () => new Set(),
-  );
   const query = searchParams.get("q")?.trim() || "";
   const activeCategory = searchParams.get("category");
   const searchScope: PlaceSearchScope =
@@ -93,7 +78,14 @@ export function MapRoute() {
   const selectedCategory = getCategoryBySlug(activeCategory);
   const selectedCategoryLabel = selectedCategory?.name ?? null;
   const loginHref = getLoginHref();
-  const resetSelectedPlace = useCallback(() => setSelectedPlace(null), []);
+  const {
+    bookmarkedPlaceIds,
+    resetSelectedPlace,
+    selectedPlace,
+    selectPlace,
+    updateBookmark,
+    updateReactionState,
+  } = useMapRouteInteractions();
   const {
     handleClusterFocusViewport,
     handleViewportChange,
@@ -108,38 +100,6 @@ export function MapRoute() {
     searchParams,
     searchScope,
   });
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    fetch("/api/bookmarks", {
-      cache: "no-store",
-      signal: controller.signal,
-    })
-      .then(async (response) => {
-        if (!response.ok) {
-          return null;
-        }
-
-        return (await response.json()) as BookmarksResponse;
-      })
-      .then((payload) => {
-        if (!payload?.items) {
-          return;
-        }
-
-        setBookmarkedPlaceIds(
-          new Set(payload.items.map((bookmark) => bookmark.placeId)),
-        );
-      })
-      .catch((error: unknown) => {
-        if (!controller.signal.aborted) {
-          console.debug("Bookmarks are unavailable for this visitor.", error);
-        }
-      });
-
-    return () => controller.abort();
-  }, []);
 
   const places = useMemo(() => state.data?.items ?? [], [state.data?.items]);
   const mapMarkers = useMemo<PlaceMapMarkerRecord[]>(() => {
@@ -160,54 +120,23 @@ export function MapRoute() {
   const isServerTrimmed =
     state.status === "success" && state.data.count > state.data.returnedCount;
 
-  const updateBookmark = useCallback((placeId: string, bookmarked: boolean) => {
-    setBookmarkedPlaceIds((current) => {
-      const next = new Set(current);
-
-      if (bookmarked) {
-        next.add(placeId);
-      } else {
-        next.delete(placeId);
-      }
-
-      return next;
-    });
-  }, []);
-
   const updateReaction = useCallback((update: PlaceReactionUpdate) => {
-    setSelectedPlace((current) =>
-      current?.id === update.placeId
-        ? {
-            ...current,
-            dislikeCount: update.dislikeCount,
-            likeCount: update.likeCount,
-            viewerReaction: update.viewerReaction,
-          }
-        : current,
-    );
-    updatePlaceInResults(update.placeId, (place) => ({
-      ...place,
-      dislikeCount: update.dislikeCount,
-      likeCount: update.likeCount,
-      viewerReaction: update.viewerReaction,
-    }));
-  }, [updatePlaceInResults]);
-  const selectPlace = useCallback((place: PlacePreviewRecord) => {
-    setSelectedPlace(place);
-  }, []);
+    updateReactionState(update, updatePlaceInResults);
+  }, [updatePlaceInResults, updateReactionState]);
+
   const selectPlaceAndFocusMap = useCallback((place: PlacePreviewRecord) => {
-    setSelectedPlace(place);
+    selectPlace(place);
     window.requestAnimationFrame(() => {
       mapSectionRef.current?.scrollIntoView({
         block: "start",
         behavior: "smooth",
       });
     });
-  }, []);
+  }, [selectPlace]);
   const selectPlaceFromMobileList = useCallback((place: PlacePreviewRecord) => {
-    setSelectedPlace(place);
+    selectPlace(place);
     setMobileListMode("hidden");
-  }, []);
+  }, [selectPlace]);
 
   return (
     <main className="bg-[var(--altteul-bg-canvas)] px-3 pb-4 pt-3 sm:px-4 sm:py-4 lg:px-5 xl:px-6">
@@ -411,7 +340,7 @@ export function MapRoute() {
               loginHref={loginHref}
               place={selectedPlace}
               onBookmarkUpdate={updateBookmark}
-              onClose={() => setSelectedPlace(null)}
+              onClose={resetSelectedPlace}
               onReactionUpdate={updateReaction}
             />
           </div>
