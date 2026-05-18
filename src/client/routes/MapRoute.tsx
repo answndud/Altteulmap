@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { getCategoryBySlug } from "@/features/categories/catalog";
@@ -7,6 +7,7 @@ import {
   deriveTrendingPlaces,
   mergeSelectedPlaceIntoList,
 } from "@/client/features/map/map-route-derived";
+import { useMapDesktopLayout } from "@/client/features/map/use-map-desktop-layout";
 import { useMapRouteInteractions } from "@/client/features/map/use-map-route-interactions";
 import { useMapRoutePlaces } from "@/client/features/map/use-map-route-places";
 import type { MobileSheetMode } from "@/client/features/map/MobilePlaceListSheet";
@@ -22,30 +23,6 @@ import type {
   PlaceSearchScope,
 } from "@/features/places/types";
 
-function useIsDesktopLayout() {
-  const [isDesktop, setIsDesktop] = useState(() => {
-    if (typeof window === "undefined") {
-      return false;
-    }
-
-    return window.matchMedia("(min-width: 1280px)").matches;
-  });
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia("(min-width: 1280px)");
-    const updateDesktopState = () => setIsDesktop(mediaQuery.matches);
-
-    updateDesktopState();
-    mediaQuery.addEventListener("change", updateDesktopState);
-
-    return () => {
-      mediaQuery.removeEventListener("change", updateDesktopState);
-    };
-  }, []);
-
-  return isDesktop;
-}
-
 function getLoginHref() {
   const callbackUrl =
     typeof window === "undefined"
@@ -57,7 +34,7 @@ function getLoginHref() {
 
 export function MapRoute() {
   const [searchParams] = useSearchParams();
-  const isDesktopLayout = useIsDesktopLayout();
+  const isDesktopLayout = useMapDesktopLayout();
   const [mobileListMode, setMobileListMode] =
     useState<MobileSheetMode>("hidden");
   const mapSectionRef = useRef<HTMLElement | null>(null);

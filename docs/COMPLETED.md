@@ -3787,3 +3787,44 @@
   - mobile list sheet 열기/닫기, mobile list place select, mobile detail close, bookmark/reaction update semantics는 변경하지 않았다.
   - 다음 구조 개선 후보는 `useIsDesktopLayout` hook 공용화 또는 MapRoute top-level derived state hook 분리다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `095` MapRoute desktop layout hook 분리
+
+- 배경:
+  - mobile surfaces 분리 후 `src/client/routes/MapRoute.tsx`에는 desktop/mobile surface 분기를 위한 route-local `useIsDesktopLayout` hook이 남아 있었다.
+  - 이 hook은 UI markup이 아니라 `(min-width: 1280px)` media query state를 관리하는 responsive utility에 가까워 map feature hook으로 분리했다.
+  - 이번 slice는 media query 기준, SSR 초기값, listener 등록/해제 semantics를 바꾸지 않는 동작 보존형 리팩터링으로 제한했다.
+- 변경 내용:
+  - `src/client/features/map/use-map-desktop-layout.ts`를 추가했다.
+  - `DESKTOP_LAYOUT_QUERY = "(min-width: 1280px)"` 상수를 두고 기존 `matchMedia` 기준을 그대로 유지했다.
+  - SSR 환경에서 초기값 `false`를 유지하고, client effect에서 현재 media query state를 즉시 동기화한 뒤 `change` listener를 등록/해제하도록 유지했다.
+  - `src/client/routes/MapRoute.tsx`는 새 `useMapDesktopLayout` hook을 import해 사용하도록 정리했다.
+  - `docs/refactoring-large-files.md`의 MapRoute hotspot line count와 분리 상태를 갱신했다.
+- 코드/문서:
+  - `src/client/routes/MapRoute.tsx`
+  - `src/client/features/map/use-map-desktop-layout.ts`
+  - `docs/refactoring-large-files.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run typecheck`
+    - 통과.
+  - `npm run lint`
+    - 통과.
+  - `npm run verify`
+    - 통과. lint, typecheck, unit test 11개 통과.
+  - `npm run test:e2e:full -- tests/e2e/map.spec.ts`
+    - 첫 시도는 로컬 Postgres 컨테이너가 내려가 있어 `db:push` 단계에서 실패했다.
+    - `npm run db:up`으로 `altteulmap-postgres` 컨테이너를 다시 올린 뒤 재실행해 통과했다.
+    - runner 특성상 full E2E 세트가 실행되어 desktop smoke 10개, desktop full 7개, mobile 3개가 통과했다.
+    - 로컬 Node `v20.13.1`에서 Vite의 Node `20.19+` 권장 경고가 출력됐지만 build/test는 통과했다.
+  - `npm run hygiene:dead-code`
+    - 통과.
+  - `git diff --check`
+    - 통과.
+- 결과:
+  - `src/client/routes/MapRoute.tsx`는 210 lines에서 187 lines로 줄었다.
+  - desktop/mobile layout split 기준과 detail/list surface 노출 semantics는 변경하지 않았다.
+  - 다음 구조 개선 후보는 MapRoute top-level derived state hook 분리 또는 `getLoginHref` helper 분리다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
