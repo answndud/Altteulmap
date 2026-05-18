@@ -39,6 +39,15 @@ export function createLoginHref(callbackUrl: string) {
   return createAuthEntryHref("/login", callbackUrl);
 }
 
+export function createCurrentLoginHref() {
+  const callbackUrl =
+    typeof window === "undefined"
+      ? "/"
+      : `${window.location.pathname}${window.location.search}`;
+
+  return createLoginHref(callbackUrl);
+}
+
 export function createSignupHref(callbackUrl: string) {
   return createAuthEntryHref("/signup", callbackUrl);
 }
