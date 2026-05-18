@@ -2999,3 +2999,43 @@
   - public write route split slice는 완료됐다.
   - 다음 구조 개선 후보는 `src/worker/places-read-repository.ts` query/aggregation/mock fallback 분리 또는 `src/worker/routes/admin.ts` route domain 분리다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `076` places read mock fallback 분리
+
+- 배경:
+  - public write route split 완료 후 다음 구조 개선 후보는 `src/worker/places-read-repository.ts`였다.
+  - 해당 repository에는 map list DB query, place detail DB query, comment/reaction aggregation, mock fallback이 함께 남아 있었다.
+  - 이번 slice는 DB query path를 건드리지 않고, 동작 보존 위험이 낮은 mock fallback만 먼저 분리했다.
+- 변경 내용:
+  - `src/worker/places-read-mock.ts`를 추가했다.
+  - `listMockMapPlaces`와 `getMockPlaceDetail`를 새 module로 이동했다.
+  - mock map list의 response shape, marker/list cap, bounds fallback, `source: "mock"`, `cacheStatus: "bypass"` 동작을 유지했다.
+  - mock place detail의 not found response와 admin viewer delete permission override 동작을 유지했다.
+  - `docs/refactoring-large-files.md`의 `places-read-repository` line count와 다음 작업 순서를 갱신했다.
+- 코드/문서:
+  - `src/worker/places-read-repository.ts`
+  - `src/worker/places-read-mock.ts`
+  - `docs/refactoring-large-files.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run typecheck`
+    - 통과.
+  - `npm run lint`
+    - 통과.
+  - `npm run verify`
+    - 통과. lint, typecheck, unit test 8개 통과.
+  - `npm run test:e2e:full -- tests/e2e/map.spec.ts`
+    - 통과.
+    - runner 특성상 full E2E 세트가 실행되어 desktop smoke 10개, desktop full 7개, mobile 3개가 통과했다.
+    - 로컬 Node `v20.13.1`에서 Vite의 Node `20.19+` 권장 경고가 출력됐지만 build/test는 통과했다.
+  - `npm run hygiene:dead-code`
+    - 통과.
+  - `git diff --check`
+    - 통과.
+- 결과:
+  - `src/worker/places-read-repository.ts`는 562 lines에서 502 lines로 줄었다.
+  - public read API path와 DB read query 동작은 변경하지 않았다.
+  - 다음 구조 개선 후보는 `places-read-repository`의 map query 또는 detail aggregation 분리다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
