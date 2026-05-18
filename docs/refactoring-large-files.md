@@ -6,14 +6,25 @@
 - 이 계획은 신규 기능, API shape 변경, DB schema 변경, env 이름 변경, route path 변경, Cloudflare 배포 방식 변경을 포함하지 않는다.
 
 ## Current Hotspots
-- `src/worker/index.ts`: 3,000 lines
-  - security headers, health, cookie/session, OAuth, bookmarks, public places API, public write API, admin API, telemetry, static routes, SPA fallback이 한 파일에 섞여 있다.
-- `src/client/routes/MapRoute.tsx`: 1,689 lines
+- `src/worker/places-read-repository.ts`: 880 lines
+  - map list query, place detail query, category/price/comment/reaction aggregation, mock fallback 변환이 한 repository에 남아 있다.
+- `src/worker/admin-prices-repository.ts`: 753 lines
+  - price review queue, item update, report moderation, pricing summary refresh, moderation suggestion mapping이 한 repository에 남아 있다.
+- `src/client/routes/MapRoute.tsx`: 734 lines
   - route state, viewport fetch, map/list sync, category tray, place cards, detail sheet, mobile list sheet, bookmark/reaction update가 한 route component에 섞여 있다.
-- `src/features/map/naver-map-panel.tsx`: 1,632 lines
-  - Naver SDK boot, preview/fallback map, local tile fallback, viewport events, marker rendering, cluster focus, current location, resize handling이 한 컴포넌트에 섞여 있다.
-- `src/worker/admin-repository.ts`: 1,146 lines
-  - admin place review, price review, price item update, report queue, moderation suggestion mapping, pricing summary refresh, admin action write가 한 repository에 섞여 있다.
+- `src/worker/routes/public-write.ts`: 720 lines
+  - route body parsing and write handlers are still together, but rate limit/Turnstile/mock write helpers have been moved to `src/worker/routes/public-write-support.ts`.
+- `src/worker/routes/admin.ts`: 643 lines
+  - admin place, price, and report route registration still share one route module.
+- `src/worker/routes/auth.ts`: 595 lines
+  - credentials, OAuth callback, session, signout, provider discovery route wiring still share one route module.
+- `src/worker/places-write-repository.ts`: 563 lines
+  - price reports, comments, reactions, place submissions, and report writes still share one write repository.
+- `src/db/schema.ts`: 557 lines
+  - all table definitions and relations remain in one schema module.
+- 이미 줄어든 파일:
+  - `src/worker/index.ts`: 190 lines. Route registration hub 역할만 남았다.
+  - `src/features/map/naver-map-panel.tsx`: 408 lines. Local fallback tile logic is already split into focused helpers.
 
 ## Non-Negotiable Contracts
 - Public routes must keep the same paths and response shape:
@@ -59,6 +70,8 @@
 ## Worker Split Sequence
 
 ### Worker Slice 1: HTTP Utilities
+상태: 완료됨. 현재 `src/worker/http/*`로 security headers, cookies, responses, URL/public config helpers가 분리되어 있다.
+
 - Extract from `src/worker/index.ts`:
   - security header construction and `applySecurityHeaders`
   - cookie read/write helpers
@@ -75,6 +88,8 @@
   - Verify `/`, `/api/config/public`, `/robots.txt`, `/manifest.webmanifest` still include expected security headers.
 
 ### Worker Slice 2: Health and Static Routes
+상태: 완료됨. 현재 `src/worker/routes/health.ts`, `src/worker/routes/static.ts`, `src/worker/routes/not-found.ts`로 분리되어 있다.
+
 - Extract:
   - `/api/health`
   - `/robots.txt`
@@ -91,6 +106,8 @@
   - Manual curl check that static/SEO routes do not return HTML fallback.
 
 ### Worker Slice 3: Auth Routes
+상태: 후속 대상. route path와 cookie/session semantics를 유지한 채 credentials, OAuth, session helpers를 더 작은 파일로 나누는 작업이다.
+
 - Extract:
   - CSRF/session/signout/providers
   - credentials signin/signup
@@ -107,6 +124,8 @@
   - Manual Kakao/Naver live login QA when OAuth callback code changes.
 
 ### Worker Slice 4: Public Read and Write Routes
+상태: 부분 완료. Public read route는 `src/worker/routes/places-read.ts`로 분리되어 있고, public write route는 support helper만 분리된 상태다. 다음 작업은 write handler를 comments, reactions, submissions, reports 단위로 얇게 나누는 것이다.
+
 - Extract:
   - categories/config/bookmarks
   - map and place detail reads
@@ -127,6 +146,8 @@
   - Targeted API smoke for price report, comment, report, place submission.
 
 ### Worker Slice 5: Admin Routes
+상태: 후속 대상. repository는 place/price/report로 나뉘었지만 route registration은 `src/worker/routes/admin.ts`에 남아 있다.
+
 - Extract:
   - pending place queue
   - place moderation
@@ -145,9 +166,11 @@
   - `tests/e2e/report-admin.spec.ts`
   - Remote smoke with admin credentials after deploy.
 
-## Admin Repository Split Sequence
+## Admin Repository Follow-up Split Sequence
 
 ### Repository Slice 1: Shared Admin Mappers
+상태: 부분 완료. client/server admin response contract는 `src/shared/admin-contracts.ts`로 공유되기 시작했다. 다음 단계는 repository 내부 mapper를 별도 pure helper로 빼고 unit test를 붙이는 것이다.
+
 - Extract pure mapping and formatting helpers:
   - date formatting
   - moderation suggestion mapping
@@ -160,35 +183,43 @@
   - Admin E2E specs if any rendered shape changes.
 
 ### Repository Slice 2: Place Review Repository
-- Move:
-  - pending place list
-  - place moderation transaction
-  - category map loading used only by place review
-- Candidate file:
-  - `src/worker/admin/place-review-repository.ts`
+상태: 완료됨. 현재 place review repository는 `src/worker/admin-places-repository.ts`다.
+
+후속 후보:
+- category map loading과 pending place row mapper를 순수 helper로 분리한다.
+- place moderation transaction boundary는 유지한다.
+
+Candidate file:
+  - `src/worker/admin/admin-place-mappers.ts`
 - Protection:
   - `tests/e2e/submission-admin.spec.ts`
   - Targeted API smoke for approve/reject.
 
 ### Repository Slice 3: Price Review Repository
-- Move:
-  - pending price report list
-  - price report moderation transaction
-  - price item update transaction
-  - pricing summary refresh
-- Candidate file:
-  - `src/worker/admin/price-review-repository.ts`
+상태: 부분 완료. 현재 price review repository는 `src/worker/admin-prices-repository.ts`지만 아직 753 lines로 크다.
+
+후속 후보:
+- pending price report list query와 mapper
+- price report moderation transaction
+- price item update transaction
+- pricing summary refresh
+
+Candidate files:
+  - `src/worker/admin/admin-price-mappers.ts`
+  - `src/worker/admin/admin-price-review-repository.ts`
+  - `src/worker/admin/admin-price-items-repository.ts`
 - Protection:
   - `tests/e2e/price-review.spec.ts`
   - Targeted API smoke for approve/reject and duplicate approval/idempotency.
 
 ### Repository Slice 4: Report Repository
-- Move:
-  - report queue list
-  - report status transaction
-  - report moderation suggestion mapping
-- Candidate file:
-  - `src/worker/admin/report-review-repository.ts`
+상태: 완료됨. 현재 report repository는 `src/worker/admin-reports-repository.ts`다.
+
+후속 후보:
+- report moderation suggestion mapping을 shared admin mapper와 맞춘다.
+
+Candidate file:
+  - `src/worker/admin/admin-report-mappers.ts`
 - Protection:
   - `tests/e2e/report-admin.spec.ts`
   - Targeted API smoke for status update.
@@ -304,12 +335,12 @@
 - `npm run smoke:remote` only after deployment to an environment containing the same Worker code and required DB migrations.
 
 ## Suggested Order
-1. Worker HTTP utilities and health/static routes.
-2. Worker auth routes.
-3. Worker public read/write routes.
-4. Worker admin routes.
-5. Admin repository split.
-6. Map route query/list/sheet split.
-7. Naver map panel pure helper and SDK lifecycle split.
+1. Finish `src/worker/routes/public-write.ts` split by extracting write handlers after the support helper split.
+2. Split `src/worker/places-read-repository.ts` into query, aggregation, and mock fallback modules.
+3. Split `src/worker/admin-prices-repository.ts` into mapper, review, and price item update modules.
+4. Split `src/worker/routes/admin.ts` by place/price/report route registration.
+5. Split `src/worker/routes/auth.ts` by session, credentials, and OAuth route registration.
+6. Extract `MapRoute.tsx` query/list/sheet responsibilities.
+7. Revisit `src/db/schema.ts` only after migration rules are refreshed, because schema splitting can increase migration drift risk if done casually.
 
-This order reduces risk because Worker route extraction first improves server-side reviewability while existing E2E/smoke coverage is strongest. Map/Naver extraction should happen after route contracts are stable because map regressions have historically been harder to diagnose and require manual QA.
+This order keeps the strongest Worker/API protection checks near the highest-risk server-side files first. Map extraction remains later because regressions require browser and manual viewport QA.

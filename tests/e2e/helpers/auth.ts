@@ -17,10 +17,10 @@ export async function loginWithCredentials(
     password: string;
   },
 ) {
-  const baseUrl = process.env.NEXTAUTH_URL ?? "http://127.0.0.1:3107";
   const csrfResponse = await page.request.get("/api/auth/csrf");
   expect(csrfResponse.ok()).toBeTruthy();
 
+  const baseUrl = new URL(csrfResponse.url()).origin;
   const csrfPayload = (await csrfResponse.json()) as {
     csrfToken?: string;
   };

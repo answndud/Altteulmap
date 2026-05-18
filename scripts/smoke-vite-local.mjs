@@ -173,6 +173,10 @@ function assert(condition, message) {
   }
 }
 
+function describeJsonFailure(label, result) {
+  return `${label}: HTTP ${result.response.status} ${JSON.stringify(result.body)}`;
+}
+
 function assertSecurityHeaders(response, label) {
   const contentSecurityPolicy = response.headers.get("content-security-policy") ?? "";
 
@@ -215,20 +219,26 @@ function assertRequestIdHeader(response, label) {
 async function smokeApi() {
   const deepHealth = await requestJson("/api/health?deep=1");
 
-  assert(deepHealth.response.status === 200, "deep health failed");
+  assert(
+    deepHealth.response.status === 200,
+    describeJsonFailure("deep health failed", deepHealth),
+  );
   assertRequestIdHeader(deepHealth.response, "deep health");
-  assert(deepHealth.body.ok === true, "deep health returned non-ok status");
+  assert(
+    deepHealth.body.ok === true,
+    describeJsonFailure("deep health returned non-ok status", deepHealth),
+  );
   assert(
     deepHealth.body.checks?.some(
       (check) => check.name === "database" && check.status === "ok",
     ),
-    "deep health did not confirm database",
+    describeJsonFailure("deep health did not confirm database", deepHealth),
   );
   assert(
     deepHealth.body.checks?.some(
       (check) => check.name === "static-assets" && check.status === "ok",
     ),
-    "deep health did not confirm static assets",
+    describeJsonFailure("deep health did not confirm static assets", deepHealth),
   );
 
   const home = await request("/");

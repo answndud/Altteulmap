@@ -12,6 +12,11 @@ import type {
   AdminPriceItemUpdateInput,
   PriceReportModerationInput,
 } from "@/features/places/write-schema";
+import type {
+  AdminPriceItem,
+  ModerationSuggestion,
+  PendingPriceReport,
+} from "@/shared/admin-contracts";
 import { getWorkerDb, type WorkerDatabaseBindings } from "@/worker/db";
 
 type DataSource = "database";
@@ -23,42 +28,13 @@ type AdminUser = {
   id: string;
 };
 
-type ModerationSuggestionRecord = {
-  suggestedAction: "approve" | "review" | "reject";
-  confidence: number;
-  summary: string;
-  checks: string[];
-  flags: string[];
-};
+type ModerationSuggestionRecord = ModerationSuggestion;
 
-type PendingPriceReportRecord = {
-  id: string;
-  placeId: string;
-  placeName: string;
-  district: string;
-  label: string;
-  amount: number;
-  unitLabel?: string;
-  comment?: string;
-  createdAt: string;
-  existingPriceLabel?: string;
-  existingPriceAmount?: number;
-  existingPriceUnitLabel?: string;
+type PendingPriceReportRecord = PendingPriceReport & {
   existingPriceVerificationStatus?: VerificationStatus;
-  moderationSuggestion?: ModerationSuggestionRecord;
 };
 
-type AdminPriceItemRecord = {
-  id: string;
-  label: string;
-  amount: number;
-  unitLabel?: string;
-  verificationStatus: VerificationStatus;
-  verifiedReportCount: number;
-  reportedAt: string;
-  isRepresentative: boolean;
-  isActive: boolean;
-};
+type AdminPriceItemRecord = AdminPriceItem;
 
 const dateFormatter = new Intl.DateTimeFormat("sv-SE", {
   timeZone: "Asia/Seoul",

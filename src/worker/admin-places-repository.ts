@@ -9,6 +9,7 @@ import {
   priceReports,
 } from "@/db/schema";
 import type { PlaceModerationInput } from "@/features/submission/schema";
+import type { PendingPlace } from "@/shared/admin-contracts";
 import { getWorkerDb, type WorkerDatabaseBindings } from "@/worker/db";
 
 type DataSource = "database";
@@ -20,7 +21,7 @@ type AdminUser = {
   id: string;
 };
 
-type PendingPlacePriceItem = {
+type PendingPlacePriceItem = PendingPlace["priceItems"][number] & {
   id: string;
   label: string;
   amount: number;
@@ -29,21 +30,7 @@ type PendingPlacePriceItem = {
   reportedAt: string;
 };
 
-type PendingPlaceRecord = {
-  id: string;
-  name: string;
-  businessName?: string;
-  categorySlug: string;
-  address: string;
-  district: string;
-  note: string;
-  representativePriceAmount: number;
-  representativePriceLabel: string;
-  createdAt: string;
-  latitude?: number;
-  longitude?: number;
-  priceItems: PendingPlacePriceItem[];
-};
+type PendingPlaceRecord = PendingPlace;
 
 const dateFormatter = new Intl.DateTimeFormat("sv-SE", {
   timeZone: "Asia/Seoul",

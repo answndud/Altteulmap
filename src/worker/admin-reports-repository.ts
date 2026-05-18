@@ -8,6 +8,7 @@ import {
 } from "@/db/schema";
 import { mockReports, type MockReportRecord } from "@/features/reports/mock-data";
 import type { ReportModerationInput } from "@/features/reports/schema";
+import type { ModerationSuggestion } from "@/shared/admin-contracts";
 import { getWorkerDb, type WorkerDatabaseBindings } from "@/worker/db";
 
 type DataSource = "database";
@@ -15,13 +16,7 @@ type AdminUser = {
   id: string;
 };
 
-type ModerationSuggestionRecord = {
-  suggestedAction: "approve" | "review" | "reject";
-  confidence: number;
-  summary: string;
-  checks: string[];
-  flags: string[];
-};
+type ModerationSuggestionRecord = ModerationSuggestion;
 
 const dateFormatter = new Intl.DateTimeFormat("sv-SE", {
   timeZone: "Asia/Seoul",

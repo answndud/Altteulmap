@@ -87,7 +87,7 @@ type DatabasePlaceRow = {
   lastPriceUpdatedAt: Date | null;
 };
 
-export type WorkerMapPlacesResult = {
+type WorkerMapPlacesResult = {
   items: PlacePreviewRecord[];
   mapMarkers: Array<PlaceMapPlaceMarkerRecord | PlaceMapClusterMarkerRecord>;
   markerMode: PlaceMapMarkerMode;
@@ -97,7 +97,7 @@ export type WorkerMapPlacesResult = {
   cacheStatus: "bypass" | "hit" | "miss";
 };
 
-export type WorkerPlaceDetailResult = {
+type WorkerPlaceDetailResult = {
   item: PlaceRecord | null;
   source: DataSource;
 };

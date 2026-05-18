@@ -2475,3 +2475,91 @@
   - 품질 리팩터링 회고는 단순 점수 달성 글에서 실제 지도 UX 회귀와 품질 기준을 다루는 회고로 강화됐다.
   - Next→Vite index는 독자가 시리즈 전체 맥락과 읽는 순서를 빠르게 이해할 수 있는 landing page 역할을 하게 됐다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `064` 비운영/비제품 기술 개선 계획 실행
+
+- 배경:
+  - 사용자는 `docs/PLAN.md`에 정리된 운영/제품 개선 제외 기술 개선 항목을 모두 진행하라고 요청했다.
+  - 대상은 보안 의존성, dead-code/hygiene, E2E 범위, unit test harness, API contract drift, 큰 파일 구조, TypeScript 엄격도, CSP/header parity, CI gate, 스크립트 DX, 기술 문서 정합성이었다.
+  - 로컬 DB-backed smoke는 처음에 Docker Postgres 미기동으로 `database` deep health가 503을 반환했으나, 사용자가 Docker DB를 켠 뒤 재검증을 완료했다.
+- 변경 내용:
+  - `hono`를 advisory 밖 패치 버전으로 올리고 lockfile을 갱신했다.
+  - `knip` 조합을 Node 20 로컬 환경에서 재현 가능하게 조정하고 `hygiene:dead-code`가 실제 실패 시 실패하도록 복구했다.
+  - `package.json`에 Node engine `>=20.19.0`을 명시했다. 로컬 실행 환경은 `v20.13.1`이라 Vite가 경고를 출력하지만, 저장소 기준은 `.node-version`의 `20.20.2`와 package metadata로 맞췄다.
+  - Node built-in test 기반 `test:unit` harness를 추가하고 schema, rate limit, auth navigation, cookie, URL helper 회귀 테스트 8개를 추가했다.
+  - `verify`가 `lint`, `typecheck`, `test:unit`을 실행하도록 확장했다.
+  - `audit:prod`, `verify:quality`, `test:e2e:performance:ci`, `test:e2e:all:ci` 스크립트를 추가했다.
+  - `test:e2e:full:ci`에 누락됐던 `login`, `map-price-filter`, `map-price-filter.mobile` spec을 포함하고, performance spec은 별도 gate로 분리했다.
+  - 로컬 E2E runner에 `all` mode를 추가하고, `.env`가 shell env override를 덮어쓰던 문제를 `loadEnvFilesWithShellPrecedence`로 고쳤다.
+  - Playwright login helper가 `NEXTAUTH_URL` env에만 의존하지 않고 실제 CSRF 요청 URL에서 origin을 계산하도록 고쳐 로컬 직접 실행과 CI 실행을 맞췄다.
+  - CI verify job에 quality gates를 추가하고, E2E job에 price concurrency smoke와 all E2E 범위를 연결했다.
+  - CSP inventory 스크립트를 확장해 app inline style finding뿐 아니라 Worker security header CSP와 `public/_headers` CSP parity를 비교하게 했다.
+  - admin API response contract를 `src/shared/admin-contracts.ts`로 공유하고 client admin type은 shared contract re-export로 정리했다.
+  - Worker admin place/price/report repository가 shared admin contract 타입을 사용하도록 연결했다.
+  - knip 기준으로 외부에서 쓰지 않는 타입 export를 내부 타입으로 좁혔다.
+  - `src/worker/routes/public-write.ts`에서 rate limit, Turnstile, mock public write helper를 `src/worker/routes/public-write-support.ts`로 분리했다.
+  - `scripts/lib/run-command.mjs`를 추가하고 E2E runner의 command 실행 중복을 줄였다.
+  - TypeScript strict 옵션 중 바로 안전한 `noFallthroughCasesInSwitch`, `noImplicitOverride`, `noImplicitReturns`, `noUnusedLocals`, `noUnusedParameters`를 켰다.
+  - `noUncheckedIndexedAccess`는 63개, `exactOptionalPropertyTypes`는 32개, 둘을 동시에 켜면 95개 TypeScript error가 발생해 별도 리팩터링 대상으로 보류했다.
+  - `docs/refactoring-large-files.md`의 stale line count와 이미 완료된 Worker split 상태를 현재 구조 기준으로 갱신했다.
+  - `smoke:vite:local` deep health 실패 시 HTTP status와 health body가 출력되도록 진단 메시지를 개선했다.
+- 코드/문서:
+  - `.github/workflows/ci.yml`
+  - `docs/refactoring-large-files.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+  - `knip.json`
+  - `package.json`
+  - `package-lock.json`
+  - `scripts/check-csp-inline-style-inventory.mjs`
+  - `scripts/lib/run-command.mjs`
+  - `scripts/run-local-e2e.mjs`
+  - `scripts/smoke-vite-local.mjs`
+  - `src/shared/admin-contracts.ts`
+  - `src/client/routes/admin/types.ts`
+  - `src/worker/routes/public-write.ts`
+  - `src/worker/routes/public-write-support.ts`
+  - `src/worker/index.ts`
+  - `src/worker/admin-places-repository.ts`
+  - `src/worker/admin-prices-repository.ts`
+  - `src/worker/admin-reports-repository.ts`
+  - `tests/unit/http-and-rate-limit.test.ts`
+  - `tests/unit/schema.test.ts`
+  - `tests/e2e/helpers/auth.ts`
+  - `tsconfig.json`
+  - dead-code export cleanup 대상 TypeScript modules
+- 검증:
+  - `npm run db:push`
+    - 통과, schema 변경 없음.
+  - `npm run db:seed`
+    - 통과. E2E와 concurrency smoke 이후에도 최종 seed 복구를 다시 실행했다.
+  - `npm run smoke:vite:local`
+    - 통과. `http://127.0.0.1:3130`, sample place `goodprice-157`.
+  - `npm run test:e2e:full`
+    - 통과. desktop smoke 10개, desktop full 7개, mobile 3개 총 20개 통과.
+  - `npm run test:e2e:performance:ci`
+    - 최초 실패: login helper가 `NEXTAUTH_URL` env를 잘못 가정.
+    - helper 수정 후 통과. 측정값은 `map.initial_place_list_visible` 196ms, `map.refresh_to_place_list_visible` 80ms, `map.cluster_click_to_detail_or_marker_visible` 120ms, `admin.price_queue_visible` 193ms.
+  - `npm run smoke:price-concurrency`
+    - 통과. 동시 승인 요청에서 1건 성공, 1건 already processed 응답 확인.
+  - `npm run verify`
+    - 통과. lint, typecheck, unit test 8개 통과.
+  - `npm run verify:quality`
+    - 통과. production audit 취약점 0건, dead-code hygiene 통과, CSP finding 0건 및 Worker/static header parity 통과.
+  - `npm run deploy:check:vite`
+    - 통과. canonical Worker output과 legacy alias entry byte size 일치.
+  - `git diff --check`
+    - 통과.
+  - `npx tsc --noEmit --noUncheckedIndexedAccess --pretty false`
+    - 63개 TypeScript error로 보류.
+  - `npx tsc --noEmit --exactOptionalPropertyTypes --pretty false`
+    - 32개 TypeScript error로 보류.
+  - `npx tsc --noEmit --noUncheckedIndexedAccess --exactOptionalPropertyTypes --pretty false`
+    - 95개 TypeScript error로 보류.
+- 결과:
+  - `docs/PLAN.md`의 비운영/비제품 기술 개선 항목은 구현 또는 근거 있는 보류까지 처리됐다.
+  - 보안 audit, hygiene, unit test, CSP parity, E2E 범위, performance, price concurrency가 로컬/CI 검증 경로에 반영됐다.
+  - 큰 파일 구조 개선은 public write support split을 완료하고, 남은 대형 module은 최신 line count와 후속 순서를 `docs/refactoring-large-files.md`에 남겼다.
+  - TypeScript 엄격도는 안전한 옵션만 즉시 적용하고, 대규모 수정을 요구하는 옵션은 에러 규모를 기록해 별도 작업으로 분리했다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
-export type SessionUser = {
+type SessionUser = {
   email?: string | null;
   name?: string | null;
   role?: "user" | "admin" | null;

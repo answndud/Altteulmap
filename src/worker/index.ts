@@ -19,11 +19,11 @@ import { registerBookmarkRoutes } from "@/worker/routes/bookmarks";
 import { registerHealthRoute } from "@/worker/routes/health";
 import { registerPlacesReadRoutes } from "@/worker/routes/places-read";
 import { registerPublicConfigRoutes } from "@/worker/routes/public-config";
+import { registerPublicWriteRoutes } from "@/worker/routes/public-write";
 import {
   getMockPublicWriteComments,
   isLocalTurnstileBypassAllowed,
-  registerPublicWriteRoutes,
-} from "@/worker/routes/public-write";
+} from "@/worker/routes/public-write-support";
 import { registerStaticRoutes } from "@/worker/routes/static";
 import { registerTelemetryRoutes } from "@/worker/routes/telemetry";
 

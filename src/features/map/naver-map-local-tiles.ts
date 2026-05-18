@@ -3,7 +3,7 @@ export type TilePoint = {
   y: number;
 };
 
-export type LocalFallbackTile = TilePoint & {
+type LocalFallbackTile = TilePoint & {
   key: string;
   left: string;
   top: string;

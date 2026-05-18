@@ -10,7 +10,7 @@ import {
   type WorkerDatabaseBindings,
 } from "@/worker/db";
 
-export type WorkerAuthBindings = WorkerDatabaseBindings & {
+type WorkerAuthBindings = WorkerDatabaseBindings & {
   AUTH_ADMIN_PASSWORD?: string;
   AUTH_DEMO_PASSWORD?: string;
   AUTH_KAKAO_CLIENT_ID?: string;
@@ -26,14 +26,14 @@ export type WorkerAuthUserRecord = {
   role: AppUserRole;
 };
 
-export type WorkerSocialProviderAvailability = {
+type WorkerSocialProviderAvailability = {
   id: "kakao" | "naver";
   label: string;
   enabled: boolean;
   unavailableReason?: string;
 };
 
-export type WorkerOAuthAccountSyncInput = {
+type WorkerOAuthAccountSyncInput = {
   provider: "kakao" | "naver";
   providerAccountId: string;
   type: string;
