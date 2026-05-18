@@ -8,7 +8,7 @@
 - 구조: Vite React SPA + Hono/Cloudflare Worker API 단일 Worker
 - 운영 DB: Supabase PostgreSQL
 - 배포 방식: 로컬 또는 CI에서 Vite 산출물을 만든 뒤 `dist/altteulmap/wrangler.json`으로 Worker 배포
-- `altteulmap-admin` 별도 Worker는 legacy 링크를 통합 Worker로 보내는 redirect 전용 Worker이며, 실제 admin 기능은 통합 Worker의 `/admin`이 담당한다.
+- 별도 `altteulmap-admin` Worker는 제거됐다. 관리자 기능과 URL은 통합 `altteulmap` Worker의 `/admin` 경로가 담당한다.
 
 ## 필수 Secret/Var
 Cloudflare Worker `altteulmap`에는 최소한 아래 binding이 있어야 한다.
@@ -411,18 +411,7 @@ Naver live login:
 - `/sitemap.xml`
 - `/manifest.webmanifest`
 
-legacy admin redirect 확인:
-
-```bash
-npm run deploy:admin-redirect
-```
-
-확인할 redirect:
-
-```text
-https://altteulmap-admin.altteul-lab.workers.dev/ -> https://altteulmap.altteul-lab.workers.dev/admin
-https://altteulmap-admin.altteul-lab.workers.dev/admin/places -> https://altteulmap.altteul-lab.workers.dev/admin/places
-```
+legacy `altteulmap-admin` Worker는 제거됐으므로 별도 admin redirect smoke는 실행하지 않는다. 관리자 검증은 `https://altteulmap.altteul-lab.workers.dev/admin`과 `/api/admin/*` 경계를 기준으로 수행한다.
 
 ## Rollback
 문제가 생기면 GitHub에서 직전 정상 커밋으로 되돌린 뒤 다시 배포한다.

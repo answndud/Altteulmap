@@ -3,7 +3,6 @@
   "entry": [
     "src/client/main.tsx",
     "src/worker/index.ts",
-    "src/worker/legacy-admin-redirect.mjs",
     "scripts/**/*.{js,mjs,ts}",
     "tests/**/*.ts",
     "eslint.config.js",

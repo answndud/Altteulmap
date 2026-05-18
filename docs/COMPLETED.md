@@ -2592,3 +2592,41 @@
 - 결과:
   - GitHub Actions E2E job이 로컬에서 검증한 runner 경로와 같은 Worker binding 주입 경로를 쓰게 됐다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `066` 삭제된 `altteulmap-admin` legacy Worker 정리
+
+- 배경:
+  - Cloudflare에서 `altteulmap-admin` Worker를 삭제했다.
+  - 실제 관리자 기능은 이미 통합 `altteulmap` Worker의 `/admin` 경로가 담당하고 있었고, `altteulmap-admin`은 legacy redirect 전용 Worker였다.
+  - 삭제 이후 repo에 남은 redirect Worker 파일, deploy script, 배포 문서 설명을 현재 운영 기준과 맞춰 정리해야 했다.
+- 변경 내용:
+  - `package.json`에서 `deploy:admin-redirect` script를 제거했다.
+  - `wrangler.admin-redirect.jsonc`를 삭제했다.
+  - `src/worker/legacy-admin-redirect.mjs`를 삭제했다.
+  - `knip.json`에서 legacy admin redirect entry를 제거했다.
+  - `docs/deploy/deploy-cloudflare.md`의 현재 운영 기준을 단일 `altteulmap` Worker와 `/admin` 경로 기준으로 갱신했다.
+  - 배포 문서의 legacy admin redirect 확인 절차를 제거하고, 관리자 검증은 `/admin`과 `/api/admin/*` 경계 기준으로 수행한다고 명시했다.
+- 코드/문서:
+  - `package.json`
+  - `knip.json`
+  - `docs/deploy/deploy-cloudflare.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+  - 삭제: `wrangler.admin-redirect.jsonc`
+  - 삭제: `src/worker/legacy-admin-redirect.mjs`
+- 검증:
+  - `npm run verify`
+    - 통과. lint, typecheck, unit test 8개 통과.
+  - `npm run hygiene:dead-code`
+    - 통과.
+  - `npm run deploy:check:vite`
+    - 통과.
+  - `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev npm run smoke:remote`
+    - 통과. public health, map/place API, login, `/admin`, `/api/admin/places` 401 boundary, Kakao/Naver provider redirect 확인.
+  - `git diff --check`
+    - 통과.
+- 결과:
+  - repo의 현재 운영/배포 경로가 삭제된 `altteulmap-admin` Worker에 더 이상 의존하지 않는다.
+  - Cloudflare Workers Builds에서 `altteulmap-admin` check가 다시 생기지 않도록 repo 쪽 배포 대상과 문서를 정리했다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
