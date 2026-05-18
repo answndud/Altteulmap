@@ -3201,3 +3201,44 @@
   - admin price API path, response shape, authorization semantics, mock/DB fallback 동작은 변경하지 않았다.
   - 다음 구조 개선 후보는 마지막 admin place route 분리다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `081` admin place route 분리
+
+- 배경:
+  - price route 분리 후 `src/worker/routes/admin.ts`에는 마지막으로 place domain route만 직접 남아 있었다.
+  - place route는 pending place list, pending place detail lookup, place moderation을 담당해 독립 module로 분리하기 적합했다.
+  - 이번 slice는 admin route hub를 완성하면서 기존 status/response/mock fallback을 유지했다.
+- 변경 내용:
+  - `src/worker/routes/admin-places.ts`를 추가했다.
+  - `/api/admin/places`, `/api/admin/places/:id` GET/PATCH route 등록을 새 module로 이동했다.
+  - 기존 401/403/400/404/500 status, no-store headers, DB/mock fallback, response shape를 유지했다.
+  - `src/worker/routes/admin.ts`는 place/price/report route module 등록만 담당하는 hub로 줄였다.
+  - `docs/refactoring-large-files.md`의 admin route line count와 Worker Slice 5 완료 상태를 갱신했다.
+- 코드/문서:
+  - `src/worker/routes/admin.ts`
+  - `src/worker/routes/admin-places.ts`
+  - `docs/refactoring-large-files.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run typecheck`
+    - 통과.
+  - `npm run lint`
+    - 통과.
+  - `npm run verify`
+    - 통과. lint, typecheck, unit test 8개 통과.
+  - `npm run test:e2e:full -- tests/e2e/submission-admin.spec.ts`
+    - 통과.
+    - runner 특성상 full E2E 세트가 실행되어 desktop smoke 10개, desktop full 7개, mobile 3개가 통과했다.
+    - 로컬 Node `v20.13.1`에서 Vite의 Node `20.19+` 권장 경고가 출력됐지만 build/test는 통과했다.
+  - `npm run hygiene:dead-code`
+    - 통과.
+  - `git diff --check`
+    - 통과.
+- 결과:
+  - `src/worker/routes/admin.ts`는 202 lines에서 24 lines로 줄어 route hub 역할만 남았다.
+  - admin place API path, response shape, authorization semantics, mock/DB fallback 동작은 변경하지 않았다.
+  - admin route split slice는 완료됐다.
+  - 다음 구조 개선 후보는 `src/worker/routes/auth.ts` route domain 분리 또는 `src/client/routes/MapRoute.tsx` query/list/sheet 책임 분리다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.

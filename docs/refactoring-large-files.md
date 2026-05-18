@@ -24,8 +24,9 @@
   - place submission route handler moved to `src/worker/routes/public-write-submissions.ts`.
   - report submission route handler moved to `src/worker/routes/public-write-reports.ts`.
   - rate limit/Turnstile/mock write helpers have been moved to `src/worker/routes/public-write-support.ts`.
-- `src/worker/routes/admin.ts`: 202 lines
-  - admin place route registration is the last domain left in the route hub.
+- `src/worker/routes/admin.ts`: 24 lines
+  - admin route hub now only wires focused route modules.
+  - admin place route registration moved to `src/worker/routes/admin-places.ts`.
   - admin price route registration moved to `src/worker/routes/admin-prices.ts`.
   - admin report route registration moved to `src/worker/routes/admin-reports.ts`.
   - shared admin route types and session guard moved to `src/worker/routes/admin-support.ts`.
@@ -159,7 +160,7 @@
   - Targeted API smoke for price report, comment, report, place submission.
 
 ### Worker Slice 5: Admin Routes
-상태: 부분 완료. repository는 place/price/report로 나뉘었고 price/report route registration은 `src/worker/routes/admin-prices.ts`, `src/worker/routes/admin-reports.ts`로 분리되었다. 다음 작업은 place route registration을 분리하는 것이다.
+상태: 완료. repository는 place/price/report로 나뉘었고 place/price/report route registration은 `src/worker/routes/admin-places.ts`, `src/worker/routes/admin-prices.ts`, `src/worker/routes/admin-reports.ts`로 분리되었다. `src/worker/routes/admin.ts`는 route hub 역할만 남았다.
 
 - Extract:
   - pending place queue
