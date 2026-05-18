@@ -16,8 +16,9 @@
   - price item update transaction은 `src/worker/admin/admin-price-items-repository.ts`로 분리되었다.
 - `src/client/routes/MapRoute.tsx`: 734 lines
   - route state, viewport fetch, map/list sync, category tray, place cards, detail sheet, mobile list sheet, bookmark/reaction update가 한 route component에 섞여 있다.
-- `src/worker/routes/public-write.ts`: 173 lines
-  - price report handler is the last public write handler left in the route hub.
+- `src/worker/routes/public-write.ts`: 30 lines
+  - public write route hub now only wires focused route modules.
+  - price report route handler moved to `src/worker/routes/public-write-price-reports.ts`.
   - comments create/delete route handlers moved to `src/worker/routes/public-write-comments.ts`.
   - reaction route handler moved to `src/worker/routes/public-write-reactions.ts`.
   - place submission route handler moved to `src/worker/routes/public-write-submissions.ts`.
@@ -133,7 +134,7 @@
   - Manual Kakao/Naver live login QA when OAuth callback code changes.
 
 ### Worker Slice 4: Public Read and Write Routes
-상태: 부분 완료. Public read route는 `src/worker/routes/places-read.ts`로 분리되어 있고, `places-read-repository`의 mapper/type/marker helper도 별도 module로 분리되었다. public write route는 support helper, comments create/delete route, reaction route, place submission route, report submission route가 분리된 상태다. 다음 작업은 마지막으로 남은 price report handler를 얇게 나누는 것이다.
+상태: 완료. Public read route는 `src/worker/routes/places-read.ts`로 분리되어 있고, `places-read-repository`의 mapper/type/marker helper도 별도 module로 분리되었다. public write route는 support helper, price report route, comments create/delete route, reaction route, place submission route, report submission route가 모두 분리된 상태다.
 
 - Extract:
   - categories/config/bookmarks
@@ -344,12 +345,10 @@ Candidate file:
 - `npm run smoke:remote` only after deployment to an environment containing the same Worker code and required DB migrations.
 
 ## Suggested Order
-1. Finish `src/worker/routes/public-write.ts` split by extracting write handlers after the support helper split.
-2. Split `src/worker/places-read-repository.ts` into query, aggregation, and mock fallback modules.
-3. Split `src/worker/admin-prices-repository.ts` into mapper, review, and price item update modules.
-4. Split `src/worker/routes/admin.ts` by place/price/report route registration.
-5. Split `src/worker/routes/auth.ts` by session, credentials, and OAuth route registration.
-6. Extract `MapRoute.tsx` query/list/sheet responsibilities.
-7. Revisit `src/db/schema.ts` only after migration rules are refreshed, because schema splitting can increase migration drift risk if done casually.
+1. Split `src/worker/places-read-repository.ts` into query, aggregation, and mock fallback modules.
+2. Split `src/worker/routes/admin.ts` by place/price/report route registration.
+3. Split `src/worker/routes/auth.ts` by session, credentials, and OAuth route registration.
+4. Extract `MapRoute.tsx` query/list/sheet responsibilities.
+5. Revisit `src/db/schema.ts` only after migration rules are refreshed, because schema splitting can increase migration drift risk if done casually.
 
 This order keeps the strongest Worker/API protection checks near the highest-risk server-side files first. Map extraction remains later because regressions require browser and manual viewport QA.
