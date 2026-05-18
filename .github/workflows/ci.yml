@@ -127,7 +127,7 @@ jobs:
         run: npm run smoke:price-concurrency
 
       - name: Run all E2E
-        run: npm run e2e:prepare && npm run build && npm run test:e2e:all:ci
+        run: npm run test:e2e:all
 
   remote-smoke:
     name: Remote Smoke
