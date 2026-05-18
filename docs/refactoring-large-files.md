@@ -30,8 +30,9 @@
   - admin price route registration moved to `src/worker/routes/admin-prices.ts`.
   - admin report route registration moved to `src/worker/routes/admin-reports.ts`.
   - shared admin route types and session guard moved to `src/worker/routes/admin-support.ts`.
-- `src/worker/routes/auth.ts`: 116 lines
-  - csrf/session/signout and provider discovery route wiring remain in the auth route hub.
+- `src/worker/routes/auth.ts`: 18 lines
+  - auth route hub now only wires focused route modules.
+  - csrf/session/signout and provider discovery route wiring moved to `src/worker/routes/auth-session.ts`.
   - OAuth signin/callback route wiring and helper logic moved to `src/worker/routes/auth-oauth.ts`.
   - credentials callback and signup route wiring moved to `src/worker/routes/auth-credentials.ts`.
   - shared auth route binding/dependency types moved to `src/worker/routes/auth-support.ts`.
@@ -123,7 +124,7 @@
   - Manual curl check that static/SEO routes do not return HTML fallback.
 
 ### Worker Slice 3: Auth Routes
-상태: 진행 중. credentials callback/signup route, OAuth signin/callback route, shared auth support type은 분리 완료했고, csrf/session/signout/providers route wiring은 후속 slice로 남아 있다.
+상태: 완료. auth route hub는 session/providers, OAuth, credentials route module 등록만 담당한다.
 
 - Extract:
   - CSRF/session/signout/providers
@@ -133,6 +134,7 @@
 - Candidate files:
   - `src/worker/auth/session.ts`
   - `src/worker/auth/oauth.ts`
+  - `src/worker/routes/auth-session.ts`
   - `src/worker/routes/auth-oauth.ts`
   - `src/worker/routes/auth-credentials.ts`
   - `src/worker/routes/auth-support.ts`

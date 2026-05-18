@@ -3330,3 +3330,45 @@
   - auth route hub에는 csrf/session/signout/providers route wiring과 하위 auth route module 등록만 남았다.
   - 다음 구조 개선 후보는 csrf/session/signout/provider route 분리 또는 `MapRoute.tsx` query/list/sheet 책임 분리다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `084` auth session/providers route 분리
+
+- 배경:
+  - credentials route와 OAuth route 분리 후 `src/worker/routes/auth.ts`에는 CSRF/session/signout/providers route만 직접 남아 있었다.
+  - 남은 route들은 Worker signed session cookie와 provider discovery response를 담당하므로 별도 session/providers module로 묶기 적합했다.
+  - 이번 slice는 auth route split을 마무리하면서 route path, response shape, cookie semantics를 바꾸지 않는 동작 보존형 분리로 제한했다.
+- 변경 내용:
+  - `src/worker/routes/auth-session.ts`를 추가했다.
+  - `/api/auth/csrf`, `/api/auth/session`, `/api/auth/signout`, `/api/auth/providers` route 등록을 새 module로 이동했다.
+  - CSRF cookie, callback cookie, signout session cookie clear, JSON/redirect signout response semantics를 유지했다.
+  - `/api/auth/providers`의 credentials provider와 enabled Kakao/Naver provider response shape를 유지했다.
+  - `src/worker/routes/auth.ts`는 session/OAuth/credentials route module을 순서대로 등록하는 hub로 줄였다.
+  - `docs/refactoring-large-files.md`의 auth hotspot line count와 Worker Slice 3 상태를 완료로 갱신했다.
+- 코드/문서:
+  - `src/worker/routes/auth.ts`
+  - `src/worker/routes/auth-session.ts`
+  - `docs/refactoring-large-files.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run typecheck`
+    - 통과.
+  - `npm run lint`
+    - 통과.
+  - `npm run verify`
+    - 통과. lint, typecheck, unit test 8개 통과.
+  - `npm run test:e2e:full -- tests/e2e/login.spec.ts tests/e2e/signup.spec.ts`
+    - 통과.
+    - runner 특성상 full E2E 세트가 실행되어 desktop smoke 10개, desktop full 7개, mobile 3개가 통과했다.
+    - 로컬 Node `v20.13.1`에서 Vite의 Node `20.19+` 권장 경고가 출력됐지만 build/test는 통과했다.
+  - `npm run hygiene:dead-code`
+    - 통과.
+  - `git diff --check`
+    - 통과.
+- 결과:
+  - `src/worker/routes/auth.ts`는 116 lines에서 18 lines로 줄어 route hub 역할만 남았다.
+  - auth route split slice는 완료됐다.
+  - CSRF/session/signout/providers API path, response shape, cookie semantics는 변경하지 않았다.
+  - 다음 구조 개선 후보는 `MapRoute.tsx` query/list/sheet 책임 분리 또는 `src/worker/places-write-repository.ts` write domain 분리다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
