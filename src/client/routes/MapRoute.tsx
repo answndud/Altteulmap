@@ -16,6 +16,11 @@ import {
   createMapHref,
   VIEWPORT_FETCH_DEBOUNCE_MS,
 } from "@/client/features/map/map-query";
+import {
+  deriveMapMarkers,
+  deriveTrendingPlaces,
+  mergeSelectedPlaceIntoList,
+} from "@/client/features/map/map-route-derived";
 import { MapCategoryTray } from "@/client/features/map/MapCategoryTray";
 import {
   MobilePlaceListSheet,
@@ -357,41 +362,13 @@ export function MapRoute() {
 
   const places = useMemo(() => state.data?.items ?? [], [state.data?.items]);
   const mapMarkers = useMemo<PlaceMapMarkerRecord[]>(() => {
-    if (optimisticClusterPlaces?.length) {
-      return optimisticClusterPlaces.map((place) => ({
-        ...place,
-        kind: "place",
-      }));
-    }
-
-    return state.data?.mapMarkers ?? [];
+    return deriveMapMarkers(state.data?.mapMarkers ?? [], optimisticClusterPlaces);
   }, [optimisticClusterPlaces, state.data?.mapMarkers]);
   const displayedPlaces = useMemo(() => {
-    if (!selectedPlace) {
-      return places;
-    }
-
-    return places.map((place) =>
-      place.id === selectedPlace.id ? selectedPlace : place,
-    );
+    return mergeSelectedPlaceIntoList(places, selectedPlace);
   }, [places, selectedPlace]);
   const trendingPlaces = useMemo(() => {
-    if (query) {
-      return [];
-    }
-
-    return [...displayedPlaces]
-      .sort((left, right) => {
-        if (right.likeCount !== left.likeCount) {
-          return right.likeCount - left.likeCount;
-        }
-
-        return (
-          new Date(right.lastPriceUpdatedAt).getTime() -
-          new Date(left.lastPriceUpdatedAt).getTime()
-        );
-      })
-      .slice(0, 6);
+    return deriveTrendingPlaces(displayedPlaces, query);
   }, [displayedPlaces, query]);
   const totalPlaceCount = state.status === "success" ? state.data.count : 0;
   const visiblePlaceCount =
