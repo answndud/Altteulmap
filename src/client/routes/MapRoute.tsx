@@ -4,23 +4,17 @@ import {
   useMemo,
   useRef,
   useState,
-  useTransition,
 } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
 import { getCategoryBySlug } from "@/features/categories/catalog";
-import {
-  buildMapApiPath,
-  CLUSTER_FOCUS_VIEWPORT_LOCK_MS,
-  createBootstrapViewport,
-  createMapHref,
-  VIEWPORT_FETCH_DEBOUNCE_MS,
-} from "@/client/features/map/map-query";
+import { createMapHref } from "@/client/features/map/map-query";
 import {
   deriveMapMarkers,
   deriveTrendingPlaces,
   mergeSelectedPlaceIntoList,
 } from "@/client/features/map/map-route-derived";
+import { useMapRoutePlaces } from "@/client/features/map/use-map-route-places";
 import { MapCategoryTray } from "@/client/features/map/MapCategoryTray";
 import {
   MobilePlaceListSheet,
@@ -33,42 +27,16 @@ import {
 import { PlaceCard } from "@/client/features/map/PlaceCard";
 import { TrendingPlacesSection } from "@/client/features/map/TrendingPlacesSection";
 import { NaverMapPanel } from "@/features/map/naver-map-panel";
-import type { MapViewport } from "@/features/map/naver-map-sdk";
 import { RouteResetDetails } from "@/features/map/route-reset-details";
 import type {
-  PlaceBounds,
-  PlaceMapMarkerMode,
   PlaceMapMarkerRecord,
   PlacePreviewRecord,
   PlaceSearchScope,
 } from "@/features/places/types";
 
-type MapPlacesResponse = {
-  bounds: PlaceBounds | null;
-  count: number;
-  filters: {
-    bounds: PlaceBounds | null;
-    category: string | null;
-    query: string | null;
-    searchScope: PlaceSearchScope;
-  };
-  items: PlacePreviewRecord[];
-  mapMarkers: PlaceMapMarkerRecord[];
-  markerMode: PlaceMapMarkerMode;
-  mapMarkerCount: number;
-  returnedCount: number;
-  source: "database" | "mock";
-  mock: boolean;
-};
-
 type BookmarksResponse = {
   items?: Array<{ placeId: string }>;
 };
-
-type LoadState =
-  | { status: "loading"; data: null; error: null }
-  | { status: "success"; data: MapPlacesResponse; error: null }
-  | { status: "error"; data: null; error: string };
 
 const scopeChipClassName =
   "altteulmap-scope-chip inline-flex min-w-[6.75rem] items-center justify-center whitespace-nowrap rounded-[0.65rem] px-3 py-2 text-xs font-semibold transition sm:text-sm";
@@ -108,30 +76,16 @@ function getLoginHref() {
 
 export function MapRoute() {
   const [searchParams] = useSearchParams();
-  const [state, setState] = useState<LoadState>({
-    status: "loading",
-    data: null,
-    error: null,
-  });
   const [selectedPlace, setSelectedPlace] = useState<PlacePreviewRecord | null>(
     null,
   );
-  const [optimisticClusterPlaces, setOptimisticClusterPlaces] = useState<
-    PlacePreviewRecord[] | null
-  >(null);
   const isDesktopLayout = useIsDesktopLayout();
   const [mobileListMode, setMobileListMode] =
     useState<MobileSheetMode>("hidden");
-  const [viewport, setViewport] = useState<MapViewport | null>(null);
   const mapSectionRef = useRef<HTMLElement | null>(null);
-  const lastViewportRequestPathRef = useRef<string | null>(null);
-  const shouldIgnoreFirstViewportSyncRef = useRef(false);
-  const clusterFocusViewportLockUntilRef = useRef(0);
   const [bookmarkedPlaceIds, setBookmarkedPlaceIds] = useState<Set<string>>(
     () => new Set(),
   );
-  const [isManualRefreshPending, setIsManualRefreshPending] = useState(false);
-  const [, startViewportRefresh] = useTransition();
   const query = searchParams.get("q")?.trim() || "";
   const activeCategory = searchParams.get("category");
   const searchScope: PlaceSearchScope =
@@ -139,66 +93,21 @@ export function MapRoute() {
   const selectedCategory = getCategoryBySlug(activeCategory);
   const selectedCategoryLabel = selectedCategory?.name ?? null;
   const loginHref = getLoginHref();
-
-  const loadPlaces = useCallback(
-    async (apiPath: string, signal?: AbortSignal) => {
-      const response = await fetch(apiPath, {
-        cache: "no-store",
-        signal,
-      });
-
-      if (!response.ok) {
-        throw new Error("지도 결과를 불러오지 못했습니다.");
-      }
-
-      return (await response.json()) as MapPlacesResponse;
-    },
-    [],
-  );
-
-  useEffect(() => {
-    const controller = new AbortController();
-    const initialViewport =
-      searchScope === "viewport" ? createBootstrapViewport() : null;
-    const initialApiPath = buildMapApiPath(searchParams, initialViewport);
-
-    shouldIgnoreFirstViewportSyncRef.current = searchScope === "viewport";
-    lastViewportRequestPathRef.current = initialApiPath;
-    setViewport(initialViewport);
-
-    loadPlaces(initialApiPath, controller.signal)
-      .then((data) => {
-        if (lastViewportRequestPathRef.current !== initialApiPath) {
-          return;
-        }
-
-        setSelectedPlace(null);
-        setOptimisticClusterPlaces(null);
-        setState({ status: "success", data, error: null });
-      })
-      .catch((error: unknown) => {
-        if (controller.signal.aborted) {
-          return;
-        }
-
-        if (lastViewportRequestPathRef.current !== initialApiPath) {
-          return;
-        }
-
-        setState({
-          status: "error",
-          data: null,
-          error:
-            error instanceof Error
-              ? error.message
-              : "지도 결과를 불러오지 못했습니다.",
-        });
-      });
-
-    return () => {
-      controller.abort();
-    };
-  }, [loadPlaces, searchParams, searchScope]);
+  const resetSelectedPlace = useCallback(() => setSelectedPlace(null), []);
+  const {
+    handleClusterFocusViewport,
+    handleViewportChange,
+    isManualRefreshPending,
+    optimisticClusterPlaces,
+    refreshViewportPlaces,
+    state,
+    updatePlaceInResults,
+    viewport,
+  } = useMapRoutePlaces({
+    onResetSelectedPlace: resetSelectedPlace,
+    searchParams,
+    searchScope,
+  });
 
   useEffect(() => {
     const controller = new AbortController();
@@ -232,137 +141,12 @@ export function MapRoute() {
     return () => controller.abort();
   }, []);
 
-  const refreshViewportPlaces = useCallback(() => {
-    if (!viewport) {
-      return;
-    }
-
-    setIsManualRefreshPending(true);
-    startViewportRefresh(async () => {
-      try {
-        const data = await loadPlaces(buildMapApiPath(searchParams, viewport));
-        setState({ status: "success", data, error: null });
-        setSelectedPlace(null);
-        setOptimisticClusterPlaces(null);
-      } catch (error) {
-        setState({
-          status: "error",
-          data: null,
-          error:
-            error instanceof Error
-              ? error.message
-              : "지도 결과를 불러오지 못했습니다.",
-        });
-      } finally {
-        setIsManualRefreshPending(false);
-      }
-    });
-  }, [loadPlaces, searchParams, viewport]);
-
-  useEffect(() => {
-    if (searchScope !== "viewport" || !viewport) {
-      return;
-    }
-
-    const apiPath = buildMapApiPath(searchParams, viewport);
-
-    if (lastViewportRequestPathRef.current === apiPath) {
-      return;
-    }
-
-    const controller = new AbortController();
-    const fetchTimeoutId = window.setTimeout(() => {
-      lastViewportRequestPathRef.current = apiPath;
-
-      startViewportRefresh(async () => {
-        try {
-          const data = await loadPlaces(apiPath, controller.signal);
-          setState({ status: "success", data, error: null });
-          setSelectedPlace(null);
-          setOptimisticClusterPlaces(null);
-        } catch (error) {
-          if (controller.signal.aborted) {
-            return;
-          }
-
-          lastViewportRequestPathRef.current = null;
-          setState({
-            status: "error",
-            data: null,
-            error:
-              error instanceof Error
-                ? error.message
-                : "지도 결과를 불러오지 못했습니다.",
-          });
-        }
-      });
-    }, VIEWPORT_FETCH_DEBOUNCE_MS);
-
-    return () => {
-      window.clearTimeout(fetchTimeoutId);
-      controller.abort();
-    };
-  }, [loadPlaces, searchParams, searchScope, viewport]);
-
-  const handleViewportChange = useCallback(
-    (nextViewport: MapViewport) => {
-      if (Date.now() < clusterFocusViewportLockUntilRef.current) {
-        return;
-      }
-
-      if (
-        searchScope === "viewport" &&
-        shouldIgnoreFirstViewportSyncRef.current
-      ) {
-        shouldIgnoreFirstViewportSyncRef.current = false;
-        setViewport(nextViewport);
-        return;
-      }
-
-      setViewport(nextViewport);
-    },
-    [searchScope],
-  );
-
-  const handleClusterFocusViewport = useCallback(
-    (nextViewport: MapViewport, previewPlaces?: PlacePreviewRecord[]) => {
-      const apiPath = buildMapApiPath(searchParams, nextViewport);
-
-      clusterFocusViewportLockUntilRef.current =
-        Date.now() + CLUSTER_FOCUS_VIEWPORT_LOCK_MS;
-      shouldIgnoreFirstViewportSyncRef.current = false;
-      lastViewportRequestPathRef.current = apiPath;
-      setOptimisticClusterPlaces(
-        previewPlaces && previewPlaces.length > 0 ? previewPlaces : null,
-      );
-      setViewport(nextViewport);
-
-      startViewportRefresh(async () => {
-        try {
-          const data = await loadPlaces(apiPath);
-          setState({ status: "success", data, error: null });
-          setSelectedPlace(null);
-          setOptimisticClusterPlaces(null);
-        } catch (error) {
-          lastViewportRequestPathRef.current = null;
-          setOptimisticClusterPlaces(null);
-          setState({
-            status: "error",
-            data: null,
-            error:
-              error instanceof Error
-                ? error.message
-                : "지도 결과를 불러오지 못했습니다.",
-          });
-        }
-      });
-    },
-    [loadPlaces, searchParams],
-  );
-
   const places = useMemo(() => state.data?.items ?? [], [state.data?.items]);
   const mapMarkers = useMemo<PlaceMapMarkerRecord[]>(() => {
-    return deriveMapMarkers(state.data?.mapMarkers ?? [], optimisticClusterPlaces);
+    return deriveMapMarkers(
+      state.data?.mapMarkers ?? [],
+      optimisticClusterPlaces,
+    );
   }, [optimisticClusterPlaces, state.data?.mapMarkers]);
   const displayedPlaces = useMemo(() => {
     return mergeSelectedPlaceIntoList(places, selectedPlace);
@@ -401,29 +185,13 @@ export function MapRoute() {
           }
         : current,
     );
-    setState((current) => {
-      if (current.status !== "success") {
-        return current;
-      }
-
-      return {
-        ...current,
-        data: {
-          ...current.data,
-          items: current.data.items.map((place) =>
-            place.id === update.placeId
-              ? {
-                  ...place,
-                  dislikeCount: update.dislikeCount,
-                  likeCount: update.likeCount,
-                  viewerReaction: update.viewerReaction,
-                }
-              : place,
-          ),
-        },
-      };
-    });
-  }, []);
+    updatePlaceInResults(update.placeId, (place) => ({
+      ...place,
+      dislikeCount: update.dislikeCount,
+      likeCount: update.likeCount,
+      viewerReaction: update.viewerReaction,
+    }));
+  }, [updatePlaceInResults]);
   const selectPlace = useCallback((place: PlacePreviewRecord) => {
     setSelectedPlace(place);
   }, []);
