@@ -3952,3 +3952,45 @@
   - viewport mode refresh button, global search focus key, selected place active marker, bounds/loading/count 전달, viewport/cluster handler wiring semantics는 변경하지 않았다.
   - 다음 구조 개선 후보는 `MapRoute`의 focus/select handlers hook 분리 또는 `src/db/schema.ts`의 schema module 분할 준비다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `099` MapRoute action handlers hook 분리
+
+- 배경:
+  - map panel props adapter 분리 후 `src/client/routes/MapRoute.tsx`에는 route-local `useCallback` handler와 map section ref가 남아 있었다.
+  - 반응 optimistic update, 인기 장소 선택 후 지도 섹션 focus, 모바일 목록 선택 후 sheet 닫기는 route markup보다 route action wiring 책임에 가깝다.
+  - 이번 slice는 handler 위치만 이동하고 UI 동작, API 호출, 상태 업데이트 semantics는 바꾸지 않는 동작 보존형 리팩터링으로 제한했다.
+- 변경 내용:
+  - `src/client/features/map/use-map-route-action-handlers.ts`를 추가했다.
+  - 새 hook이 `mapSectionRef`, `updateReaction`, `selectPlaceAndFocusMap`, `selectPlaceFromMobileList`를 제공하도록 했다.
+  - `updateReaction`은 기존처럼 selected place와 result list에 같은 reaction payload를 반영한다.
+  - `selectPlaceAndFocusMap`은 기존처럼 선택 후 `requestAnimationFrame`에서 지도 섹션으로 smooth scroll한다.
+  - `selectPlaceFromMobileList`는 기존처럼 장소를 선택하고 모바일 목록 sheet를 `hidden`으로 닫는다.
+  - `src/client/routes/MapRoute.tsx`는 `useCallback`, `useRef`, reaction/place type import를 제거하고 action handlers hook 반환값만 전달하도록 정리했다.
+  - `docs/refactoring-large-files.md`의 MapRoute hotspot line count와 분리 상태를 갱신했다.
+- 코드/문서:
+  - `src/client/routes/MapRoute.tsx`
+  - `src/client/features/map/use-map-route-action-handlers.ts`
+  - `docs/refactoring-large-files.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run typecheck`
+    - 통과.
+  - `npm run lint`
+    - 통과.
+  - `npm run hygiene:dead-code`
+    - 통과.
+  - `git diff --check`
+    - 통과.
+  - `npm run verify`
+    - 통과. lint, typecheck, unit test 11개 통과.
+  - `npm run test:e2e:full -- tests/e2e/map.spec.ts`
+    - 통과.
+    - runner 특성상 DB push/seed/build 후 desktop smoke 10개, desktop full 7개, mobile 3개가 실행되어 모두 통과했다.
+    - 로컬 Node `v20.13.1`에서 Vite의 Node `20.19+` 권장 경고가 출력됐지만 build/test는 통과했다.
+- 결과:
+  - `src/client/routes/MapRoute.tsx`는 161 lines에서 152 lines로 줄었다.
+  - 비회원 반응 optimistic update, 인기 장소 선택 시 지도 focus, 모바일 목록 선택 시 상세 sheet 전환 semantics는 변경하지 않았다.
+  - 다음 구조 개선 후보는 `src/db/schema.ts`의 schema module 분할 준비 또는 `src/worker/admin-prices-repository.ts` read query 분리다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.

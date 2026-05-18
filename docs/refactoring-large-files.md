@@ -14,8 +14,9 @@
   - pricing summary refresh, moderation suggestion mapping, admin price item mapping은 `src/worker/admin/admin-price-helpers.ts`로 분리되었다.
   - price report moderation transaction은 `src/worker/admin/admin-price-review-repository.ts`로 분리되었다.
   - price item update transaction은 `src/worker/admin/admin-price-items-repository.ts`로 분리되었다.
-- `src/client/routes/MapRoute.tsx`: 161 lines
+- `src/client/routes/MapRoute.tsx`: 152 lines
   - top-level map composition remains in the route component.
+  - reaction update, trending place map focus, mobile list select handler wiring은 `src/client/features/map/use-map-route-action-handlers.ts`로 분리되었다.
   - 현재 경로 기반 login callback href 생성은 `src/lib/auth-navigation.ts`의 `createCurrentLoginHref`로 분리되었다.
   - `NaverMapPanel` prop 계산과 refresh/focus key 조립은 `src/client/features/map/use-map-route-panel-props.ts`로 분리되었다.
   - query/category/scope 해석과 map/list/trending/count view model 계산은 `src/client/features/map/use-map-route-view-model.ts`로 분리되었다.
