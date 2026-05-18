@@ -3868,3 +3868,46 @@
   - query/category/scope URL semantics, selected category label, optimistic marker merge, selected place merge, trending hide/sort, count/trimmed semantics는 변경하지 않았다.
   - 다음 구조 개선 후보는 `getLoginHref` helper 분리 또는 MapRoute map panel props adapter 분리다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `097` MapRoute login href helper 분리
+
+- 배경:
+  - view model hook 분리 후 `src/client/routes/MapRoute.tsx`에는 현재 경로 기반 로그인 callback href를 만드는 route-local `getLoginHref` helper가 남아 있었다.
+  - `src/lib/auth-navigation.ts`에는 이미 `normalizeCallbackUrl`, `createLoginHref`, `createSignupHref`가 있어 auth URL 생성 책임을 공용 helper로 모으는 편이 자연스럽다.
+  - 이번 slice는 SSR fallback `/`, 현재 `pathname + search` callback, `/login?callbackUrl=...` 생성 semantics를 바꾸지 않는 동작 보존형 리팩터링으로 제한했다.
+- 변경 내용:
+  - `src/lib/auth-navigation.ts`에 `createCurrentLoginHref`를 추가했다.
+  - SSR 환경에서는 기존처럼 `/`를 callback으로 사용하고, 브라우저 환경에서는 `window.location.pathname + window.location.search`를 callback으로 사용하도록 유지했다.
+  - `src/client/routes/MapRoute.tsx`의 route-local `getLoginHref`를 제거하고 `createCurrentLoginHref`를 사용하도록 변경했다.
+  - `tests/unit/http-and-rate-limit.test.ts`에 SSR fallback과 `/map?q=...&scope=global` 현재 위치 callback href 케이스를 추가했다.
+  - `docs/refactoring-large-files.md`의 MapRoute hotspot line count와 분리 상태를 갱신했다.
+- 코드/문서:
+  - `src/client/routes/MapRoute.tsx`
+  - `src/lib/auth-navigation.ts`
+  - `tests/unit/http-and-rate-limit.test.ts`
+  - `docs/refactoring-large-files.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run typecheck`
+    - 통과.
+  - `npm run lint`
+    - 통과.
+  - `npm run test:unit`
+    - 통과. auth navigation 신규 케이스 포함 unit test 11개 통과.
+  - `npm run verify`
+    - 통과. lint, typecheck, unit test 11개 통과.
+  - `npm run test:e2e:full -- tests/e2e/map.spec.ts`
+    - 통과.
+    - runner 특성상 full E2E 세트가 실행되어 desktop smoke 10개, desktop full 7개, mobile 3개가 통과했다.
+    - 로컬 Node `v20.13.1`에서 Vite의 Node `20.19+` 권장 경고가 출력됐지만 build/test는 통과했다.
+  - `npm run hygiene:dead-code`
+    - 통과.
+  - `git diff --check`
+    - 통과.
+- 결과:
+  - `src/client/routes/MapRoute.tsx`는 177 lines에서 169 lines로 줄었다.
+  - 비회원 북마크/반응에서 로그인으로 이동할 때 현재 지도 path/query를 callback으로 보존하는 semantics는 변경하지 않았다.
+  - 다음 구조 개선 후보는 MapRoute map panel props adapter 분리 또는 `MapRoute`의 focus/select handlers hook 분리다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.

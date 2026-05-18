@@ -7,6 +7,7 @@ import {
 } from "../../src/lib/rate-limit";
 import { getRateLimitFeedbackMessage } from "../../src/lib/rate-limit-feedback";
 import {
+  createCurrentLoginHref,
   createLoginHref,
   createSignupHref,
   normalizeCallbackUrl as normalizeClientCallbackUrl,
@@ -58,6 +59,31 @@ test("client auth navigation keeps only safe callback URLs", () => {
   assert.equal(normalizeClientCallbackUrl("//evil.test/path"), "/");
   assert.equal(createLoginHref("/bookmarks"), "/login?callbackUrl=%2Fbookmarks");
   assert.equal(createSignupHref("/login"), "/signup?callbackUrl=%2F");
+  assert.equal(createCurrentLoginHref(), "/login?callbackUrl=%2F");
+
+  const originalWindow = globalThis.window;
+
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: {
+      location: {
+        pathname: "/map",
+        search: "?q=%EA%B9%80%EB%B0%A5&scope=global",
+      },
+    },
+  });
+
+  try {
+    assert.equal(
+      createCurrentLoginHref(),
+      "/login?callbackUrl=%2Fmap%3Fq%3D%25EA%25B9%2580%25EB%25B0%25A5%26scope%3Dglobal",
+    );
+  } finally {
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      value: originalWindow,
+    });
+  }
 });
 
 test("worker URL helpers reject external callback URLs", () => {

@@ -16,15 +16,7 @@ import type { PlaceReactionUpdate } from "@/client/features/map/PlaceDetailSheet
 import { TrendingPlacesSection } from "@/client/features/map/TrendingPlacesSection";
 import { NaverMapPanel } from "@/features/map/naver-map-panel";
 import type { PlacePreviewRecord } from "@/features/places/types";
-
-function getLoginHref() {
-  const callbackUrl =
-    typeof window === "undefined"
-      ? "/"
-      : `${window.location.pathname}${window.location.search}`;
-
-  return `/login?callbackUrl=${encodeURIComponent(callbackUrl)}`;
-}
+import { createCurrentLoginHref } from "@/lib/auth-navigation";
 
 export function MapRoute() {
   const [searchParams] = useSearchParams();
@@ -32,7 +24,7 @@ export function MapRoute() {
   const [mobileListMode, setMobileListMode] =
     useState<MobileSheetMode>("hidden");
   const mapSectionRef = useRef<HTMLElement | null>(null);
-  const loginHref = getLoginHref();
+  const loginHref = createCurrentLoginHref();
   const {
     activeCategory,
     query,
