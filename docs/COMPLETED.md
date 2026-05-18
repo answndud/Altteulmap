@@ -3500,3 +3500,45 @@
   - price report active place lookup, matched price item mapping, pending review insert, response shape는 변경하지 않았다.
   - 다음 구조 개선 후보는 place submission repository 분리다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `088` places write submission repository 분리
+
+- 배경:
+  - price report repository 분리 후 `src/worker/places-write-repository.ts`에는 place submission write만 남아 있었다.
+  - place submission 로직은 category lookup, unique slug 생성, pending place/price item/price report insert transaction으로 구성되어 별도 domain repository로 분리하기 적합했다.
+  - 이번 slice는 공개 장소 등록 API path, transaction boundary, response preview shape를 바꾸지 않는 동작 보존형 분리로 제한했다.
+- 변경 내용:
+  - `src/worker/places-write-submissions-repository.ts`를 추가했다.
+  - `createDatabasePlaceSubmission`과 unique slug 생성 helper를 submission repository module로 이동했다.
+  - pending place insert, primary category link insert, price item insert, initial price report insert transaction을 그대로 유지했다.
+  - `src/worker/routes/public-write-submissions.ts`는 새 submission repository를 직접 import하게 변경했다.
+  - 더 이상 참조되지 않는 `src/worker/places-write-repository.ts`를 삭제했다.
+  - `docs/refactoring-large-files.md`의 places write hotspot을 public write repository split 완료 상태로 갱신했다.
+- 코드/문서:
+  - `src/worker/places-write-repository.ts`
+  - `src/worker/places-write-submissions-repository.ts`
+  - `src/worker/routes/public-write-submissions.ts`
+  - `docs/refactoring-large-files.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run typecheck`
+    - 통과.
+  - `npm run lint`
+    - 통과.
+  - `npm run verify`
+    - 통과. lint, typecheck, unit test 8개 통과.
+  - `npm run test:e2e:full -- tests/e2e/submission-admin.spec.ts`
+    - 통과.
+    - runner 특성상 full E2E 세트가 실행되어 desktop smoke 10개, desktop full 7개, mobile 3개가 통과했다.
+    - 로컬 Node `v20.13.1`에서 Vite의 Node `20.19+` 권장 경고가 출력됐지만 build/test는 통과했다.
+  - `npm run hygiene:dead-code`
+    - 통과.
+  - `git diff --check`
+    - 통과.
+- 결과:
+  - `src/worker/places-write-repository.ts`는 삭제되었고, public write domain repository는 submission, price reports, reactions, comments, support module로 분리됐다.
+  - place submission category lookup, slug 생성, pending place/price item/price report transaction, response preview shape는 변경하지 않았다.
+  - 다음 구조 개선 후보는 `MapRoute.tsx` query/list/sheet 책임 분리 또는 `src/db/schema.ts` 분리 전 사전 점검이다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.

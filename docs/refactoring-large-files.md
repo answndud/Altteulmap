@@ -36,8 +36,8 @@
   - OAuth signin/callback route wiring and helper logic moved to `src/worker/routes/auth-oauth.ts`.
   - credentials callback and signup route wiring moved to `src/worker/routes/auth-credentials.ts`.
   - shared auth route binding/dependency types moved to `src/worker/routes/auth-support.ts`.
-- `src/worker/places-write-repository.ts`: 170 lines
-  - place submission repository logic remains in the original write repository.
+- Public write repository split:
+  - place submission repository logic moved to `src/worker/places-write-submissions-repository.ts`.
   - price report repository logic moved to `src/worker/places-write-price-reports-repository.ts`.
   - reaction repository logic moved to `src/worker/places-write-reactions-repository.ts`.
   - comment create/delete repository logic moved to `src/worker/places-write-comments-repository.ts`.
@@ -364,7 +364,7 @@ Candidate file:
 1. Split `src/worker/routes/admin.ts` by place/price/report route registration.
 2. Split `src/worker/routes/auth.ts` by session, credentials, and OAuth route registration.
 3. Extract `MapRoute.tsx` query/list/sheet responsibilities.
-4. Split `src/worker/places-write-repository.ts` by write domain.
+4. Split `src/worker/places-write-repository.ts` by write domain. 완료됨.
 5. Revisit `src/db/schema.ts` only after migration rules are refreshed, because schema splitting can increase migration drift risk if done casually.
 
 This order keeps the strongest Worker/API protection checks near the highest-risk server-side files first. Map extraction remains later because regressions require browser and manual viewport QA.

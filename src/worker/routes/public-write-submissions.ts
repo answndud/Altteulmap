@@ -6,7 +6,7 @@ import {
   applyWorkerWriteHeaders,
   getWorkerPublicWriteActor,
 } from "@/worker/public-write-actor";
-import { createDatabasePlaceSubmission } from "@/worker/places-write-repository";
+import { createDatabasePlaceSubmission } from "@/worker/places-write-submissions-repository";
 import {
   isWorkerDatabaseEnabled,
   isWorkerMockDataEnabled,
