@@ -4207,3 +4207,48 @@
   - Telemetry/rate-limit table schema, FK/index/PK semantics, repository import contract는 변경하지 않았다.
   - 다음 구조 개선 후보는 moderation/admin operational table group 분리 또는 category/place table group 분리 전 dependency map 작성이다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `105` Drizzle moderation/admin table group 분리
+
+- 배경:
+  - operational table group 분리 후 `src/db/schema.ts`에는 신고, 관리자 액션, 검수 제안 table 정의가 남아 있었다.
+  - `contentReports`, `adminActions`, `moderationSuggestions`는 `users.id`, enum, timestamp/json helper만 참조하고 domain table을 직접 FK로 물고 있지 않아 별도 module로 이동해도 순환 의존을 만들지 않는다.
+  - 이번 slice는 DB 구조를 바꾸지 않고 moderation/admin table 정의 위치와 re-export 경계만 바꾸는 동작 보존형 리팩터링으로 제한했다.
+- 변경 내용:
+  - `src/db/schema-moderation.ts`를 추가했다.
+  - `contentReports`, `adminActions`, `moderationSuggestions` table 정의를 새 module로 이동했다.
+  - `src/db/schema.ts`는 moderation/admin table group을 다시 export해 기존 `@/db/schema` import contract를 유지했다.
+  - `content_reports` status/created index와 `users.id` nullable FK를 유지했다.
+  - `admin_actions` admin/created index, metadata JSON default, nullable admin FK를 유지했다.
+  - `moderation_suggestions` subject unique index, subject updated index, JSON defaults, timestamp helper 사용을 유지했다.
+  - `docs/refactoring-large-files.md`의 schema hotspot line count와 분리 상태를 갱신했다.
+- 코드/문서:
+  - `src/db/schema.ts`
+  - `src/db/schema-moderation.ts`
+  - `docs/refactoring-large-files.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run typecheck`
+    - 통과.
+  - `npm run lint`
+    - 통과.
+  - `npm run db:generate`
+    - 통과. `No schema changes, nothing to migrate`로 새 migration이 생성되지 않았다.
+  - `npm run hygiene:dead-code`
+    - 통과.
+  - `git diff --check`
+    - 통과.
+  - `npm run verify`
+    - 통과. lint, typecheck, unit test 11개 통과.
+  - `npm run test:e2e:full -- tests/e2e/report-admin.spec.ts`
+    - 통과.
+    - runner 특성상 DB push/seed/build 후 desktop smoke 10개, desktop full 7개, mobile 3개가 실행되어 모두 통과했다.
+    - report admin flow와 `db:push` no changes detected가 확인됐다.
+    - 로컬 Node `v20.13.1`에서 Vite의 Node `20.19+` 권장 경고가 출력됐지만 build/test는 통과했다.
+- 결과:
+  - `src/db/schema.ts`는 392 lines에서 306 lines로 줄었다.
+  - 신고/관리 액션/검수 제안 table schema, FK/index/unique index/JSON default semantics, repository import contract는 변경하지 않았다.
+  - 다음 구조 개선 후보는 category/place/price domain table dependency map 작성 또는 price table group 분리 준비다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
