@@ -3707,3 +3707,43 @@
   - bookmark 초기 로드/표시, bookmark optimistic update, selected place reset/select, reaction optimistic count/viewer reaction update semantics는 변경하지 않았다.
   - 다음 구조 개선 후보는 MapRoute의 category/search controls component 분리 또는 mobile/detail sheet composition 정리다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `093` MapRoute search/category controls component 분리
+
+- 배경:
+  - interaction hook 분리 후 `src/client/routes/MapRoute.tsx`에는 탐색 header, 검색 form, 검색 범위 segmented control, category tray wrapper가 남아 있었다.
+  - 이 영역은 지도 route의 URL query state를 표현하는 UI 덩어리라 별도 component로 분리하면 route component가 map composition 중심으로 더 명확해진다.
+  - 이번 slice는 query/category/scope URL parameter semantics, form action, clear link, 테스트 id를 바꾸지 않는 동작 보존형 리팩터링으로 제한했다.
+- 변경 내용:
+  - `src/client/features/map/MapSearchControls.tsx`를 추가했다.
+  - 탐색 header badge, 검색 input/form, `scope` radio segmented control, `RouteResetDetails` category tray wrapper, desktop helper badges를 새 component로 이동했다.
+  - 기존 `data-testid` 값, `form action="/"`, `category` hidden input, `createMapHref` 기반 clear link, `MapCategoryTray` props wiring을 유지했다.
+  - category catalog type export에 의존하지 않도록 component prop은 실제 사용 필드인 `{ name, parentName }` 구조 타입으로 좁혔다.
+  - `docs/refactoring-large-files.md`의 MapRoute hotspot line count와 분리 상태를 갱신했다.
+- 코드/문서:
+  - `src/client/routes/MapRoute.tsx`
+  - `src/client/features/map/MapSearchControls.tsx`
+  - `docs/refactoring-large-files.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run typecheck`
+    - 통과.
+  - `npm run lint`
+    - 통과.
+  - `npm run verify`
+    - 통과. lint, typecheck, unit test 11개 통과.
+  - `npm run test:e2e:full -- tests/e2e/map.spec.ts`
+    - 통과.
+    - runner 특성상 full E2E 세트가 실행되어 desktop smoke 10개, desktop full 7개, mobile 3개가 통과했다.
+    - 로컬 Node `v20.13.1`에서 Vite의 Node `20.19+` 권장 경고가 출력됐지만 build/test는 통과했다.
+  - `npm run hygiene:dead-code`
+    - 통과.
+  - `git diff --check`
+    - 통과.
+- 결과:
+  - `src/client/routes/MapRoute.tsx`는 357 lines에서 227 lines로 줄었다.
+  - query/category/scope URL parameter, 검색 form, category tray, map search E2E semantics는 변경하지 않았다.
+  - 다음 구조 개선 후보는 MapRoute의 mobile/detail sheet composition 정리 또는 `useIsDesktopLayout` hook 공용화다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.

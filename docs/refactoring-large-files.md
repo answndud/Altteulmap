@@ -14,8 +14,9 @@
   - pricing summary refresh, moderation suggestion mapping, admin price item mapping은 `src/worker/admin/admin-price-helpers.ts`로 분리되었다.
   - price report moderation transaction은 `src/worker/admin/admin-price-review-repository.ts`로 분리되었다.
   - price item update transaction은 `src/worker/admin/admin-price-items-repository.ts`로 분리되었다.
-- `src/client/routes/MapRoute.tsx`: 357 lines
-  - category tray, mobile list sheet, and top-level map/search composition remain in the route component.
+- `src/client/routes/MapRoute.tsx`: 227 lines
+  - mobile list sheet and top-level map composition remain in the route component.
+  - 탐색 header, 검색 form, 검색 범위 segmented control, category tray wrapper는 `src/client/features/map/MapSearchControls.tsx`로 분리되었다.
   - selected place, bookmark fetch/update, reaction optimistic update는 `src/client/features/map/use-map-route-interactions.ts`로 분리되었다.
   - desktop result rail rendering은 `src/client/features/map/MapDesktopResultsRail.tsx`로 분리되었다.
   - initial fetch, viewport debounce fetch, manual refresh, cluster focus fetch는 `src/client/features/map/use-map-route-places.ts`로 분리되었다.
