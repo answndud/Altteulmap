@@ -27,6 +27,7 @@
     "test:e2e:all:ci": "npm run test:e2e:full:ci && npm run test:e2e:performance:ci",
     "test:e2e:smoke": "node scripts/run-local-e2e.mjs smoke",
     "test:e2e:full": "node scripts/run-local-e2e.mjs full",
+    "test:e2e:all": "node scripts/run-local-e2e.mjs all",
     "test:e2e": "node scripts/run-local-e2e.mjs full",
     "test:e2e:headed": "node scripts/run-local-e2e.mjs headed",
     "pretest:e2e:ui": "lsof -tiTCP:3107 -sTCP:LISTEN | xargs -r kill",

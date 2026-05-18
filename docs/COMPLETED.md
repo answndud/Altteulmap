@@ -2563,3 +2563,32 @@
   - 큰 파일 구조 개선은 public write support split을 완료하고, 남은 대형 module은 최신 line count와 후속 순서를 `docs/refactoring-large-files.md`에 남겼다.
   - TypeScript 엄격도는 안전한 옵션만 즉시 적용하고, 대규모 수정을 요구하는 옵션은 에러 규모를 기록해 별도 작업으로 분리했다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `065` GitHub Actions E2E Full 실패 수정
+
+- 배경:
+  - `c54b946 chore: harden repository quality gates` push 후 GitHub Actions run `26011822943`에서 `E2E Full` job이 실패했다.
+  - `Verify` job은 통과했고, 실패 지점은 `E2E Full > Run all E2E` step이었다.
+  - 실패 spec은 map/admin/signup/submission smoke 쪽에 집중되어 있었다.
+- 변경 내용:
+  - CI 로그를 `gh run view 26011822943 --repo answndud/Altteulmap --job 76453887064 --log`와 job logs API로 확인했다.
+  - CI의 `Run all E2E`가 `npm run build && npm run test:e2e:all:ci`를 직접 실행하면서 `scripts/run-local-e2e.mjs`의 `.dev.vars` 생성 단계를 건너뛰는 것을 확인했다.
+  - Vite preview Worker가 `DATABASE_URL` binding 없이 떠서 `/api/health`는 `database-config source: missing`, `/api/places/map`은 503 `DATABASE_UNAVAILABLE` 상태가 됐다.
+  - GitHub Actions `Run all E2E` step을 `npm run test:e2e:all`로 바꿔 로컬 runner와 같은 DB push/seed/build/`.dev.vars` 생성/E2E 실행 경로를 사용하게 했다.
+  - `package.json`에 누락되어 있던 `test:e2e:all` npm script를 추가했다.
+- 코드/문서:
+  - `.github/workflows/ci.yml`
+  - `package.json`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - CI-like env로 로컬 Vite preview를 띄워 `/api/health` 503, `/api/places/map` 503을 재현했다.
+  - `npm run test:e2e:all`
+    - 통과. desktop smoke 10개, desktop full 7개, mobile 3개, performance 1개 통과.
+    - performance 측정값: `map.initial_place_list_visible` 192ms, `map.refresh_to_place_list_visible` 95ms, `map.cluster_click_to_detail_or_marker_visible` 131ms, `admin.price_queue_visible` 192ms.
+  - `npm run db:seed`
+    - E2E 이후 로컬 DB seed 복구 통과.
+- 결과:
+  - GitHub Actions E2E job이 로컬에서 검증한 runner 경로와 같은 Worker binding 주입 경로를 쓰게 됐다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
