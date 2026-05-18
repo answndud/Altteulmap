@@ -5,84 +5,26 @@ import {
   adminPriceItemUpdateSchema,
   priceReportModerationSchema,
 } from "@/features/places/write-schema";
-import { reportModerationSchema } from "@/features/reports/schema";
 import { placeModerationSchema } from "@/features/submission/schema";
 import {
   getWorkerAdminPlacePriceDetail,
-  listWorkerMockReports,
   listWorkerPendingPlaces,
   listWorkerPendingPriceReports,
-  listWorkerReports,
   moderateWorkerPlaceSubmission,
   moderateWorkerPriceReport,
   updateWorkerPriceItem,
-  updateWorkerReportStatus,
 } from "@/worker/admin-repository";
-import { getSessionFromRequest } from "@/worker/auth/session";
 import {
   isWorkerDatabaseEnabled,
   isWorkerMockDataEnabled,
 } from "@/worker/db";
-
-type AssetFetcher = {
-  fetch(request: Request): Promise<Response> | Response;
-};
-
-type AdminBindings = {
-  ASSETS: AssetFetcher;
-  AUTH_SECRET?: string;
-  DATABASE_URL?: string;
-  HYPERDRIVE?: {
-    connectionString?: string;
-  };
-  USE_MOCK_DATA?: string;
-};
-
-type AdminVariables = {
-  requestId: string;
-};
-
-type AdminRouteDependencies = {
-  databaseUnavailableResponse(message: string): Response;
-  noStoreHeaders: Record<string, string>;
-  runWorkerDatabaseRoute<T>(env: AdminBindings, load: () => Promise<T>): Promise<T>;
-};
-
-function requireAdminSession(
-  request: Request,
-  env: AdminBindings,
-  noStoreHeaders: Record<string, string>,
-) {
-  const session = getSessionFromRequest(request, env);
-
-  if (!session) {
-    return {
-      response: Response.json(
-        {
-          ok: false,
-          message: "로그인이 필요합니다.",
-        },
-        { status: 401, headers: noStoreHeaders },
-      ),
-    };
-  }
-
-  if (session.user.role !== "admin") {
-    return {
-      response: Response.json(
-        {
-          ok: false,
-          message: "운영자 권한이 필요합니다.",
-        },
-        { status: 403, headers: noStoreHeaders },
-      ),
-    };
-  }
-
-  return {
-    user: session.user,
-  };
-}
+import { registerAdminReportRoutes } from "@/worker/routes/admin-reports";
+import {
+  requireAdminSession,
+  type AdminBindings,
+  type AdminRouteDependencies,
+  type AdminVariables,
+} from "@/worker/routes/admin-support";
 
 export function registerAdminRoutes(
   app: Hono<{
@@ -525,119 +467,5 @@ export function registerAdminRoutes(
     }
   });
 
-  app.get("/api/admin/reports", async (c) => {
-    const admin = requireAdminSession(c.req.raw, c.env, dependencies.noStoreHeaders);
-
-    if (admin.response) {
-      return admin.response;
-    }
-
-    if (!isWorkerDatabaseEnabled(c.env)) {
-      if (!isWorkerMockDataEnabled(c.env)) {
-        return dependencies.databaseUnavailableResponse("신고 목록을 불러오지 못했습니다.");
-      }
-
-      const result = listWorkerMockReports();
-
-      return c.json(
-        {
-          items: result.items,
-          count: result.items.length,
-          source: result.source,
-          mock: true,
-        },
-        200,
-        dependencies.noStoreHeaders,
-      );
-    }
-
-    try {
-      const result = await dependencies.runWorkerDatabaseRoute(c.env, () =>
-        listWorkerReports(c.env),
-      );
-
-      return c.json(
-        {
-          items: result.items,
-          count: result.items.length,
-          source: result.source,
-          mock: false,
-        },
-        200,
-        dependencies.noStoreHeaders,
-      );
-    } catch (error) {
-      console.error("Failed to load worker admin reports.", error);
-
-      return c.json(
-        {
-          ok: false,
-          message: "신고 목록을 불러오지 못했습니다.",
-        },
-        500,
-        dependencies.noStoreHeaders,
-      );
-    }
-  });
-
-  app.patch("/api/admin/reports/:id", async (c) => {
-    const admin = requireAdminSession(c.req.raw, c.env, dependencies.noStoreHeaders);
-
-    if (admin.response) {
-      return admin.response;
-    }
-
-    const body = await c.req.json().catch(() => null);
-    const parsed = reportModerationSchema.safeParse(body);
-
-    if (!parsed.success) {
-      return c.json(
-        {
-          ok: false,
-          message: "신고 상태 검증에 실패했습니다.",
-          error: parsed.error.flatten(),
-        },
-        400,
-        dependencies.noStoreHeaders,
-      );
-    }
-
-    if (!isWorkerDatabaseEnabled(c.env)) {
-      if (!isWorkerMockDataEnabled(c.env)) {
-        return dependencies.databaseUnavailableResponse("신고 상태를 업데이트하지 못했습니다.");
-      }
-
-      return c.json(
-        {
-          ok: true,
-          message: "목업 모드에서는 신고 상태가 실제 저장되지 않습니다.",
-          source: "mock",
-          item: null,
-        },
-        200,
-        dependencies.noStoreHeaders,
-      );
-    }
-
-    try {
-      const result = await dependencies.runWorkerDatabaseRoute(c.env, () =>
-        updateWorkerReportStatus(c.env, c.req.param("id"), parsed.data, admin.user),
-      );
-
-      return c.json(result, result.ok ? 200 : 404, dependencies.noStoreHeaders);
-    } catch (error) {
-      console.error("Failed to update worker report status.", error);
-
-      return c.json(
-        {
-          ok: false,
-          message: "신고 상태 업데이트에 실패했습니다.",
-          source: "database",
-          item: null,
-        },
-        500,
-        dependencies.noStoreHeaders,
-      );
-    }
-  });
+  registerAdminReportRoutes(app, dependencies);
 }
