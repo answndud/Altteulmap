@@ -3242,3 +3242,48 @@
   - admin route split slice는 완료됐다.
   - 다음 구조 개선 후보는 `src/worker/routes/auth.ts` route domain 분리 또는 `src/client/routes/MapRoute.tsx` query/list/sheet 책임 분리다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `082` auth credentials route 분리
+
+- 배경:
+  - admin route split 완료 후 다음 구조 개선 후보는 `src/worker/routes/auth.ts`였다.
+  - auth route module에는 OAuth helper, csrf/session/signout/providers route, OAuth signin/callback route, credentials callback, signup route가 함께 있었다.
+  - 이번 slice는 cookie/callbackUrl/session semantics 보존이 중요한 auth 영역에서 독립성이 높은 credentials callback과 signup route만 먼저 분리했다.
+- 변경 내용:
+  - `src/worker/routes/auth-support.ts`를 추가했다.
+  - auth route binding/dependency type을 support module로 이동해 auth sub-route module들이 같은 Hono binding contract를 공유하게 했다.
+  - `src/worker/routes/auth-credentials.ts`를 추가했다.
+  - `/api/auth/callback/credentials`, `/api/auth/signup` route 등록을 새 module로 이동했다.
+  - `registerAuthRoutes`는 기존 route registration order를 유지한 채 마지막에 `registerAuthCredentialsRoutes(app, dependencies)`를 호출한다.
+  - credentials login 실패/성공 response shape, 401/200 status, redirect/JSON 분기, session callback cookie 설정을 유지했다.
+  - signup validation 실패/성공/중복 이메일/DB 연결 실패 status와 response shape를 유지했다.
+  - `docs/refactoring-large-files.md`의 auth hotspot line count와 Worker Slice 3 상태를 갱신했다.
+- 코드/문서:
+  - `src/worker/routes/auth.ts`
+  - `src/worker/routes/auth-credentials.ts`
+  - `src/worker/routes/auth-support.ts`
+  - `docs/refactoring-large-files.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run typecheck`
+    - 통과.
+  - `npm run lint`
+    - 통과.
+  - `npm run verify`
+    - 통과. lint, typecheck, unit test 8개 통과.
+  - `npm run test:e2e:full -- tests/e2e/login.spec.ts tests/e2e/signup.spec.ts`
+    - 통과.
+    - runner 특성상 full E2E 세트가 실행되어 desktop smoke 10개, desktop full 7개, mobile 3개가 통과했다.
+    - 로컬 Node `v20.13.1`에서 Vite의 Node `20.19+` 권장 경고가 출력됐지만 build/test는 통과했다.
+  - `npm run hygiene:dead-code`
+    - 통과.
+  - `git diff --check`
+    - 통과.
+- 결과:
+  - `src/worker/routes/auth.ts`는 595 lines에서 493 lines로 줄었다.
+  - credentials login/signup API path, response shape, status, cookie/callbackUrl semantics는 변경하지 않았다.
+  - OAuth signin/callback과 csrf/session/signout/providers route wiring은 후속 auth split 후보로 남았다.
+  - 다음 구조 개선 후보는 OAuth route 분리 또는 csrf/session/signout/provider route 분리다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
