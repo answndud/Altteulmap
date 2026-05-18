@@ -3,17 +3,13 @@ import type { Hono } from "hono";
 import { reportSubmissionSchema } from "@/features/reports/schema";
 import { getPlaceById } from "@/features/places/queries";
 import { placePriceReportSchema } from "@/features/places/write-schema";
-import { placeSubmissionSchema } from "@/features/submission/schema";
 import { getSessionFromRequest } from "@/worker/auth/session";
 import {
   applyWorkerWriteHeaders,
   getWorkerPublicWriteActor,
 } from "@/worker/public-write-actor";
 import { createDatabaseReportSubmission } from "@/worker/reports-write-repository";
-import {
-  createDatabasePlacePriceReport,
-  createDatabasePlaceSubmission,
-} from "@/worker/places-write-repository";
+import { createDatabasePlacePriceReport } from "@/worker/places-write-repository";
 import {
   isWorkerDatabaseEnabled,
   isWorkerMockDataEnabled,
@@ -29,6 +25,7 @@ import {
 } from "@/worker/routes/public-write-support";
 import { registerPublicWriteCommentRoutes } from "@/worker/routes/public-write-comments";
 import { registerPublicWriteReactionRoutes } from "@/worker/routes/public-write-reactions";
+import { registerPublicWriteSubmissionRoutes } from "@/worker/routes/public-write-submissions";
 
 export function registerPublicWriteRoutes(
   app: Hono<{
@@ -171,110 +168,7 @@ export function registerPublicWriteRoutes(
 
   registerPublicWriteReactionRoutes(app, dependencies);
 
-  app.post("/api/places", async (c) => {
-    const body = await c.req.json().catch(() => null);
-    const parsed = placeSubmissionSchema.safeParse(body);
-    const actor = getWorkerPublicWriteActor(
-      c.req.raw,
-      getSessionFromRequest(c.req.raw, c.env)?.user ?? null,
-    );
-    const rateLimit = await consumePublicWriteRateLimit(c.env, "placeSubmission", actor);
-
-    if (!rateLimit.ok) {
-      return applyWorkerWriteHeaders(
-        c.json(
-          {
-            ok: false,
-            message: "장소 등록 요청이 너무 빠릅니다. 잠시 후 다시 시도해주세요.",
-            retryAfterMs: rateLimit.retryAfterMs,
-          },
-          429,
-        ),
-        c.req.raw,
-        actor,
-        rateLimit,
-      );
-    }
-
-    if (!parsed.success) {
-      return applyWorkerWriteHeaders(
-        c.json(
-          {
-            ok: false,
-            message: "입력값 검증에 실패했습니다.",
-            error: parsed.error.flatten(),
-          },
-          400,
-        ),
-        c.req.raw,
-        actor,
-        rateLimit,
-      );
-    }
-
-    const turnstile = await verifyTurnstileForPublicWrite(
-      c.env,
-      c.req.raw,
-      getTurnstileToken(body),
-    );
-
-    if (!turnstile.ok) {
-      return applyWorkerWriteHeaders(
-        c.json(
-          {
-            ok: false,
-            message: turnstile.message,
-          },
-          turnstile.status,
-        ),
-        c.req.raw,
-        actor,
-        rateLimit,
-      );
-    }
-
-    if (isWorkerDatabaseEnabled(c.env)) {
-      const result = await runWorkerDatabaseRoute(c.env, () =>
-        createDatabasePlaceSubmission(c.env, parsed.data, actor),
-      );
-
-      return applyWorkerWriteHeaders(
-        c.json(result),
-        c.req.raw,
-        actor,
-        rateLimit,
-      );
-    }
-
-    if (!isWorkerMockDataEnabled(c.env)) {
-      return applyWorkerWriteHeaders(
-        dependencies.databaseUnavailableResponse("장소 등록 요청을 저장하지 못했습니다."),
-        c.req.raw,
-        actor,
-        rateLimit,
-      );
-    }
-
-    return applyWorkerWriteHeaders(
-      c.json({
-        ok: true,
-        message: "장소 등록 요청이 접수되었습니다. 검토 후 공개 목록에 반영됩니다.",
-        mock: true,
-        source: "mock",
-        preview: {
-          id: `vite-submission-${crypto.randomUUID()}`,
-          name: parsed.data.name,
-          categorySlug: parsed.data.categorySlug,
-          roadAddress: parsed.data.roadAddress,
-          district: parsed.data.district,
-          priceItems: parsed.data.priceItems,
-        },
-      }),
-      c.req.raw,
-      actor,
-      rateLimit,
-    );
-  });
+  registerPublicWriteSubmissionRoutes(app, dependencies);
 
   app.post("/api/reports", async (c) => {
     const body = await c.req.json().catch(() => null);
