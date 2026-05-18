@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 
 import { useMapDesktopLayout } from "@/client/features/map/use-map-desktop-layout";
 import { useMapRouteInteractions } from "@/client/features/map/use-map-route-interactions";
+import { useMapRoutePanelProps } from "@/client/features/map/use-map-route-panel-props";
 import { useMapRoutePlaces } from "@/client/features/map/use-map-route-places";
 import {
   useMapRouteSearchModel,
@@ -68,6 +69,21 @@ export function MapRoute() {
     selectedPlace,
     state,
   });
+  const mapPanelProps = useMapRoutePanelProps({
+    activeCategory,
+    isManualRefreshPending,
+    mapMarkers,
+    onClusterFocusViewport: handleClusterFocusViewport,
+    onRefreshViewportPlaces: refreshViewportPlaces,
+    onSelectPlace: selectPlace,
+    onViewportChange: handleViewportChange,
+    query,
+    searchScope,
+    selectedCategoryLabel,
+    selectedPlace,
+    state,
+    viewport,
+  });
 
   const updateReaction = useCallback((update: PlaceReactionUpdate) => {
     updateReactionState(update, updatePlaceInResults);
@@ -98,31 +114,7 @@ export function MapRoute() {
         />
 
         <section ref={mapSectionRef} className="relative">
-          <NaverMapPanel
-            initialBounds={state.data?.bounds ?? null}
-            isLoading={state.status === "loading"}
-            mapMarkers={mapMarkers}
-            placeCount={state.data?.count ?? 0}
-            refreshAction={
-              searchScope === "viewport" && viewport
-                ? {
-                    isVisible: true,
-                    isLoading: isManualRefreshPending,
-                    onRefresh: refreshViewportPlaces,
-                  }
-                : null
-            }
-            selectedCategoryLabel={selectedCategoryLabel}
-            activePlaceId={selectedPlace?.id ?? null}
-            focusPlacesKey={
-              query && searchScope === "global"
-                ? `${query}:${activeCategory ?? "all"}`
-                : null
-            }
-            onSelectPlace={selectPlace}
-            onClusterFocusViewport={handleClusterFocusViewport}
-            onViewportChange={handleViewportChange}
-          />
+          <NaverMapPanel {...mapPanelProps} />
 
           <MapDesktopResultsRail
             bookmarkedPlaceIds={bookmarkedPlaceIds}

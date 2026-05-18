@@ -3911,3 +3911,44 @@
   - 비회원 북마크/반응에서 로그인으로 이동할 때 현재 지도 path/query를 callback으로 보존하는 semantics는 변경하지 않았다.
   - 다음 구조 개선 후보는 MapRoute map panel props adapter 분리 또는 `MapRoute`의 focus/select handlers hook 분리다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `098` MapRoute map panel props adapter 분리
+
+- 배경:
+  - login href helper 분리 후 `src/client/routes/MapRoute.tsx`에는 `NaverMapPanel` prop 계산이 JSX 안에 남아 있었다.
+  - `initialBounds`, loading/count, viewport refresh action, active place id, global search focus key, viewport/cluster handler wiring은 route markup보다 map panel adapter 책임에 가깝다.
+  - 이번 slice는 지도 panel에 전달되는 값의 의미를 바꾸지 않고 prop 조립 위치만 옮기는 동작 보존형 리팩터링으로 제한했다.
+- 변경 내용:
+  - `src/client/features/map/use-map-route-panel-props.ts`를 추가했다.
+  - 새 hook이 `NaverMapPanel`의 `activePlaceId`, `focusPlacesKey`, `initialBounds`, loading/count, refresh action, selected category label, select/viewport/cluster handlers를 한 곳에서 조립하도록 했다.
+  - `src/features/map/naver-map-panel.tsx`의 `NaverMapPanelProps`를 export해 adapter hook의 반환 타입으로 재사용했다.
+  - `src/client/routes/MapRoute.tsx`는 `mapPanelProps`를 계산한 뒤 `<NaverMapPanel {...mapPanelProps} />`로 전달하도록 정리했다.
+  - `docs/refactoring-large-files.md`의 MapRoute hotspot line count와 분리 상태를 갱신했다.
+- 코드/문서:
+  - `src/client/routes/MapRoute.tsx`
+  - `src/client/features/map/use-map-route-panel-props.ts`
+  - `src/features/map/naver-map-panel.tsx`
+  - `docs/refactoring-large-files.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run typecheck`
+    - 통과.
+  - `npm run lint`
+    - 통과.
+  - `npm run hygiene:dead-code`
+    - 통과.
+  - `git diff --check`
+    - 통과.
+  - `npm run verify`
+    - 통과. lint, typecheck, unit test 11개 통과.
+  - `npm run test:e2e:full -- tests/e2e/map.spec.ts`
+    - 통과.
+    - runner 특성상 DB push/seed/build 후 desktop smoke 10개, desktop full 7개, mobile 3개가 실행되어 모두 통과했다.
+    - 로컬 Node `v20.13.1`에서 Vite의 Node `20.19+` 권장 경고가 출력됐지만 build/test는 통과했다.
+- 결과:
+  - `src/client/routes/MapRoute.tsx`는 169 lines에서 161 lines로 줄었다.
+  - viewport mode refresh button, global search focus key, selected place active marker, bounds/loading/count 전달, viewport/cluster handler wiring semantics는 변경하지 않았다.
+  - 다음 구조 개선 후보는 `MapRoute`의 focus/select handlers hook 분리 또는 `src/db/schema.ts`의 schema module 분할 준비다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
