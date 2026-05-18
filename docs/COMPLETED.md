@@ -4078,3 +4078,45 @@
   - DB table/column/index/FK/migration semantics와 기존 enum export contract는 변경하지 않았다.
   - 다음 구조 개선 후보는 `src/db/schema.ts`의 timestamp helper 분리 또는 auth/user table group 분리 전 dependency map 작성이다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `102` Drizzle schema timestamp helper 분리
+
+- 배경:
+  - enum module 분리 후 `src/db/schema.ts`에는 공통 `withTimestamps` helper와 table 정의가 함께 남아 있었다.
+  - 테이블 정의를 바로 분리하기 전에 재사용 helper를 먼저 분리하면 이후 auth/user/place table group 분리 시 공통 column 정의를 안전하게 재사용할 수 있다.
+  - 이번 slice는 DB 구조를 바꾸지 않고 `created_at`/`updated_at` helper 위치만 이동하는 준비 작업으로 제한했다.
+- 변경 내용:
+  - `src/db/schema-helpers.ts`를 추가했다.
+  - 기존 `withTimestamps` helper를 새 module로 이동했다.
+  - `src/db/schema.ts`는 `withTimestamps`를 import해 기존 table 정의에 그대로 사용한다.
+  - `docs/refactoring-large-files.md`의 schema hotspot line count와 분리 상태를 갱신했다.
+- 코드/문서:
+  - `src/db/schema.ts`
+  - `src/db/schema-helpers.ts`
+  - `docs/refactoring-large-files.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run typecheck`
+    - 통과.
+  - `npm run lint`
+    - 통과.
+  - `npm run db:generate`
+    - 통과. `No schema changes, nothing to migrate`로 새 migration이 생성되지 않았다.
+  - `npm run hygiene:dead-code`
+    - 통과.
+  - `git diff --check`
+    - 통과.
+  - `npm run verify`
+    - 통과. lint, typecheck, unit test 11개 통과.
+  - `npm run test:e2e:full -- tests/e2e/map.spec.ts`
+    - 통과.
+    - runner 특성상 DB push/seed/build 후 desktop smoke 10개, desktop full 7개, mobile 3개가 실행되어 모두 통과했다.
+    - `db:push`에서도 no changes detected가 확인됐다.
+    - 로컬 Node `v20.13.1`에서 Vite의 Node `20.19+` 권장 경고가 출력됐지만 build/test는 통과했다.
+- 결과:
+  - `src/db/schema.ts`는 539 lines에서 531 lines로 줄었다.
+  - DB table/column/index/FK/migration semantics는 변경하지 않았다.
+  - 다음 구조 개선 후보는 auth/user table group 분리 전 dependency map 작성 또는 schema table group 첫 분리 slice다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
