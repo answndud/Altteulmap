@@ -3667,3 +3667,43 @@
   - desktop selected detail, result summary, loading/error/empty/list display semantics는 변경하지 않았다.
   - 다음 구조 개선 후보는 MapRoute의 bookmark/reaction interaction hook 분리 또는 category/search controls component 분리다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `092` MapRoute bookmark/reaction interaction hook 분리
+
+- 배경:
+  - desktop result rail 분리 후에도 `src/client/routes/MapRoute.tsx`에는 selected place state, bookmark 초기 fetch/update, reaction optimistic update가 남아 있었다.
+  - 이 로직은 화면 markup보다 place interaction state에 가까워 별도 hook으로 분리하는 편이 route component의 조립 책임을 명확히 한다.
+  - 이번 slice는 UI markup, API path, bookmark 표시, selected place merge, reaction count/viewer reaction semantics를 바꾸지 않는 동작 보존형 리팩터링으로 제한했다.
+- 변경 내용:
+  - `src/client/features/map/use-map-route-interactions.ts`를 추가했다.
+  - selected place state, select/reset handler, bookmark list fetch, bookmark optimistic set update를 새 hook으로 이동했다.
+  - reaction optimistic update에서 selected place state와 map result list state를 함께 갱신하는 로직을 hook의 `updateReactionState`로 이동했다.
+  - `MapRoute.tsx`는 `updatePlaceInResults`를 hook reaction handler와 연결하고, map/search/mobile sheet composition 중심으로 정리했다.
+  - `docs/refactoring-large-files.md`의 MapRoute hotspot line count와 분리 상태를 갱신했다.
+- 코드/문서:
+  - `src/client/routes/MapRoute.tsx`
+  - `src/client/features/map/use-map-route-interactions.ts`
+  - `docs/refactoring-large-files.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run typecheck`
+    - 통과.
+  - `npm run lint`
+    - 통과.
+  - `npm run verify`
+    - 통과. lint, typecheck, unit test 11개 통과.
+  - `npm run test:e2e:full -- tests/e2e/map.spec.ts`
+    - 통과.
+    - runner 특성상 full E2E 세트가 실행되어 desktop smoke 10개, desktop full 7개, mobile 3개가 통과했다.
+    - 로컬 Node `v20.13.1`에서 Vite의 Node `20.19+` 권장 경고가 출력됐지만 build/test는 통과했다.
+  - `npm run hygiene:dead-code`
+    - 통과.
+  - `git diff --check`
+    - 통과.
+- 결과:
+  - `src/client/routes/MapRoute.tsx`는 428 lines에서 357 lines로 줄었다.
+  - bookmark 초기 로드/표시, bookmark optimistic update, selected place reset/select, reaction optimistic count/viewer reaction update semantics는 변경하지 않았다.
+  - 다음 구조 개선 후보는 MapRoute의 category/search controls component 분리 또는 mobile/detail sheet composition 정리다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
