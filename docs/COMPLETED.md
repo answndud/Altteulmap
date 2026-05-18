@@ -3747,3 +3747,43 @@
   - query/category/scope URL parameter, 검색 form, category tray, map search E2E semantics는 변경하지 않았다.
   - 다음 구조 개선 후보는 MapRoute의 mobile/detail sheet composition 정리 또는 `useIsDesktopLayout` hook 공용화다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `094` MapRoute mobile surfaces component 분리
+
+- 배경:
+  - search/category controls 분리 후 `src/client/routes/MapRoute.tsx`에는 mobile list sheet와 mobile detail sheet 조건부 렌더링이 남아 있었다.
+  - 이 영역은 map route의 상위 데이터 흐름보다 mobile presentation surface 조립에 가까워 별도 component로 분리하기 적합했다.
+  - 이번 slice는 mobile list open/close, mobile place select, detail close, bookmark/reaction props semantics를 바꾸지 않는 동작 보존형 리팩터링으로 제한했다.
+- 변경 내용:
+  - `src/client/features/map/MapMobileSurfaces.tsx`를 추가했다.
+  - `MobilePlaceListSheet` 조건부 렌더링과 mobile `PlaceDetailSheet` 조건부 렌더링을 새 component로 이동했다.
+  - 기존 `!selectedPlace`일 때만 mobile list sheet를 노출하고, `selectedPlace && !isDesktopLayout`일 때만 mobile detail sheet를 노출하는 조건을 유지했다.
+  - `state.status === "success" ? state.data.count : 0` 기반 mobile total count 계산을 component 내부로 이동했다.
+  - `docs/refactoring-large-files.md`의 MapRoute hotspot line count와 분리 상태를 갱신했다.
+- 코드/문서:
+  - `src/client/routes/MapRoute.tsx`
+  - `src/client/features/map/MapMobileSurfaces.tsx`
+  - `docs/refactoring-large-files.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run typecheck`
+    - 통과.
+  - `npm run lint`
+    - 통과.
+  - `npm run verify`
+    - 통과. lint, typecheck, unit test 11개 통과.
+  - `npm run test:e2e:full -- tests/e2e/map.spec.ts`
+    - 통과.
+    - runner 특성상 full E2E 세트가 실행되어 desktop smoke 10개, desktop full 7개, mobile 3개가 통과했다.
+    - 로컬 Node `v20.13.1`에서 Vite의 Node `20.19+` 권장 경고가 출력됐지만 build/test는 통과했다.
+  - `npm run hygiene:dead-code`
+    - 통과.
+  - `git diff --check`
+    - 통과.
+- 결과:
+  - `src/client/routes/MapRoute.tsx`는 227 lines에서 210 lines로 줄었다.
+  - mobile list sheet 열기/닫기, mobile list place select, mobile detail close, bookmark/reaction update semantics는 변경하지 않았다.
+  - 다음 구조 개선 후보는 `useIsDesktopLayout` hook 공용화 또는 MapRoute top-level derived state hook 분리다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.

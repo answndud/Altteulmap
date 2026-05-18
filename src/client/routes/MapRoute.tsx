@@ -9,16 +9,11 @@ import {
 } from "@/client/features/map/map-route-derived";
 import { useMapRouteInteractions } from "@/client/features/map/use-map-route-interactions";
 import { useMapRoutePlaces } from "@/client/features/map/use-map-route-places";
-import {
-  MobilePlaceListSheet,
-  type MobileSheetMode,
-} from "@/client/features/map/MobilePlaceListSheet";
+import type { MobileSheetMode } from "@/client/features/map/MobilePlaceListSheet";
 import { MapDesktopResultsRail } from "@/client/features/map/MapDesktopResultsRail";
+import { MapMobileSurfaces } from "@/client/features/map/MapMobileSurfaces";
 import { MapSearchControls } from "@/client/features/map/MapSearchControls";
-import {
-  PlaceDetailSheet,
-  type PlaceReactionUpdate,
-} from "@/client/features/map/PlaceDetailSheet";
+import type { PlaceReactionUpdate } from "@/client/features/map/PlaceDetailSheet";
 import { TrendingPlacesSection } from "@/client/features/map/TrendingPlacesSection";
 import { NaverMapPanel } from "@/features/map/naver-map-panel";
 import type {
@@ -189,32 +184,20 @@ export function MapRoute() {
           />
         </section>
 
-        {!selectedPlace ? (
-          <MobilePlaceListSheet
-            bookmarkedPlaceIds={bookmarkedPlaceIds}
-            loginHref={loginHref}
-            mode={mobileListMode}
-            onBookmarkUpdate={updateBookmark}
-            onModeChange={setMobileListMode}
-            onSelectPlace={selectPlaceFromMobileList}
-            places={displayedPlaces}
-            state={state}
-            totalPlaceCount={state.status === "success" ? state.data.count : 0}
-          />
-        ) : null}
-
-        {selectedPlace && !isDesktopLayout ? (
-          <div className="xl:hidden">
-            <PlaceDetailSheet
-              bookmarked={bookmarkedPlaceIds.has(selectedPlace.id)}
-              loginHref={loginHref}
-              place={selectedPlace}
-              onBookmarkUpdate={updateBookmark}
-              onClose={resetSelectedPlace}
-              onReactionUpdate={updateReaction}
-            />
-          </div>
-        ) : null}
+        <MapMobileSurfaces
+          bookmarkedPlaceIds={bookmarkedPlaceIds}
+          displayedPlaces={displayedPlaces}
+          isDesktopLayout={isDesktopLayout}
+          loginHref={loginHref}
+          mobileListMode={mobileListMode}
+          onBookmarkUpdate={updateBookmark}
+          onCloseSelectedPlace={resetSelectedPlace}
+          onMobileListModeChange={setMobileListMode}
+          onReactionUpdate={updateReaction}
+          onSelectPlaceFromMobileList={selectPlaceFromMobileList}
+          selectedPlace={selectedPlace}
+          state={state}
+        />
 
         <TrendingPlacesSection
           items={trendingPlaces}
