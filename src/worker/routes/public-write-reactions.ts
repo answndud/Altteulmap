@@ -7,7 +7,7 @@ import {
   applyWorkerWriteHeaders,
   getWorkerPublicWriteActor,
 } from "@/worker/public-write-actor";
-import { setDatabasePlaceReaction } from "@/worker/places-write-repository";
+import { setDatabasePlaceReaction } from "@/worker/places-write-reactions-repository";
 import {
   isWorkerDatabaseEnabled,
   isWorkerMockDataEnabled,

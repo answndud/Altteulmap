@@ -3416,3 +3416,45 @@
   - comment create/delete API response shape, owner/admin delete permission, hidden 처리 semantics는 변경하지 않았다.
   - 다음 구조 개선 후보는 reaction repository 분리 또는 price report repository 분리다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `086` places write reaction repository 분리
+
+- 배경:
+  - comment repository 분리 후 `src/worker/places-write-repository.ts`에는 장소 등록, 가격 제보, 반응 토글이 남아 있었다.
+  - reaction 로직은 actor key 산출, upsert/delete, summary refresh, response message로 닫혀 있어 place submission/price report와 독립적으로 분리하기 적합했다.
+  - 이번 slice는 reaction API path와 response shape를 바꾸지 않는 동작 보존형 분리로 제한했다.
+- 변경 내용:
+  - `src/worker/places-write-reactions-repository.ts`를 추가했다.
+  - `setDatabasePlaceReaction`을 reaction repository module로 이동했다.
+  - reaction actor key helper, reaction response message helper, reaction summary refresh helper를 reaction repository module로 이동했다.
+  - `src/worker/routes/public-write-reactions.ts`는 새 reaction repository를 직접 import하게 변경했다.
+  - `src/worker/places-write-repository.ts`에는 place submission과 price report repository만 남겼다.
+  - `docs/refactoring-large-files.md`의 places write hotspot line count와 분리 상태를 갱신했다.
+- 코드/문서:
+  - `src/worker/places-write-repository.ts`
+  - `src/worker/places-write-reactions-repository.ts`
+  - `src/worker/routes/public-write-reactions.ts`
+  - `docs/refactoring-large-files.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run typecheck`
+    - 통과.
+  - `npm run lint`
+    - 통과.
+  - `npm run verify`
+    - 통과. lint, typecheck, unit test 8개 통과.
+  - `npm run test:e2e:full -- tests/e2e/map.spec.ts`
+    - 통과.
+    - runner 특성상 full E2E 세트가 실행되어 desktop smoke 10개, desktop full 7개, mobile 3개가 통과했다.
+    - 로컬 Node `v20.13.1`에서 Vite의 Node `20.19+` 권장 경고가 출력됐지만 build/test는 통과했다.
+  - `npm run hygiene:dead-code`
+    - 통과.
+  - `git diff --check`
+    - 통과.
+- 결과:
+  - `src/worker/places-write-repository.ts`는 388 lines에서 240 lines로 줄었다.
+  - reaction upsert/delete, actor key fallback, like/dislike count refresh, response shape는 변경하지 않았다.
+  - 다음 구조 개선 후보는 price report repository 분리 또는 place submission repository 분리다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
