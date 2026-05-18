@@ -16,6 +16,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
+import { withTimestamps } from "./schema-helpers";
 import {
   commentStatusEnum,
   contentReportStatusEnum,
@@ -41,15 +42,6 @@ export {
   userRoleEnum,
   verificationStatusEnum,
 } from "./schema-enums";
-
-const withTimestamps = () => ({
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .defaultNow()
-    .notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .defaultNow()
-    .notNull(),
-});
 
 export const users = pgTable(
   "users",
