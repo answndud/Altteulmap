@@ -2630,3 +2630,46 @@
   - repo의 현재 운영/배포 경로가 삭제된 `altteulmap-admin` Worker에 더 이상 의존하지 않는다.
   - Cloudflare Workers Builds에서 `altteulmap-admin` check가 다시 생기지 않도록 repo 쪽 배포 대상과 문서를 정리했다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `067` `places-read-repository` 동작 보존형 분리
+
+- 배경:
+  - `docs/refactoring-large-files.md`의 다음 hotspot은 `src/worker/places-read-repository.ts`였다.
+  - 해당 파일은 map list query, place detail query, record mapping, marker clustering, mock fallback 변환이 함께 있어 public read API 변경 시 회귀 위험과 탐색 비용이 컸다.
+  - 이번 작업은 신규 기능, API shape 변경, DB schema 변경 없이 pure helper만 분리하는 얇은 refactor slice로 진행했다.
+- 변경 내용:
+  - Worker public read response 내부 타입을 `src/worker/places-read-types.ts`로 분리했다.
+  - 날짜 formatting, author label, place preview/detail record mapping, preview list filtering을 `src/worker/places-read-mappers.ts`로 분리했다.
+  - map bounds 계산, list cap, place marker 변환, marker mode/limit, cluster marker 생성을 `src/worker/places-read-markers.ts`로 분리했다.
+  - `src/worker/places-read-repository.ts`는 DB where/order/query, cache orchestration, mock/database fallback, detail aggregation 중심으로 남겼다.
+  - public route import contract 유지를 위해 `WorkerPlaceViewer` type은 기존 repository module에서 re-export했다.
+  - `docs/refactoring-large-files.md`의 hotspot line count와 Worker Slice 4 상태를 현재 구조 기준으로 갱신했다.
+- 코드/문서:
+  - `src/worker/places-read-repository.ts`
+  - `src/worker/places-read-types.ts`
+  - `src/worker/places-read-mappers.ts`
+  - `src/worker/places-read-markers.ts`
+  - `docs/refactoring-large-files.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run typecheck`
+    - 통과.
+  - `npm run lint`
+    - 통과.
+  - `npm run verify`
+    - 통과. lint, typecheck, unit test 8개 통과.
+  - `npm run test:e2e:full -- tests/e2e/map.spec.ts tests/e2e/map.mobile.spec.ts`
+    - 통과.
+    - runner 특성상 full E2E 세트가 실행되어 desktop smoke 10개, desktop full 7개, mobile 3개가 통과했다.
+    - 로컬 Node `v20.13.1`에서 Vite의 Node `20.19+` 권장 경고가 출력됐지만 build/test는 통과했다.
+  - `npm run hygiene:dead-code`
+    - 통과.
+  - `git diff --check`
+    - 통과.
+- 결과:
+  - `src/worker/places-read-repository.ts`는 880 lines에서 562 lines로 줄었다.
+  - public read route path, response shape, cache/header behavior는 변경하지 않았다.
+  - 다음 구조 개선 후보는 `docs/refactoring-large-files.md` 기준으로 public write handler 분리 또는 `admin-prices-repository` 추가 분리다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.

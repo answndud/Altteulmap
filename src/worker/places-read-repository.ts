@@ -20,26 +20,16 @@ import {
   priceReports,
   users,
 } from "@/db/schema";
-import type {
-  PlaceBounds,
-  PlaceComment,
-  PlaceHistoryEntry,
-  PlaceMapClusterMarkerRecord,
-  PlaceMapMarkerRecord,
-  PlaceMapMarkerMode,
-  PlaceMapPlaceMarkerRecord,
-  PlacePreviewRecord,
-  PlacePriceItem,
-  PlaceQueryBounds,
-  PlaceReactionType,
-  PlaceRecord,
-  PlaceSort,
-} from "@/features/places/types";
 import {
   buildMapPreviewCacheKey,
   getCachedMapPreviewResult,
   setCachedMapPreviewResult,
 } from "@/features/places/map-preview-cache";
+import type {
+  PlaceQueryBounds,
+  PlaceReactionType,
+  PlaceSort,
+} from "@/features/places/types";
 import {
   assertWorkerDatabaseReadEnabled,
   getWorkerDb,
@@ -50,65 +40,32 @@ import {
   type WorkerDatabaseBindings,
   withWorkerDatabaseReadTimeout,
 } from "@/worker/db";
+import {
+  formatDate,
+  sortPlacePreviewRecords,
+  toAuthorLabel,
+  toPlacePreviewRecord,
+  toPlacePreviewRecords,
+  toPlaceRecord,
+} from "@/worker/places-read-mappers";
+import {
+  getBoundsFromPlaces,
+  getCappedMapListItems,
+  getClusterOnlyMapMarkers,
+  getMapMarkerLimit,
+  getMapMarkerMode,
+  getPlaceOnlyMapMarkers,
+  toMapPlaceMarkerRecord,
+} from "@/worker/places-read-markers";
+import type {
+  PlaceQuery,
+  WorkerMapPlacesResult,
+  WorkerPlaceDetailResult,
+  WorkerPlaceViewer,
+} from "@/worker/places-read-types";
+export type { WorkerPlaceViewer } from "@/worker/places-read-types";
 
-type DataSource = "database" | "mock";
-
-export type WorkerPlaceViewer = {
-  role: "user" | "admin" | "guest";
-  userId?: string | null;
-  visitorId?: string | null;
-} | null;
-
-type PlaceQuery = {
-  category?: string | null;
-  sort?: PlaceSort;
-  bounds?: PlaceQueryBounds | null;
-  query?: string | null;
-  zoom?: number | null;
-};
-
-type DatabasePlaceRow = {
-  internalId: string;
-  slug: string;
-  name: string;
-  businessName: string | null;
-  description: string | null;
-  note: string | null;
-  roadAddress: string;
-  district: string;
-  latitude: number | null;
-  longitude: number | null;
-  primaryCategorySlug: string | null;
-  representativePriceAmount: number | null;
-  representativePriceLabel: string | null;
-  likeCount: number;
-  dislikeCount: number;
-  verifiedPriceItemCount: number;
-  lastPriceUpdatedAt: Date | null;
-};
-
-type WorkerMapPlacesResult = {
-  items: PlacePreviewRecord[];
-  mapMarkers: Array<PlaceMapPlaceMarkerRecord | PlaceMapClusterMarkerRecord>;
-  markerMode: PlaceMapMarkerMode;
-  bounds: PlaceBounds | null;
-  count: number;
-  source: DataSource;
-  cacheStatus: "bypass" | "hit" | "miss";
-};
-
-type WorkerPlaceDetailResult = {
-  item: PlaceRecord | null;
-  source: DataSource;
-};
-
-const MAP_LIST_RESPONSE_LIMIT = 120;
 const MAP_MARKER_SUMMARY_ROW_LIMIT = 2_000;
-const MAP_CLUSTER_PREVIEW_PLACE_LIMIT = 40;
-
-const dateFormatter = new Intl.DateTimeFormat("sv-SE", {
-  timeZone: "Asia/Seoul",
-});
 
 const mapPlaceSelectFields = {
   internalId: places.id,
@@ -129,269 +86,6 @@ const mapPlaceSelectFields = {
   verifiedPriceItemCount: places.verifiedPriceItemCount,
   lastPriceUpdatedAt: places.lastPriceUpdatedAt,
 };
-
-function sortPlacePreviewRecords(items: PlacePreviewRecord[], sort: PlaceSort) {
-  return [...items].sort((left, right) => {
-    if (sort === "recent") {
-      return (
-        new Date(right.lastPriceUpdatedAt).getTime() -
-        new Date(left.lastPriceUpdatedAt).getTime()
-      );
-    }
-
-    return left.representativePriceAmount - right.representativePriceAmount;
-  });
-}
-
-function formatDate(value: Date | string | null) {
-  if (!value) {
-    return "";
-  }
-
-  const normalized = value instanceof Date ? value : new Date(value);
-
-  if (Number.isNaN(normalized.getTime())) {
-    return "";
-  }
-
-  return dateFormatter.format(normalized);
-}
-
-function toAuthorLabel(
-  nickname: string | null,
-  email: string | null,
-  fallback: string,
-) {
-  if (nickname) {
-    return nickname;
-  }
-
-  if (email) {
-    return email.split("@")[0];
-  }
-
-  return fallback;
-}
-
-function toPlacePreviewRecord(
-  row: DatabasePlaceRow,
-  reactionSummary?: {
-    likeCount: number;
-    dislikeCount: number;
-    viewerReaction: PlaceReactionType | null;
-  },
-): PlacePreviewRecord {
-  const resolvedReactionSummary = reactionSummary ?? {
-    likeCount: row.likeCount,
-    dislikeCount: row.dislikeCount,
-    viewerReaction: null,
-  };
-
-  return {
-    id: row.slug,
-    name: row.name,
-    businessName: row.businessName ?? undefined,
-    categorySlug: row.primaryCategorySlug ?? "other-service",
-    address: row.roadAddress,
-    district: row.district,
-    latitude: row.latitude ?? 37.5665,
-    longitude: row.longitude ?? 126.978,
-    representativePriceAmount: row.representativePriceAmount ?? 0,
-    representativePriceLabel: row.representativePriceLabel ?? "대표 가격 준비 중",
-    verificationStatus:
-      row.verifiedPriceItemCount > 0 ? "verified" : "unverified",
-    lastPriceUpdatedAt: formatDate(row.lastPriceUpdatedAt),
-    description:
-      row.description ??
-      "아직 장소 설명이 등록되지 않았습니다. 이후 정보가 쌓이면 내용을 보강할 수 있습니다.",
-    note:
-      row.note ??
-      "운영 검토 전 단계이거나 추가 메모가 아직 등록되지 않았습니다.",
-    likeCount: resolvedReactionSummary.likeCount,
-    dislikeCount: resolvedReactionSummary.dislikeCount,
-    viewerReaction: resolvedReactionSummary.viewerReaction,
-  };
-}
-
-function toPlaceRecord(
-  row: DatabasePlaceRow,
-  detail?: {
-    comments?: PlaceComment[];
-    history?: PlaceHistoryEntry[];
-    priceItems?: PlacePriceItem[];
-    reactionSummary?: {
-      likeCount: number;
-      dislikeCount: number;
-      viewerReaction: PlaceReactionType | null;
-    };
-  },
-): PlaceRecord {
-  return {
-    ...toPlacePreviewRecord(row, detail?.reactionSummary),
-    priceItems: detail?.priceItems ?? [],
-    history: detail?.history ?? [],
-    comments: detail?.comments ?? [],
-  };
-}
-
-function getBoundsFromPlaces(
-  items: Array<Pick<PlacePreviewRecord, "latitude" | "longitude">>,
-): PlaceBounds {
-  const latitudes = items.map((place) => place.latitude);
-  const longitudes = items.map((place) => place.longitude);
-
-  return {
-    minLat: Math.min(...latitudes),
-    maxLat: Math.max(...latitudes),
-    minLng: Math.min(...longitudes),
-    maxLng: Math.max(...longitudes),
-  };
-}
-
-function getCappedMapListItems(items: PlacePreviewRecord[]) {
-  return items.slice(0, MAP_LIST_RESPONSE_LIMIT);
-}
-
-function toMapPlaceMarkerRecord(
-  place: PlacePreviewRecord,
-): PlaceMapPlaceMarkerRecord {
-  return {
-    kind: "place",
-    ...place,
-  };
-}
-
-function getMapMarkerLimit(zoom: number | null, query: string | null) {
-  if (query?.trim()) {
-    if (!zoom) {
-      return 40;
-    }
-
-    if (zoom >= 15) {
-      return 80;
-    }
-
-    if (zoom >= 14) {
-      return 56;
-    }
-
-    return 48;
-  }
-
-  if (!zoom) {
-    return 36;
-  }
-
-  if (zoom >= 15) {
-    return 96;
-  }
-
-  if (zoom >= 14) {
-    return 64;
-  }
-
-  if (zoom >= 13) {
-    return 48;
-  }
-
-  if (zoom >= 12) {
-    return 32;
-  }
-
-  return 24;
-}
-
-function getMapMarkerMode(
-  itemCount: number,
-  zoom: number | null,
-  query: string | null,
-): PlaceMapMarkerMode {
-  if (query?.trim()) {
-    return "place";
-  }
-
-  return itemCount <= getMapMarkerLimit(zoom, query) ? "place" : "cluster";
-}
-
-function getPlaceOnlyMapMarkers(
-  items: PlacePreviewRecord[],
-  zoom: number | null,
-  query: string | null,
-) {
-  return items
-    .slice(0, getMapMarkerLimit(zoom, query))
-    .map(toMapPlaceMarkerRecord);
-}
-
-function getStableClusterCellSize(
-  zoom: number | null,
-  query: string | null,
-) {
-  if (query?.trim()) {
-    return { latSpan: 0.018, lngSpan: 0.025 };
-  }
-
-  if (!zoom || zoom <= 10) {
-    return { latSpan: 0.11, lngSpan: 0.14 };
-  }
-
-  if (zoom <= 11) {
-    return { latSpan: 0.075, lngSpan: 0.1 };
-  }
-
-  if (zoom <= 12) {
-    return { latSpan: 0.055, lngSpan: 0.075 };
-  }
-
-  if (zoom <= 13) {
-    return { latSpan: 0.04, lngSpan: 0.055 };
-  }
-
-  if (zoom <= 14) {
-    return { latSpan: 0.028, lngSpan: 0.038 };
-  }
-
-  return { latSpan: 0.018, lngSpan: 0.025 };
-}
-
-function getClusterOnlyMapMarkers(
-  items: PlacePreviewRecord[],
-  _bounds: PlaceBounds,
-  query: string | null,
-  zoom: number | null,
-): PlaceMapMarkerRecord[] {
-  const { latSpan, lngSpan } = getStableClusterCellSize(zoom, query);
-  const cells = new Map<string, PlacePreviewRecord[]>();
-
-  for (const place of items) {
-    const rowIndex = Math.floor(place.latitude / latSpan);
-    const columnIndex = Math.floor(place.longitude / lngSpan);
-    const cellKey = `${rowIndex}:${columnIndex}`;
-    const bucket = cells.get(cellKey) ?? [];
-
-    bucket.push(place);
-    cells.set(cellKey, bucket);
-  }
-
-  return [...cells.entries()]
-    .sort(([left], [right]) => left.localeCompare(right))
-    .map(([cellKey, bucket]) => {
-      return {
-        kind: "cluster",
-        id: `cluster:${cellKey}`,
-        latitude:
-          bucket.reduce((sum, place) => sum + place.latitude, 0) /
-          bucket.length,
-        longitude:
-          bucket.reduce((sum, place) => sum + place.longitude, 0) /
-          bucket.length,
-        bounds: getBoundsFromPlaces(bucket),
-        placeCount: bucket.length,
-        previewPlaces:
-          bucket.length <= MAP_CLUSTER_PREVIEW_PLACE_LIMIT ? bucket : undefined,
-      };
-    });
-}
 
 function getDatabaseMapPlaceWhereClause({
   category,
@@ -443,15 +137,6 @@ function getDatabaseMapPlaceOrder(sort: PlaceSort) {
   return sort === "recent"
     ? [desc(places.lastPriceUpdatedAt), desc(places.updatedAt)]
     : [asc(places.representativePriceAmount), desc(places.updatedAt)];
-}
-
-function toPlacePreviewRecords(rows: DatabasePlaceRow[]) {
-  return rows
-    .map((row) => toPlacePreviewRecord(row))
-    .filter(
-      (place) =>
-        Number.isFinite(place.latitude) && Number.isFinite(place.longitude),
-    );
 }
 
 async function loadDatabaseMapPlaceRows(

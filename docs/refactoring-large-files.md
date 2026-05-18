@@ -6,8 +6,9 @@
 - 이 계획은 신규 기능, API shape 변경, DB schema 변경, env 이름 변경, route path 변경, Cloudflare 배포 방식 변경을 포함하지 않는다.
 
 ## Current Hotspots
-- `src/worker/places-read-repository.ts`: 880 lines
-  - map list query, place detail query, category/price/comment/reaction aggregation, mock fallback 변환이 한 repository에 남아 있다.
+- `src/worker/places-read-repository.ts`: 562 lines
+  - map list query, place detail query, comment/reaction aggregation, mock fallback orchestration이 한 repository에 남아 있다.
+  - pure mapper, response type, marker/cluster helper는 `src/worker/places-read-mappers.ts`, `src/worker/places-read-types.ts`, `src/worker/places-read-markers.ts`로 분리되었다.
 - `src/worker/admin-prices-repository.ts`: 753 lines
   - price review queue, item update, report moderation, pricing summary refresh, moderation suggestion mapping이 한 repository에 남아 있다.
 - `src/client/routes/MapRoute.tsx`: 734 lines
@@ -124,7 +125,7 @@
   - Manual Kakao/Naver live login QA when OAuth callback code changes.
 
 ### Worker Slice 4: Public Read and Write Routes
-상태: 부분 완료. Public read route는 `src/worker/routes/places-read.ts`로 분리되어 있고, public write route는 support helper만 분리된 상태다. 다음 작업은 write handler를 comments, reactions, submissions, reports 단위로 얇게 나누는 것이다.
+상태: 부분 완료. Public read route는 `src/worker/routes/places-read.ts`로 분리되어 있고, `places-read-repository`의 mapper/type/marker helper도 별도 module로 분리되었다. public write route는 support helper만 분리된 상태다. 다음 작업은 write handler를 comments, reactions, submissions, reports 단위로 얇게 나누는 것이다.
 
 - Extract:
   - categories/config/bookmarks
