@@ -1,15 +1,13 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
-import { getCategoryBySlug } from "@/features/categories/catalog";
-import {
-  deriveMapMarkers,
-  deriveTrendingPlaces,
-  mergeSelectedPlaceIntoList,
-} from "@/client/features/map/map-route-derived";
 import { useMapDesktopLayout } from "@/client/features/map/use-map-desktop-layout";
 import { useMapRouteInteractions } from "@/client/features/map/use-map-route-interactions";
 import { useMapRoutePlaces } from "@/client/features/map/use-map-route-places";
+import {
+  useMapRouteSearchModel,
+  useMapRouteViewModel,
+} from "@/client/features/map/use-map-route-view-model";
 import type { MobileSheetMode } from "@/client/features/map/MobilePlaceListSheet";
 import { MapDesktopResultsRail } from "@/client/features/map/MapDesktopResultsRail";
 import { MapMobileSurfaces } from "@/client/features/map/MapMobileSurfaces";
@@ -17,11 +15,7 @@ import { MapSearchControls } from "@/client/features/map/MapSearchControls";
 import type { PlaceReactionUpdate } from "@/client/features/map/PlaceDetailSheet";
 import { TrendingPlacesSection } from "@/client/features/map/TrendingPlacesSection";
 import { NaverMapPanel } from "@/features/map/naver-map-panel";
-import type {
-  PlaceMapMarkerRecord,
-  PlacePreviewRecord,
-  PlaceSearchScope,
-} from "@/features/places/types";
+import type { PlacePreviewRecord } from "@/features/places/types";
 
 function getLoginHref() {
   const callbackUrl =
@@ -38,13 +32,14 @@ export function MapRoute() {
   const [mobileListMode, setMobileListMode] =
     useState<MobileSheetMode>("hidden");
   const mapSectionRef = useRef<HTMLElement | null>(null);
-  const query = searchParams.get("q")?.trim() || "";
-  const activeCategory = searchParams.get("category");
-  const searchScope: PlaceSearchScope =
-    query && searchParams.get("scope") === "global" ? "global" : "viewport";
-  const selectedCategory = getCategoryBySlug(activeCategory);
-  const selectedCategoryLabel = selectedCategory?.name ?? null;
   const loginHref = getLoginHref();
+  const {
+    activeCategory,
+    query,
+    searchScope,
+    selectedCategory,
+    selectedCategoryLabel,
+  } = useMapRouteSearchModel(searchParams);
   const {
     bookmarkedPlaceIds,
     resetSelectedPlace,
@@ -67,25 +62,20 @@ export function MapRoute() {
     searchParams,
     searchScope,
   });
-
-  const places = useMemo(() => state.data?.items ?? [], [state.data?.items]);
-  const mapMarkers = useMemo<PlaceMapMarkerRecord[]>(() => {
-    return deriveMapMarkers(
-      state.data?.mapMarkers ?? [],
-      optimisticClusterPlaces,
-    );
-  }, [optimisticClusterPlaces, state.data?.mapMarkers]);
-  const displayedPlaces = useMemo(() => {
-    return mergeSelectedPlaceIntoList(places, selectedPlace);
-  }, [places, selectedPlace]);
-  const trendingPlaces = useMemo(() => {
-    return deriveTrendingPlaces(displayedPlaces, query);
-  }, [displayedPlaces, query]);
-  const totalPlaceCount = state.status === "success" ? state.data.count : 0;
-  const visiblePlaceCount =
-    state.status === "success" ? state.data.returnedCount : 0;
-  const isServerTrimmed =
-    state.status === "success" && state.data.count > state.data.returnedCount;
+  const {
+    displayedPlaces,
+    isServerTrimmed,
+    mapMarkers,
+    places,
+    totalPlaceCount,
+    trendingPlaces,
+    visiblePlaceCount,
+  } = useMapRouteViewModel({
+    optimisticClusterPlaces,
+    query,
+    selectedPlace,
+    state,
+  });
 
   const updateReaction = useCallback((update: PlaceReactionUpdate) => {
     updateReactionState(update, updatePlaceInResults);
