@@ -2673,3 +2673,47 @@
   - public read route path, response shape, cache/header behavior는 변경하지 않았다.
   - 다음 구조 개선 후보는 `docs/refactoring-large-files.md` 기준으로 public write handler 분리 또는 `admin-prices-repository` 추가 분리다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `068` `admin-prices-repository` helper 분리
+
+- 배경:
+  - `docs/refactoring-large-files.md` 기준 다음 hotspot은 `src/worker/admin-prices-repository.ts`였다.
+  - 가격 검토 queue 조회, 가격 제보 승인/반려 transaction, 가격 항목 수정 transaction, pricing summary refresh, moderation suggestion mapping이 한 repository에 남아 있었다.
+  - 이번 작업은 DB schema, API route, response shape, transaction boundary를 바꾸지 않고 helper 책임만 분리하는 동작 보존형 refactor로 제한했다.
+- 변경 내용:
+  - `src/worker/admin/admin-price-helpers.ts`를 추가했다.
+  - 날짜 formatting, moderation suggestion mapping, admin price item mapping을 helper module로 분리했다.
+  - admin action user id UUID 정규화 helper를 분리했다.
+  - place pricing summary refresh와 price report moderation advisory lock helper를 분리했다.
+  - `src/worker/admin-prices-repository.ts`는 pending price report 조회, moderation transaction, price item update transaction orchestration 중심으로 남겼다.
+  - `docs/refactoring-large-files.md`의 hotspot line count와 Repository Slice 3 상태를 현재 구조 기준으로 갱신했다.
+- 코드/문서:
+  - `src/worker/admin-prices-repository.ts`
+  - `src/worker/admin/admin-price-helpers.ts`
+  - `docs/refactoring-large-files.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run typecheck`
+    - 통과.
+  - `npm run lint`
+    - 통과.
+  - `npm run verify`
+    - 통과. lint, typecheck, unit test 8개 통과.
+  - `npm run test:e2e:full -- tests/e2e/price-review.spec.ts`
+    - 통과.
+    - runner 특성상 full E2E 세트가 실행되어 desktop smoke 10개, desktop full 7개, mobile 3개가 통과했다.
+    - 로컬 Node `v20.13.1`에서 Vite의 Node `20.19+` 권장 경고가 출력됐지만 build/test는 통과했다.
+  - `npm run hygiene:dead-code`
+    - 최초 실행에서 exported type alias 2개가 unused로 잡혀 helper type alias를 내부화했다.
+    - 수정 후 통과.
+  - helper type alias 내부화 후 `npm run typecheck`, `npm run lint`
+    - 통과.
+  - `git diff --check`
+    - 통과.
+- 결과:
+  - `src/worker/admin-prices-repository.ts`는 753 lines에서 582 lines로 줄었다.
+  - 가격 제보 승인/반려와 가격 항목 수정의 transaction boundary는 유지했다.
+  - 다음 구조 개선 후보는 같은 영역에서 price review transaction과 price item update transaction을 별도 repository로 나누는 작업이다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.

@@ -9,8 +9,9 @@
 - `src/worker/places-read-repository.ts`: 562 lines
   - map list query, place detail query, comment/reaction aggregation, mock fallback orchestration이 한 repository에 남아 있다.
   - pure mapper, response type, marker/cluster helper는 `src/worker/places-read-mappers.ts`, `src/worker/places-read-types.ts`, `src/worker/places-read-markers.ts`로 분리되었다.
-- `src/worker/admin-prices-repository.ts`: 753 lines
-  - price review queue, item update, report moderation, pricing summary refresh, moderation suggestion mapping이 한 repository에 남아 있다.
+- `src/worker/admin-prices-repository.ts`: 582 lines
+  - price review queue, item update, report moderation transaction이 repository에 남아 있다.
+  - pricing summary refresh, moderation suggestion mapping, admin price item mapping은 `src/worker/admin/admin-price-helpers.ts`로 분리되었다.
 - `src/client/routes/MapRoute.tsx`: 734 lines
   - route state, viewport fetch, map/list sync, category tray, place cards, detail sheet, mobile list sheet, bookmark/reaction update가 한 route component에 섞여 있다.
 - `src/worker/routes/public-write.ts`: 720 lines
@@ -197,7 +198,7 @@ Candidate file:
   - Targeted API smoke for approve/reject.
 
 ### Repository Slice 3: Price Review Repository
-상태: 부분 완료. 현재 price review repository는 `src/worker/admin-prices-repository.ts`지만 아직 753 lines로 크다.
+상태: 부분 완료. 현재 price review repository는 `src/worker/admin-prices-repository.ts`고, mapper/summary helper는 `src/worker/admin/admin-price-helpers.ts`로 분리되었다. 다음 단계는 review transaction과 item update transaction을 별도 repository로 나누는 것이다.
 
 후속 후보:
 - pending price report list query와 mapper
