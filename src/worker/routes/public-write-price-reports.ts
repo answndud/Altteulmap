@@ -11,7 +11,7 @@ import {
   isWorkerDatabaseEnabled,
   isWorkerMockDataEnabled,
 } from "@/worker/db";
-import { createDatabasePlacePriceReport } from "@/worker/places-write-repository";
+import { createDatabasePlacePriceReport } from "@/worker/places-write-price-reports-repository";
 import {
   consumePublicWriteRateLimit,
   getTurnstileToken,
