@@ -36,8 +36,9 @@
   - OAuth signin/callback route wiring and helper logic moved to `src/worker/routes/auth-oauth.ts`.
   - credentials callback and signup route wiring moved to `src/worker/routes/auth-credentials.ts`.
   - shared auth route binding/dependency types moved to `src/worker/routes/auth-support.ts`.
-- `src/worker/places-write-repository.ts`: 240 lines
-  - place submissions and price reports still share one write repository.
+- `src/worker/places-write-repository.ts`: 170 lines
+  - place submission repository logic remains in the original write repository.
+  - price report repository logic moved to `src/worker/places-write-price-reports-repository.ts`.
   - reaction repository logic moved to `src/worker/places-write-reactions-repository.ts`.
   - comment create/delete repository logic moved to `src/worker/places-write-comments-repository.ts`.
   - shared active place lookup and write repository DB executor types moved to `src/worker/places-write-support.ts`.
