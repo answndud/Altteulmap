@@ -3372,3 +3372,47 @@
   - CSRF/session/signout/providers API path, response shape, cookie semantics는 변경하지 않았다.
   - 다음 구조 개선 후보는 `MapRoute.tsx` query/list/sheet 책임 분리 또는 `src/worker/places-write-repository.ts` write domain 분리다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `085` places write comments repository 분리
+
+- 배경:
+  - auth route split 완료 후 다음 서버 구조 개선 후보는 `src/worker/places-write-repository.ts`였다.
+  - 해당 repository에는 장소 등록, 가격 제보, 코멘트 등록/삭제, 반응 토글이 함께 있었다.
+  - comment create/delete는 place submission transaction, price report insert, reaction summary refresh와 독립적이어서 첫 write repository split slice로 적합했다.
+- 변경 내용:
+  - `src/worker/places-write-comments-repository.ts`를 추가했다.
+  - `createDatabasePlaceComment`, `deleteDatabasePlaceComment`를 comment repository module로 이동했다.
+  - comment author label formatting과 날짜 formatting helper를 comment repository module 안으로 이동했다.
+  - `src/worker/places-write-support.ts`를 추가했다.
+  - active place lookup과 write repository DB executor type을 support module로 이동해 price report/reaction/comment repository가 공유하게 했다.
+  - `src/worker/routes/public-write-comments.ts`는 새 comment repository를 직접 import하게 변경했다.
+  - `docs/refactoring-large-files.md`의 places write hotspot line count와 분리 상태를 갱신했다.
+- 코드/문서:
+  - `src/worker/places-write-repository.ts`
+  - `src/worker/places-write-comments-repository.ts`
+  - `src/worker/places-write-support.ts`
+  - `src/worker/routes/public-write-comments.ts`
+  - `docs/refactoring-large-files.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run typecheck`
+    - 통과.
+  - `npm run lint`
+    - 통과.
+  - `npm run verify`
+    - 통과. lint, typecheck, unit test 8개 통과.
+  - `npm run test:e2e:full -- tests/e2e/comments.spec.ts`
+    - 통과.
+    - runner 특성상 full E2E 세트가 실행되어 desktop smoke 10개, desktop full 7개, mobile 3개가 통과했다.
+    - 로컬 Node `v20.13.1`에서 Vite의 Node `20.19+` 권장 경고가 출력됐지만 build/test는 통과했다.
+  - `npm run hygiene:dead-code`
+    - 통과.
+  - `git diff --check`
+    - 통과.
+- 결과:
+  - `src/worker/places-write-repository.ts`는 563 lines에서 388 lines로 줄었다.
+  - comment create/delete API response shape, owner/admin delete permission, hidden 처리 semantics는 변경하지 않았다.
+  - 다음 구조 개선 후보는 reaction repository 분리 또는 price report repository 분리다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.

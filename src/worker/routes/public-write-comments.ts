@@ -14,7 +14,7 @@ import {
 import {
   createDatabasePlaceComment,
   deleteDatabasePlaceComment,
-} from "@/worker/places-write-repository";
+} from "@/worker/places-write-comments-repository";
 import {
   isWorkerDatabaseEnabled,
   isWorkerMockDataEnabled,

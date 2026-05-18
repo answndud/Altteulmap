@@ -36,8 +36,10 @@
   - OAuth signin/callback route wiring and helper logic moved to `src/worker/routes/auth-oauth.ts`.
   - credentials callback and signup route wiring moved to `src/worker/routes/auth-credentials.ts`.
   - shared auth route binding/dependency types moved to `src/worker/routes/auth-support.ts`.
-- `src/worker/places-write-repository.ts`: 563 lines
-  - price reports, comments, reactions, place submissions, and report writes still share one write repository.
+- `src/worker/places-write-repository.ts`: 388 lines
+  - place submissions, price reports, and reactions still share one write repository.
+  - comment create/delete repository logic moved to `src/worker/places-write-comments-repository.ts`.
+  - shared active place lookup and write repository DB executor types moved to `src/worker/places-write-support.ts`.
 - `src/db/schema.ts`: 557 lines
   - all table definitions and relations remain in one schema module.
 - 이미 줄어든 파일:
