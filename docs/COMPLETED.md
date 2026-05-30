@@ -4587,3 +4587,45 @@
   - map preview 시각, marker selection/cluster activation, local fallback wheel zoom, pointer drag, E2E `data-testid` contract는 변경하지 않았다.
   - 다음 작업 후보는 최종 99% completion audit 또는 `src/worker/routes/auth-oauth.ts`의 위험 낮은 책임 분리다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `114` Worker OAuth route provider helper 분리
+
+- 배경:
+  - 남은 큰 파일 스캔에서 `src/worker/routes/auth-oauth.ts`가 397 lines로 확인됐다.
+  - 이 파일은 OAuth provider id/state/config, token exchange, profile fetch helper와 signin/callback route registration을 함께 처리하고 있었다.
+  - OAuth route는 인증 cookie/session semantics와 직접 연결되므로 route path와 동작을 바꾸지 않고 provider helper만 분리하는 동작 보존형 리팩터링으로 제한했다.
+- 변경 내용:
+  - `src/worker/routes/auth-oauth-support.ts`를 추가했다.
+  - OAuth provider id/state encode/decode, enabled provider lookup, provider config, token exchange, profile fetch helper를 새 module로 이동했다.
+  - `src/worker/routes/auth-oauth.ts`는 OAuth signin/callback route registration, redirect error handling, cookie/session wiring에 집중하도록 줄였다.
+  - `/api/auth/signin/:provider`, `/api/auth/callback/:provider`, OAuth state cookie, callback cookie, session cookie, callback URL normalization semantics를 유지했다.
+  - `docs/refactoring-large-files.md`에 줄 수와 분리 상태를 반영했다.
+- 코드/문서:
+  - `src/worker/routes/auth-oauth.ts`
+  - `src/worker/routes/auth-oauth-support.ts`
+  - `docs/refactoring-large-files.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run typecheck`
+    - 통과.
+  - `npm run lint`
+    - 통과.
+  - `npm run verify`
+    - 통과. lint, typecheck, unit test 11개 통과.
+  - `npm run hygiene:dead-code`
+    - 최초 실행은 exported `OAuthProviderId` type이 외부 미사용이라 실패했다.
+    - `OAuthProviderId`를 internal type으로 바꾼 뒤 통과. Node JSON module experimental warning만 출력됐다.
+  - `git diff --check`
+    - 통과.
+  - `npm run test:e2e:full -- tests/e2e/login.spec.ts tests/e2e/signup.spec.ts`
+    - 통과.
+    - runner 특성상 DB push/seed/build 후 desktop smoke 10개, desktop full 7개, mobile 3개가 실행되어 모두 통과했다.
+    - `db:push`에서도 no changes detected가 확인됐다.
+    - 로컬 Node `v20.13.1`에서 Vite의 Node `20.19+` 권장 경고가 출력됐지만 build/test는 통과했다.
+- 결과:
+  - `src/worker/routes/auth-oauth.ts`는 397 lines에서 208 lines로 줄었다.
+  - OAuth route path, provider availability check, state cookie validation, token/profile fetch behavior, session cookie creation은 변경하지 않았다.
+  - 다음 작업 후보는 최종 99% completion audit이다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.

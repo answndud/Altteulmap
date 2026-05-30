@@ -48,6 +48,9 @@
   - OAuth signin/callback route wiring and helper logic moved to `src/worker/routes/auth-oauth.ts`.
   - credentials callback and signup route wiring moved to `src/worker/routes/auth-credentials.ts`.
   - shared auth route binding/dependency types moved to `src/worker/routes/auth-support.ts`.
+- `src/worker/routes/auth-oauth.ts`: 208 lines
+  - OAuth signin/callback route registration, redirect error handling, cookie/session wiring remain in the route module.
+  - provider id/state/config, token exchange, and profile fetch helpers moved to `src/worker/routes/auth-oauth-support.ts`.
 - `src/worker/auth-repository.ts`: 303 lines
   - credentials and OAuth DB transaction logic remain in the repository.
   - auth environment types, user record/OAuth sync input types, local fallback users, known account password matching, email normalization, nickname trimming, and social provider availability moved to `src/worker/auth-repository-support.ts`.
