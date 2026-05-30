@@ -4669,3 +4669,43 @@
     - 로컬 Node `20.13.1`은 Vite 권장 버전보다 낮아 경고가 반복된다. 빌드와 테스트는 통과하지만, 개발 환경은 Node `20.19+` 또는 `22.12+`로 올리는 것이 좋다.
     - 원격 smoke와 실 OAuth provider live QA는 실제 배포 credential/외부 provider 상태에 의존하므로 운영 체크 항목으로 남긴다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `116` Node 20.19+ 검증 환경 정리 및 원격 smoke
+
+- 배경:
+  - 직전 audit에서 로컬 기본 Node가 `v20.13.1`이라 Vite의 Node `20.19+` 요구 경고가 반복되는 것이 남은 환경 정리 항목으로 확인됐다.
+  - repo에는 이미 `package.json` engines `>=20.19.0`와 `.node-version` `20.20.2`가 존재했지만, GitHub Actions는 `node-version: 20`으로 느슨하게 지정되어 있었다.
+  - 사용자는 남은 작업 1, 2번인 Node version 정리와 원격 배포 smoke 실행을 요청했다.
+- 변경 내용:
+  - `.github/workflows/ci.yml`의 모든 `actions/setup-node@v6` 설정을 `node-version: 20`에서 `node-version-file: .node-version`로 변경했다.
+  - CI의 verify, e2e-full, remote-smoke job이 모두 repo-local `.node-version`을 단일 기준으로 사용하도록 정렬했다.
+  - 로컬 전역 Node는 변경하지 않고 공식 Node `v20.20.2` tarball을 `/tmp/altteulmap-node-v20.20.2`에 내려받아 이번 검증 PATH에만 적용했다.
+- 코드/문서:
+  - `.github/workflows/ci.yml`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `node -v && which node && npm -v`
+    - 로컬 기본값은 `v20.13.1`, `/usr/local/bin/node`, `10.5.2`로 확인됐다.
+  - `/tmp/altteulmap-node-v20.20.2/bin/node -v && /tmp/altteulmap-node-v20.20.2/bin/npm -v`
+    - `v20.20.2`, `10.8.2`로 확인됐다.
+  - `PATH=/tmp/altteulmap-node-v20.20.2/bin:$PATH npm run verify`
+    - 통과. lint, typecheck, unit test 11개가 모두 통과했다.
+  - `PATH=/tmp/altteulmap-node-v20.20.2/bin:$PATH npm run verify:quality`
+    - 통과. production audit 취약점 0건, dead-code, CSP inventory가 모두 통과했다.
+  - `PATH=/tmp/altteulmap-node-v20.20.2/bin:$PATH npm run deploy:check:vite`
+    - 통과. canonical Worker entry와 legacy alias output이 모두 확인됐다.
+  - `PATH=/tmp/altteulmap-node-v20.20.2/bin:$PATH npm run smoke:vite:local`
+    - 통과. local smoke base URL은 `http://127.0.0.1:3130`, sample place는 `goodprice-157`이었다.
+  - `PATH=/tmp/altteulmap-node-v20.20.2/bin:$PATH npm run test:e2e:all`
+    - 통과. desktop smoke 10개, desktop full 추가 7개, mobile 3개, performance 1개가 모두 통과했다.
+    - performance measurements는 initial list 271ms, refresh 120ms, cluster click 314ms, admin price queue 284ms로 모두 budget 이내였다.
+  - `PATH=/tmp/altteulmap-node-v20.20.2/bin:$PATH npm run smoke:remote`
+    - 통과. deep health, home, robots, sitemap, public config, map api 55 items, place page/API, login/admin route, unauthenticated admin boundary 401, kakao/naver signin redirect가 모두 정상으로 확인됐다.
+    - `SMOKE_ADMIN_EMAIL`, `SMOKE_ADMIN_PASSWORD`가 없어 credentials/admin smoke는 스크립트 의도대로 skip됐다.
+- 결과:
+  - CI와 repo-local Node 기준이 `.node-version` `20.20.2`로 정렬됐다.
+  - Node 20.20.2 기준 전체 로컬 검증과 원격 smoke가 통과했다.
+  - 남은 운영 확인 항목은 실제 관리자 smoke credential을 넣은 `smoke:remote` 확장 실행뿐이다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
