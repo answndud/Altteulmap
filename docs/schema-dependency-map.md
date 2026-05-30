@@ -9,6 +9,7 @@
 - 이미 분리된 module:
   - `src/db/schema-auth.ts`: `users`, `authAccounts`, `authSessions`, `authVerificationTokens`
   - `src/db/schema-place-core.ts`: `categories`, `places`, `placeCategories`
+  - `src/db/schema-pricing.ts`: `priceItems`, `priceReports`
   - `src/db/schema-operational.ts`: `visitActivities`, `publicWriteRateLimits`
   - `src/db/schema-moderation.ts`: `contentReports`, `adminActions`, `moderationSuggestions`
   - `src/db/schema-enums.ts`: Drizzle enum definitions
@@ -21,8 +22,6 @@
 
 | Table export | DB table | Depends on | Referenced by |
 | --- | --- | --- | --- |
-| `priceItems` | `price_items` | `places.id`, `users.id` | `priceReports`, admin price/read/write flows |
-| `priceReports` | `price_reports` | `places.id`, `priceItems.id`, `users.id` | admin price review, public price reports, seed |
 | `comments` | `comments` | `places.id`, `users.id` | comments write/read flows |
 | `bookmarks` | `bookmarks` | `users.id`, `places.id` | bookmark routes/repository, seed |
 | `placeReactions` | `place_reactions` | `users.id`, `places.id` | reaction routes/repository, map read/update flows |
@@ -83,6 +82,8 @@ Status: completed. `categories`, `places`, and `placeCategories` now live in `sr
   - `npm run test:e2e:full -- tests/e2e/map.spec.ts`
 
 ### Slice 2: Price Domain
+Status: completed. `priceItems` and `priceReports` now live in `src/db/schema-pricing.ts`; `src/db/schema.ts` re-exports them for the existing `@/db/schema` contract.
+
 - Candidate module: `src/db/schema-pricing.ts`
 - Move:
   - `priceItems`

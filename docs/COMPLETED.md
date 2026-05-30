@@ -4333,3 +4333,49 @@
   - Place core table schema, FK/index/PK/unique index/default semantics, repository import contract는 변경하지 않았다.
   - 다음 schema split 후보는 `src/db/schema-pricing.ts`로 `priceItems`, `priceReports`를 이동하는 Price Domain slice다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `108` Drizzle price domain schema module 분리
+
+- 배경:
+  - place core table group 분리 후 `src/db/schema.ts`에는 price/social domain table 정의가 남아 있었다.
+  - `priceReports`는 `priceItems`, `places`, `users`를 함께 참조하므로 가격 제보/검수 흐름의 table 정의를 한 module로 묶는 것이 가장 안전했다.
+  - 이번 작업은 DB 구조 변경 없이 price table 정의 위치만 분리해 `src/db/schema.ts`를 legacy re-export contract에 더 가깝게 줄이는 동작 보존형 리팩터링으로 제한했다.
+- 변경 내용:
+  - `src/db/schema-pricing.ts`를 추가했다.
+  - `priceItems`, `priceReports` table 정의를 새 module로 이동했다.
+  - `src/db/schema.ts`는 `priceItems`, `priceReports`를 다시 export해 기존 `@/db/schema` import contract를 유지했다.
+  - `price_items` place/label unique index, active/representative indexes, `places.id` cascade FK, `users.id` nullable FK를 유지했다.
+  - `price_reports` place/label/amount index, created index, `places.id` cascade FK, `priceItems.id` nullable FK, `users.id` nullable FK를 유지했다.
+  - `docs/refactoring-large-files.md`의 schema hotspot line count와 분리 상태를 갱신했다.
+  - `docs/schema-dependency-map.md`에서 Price Domain slice를 완료 상태로 표시하고 남은 domain table 목록을 social interaction table로 좁혔다.
+- 코드/문서:
+  - `src/db/schema.ts`
+  - `src/db/schema-pricing.ts`
+  - `docs/refactoring-large-files.md`
+  - `docs/schema-dependency-map.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run typecheck`
+    - 통과.
+  - `npm run lint`
+    - 통과.
+  - `npm run db:generate`
+    - 통과. `No schema changes, nothing to migrate`로 새 migration이 생성되지 않았다.
+  - `npm run hygiene:dead-code`
+    - 통과. Node JSON module experimental warning만 출력됐다.
+  - `git diff --check`
+    - 통과.
+  - `npm run verify`
+    - 통과. lint, typecheck, unit test 11개 통과.
+  - `npm run test:e2e:full -- tests/e2e/price-review.spec.ts`
+    - 통과.
+    - runner 특성상 DB push/seed/build 후 desktop smoke 10개, desktop full 7개, mobile 3개가 실행되어 모두 통과했다.
+    - `db:push`에서도 no changes detected가 확인됐다.
+    - 로컬 Node `v20.13.1`에서 Vite의 Node `20.19+` 권장 경고가 출력됐지만 build/test는 통과했다.
+- 결과:
+  - `src/db/schema.ts`는 206 lines에서 123 lines로 줄었다.
+  - Price table schema, FK/index/unique index/default semantics, repository import contract는 변경하지 않았다.
+  - 다음 schema split 후보는 `src/db/schema-place-social.ts`로 `comments`, `bookmarks`, `placeReactions`를 이동하는 Social Place Interactions slice다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
