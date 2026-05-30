@@ -4629,3 +4629,43 @@
   - OAuth route path, provider availability check, state cookie validation, token/profile fetch behavior, session cookie creation은 변경하지 않았다.
   - 다음 작업 후보는 최종 99% completion audit이다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `115` 99% completion audit
+
+- 배경:
+  - schema domain split, deploy check 안정화, 공개 장소 등록 폼 분리, auth repository support 분리, map preview 표시 컴포넌트 분리, OAuth route provider helper 분리까지 완료됐다.
+  - 사용자는 운영/제품 개선을 제외한 코드, 구조, 테스트, 문서, 배포 안정성 개선을 99% 수준까지 끌어올리기를 요청했다.
+  - 이번 작업은 추가 구현보다 현재 worktree가 실제로 99% 완료 판단을 견딜 수 있는지 검증하는 completion audit으로 진행했다.
+- 변경 내용:
+  - 현재 큰 파일 목록을 재스캔했다.
+  - TODO/FIXME/HACK/debugger/test.only/describe.only/조건부 skip을 재스캔했다.
+  - 전체 품질, 배포 산출물, local smoke, E2E full/performance gate를 실행했다.
+  - 남은 큰 파일은 대량 import/smoke/check script, mock data, 이미 역할이 명확한 map/admin/detail route 계열로 분류했다.
+  - `tests/e2e/map.spec.ts`의 조건부 `test.skip` 1건은 seed data가 cluster marker를 만들지 못할 때만 스킵하는 방어 로직으로 확인했다.
+- 코드/문서:
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run verify`
+    - 통과. lint, typecheck, unit test 11개 통과.
+  - `npm run hygiene:dead-code`
+    - 통과. Node JSON module experimental warning만 출력됐다.
+  - `npm run deploy:check:vite`
+    - 통과. canonical Worker entry와 legacy alias size가 `598654` bytes로 일치했다.
+  - `npm run build`
+    - 통과. 로컬 Node `v20.13.1`에서 Vite의 Node `20.19+` 권장 경고가 출력됐지만 build는 통과했다.
+  - `npm run smoke:vite:local`
+    - 통과. local smoke base URL `http://127.0.0.1:3130`, sample place `goodprice-157`.
+  - `npm run test:e2e:all`
+    - 통과.
+    - desktop smoke 10개, desktop full 7개, mobile 3개, performance 1개가 모두 통과했다.
+    - performance measurements는 initial list 194ms, refresh 87ms, cluster click 141ms, admin price queue 203ms로 모두 budget 이내였다.
+  - `git diff --check`
+    - 통과.
+- 결과:
+  - 운영/제품 개선을 제외한 현재 코드/구조/테스트/문서/배포 검증 상태는 99% 완료로 판단한다.
+  - 남은 리스크는 기능 결함이라기보다 운영 전 환경 정리 성격이다.
+    - 로컬 Node `20.13.1`은 Vite 권장 버전보다 낮아 경고가 반복된다. 빌드와 테스트는 통과하지만, 개발 환경은 Node `20.19+` 또는 `22.12+`로 올리는 것이 좋다.
+    - 원격 smoke와 실 OAuth provider live QA는 실제 배포 credential/외부 provider 상태에 의존하므로 운영 체크 항목으로 남긴다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
