@@ -4504,3 +4504,45 @@
   - 공개 장소 등록 UI, API request body, Turnstile, rate limit feedback, E2E `data-testid` contract는 변경하지 않았다.
   - 다음 작업 후보는 `src/worker/auth-repository.ts` 책임 분리 또는 최종 99% audit이다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `112` Worker auth repository support helper 분리
+
+- 배경:
+  - 남은 큰 파일 스캔에서 `src/worker/auth-repository.ts`가 credentials/OAuth DB transaction과 auth support helper를 함께 들고 있었다.
+  - route 호출부는 `verifyWorkerCredentials`, `createWorkerCredentialsUser`, `listWorkerSocialAuthProviders`, `syncWorkerOAuthUser`, `WorkerAuthUserRecord`를 `@/worker/auth-repository`에서 import하고 있었다.
+  - 이번 작업은 인증 흐름과 public import contract를 바꾸지 않고, 순수 helper와 타입만 별도 module로 이동하는 동작 보존형 리팩터링으로 제한했다.
+- 변경 내용:
+  - `src/worker/auth-repository-support.ts`를 추가했다.
+  - auth 환경 타입, user record 타입, OAuth sync input 타입을 support module로 이동했다.
+  - local fallback users, legacy fallback passwords, known account password matching, email normalization, nickname trimming, social provider availability 계산을 support module로 이동했다.
+  - `src/worker/auth-repository.ts`는 credentials/OAuth DB transaction과 DB query orchestration에 집중하도록 줄였다.
+  - 기존 public import contract 유지를 위해 `auth-repository.ts`에서 `listWorkerSocialAuthProviders`와 `WorkerAuthUserRecord`를 다시 export한다.
+  - `docs/refactoring-large-files.md`에 줄 수와 분리 상태를 반영했다.
+- 코드/문서:
+  - `src/worker/auth-repository.ts`
+  - `src/worker/auth-repository-support.ts`
+  - `docs/refactoring-large-files.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run typecheck`
+    - 통과.
+  - `npm run lint`
+    - 통과.
+  - `npm run verify`
+    - 통과. lint, typecheck, unit test 11개 통과.
+  - `npm run hygiene:dead-code`
+    - 통과. Node JSON module experimental warning만 출력됐다.
+  - `git diff --check`
+    - 통과.
+  - `npm run test:e2e:full -- tests/e2e/login.spec.ts tests/e2e/signup.spec.ts`
+    - 통과.
+    - runner 특성상 DB push/seed/build 후 desktop smoke 10개, desktop full 7개, mobile 3개가 실행되어 모두 통과했다.
+    - `db:push`에서도 no changes detected가 확인됐다.
+    - 로컬 Node `v20.13.1`에서 Vite의 Node `20.19+` 권장 경고가 출력됐지만 build/test는 통과했다.
+- 결과:
+  - `src/worker/auth-repository.ts`는 454 lines에서 303 lines로 줄었다.
+  - credentials login, signup, social provider availability, OAuth user sync import contract는 변경하지 않았다.
+  - 다음 작업 후보는 최종 99% completion audit 또는 남은 큰 파일 중 `src/features/map/naver-map-preview.tsx`/`src/worker/routes/auth-oauth.ts`의 위험 낮은 책임 분리다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.

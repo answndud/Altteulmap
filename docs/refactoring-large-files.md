@@ -48,6 +48,9 @@
   - OAuth signin/callback route wiring and helper logic moved to `src/worker/routes/auth-oauth.ts`.
   - credentials callback and signup route wiring moved to `src/worker/routes/auth-credentials.ts`.
   - shared auth route binding/dependency types moved to `src/worker/routes/auth-support.ts`.
+- `src/worker/auth-repository.ts`: 303 lines
+  - credentials and OAuth DB transaction logic remain in the repository.
+  - auth environment types, user record/OAuth sync input types, local fallback users, known account password matching, email normalization, nickname trimming, and social provider availability moved to `src/worker/auth-repository-support.ts`.
 - Public write repository split:
   - place submission repository logic moved to `src/worker/places-write-submissions-repository.ts`.
   - price report repository logic moved to `src/worker/places-write-price-reports-repository.ts`.
