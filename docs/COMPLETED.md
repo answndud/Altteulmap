@@ -4463,3 +4463,44 @@
   - Cloudflare Worker canonical output과 legacy alias contract는 그대로 유지된다.
   - 다음 작업 후보는 큰 파일/테스트 공백 스캔 결과에서 `src/features/submission/place-submit-form.tsx` 또는 `src/worker/auth-repository.ts`를 대상으로 위험 낮은 구조 개선 slice를 선정하는 것이다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `111` 공개 장소 등록 폼 표시 컴포넌트 분리
+
+- 배경:
+  - 남은 큰 파일 스캔에서 `src/features/submission/place-submit-form.tsx`가 465 lines로 확인됐다.
+  - 이 파일은 form state, field array, Turnstile submit orchestration, step header, price item field row, result preview panel을 한 파일에서 처리하고 있었다.
+  - 공개 장소 등록은 PRD/TRD의 핵심 쓰기 흐름이므로 UI/UX나 API contract를 바꾸지 않고 표시 컴포넌트만 분리하는 동작 보존형 리팩터링으로 제한했다.
+- 변경 내용:
+  - `src/features/submission/place-submit-form-parts.tsx`를 추가했다.
+  - `FormStepHeader`, `PriceItemFields`, `SubmitResultPanel`, `SubmitResult` type을 새 module로 이동했다.
+  - `PlaceSubmitForm`에는 form state, `useFieldArray`, Turnstile state, submit side effect, rate limit feedback 처리만 남겼다.
+  - 기존 form field, `data-testid`, Turnstile test id, submit result test id, 가격 항목 추가/삭제 동작을 유지했다.
+  - `docs/refactoring-large-files.md`에 줄 수와 분리 상태를 반영했다.
+- 코드/문서:
+  - `src/features/submission/place-submit-form.tsx`
+  - `src/features/submission/place-submit-form-parts.tsx`
+  - `docs/refactoring-large-files.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run typecheck`
+    - 통과.
+  - `npm run lint`
+    - 통과.
+  - `npm run verify`
+    - 통과. lint, typecheck, unit test 11개 통과.
+  - `npm run hygiene:dead-code`
+    - 통과. Node JSON module experimental warning만 출력됐다.
+  - `git diff --check`
+    - 통과.
+  - `npm run test:e2e:full -- tests/e2e/submission-admin.spec.ts`
+    - 통과.
+    - runner 특성상 DB push/seed/build 후 desktop smoke 10개, desktop full 7개, mobile 3개가 실행되어 모두 통과했다.
+    - `db:push`에서도 no changes detected가 확인됐다.
+    - 로컬 Node `v20.13.1`에서 Vite의 Node `20.19+` 권장 경고가 출력됐지만 build/test는 통과했다.
+- 결과:
+  - `src/features/submission/place-submit-form.tsx`는 465 lines에서 294 lines로 줄었다.
+  - 공개 장소 등록 UI, API request body, Turnstile, rate limit feedback, E2E `data-testid` contract는 변경하지 않았다.
+  - 다음 작업 후보는 `src/worker/auth-repository.ts` 책임 분리 또는 최종 99% audit이다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.

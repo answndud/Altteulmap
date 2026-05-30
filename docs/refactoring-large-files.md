@@ -65,6 +65,9 @@
   - Price domain tables moved to `src/db/schema-pricing.ts`; `src/db/schema.ts` keeps the existing table re-export contract.
   - Social interaction tables moved to `src/db/schema-place-social.ts`; `src/db/schema.ts` keeps the existing table re-export contract.
   - Domain table split history and safety rules are documented in `docs/schema-dependency-map.md`.
+- `src/features/submission/place-submit-form.tsx`: 294 lines
+  - form state, field array, Turnstile, and submit side effect remain in the container component.
+  - step header, price item field row, result preview panel, and submit result type moved to `src/features/submission/place-submit-form-parts.tsx`.
 - 이미 줄어든 파일:
   - `src/worker/index.ts`: 190 lines. Route registration hub 역할만 남았다.
   - `src/features/map/naver-map-panel.tsx`: 408 lines. Local fallback tile logic is already split into focused helpers.
