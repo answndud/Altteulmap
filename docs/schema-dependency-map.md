@@ -10,6 +10,7 @@
   - `src/db/schema-auth.ts`: `users`, `authAccounts`, `authSessions`, `authVerificationTokens`
   - `src/db/schema-place-core.ts`: `categories`, `places`, `placeCategories`
   - `src/db/schema-pricing.ts`: `priceItems`, `priceReports`
+  - `src/db/schema-place-social.ts`: `comments`, `bookmarks`, `placeReactions`
   - `src/db/schema-operational.ts`: `visitActivities`, `publicWriteRateLimits`
   - `src/db/schema-moderation.ts`: `contentReports`, `adminActions`, `moderationSuggestions`
   - `src/db/schema-enums.ts`: Drizzle enum definitions
@@ -20,11 +21,7 @@
 
 ## Remaining Domain Tables
 
-| Table export | DB table | Depends on | Referenced by |
-| --- | --- | --- | --- |
-| `comments` | `comments` | `places.id`, `users.id` | comments write/read flows |
-| `bookmarks` | `bookmarks` | `users.id`, `places.id` | bookmark routes/repository, seed |
-| `placeReactions` | `place_reactions` | `users.id`, `places.id` | reaction routes/repository, map read/update flows |
+None. All planned domain table split slices are complete.
 
 ## Dependency Shape
 
@@ -99,6 +96,8 @@ Status: completed. `priceItems` and `priceReports` now live in `src/db/schema-pr
   - `npm run test:e2e:full -- tests/e2e/price-review.spec.ts`
 
 ### Slice 3: Social Place Interactions
+Status: completed. `comments`, `bookmarks`, and `placeReactions` now live in `src/db/schema-place-social.ts`; `src/db/schema.ts` re-exports them for the existing `@/db/schema` contract.
+
 - Candidate module: `src/db/schema-place-social.ts`
 - Move:
   - `comments`

@@ -54,8 +54,8 @@
   - reaction repository logic moved to `src/worker/places-write-reactions-repository.ts`.
   - comment create/delete repository logic moved to `src/worker/places-write-comments-repository.ts`.
   - shared active place lookup and write repository DB executor types moved to `src/worker/places-write-support.ts`.
-- `src/db/schema.ts`: 123 lines
-  - remaining social interaction table definitions still share the legacy schema contract module.
+- `src/db/schema.ts`: 35 lines
+  - legacy public schema contract module now only re-exports focused schema modules.
   - Auth/user table group moved to `src/db/schema-auth.ts`; `src/db/schema.ts` keeps the existing table re-export contract.
   - Moderation/admin tables moved to `src/db/schema-moderation.ts`; `src/db/schema.ts` keeps the existing table re-export contract.
   - Operational telemetry/rate-limit tables moved to `src/db/schema-operational.ts`; `src/db/schema.ts` keeps the existing table re-export contract.
@@ -63,7 +63,8 @@
   - Shared timestamp column helper moved to `src/db/schema-helpers.ts`.
   - Place core tables moved to `src/db/schema-place-core.ts`; `src/db/schema.ts` keeps the existing table re-export contract.
   - Price domain tables moved to `src/db/schema-pricing.ts`; `src/db/schema.ts` keeps the existing table re-export contract.
-  - Remaining domain table dependency map and safe split order are documented in `docs/schema-dependency-map.md`.
+  - Social interaction tables moved to `src/db/schema-place-social.ts`; `src/db/schema.ts` keeps the existing table re-export contract.
+  - Domain table split history and safety rules are documented in `docs/schema-dependency-map.md`.
 - 이미 줄어든 파일:
   - `src/worker/index.ts`: 190 lines. Route registration hub 역할만 남았다.
   - `src/features/map/naver-map-panel.tsx`: 408 lines. Local fallback tile logic is already split into focused helpers.

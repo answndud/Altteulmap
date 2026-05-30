@@ -4379,3 +4379,51 @@
   - Price table schema, FK/index/unique index/default semantics, repository import contract는 변경하지 않았다.
   - 다음 schema split 후보는 `src/db/schema-place-social.ts`로 `comments`, `bookmarks`, `placeReactions`를 이동하는 Social Place Interactions slice다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `109` Drizzle social place interactions schema module 분리
+
+- 배경:
+  - price domain table group 분리 후 `src/db/schema.ts`에는 `comments`, `bookmarks`, `placeReactions`만 직접 table 정의로 남아 있었다.
+  - 세 table은 모두 `places`와 `users`를 기준으로 한 장소 상호작용 영역이며, public comments/bookmarks/reactions flow에 인접하다.
+  - 이번 작업은 DB 구조 변경 없이 social interaction table 정의 위치만 분리해 `src/db/schema.ts`를 focused schema module re-export hub로 만드는 동작 보존형 리팩터링으로 제한했다.
+- 변경 내용:
+  - `src/db/schema-place-social.ts`를 추가했다.
+  - `comments`, `bookmarks`, `placeReactions` table 정의를 새 module로 이동했다.
+  - `src/db/schema.ts`는 `comments`, `bookmarks`, `placeReactions`를 다시 export해 기존 `@/db/schema` import contract를 유지했다.
+  - `comments` place/status index, `places.id` cascade FK, `users.id` nullable cascade FK, visitor id, timestamp helper 사용을 유지했다.
+  - `bookmarks` composite primary key, `users.id`/`places.id` cascade FK, created timestamp default를 유지했다.
+  - `place_reactions` user/place unique index, visitor/place unique index, place/type index, user/visitor updated indexes, `places.id` cascade FK, `users.id` nullable cascade FK를 유지했다.
+  - `docs/refactoring-large-files.md`의 schema hotspot line count와 분리 상태를 갱신했다.
+  - `docs/schema-dependency-map.md`에서 Social Place Interactions slice를 완료 상태로 표시하고 planned domain table split이 모두 완료됐음을 기록했다.
+- 코드/문서:
+  - `src/db/schema.ts`
+  - `src/db/schema-place-social.ts`
+  - `docs/refactoring-large-files.md`
+  - `docs/schema-dependency-map.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run typecheck`
+    - 통과.
+  - `npm run lint`
+    - 통과.
+  - `npm run db:generate`
+    - 통과. `No schema changes, nothing to migrate`로 새 migration이 생성되지 않았다.
+  - `npm run hygiene:dead-code`
+    - 통과. Node JSON module experimental warning만 출력됐다.
+  - `git diff --check`
+    - 통과.
+  - `npm run verify`
+    - 통과. lint, typecheck, unit test 11개 통과.
+  - `npm run test:e2e:full -- tests/e2e/comments.spec.ts tests/e2e/bookmarks.spec.ts`
+    - 통과.
+    - runner 특성상 DB push/seed/build 후 desktop smoke 10개, desktop full 7개, mobile 3개가 실행되어 모두 통과했다.
+    - `db:push`에서도 no changes detected가 확인됐다.
+    - 로컬 Node `v20.13.1`에서 Vite의 Node `20.19+` 권장 경고가 출력됐지만 build/test는 통과했다.
+- 결과:
+  - `src/db/schema.ts`는 123 lines에서 35 lines로 줄었다.
+  - Social interaction table schema, FK/index/PK/unique index/default semantics, repository import contract는 변경하지 않았다.
+  - `docs/schema-dependency-map.md`에 계획된 domain schema split은 모두 완료됐다.
+  - 다음 작업 후보는 schema split 이후 남은 구조/검증 약점을 재스캔해 99% 목표에 영향을 주는 항목을 선별하는 것이다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
