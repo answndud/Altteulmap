@@ -54,13 +54,14 @@
   - reaction repository logic moved to `src/worker/places-write-reactions-repository.ts`.
   - comment create/delete repository logic moved to `src/worker/places-write-comments-repository.ts`.
   - shared active place lookup and write repository DB executor types moved to `src/worker/places-write-support.ts`.
-- `src/db/schema.ts`: 306 lines
-  - remaining domain table definitions and cross-domain relations still share one schema module.
+- `src/db/schema.ts`: 206 lines
+  - remaining price/social domain table definitions still share the legacy schema contract module.
   - Auth/user table group moved to `src/db/schema-auth.ts`; `src/db/schema.ts` keeps the existing table re-export contract.
   - Moderation/admin tables moved to `src/db/schema-moderation.ts`; `src/db/schema.ts` keeps the existing table re-export contract.
   - Operational telemetry/rate-limit tables moved to `src/db/schema-operational.ts`; `src/db/schema.ts` keeps the existing table re-export contract.
   - Drizzle enum definitions moved to `src/db/schema-enums.ts`; `src/db/schema.ts` keeps the existing enum re-export contract.
   - Shared timestamp column helper moved to `src/db/schema-helpers.ts`.
+  - Place core tables moved to `src/db/schema-place-core.ts`; `src/db/schema.ts` keeps the existing table re-export contract.
   - Remaining domain table dependency map and safe split order are documented in `docs/schema-dependency-map.md`.
 - 이미 줄어든 파일:
   - `src/worker/index.ts`: 190 lines. Route registration hub 역할만 남았다.

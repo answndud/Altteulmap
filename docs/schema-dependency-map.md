@@ -8,6 +8,7 @@
 ## Current Split State
 - 이미 분리된 module:
   - `src/db/schema-auth.ts`: `users`, `authAccounts`, `authSessions`, `authVerificationTokens`
+  - `src/db/schema-place-core.ts`: `categories`, `places`, `placeCategories`
   - `src/db/schema-operational.ts`: `visitActivities`, `publicWriteRateLimits`
   - `src/db/schema-moderation.ts`: `contentReports`, `adminActions`, `moderationSuggestions`
   - `src/db/schema-enums.ts`: Drizzle enum definitions
@@ -20,9 +21,6 @@
 
 | Table export | DB table | Depends on | Referenced by |
 | --- | --- | --- | --- |
-| `categories` | `categories` | self `parentId` | `placeCategories`, place submission/category lookup |
-| `places` | `places` | `users.id` | `placeCategories`, `priceItems`, `priceReports`, `comments`, `bookmarks`, `placeReactions`, reports/admin/read repositories |
-| `placeCategories` | `place_categories` | `places.id`, `categories.id` | seed, place submission/admin flows |
 | `priceItems` | `price_items` | `places.id`, `users.id` | `priceReports`, admin price/read/write flows |
 | `priceReports` | `price_reports` | `places.id`, `priceItems.id`, `users.id` | admin price review, public price reports, seed |
 | `comments` | `comments` | `places.id`, `users.id` | comments write/read flows |
@@ -63,6 +61,8 @@ flowchart TD
 ## Split Strategy
 
 ### Slice 1: Place Core
+Status: completed. `categories`, `places`, and `placeCategories` now live in `src/db/schema-place-core.ts`; `src/db/schema.ts` re-exports them for the existing `@/db/schema` contract.
+
 - Candidate module: `src/db/schema-place-core.ts`
 - Move:
   - `categories`

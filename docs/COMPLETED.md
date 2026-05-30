@@ -4284,3 +4284,52 @@
   - 다음 schema split의 첫 작업은 `src/db/schema-place-core.ts`를 만들고 `categories`, `places`, `placeCategories`를 함께 이동하는 slice로 확정했다.
   - 이번 작업은 문서 전용이라 migration 또는 runtime behavior 변경은 없다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `107` Drizzle place core schema module 분리
+
+- 배경:
+  - domain schema dependency map에서 첫 schema split slice로 `categories`, `places`, `placeCategories`를 함께 이동하기로 정했다.
+  - `places`는 남은 price/social table들의 중심 FK target이고, `placeCategories`는 `places`와 `categories`를 동시에 참조한다.
+  - 이번 작업은 DB 구조 변경 없이 place core table 정의 위치만 분리해 `src/db/schema.ts`의 책임을 줄이는 동작 보존형 리팩터링으로 제한했다.
+- 변경 내용:
+  - `src/db/schema-place-core.ts`를 추가했다.
+  - `categories`, `places`, `placeCategories` table 정의를 새 module로 이동했다.
+  - `src/db/schema.ts`는 `places`를 남은 FK 참조용으로 import하고, `categories`, `places`, `placeCategories`를 다시 export해 기존 `@/db/schema` import contract를 유지했다.
+  - `categories` self parent FK와 slug unique index, parent index를 유지했다.
+  - `places` status/category/lat-lng/representative price/creator indexes와 `users.id` nullable FK를 유지했다.
+  - `place_categories` composite primary key, category-place index, `places.id`/`categories.id` cascade FK를 유지했다.
+  - `docs/refactoring-large-files.md`의 schema hotspot line count와 분리 상태를 갱신했다.
+  - `docs/schema-dependency-map.md`에서 Place Core slice를 완료 상태로 표시하고 남은 domain table 목록을 price/social table로 좁혔다.
+- 코드/문서:
+  - `src/db/schema.ts`
+  - `src/db/schema-place-core.ts`
+  - `docs/refactoring-large-files.md`
+  - `docs/schema-dependency-map.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run typecheck`
+    - 통과.
+  - `npm run lint`
+    - 통과.
+  - `npm run db:generate`
+    - 통과. `No schema changes, nothing to migrate`로 새 migration이 생성되지 않았다.
+  - `npm run hygiene:dead-code`
+    - 통과. Node JSON module experimental warning만 출력됐다.
+  - `git diff --check`
+    - 통과.
+  - `npm run verify`
+    - 통과. lint, typecheck, unit test 11개 통과.
+  - `npm run test:e2e:full -- tests/e2e/map.spec.ts`
+    - 1차 실행은 Playwright Chromium binary 누락으로 중단됐다.
+    - `npm run playwright:install`로 Chromium/headless shell을 설치했다.
+    - 재실행 통과.
+    - runner 특성상 DB push/seed/build 후 desktop smoke 10개, desktop full 7개, mobile 3개가 실행되어 모두 통과했다.
+    - `db:push`에서도 no changes detected가 확인됐다.
+    - 로컬 Node `v20.13.1`에서 Vite의 Node `20.19+` 권장 경고가 출력됐지만 build/test는 통과했다.
+- 결과:
+  - `src/db/schema.ts`는 306 lines에서 206 lines로 줄었다.
+  - Place core table schema, FK/index/PK/unique index/default semantics, repository import contract는 변경하지 않았다.
+  - 다음 schema split 후보는 `src/db/schema-pricing.ts`로 `priceItems`, `priceReports`를 이동하는 Price Domain slice다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
