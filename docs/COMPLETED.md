@@ -4427,3 +4427,39 @@
   - `docs/schema-dependency-map.md`에 계획된 domain schema split은 모두 완료됐다.
   - 다음 작업 후보는 schema split 이후 남은 구조/검증 약점을 재스캔해 99% 목표에 영향을 주는 항목을 선별하는 것이다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `110` Vite Worker deploy check self-healing alias sync
+
+- 배경:
+  - schema split 이후 남은 구조/검증 약점을 스캔하던 중 `npm run deploy:check:vite`가 실패했다.
+  - 실패 메시지는 `legacy Worker entry alias must match canonical Worker entry size`였다.
+  - 실제 dist 산출물을 비교해 보니 canonical Worker entry인 `dist/altteulmap/index.mjs`는 최신 build 결과였고, legacy alias인 `dist/altteulmap_vite_migration/index.mjs`는 이전 산출물로 남아 있어 파일 크기가 달랐다.
+  - `npm run cf:build:vite`는 build 후 `scripts/sync-vite-worker-alias.mjs`를 실행하지만, `npm run build` 또는 E2E build 후 `deploy:check:vite`를 단독 실행하면 alias가 stale 상태일 수 있었다.
+- 변경 내용:
+  - `package.json`의 `deploy:check:vite` script를 변경했다.
+  - 기존에는 `node scripts/check-vite-worker-output.mjs`만 실행했다.
+  - 이제 `node scripts/sync-vite-worker-alias.mjs && node scripts/check-vite-worker-output.mjs`를 실행해 검사 전에 legacy Worker alias를 canonical output에서 동기화한다.
+  - check script 자체의 contract는 유지했다. canonical/legacy Worker entry size mismatch는 계속 실패 조건이다.
+- 코드/문서:
+  - `package.json`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run deploy:check:vite`
+    - 최초 실패를 재현했다.
+  - `npm run cf:build:vite && npm run deploy:check:vite`
+    - 통과. canonical Worker entry와 legacy alias size가 모두 `598530` bytes로 일치했다.
+  - `npm run deploy:check:vite`
+    - 수정 후 통과. sync 후 canonical/legacy Worker entry size가 일치했다.
+  - `npm run lint`
+    - 통과.
+  - `git diff --check`
+    - 통과.
+  - `npm run verify`
+    - 통과. lint, typecheck, unit test 11개 통과.
+- 결과:
+  - `deploy:check:vite`가 E2E나 일반 build 이후 stale legacy alias 때문에 거짓 실패하는 경로를 제거했다.
+  - Cloudflare Worker canonical output과 legacy alias contract는 그대로 유지된다.
+  - 다음 작업 후보는 큰 파일/테스트 공백 스캔 결과에서 `src/features/submission/place-submit-form.tsx` 또는 `src/worker/auth-repository.ts`를 대상으로 위험 낮은 구조 개선 slice를 선정하는 것이다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.

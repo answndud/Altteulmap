@@ -51,7 +51,7 @@
     "migration:contract": "node scripts/compare-vite-contract.mjs",
     "readme:screenshots": "node scripts/capture-readme-screenshots.mjs",
     "deploy:check": "node scripts/check-cloudflare-deploy.mjs",
-    "deploy:check:vite": "node scripts/check-vite-worker-output.mjs",
+    "deploy:check:vite": "node scripts/sync-vite-worker-alias.mjs && node scripts/check-vite-worker-output.mjs",
     "hooks:install": "node scripts/git-hooks/install-hooks.mjs",
     "cf:clean": "rm -rf dist .wrangler",
     "clean:artifacts": "rm -rf dist .wrangler test-results playwright-report tsconfig.tsbuildinfo",
