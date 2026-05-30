@@ -4546,3 +4546,44 @@
   - credentials login, signup, social provider availability, OAuth user sync import contract는 변경하지 않았다.
   - 다음 작업 후보는 최종 99% completion audit 또는 남은 큰 파일 중 `src/features/map/naver-map-preview.tsx`/`src/worker/routes/auth-oauth.ts`의 위험 낮은 책임 분리다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `113` Naver map preview 표시 컴포넌트 분리
+
+- 배경:
+  - 남은 큰 파일 스캔에서 `src/features/map/naver-map-preview.tsx`가 442 lines로 확인됐다.
+  - 이 파일은 local fallback tile layer, wheel zoom/drag state, marker positioning, SVG marker rendering, marker tone/size helper를 한 파일에서 처리하고 있었다.
+  - map preview는 핵심 지도 탐색 fallback 화면이므로 시각/동작을 바꾸지 않고 표시 컴포넌트만 분리하는 동작 보존형 리팩터링으로 제한했다.
+- 변경 내용:
+  - `src/features/map/naver-map-preview-parts.tsx`를 추가했다.
+  - `LocalFallbackTileLayer`, `PreviewMarkerLayer`, marker tone/size helper, `PreviewMarkerDisplayItem` type을 새 module로 이동했다.
+  - `PreviewMap`에는 local fallback center/zoom/drag state, viewport size, marker positioning 계산만 남겼다.
+  - 기존 `map-panel-preview`, `map-preview-marker-*`, `data-marker-kind`, marker click handler, wheel zoom, pointer drag behavior를 유지했다.
+  - `docs/refactoring-large-files.md`에 줄 수와 분리 상태를 반영했다.
+- 코드/문서:
+  - `src/features/map/naver-map-preview.tsx`
+  - `src/features/map/naver-map-preview-parts.tsx`
+  - `docs/refactoring-large-files.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `npm run typecheck`
+    - 통과.
+  - `npm run lint`
+    - 통과.
+  - `npm run verify`
+    - 통과. lint, typecheck, unit test 11개 통과.
+  - `npm run hygiene:dead-code`
+    - 통과. Node JSON module experimental warning만 출력됐다.
+  - `git diff --check`
+    - 통과.
+  - `npm run test:e2e:full -- tests/e2e/map.spec.ts tests/e2e/map-price-filter.spec.ts`
+    - 통과.
+    - runner 특성상 DB push/seed/build 후 desktop smoke 10개, desktop full 7개, mobile 3개가 실행되어 모두 통과했다.
+    - `db:push`에서도 no changes detected가 확인됐다.
+    - 로컬 Node `v20.13.1`에서 Vite의 Node `20.19+` 권장 경고가 출력됐지만 build/test는 통과했다.
+- 결과:
+  - `src/features/map/naver-map-preview.tsx`는 442 lines에서 317 lines로 줄었다.
+  - map preview 시각, marker selection/cluster activation, local fallback wheel zoom, pointer drag, E2E `data-testid` contract는 변경하지 않았다.
+  - 다음 작업 후보는 최종 99% completion audit 또는 `src/worker/routes/auth-oauth.ts`의 위험 낮은 책임 분리다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.

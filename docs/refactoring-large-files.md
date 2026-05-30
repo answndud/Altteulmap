@@ -71,6 +71,9 @@
 - `src/features/submission/place-submit-form.tsx`: 294 lines
   - form state, field array, Turnstile, and submit side effect remain in the container component.
   - step header, price item field row, result preview panel, and submit result type moved to `src/features/submission/place-submit-form-parts.tsx`.
+- `src/features/map/naver-map-preview.tsx`: 317 lines
+  - local fallback center/zoom/drag state and marker positioning remain in the preview container.
+  - local fallback tile layer, preview marker SVG rendering, marker tone/size helpers, and preview marker display item type moved to `src/features/map/naver-map-preview-parts.tsx`.
 - 이미 줄어든 파일:
   - `src/worker/index.ts`: 190 lines. Route registration hub 역할만 남았다.
   - `src/features/map/naver-map-panel.tsx`: 408 lines. Local fallback tile logic is already split into focused helpers.
