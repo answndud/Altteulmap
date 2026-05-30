@@ -4252,3 +4252,35 @@
   - 신고/관리 액션/검수 제안 table schema, FK/index/unique index/JSON default semantics, repository import contract는 변경하지 않았다.
   - 다음 구조 개선 후보는 category/place/price domain table dependency map 작성 또는 price table group 분리 준비다.
   - active 문서는 `현재 active 작업 없음` 상태로 정리했다.
+
+## `106` Domain schema dependency map 작성
+
+- 배경:
+  - auth/user, operational, moderation/admin table group 분리 후 `src/db/schema.ts`에는 place/category/price/social domain table만 남았다.
+  - 남은 table들은 `places`를 중심으로 `categories`, `placeCategories`, `priceItems`, `priceReports`, `comments`, `bookmarks`, `placeReactions`가 서로 참조한다.
+  - 다음 schema module split에서 circular import나 의도치 않은 migration을 만들지 않으려면, 실제 이동 전에 dependency map과 안전한 순서를 문서로 고정할 필요가 있었다.
+- 변경 내용:
+  - `docs/schema-dependency-map.md`를 추가했다.
+  - 현재 schema split 상태와 `@/db/schema` re-export contract를 명시했다.
+  - 남은 domain table들의 FK dependency와 referenced-by 관계를 table로 정리했다.
+  - Mermaid graph로 `users`, `categories`, `places`, price/social table dependency shape를 시각화했다.
+  - 다음 split 순서를 Place Core, Price Domain, Social Place Interactions로 정했다.
+  - 각 split slice의 candidate module, 이동 대상 table, 필요한 import, 필수 검증 명령을 기록했다.
+  - module split 중 table/column/enum/index/PK/unique index/FK/`onDelete` 변경 금지, `drizzle/*.sql` 변경 금지, unexpected migration 발생 시 중단 규칙을 명시했다.
+  - `docs/refactoring-large-files.md`의 `src/db/schema.ts` hotspot에 dependency map 링크를 연결했다.
+- 코드/문서:
+  - `docs/schema-dependency-map.md`
+  - `docs/refactoring-large-files.md`
+  - `docs/PLAN.md`
+  - `docs/PROGRESS.md`
+  - `docs/COMPLETED.md`
+- 검증:
+  - `git diff --check`
+    - 통과.
+  - `npm run lint`
+    - 통과.
+  - DB schema와 application code는 변경하지 않았기 때문에 `npm run db:generate`는 실행하지 않았다.
+- 결과:
+  - 다음 schema split의 첫 작업은 `src/db/schema-place-core.ts`를 만들고 `categories`, `places`, `placeCategories`를 함께 이동하는 slice로 확정했다.
+  - 이번 작업은 문서 전용이라 migration 또는 runtime behavior 변경은 없다.
+  - active 문서는 `현재 active 작업 없음` 상태로 정리했다.

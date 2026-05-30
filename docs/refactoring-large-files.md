@@ -55,12 +55,13 @@
   - comment create/delete repository logic moved to `src/worker/places-write-comments-repository.ts`.
   - shared active place lookup and write repository DB executor types moved to `src/worker/places-write-support.ts`.
 - `src/db/schema.ts`: 306 lines
-  - most domain table definitions and cross-domain relations remain in one schema module.
+  - remaining domain table definitions and cross-domain relations still share one schema module.
   - Auth/user table group moved to `src/db/schema-auth.ts`; `src/db/schema.ts` keeps the existing table re-export contract.
   - Moderation/admin tables moved to `src/db/schema-moderation.ts`; `src/db/schema.ts` keeps the existing table re-export contract.
   - Operational telemetry/rate-limit tables moved to `src/db/schema-operational.ts`; `src/db/schema.ts` keeps the existing table re-export contract.
   - Drizzle enum definitions moved to `src/db/schema-enums.ts`; `src/db/schema.ts` keeps the existing enum re-export contract.
   - Shared timestamp column helper moved to `src/db/schema-helpers.ts`.
+  - Remaining domain table dependency map and safe split order are documented in `docs/schema-dependency-map.md`.
 - 이미 줄어든 파일:
   - `src/worker/index.ts`: 190 lines. Route registration hub 역할만 남았다.
   - `src/features/map/naver-map-panel.tsx`: 408 lines. Local fallback tile logic is already split into focused helpers.
