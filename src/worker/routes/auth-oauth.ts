@@ -1,9 +1,6 @@
 import type { Hono } from "hono";
 
-import {
-  listWorkerSocialAuthProviders,
-  syncWorkerOAuthUser,
-} from "@/worker/auth-repository";
+import { syncWorkerOAuthUser } from "@/worker/auth-repository";
 import {
   AUTH_CALLBACK_COOKIE_NAME,
   AUTH_OAUTH_STATE_COOKIE_NAME,
@@ -11,125 +8,22 @@ import {
   AUTH_SESSION_COOKIE_NAME,
   AUTH_SESSION_MAX_AGE,
   createSession,
-  decodeSignedPayload,
   encodeSession,
-  encodeSignedPayload,
 } from "@/worker/auth/session";
 import { appendCookie, getCookieValue } from "@/worker/http/cookies";
 import { getOrigin, normalizeCallbackUrl } from "@/worker/http/urls";
+import {
+  createOAuthState,
+  decodeOAuthState,
+  exchangeOAuthToken,
+  fetchOAuthProfile,
+  getEnabledOAuthProvider,
+  getOAuthProviderConfig,
+} from "@/worker/routes/auth-oauth-support";
 import type {
   AuthBindings,
   AuthRouteDependencies,
 } from "@/worker/routes/auth-support";
-
-const OAUTH_PROVIDERS = ["kakao", "naver"] as const;
-
-type OAuthProviderId = (typeof OAUTH_PROVIDERS)[number];
-type OAuthState = {
-  callbackUrl: string;
-  expires: number;
-  nonce: string;
-  provider: OAuthProviderId;
-};
-type OAuthTokenResponse = {
-  access_token?: string;
-  refresh_token?: string;
-  expires_in?: number;
-  token_type?: string;
-  scope?: string;
-  id_token?: string;
-};
-type OAuthProfile = {
-  email: string | null;
-  id: string | null;
-  name: string | null;
-};
-
-function isOAuthProviderId(value: string): value is OAuthProviderId {
-  return OAUTH_PROVIDERS.includes(value as OAuthProviderId);
-}
-
-function createOAuthState(
-  provider: OAuthProviderId,
-  callbackUrl: string,
-  env: AuthBindings,
-) {
-  return encodeSignedPayload(
-    {
-      callbackUrl,
-      expires: Date.now() + AUTH_OAUTH_STATE_MAX_AGE * 1000,
-      nonce: crypto.randomUUID(),
-      provider,
-    } satisfies OAuthState,
-    env,
-  );
-}
-
-function decodeOAuthState(
-  rawState: string | null,
-  env: AuthBindings,
-): OAuthState | null {
-  const state = decodeSignedPayload<OAuthState>(rawState, env);
-
-  if (
-    !state ||
-    !isOAuthProviderId(state.provider) ||
-    !state.nonce ||
-    Date.now() >= state.expires
-  ) {
-    return null;
-  }
-
-  return {
-    ...state,
-    callbackUrl: normalizeCallbackUrl(state.callbackUrl),
-  };
-}
-
-function getEnabledOAuthProvider(
-  env: AuthBindings,
-  providerId: string,
-) {
-  if (!isOAuthProviderId(providerId)) {
-    return null;
-  }
-
-  const availability = listWorkerSocialAuthProviders(env).find(
-    (provider) => provider.id === providerId,
-  );
-
-  if (!availability?.enabled) {
-    return null;
-  }
-
-  return providerId;
-}
-
-function getOAuthProviderConfig(
-  env: AuthBindings,
-  provider: OAuthProviderId,
-  origin: string,
-) {
-  if (provider === "kakao") {
-    return {
-      authorizationUrl: "https://kauth.kakao.com/oauth/authorize",
-      clientId: env.AUTH_KAKAO_CLIENT_ID ?? "",
-      clientSecret: env.AUTH_KAKAO_CLIENT_SECRET ?? "",
-      redirectUri: `${origin}/api/auth/callback/kakao`,
-      tokenUrl: "https://kauth.kakao.com/oauth/token",
-      userInfoUrl: "https://kapi.kakao.com/v2/user/me",
-    };
-  }
-
-  return {
-    authorizationUrl: "https://nid.naver.com/oauth2.0/authorize",
-    clientId: env.AUTH_NAVER_CLIENT_ID ?? "",
-    clientSecret: env.AUTH_NAVER_CLIENT_SECRET ?? "",
-    redirectUri: `${origin}/api/auth/callback/naver`,
-    tokenUrl: "https://nid.naver.com/oauth2.0/token",
-    userInfoUrl: "https://openapi.naver.com/v1/nid/me",
-  };
-}
 
 function redirectToLoginError(
   request: Request,
@@ -146,89 +40,6 @@ function redirectToLoginError(
   redirectUrl.searchParams.set("error", error);
 
   return Response.redirect(redirectUrl.toString(), 302);
-}
-
-async function exchangeOAuthToken(
-  provider: OAuthProviderId,
-  code: string,
-  env: AuthBindings,
-  origin: string,
-) {
-  const config = getOAuthProviderConfig(env, provider, origin);
-  const body = new URLSearchParams({
-    grant_type: "authorization_code",
-    client_id: config.clientId,
-    client_secret: config.clientSecret,
-    code,
-    redirect_uri: config.redirectUri,
-  });
-
-  const response = await fetch(config.tokenUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body,
-  });
-
-  if (!response.ok) {
-    throw new Error(`OAuth token exchange failed for ${provider}.`);
-  }
-
-  return (await response.json()) as OAuthTokenResponse;
-}
-
-async function fetchOAuthProfile(
-  provider: OAuthProviderId,
-  accessToken: string,
-  env: AuthBindings,
-  origin: string,
-): Promise<OAuthProfile> {
-  const config = getOAuthProviderConfig(env, provider, origin);
-  const response = await fetch(config.userInfoUrl, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`OAuth profile fetch failed for ${provider}.`);
-  }
-
-  const profile = (await response.json()) as Record<string, unknown>;
-
-  if (provider === "kakao") {
-    const kakaoAccount = profile.kakao_account as
-      | Record<string, unknown>
-      | undefined;
-    const properties = profile.properties as Record<string, unknown> | undefined;
-
-    return {
-      email:
-        typeof kakaoAccount?.email === "string" ? kakaoAccount.email : null,
-      id: typeof profile.id === "number" || typeof profile.id === "string"
-        ? String(profile.id)
-        : null,
-      name:
-        typeof properties?.nickname === "string"
-          ? properties.nickname
-          : typeof kakaoAccount?.profile === "object" &&
-              kakaoAccount.profile &&
-              typeof (kakaoAccount.profile as { nickname?: unknown }).nickname ===
-                "string"
-            ? (kakaoAccount.profile as { nickname: string }).nickname
-            : null,
-    };
-  }
-
-  const responseProfile = profile.response as Record<string, unknown> | undefined;
-
-  return {
-    email:
-      typeof responseProfile?.email === "string" ? responseProfile.email : null,
-    id: typeof responseProfile?.id === "string" ? responseProfile.id : null,
-    name: typeof responseProfile?.name === "string" ? responseProfile.name : null,
-  };
 }
 
 export function registerAuthOAuthRoutes(
