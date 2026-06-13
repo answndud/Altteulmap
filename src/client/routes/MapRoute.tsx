@@ -95,8 +95,8 @@ export function MapRoute() {
   });
 
   return (
-    <main className="bg-[var(--altteul-bg-canvas)] px-3 pb-4 pt-3 sm:px-4 sm:py-4 lg:px-5 xl:px-6">
-      <div className="mx-auto grid max-w-[112rem] gap-3">
+    <main className="overflow-x-hidden bg-[var(--altteul-bg-canvas)] px-2 pb-2 pt-2 sm:px-4 sm:py-4 lg:px-5 xl:px-6">
+      <div className="mx-auto grid max-w-[112rem] gap-2 sm:gap-3">
         <MapSearchControls
           activeCategory={activeCategory}
           query={query}
@@ -104,7 +104,7 @@ export function MapRoute() {
           selectedCategory={selectedCategory}
         />
 
-        <section ref={mapSectionRef} className="relative">
+        <section ref={mapSectionRef} className="relative min-h-0">
           <NaverMapPanel {...mapPanelProps} />
 
           <MapDesktopResultsRail
@@ -141,11 +141,13 @@ export function MapRoute() {
           state={state}
         />
 
-        <TrendingPlacesSection
-          items={trendingPlaces}
-          onSelectPlace={selectPlaceAndFocusMap}
-          selectedCategoryLabel={selectedCategoryLabel}
-        />
+        <div className="hidden md:block">
+          <TrendingPlacesSection
+            items={trendingPlaces}
+            onSelectPlace={selectPlaceAndFocusMap}
+            selectedCategoryLabel={selectedCategoryLabel}
+          />
+        </div>
       </div>
     </main>
   );

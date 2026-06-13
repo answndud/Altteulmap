@@ -107,13 +107,13 @@ export function PlaceDetailSheet({
   return (
     <aside
       data-testid={testId}
-      className="altteulmap-panel fixed inset-x-3 bottom-3 z-30 max-h-[82dvh] overflow-auto p-4 shadow-[var(--altteul-shadow-overlay)] xl:static xl:max-h-none xl:shadow-none"
+      className="altteulmap-panel fixed inset-x-2 bottom-[calc(env(safe-area-inset-bottom)+0.5rem)] z-30 max-h-[78dvh] overflow-auto p-3 shadow-[var(--altteul-shadow-overlay)] xl:static xl:max-h-none xl:p-4 xl:shadow-none"
     >
       <button
         type="button"
         aria-label="상세 시트 닫기"
         data-testid="place-detail-drag-handle"
-        className="mx-auto mb-1 flex h-11 w-20 touch-none items-center justify-center rounded-full xl:hidden"
+        className="mx-auto flex h-11 w-20 touch-none items-center justify-center rounded-full xl:hidden"
         onPointerDown={(event) => {
           event.preventDefault();
           event.currentTarget.setPointerCapture(event.pointerId);
@@ -171,15 +171,15 @@ export function PlaceDetailSheet({
           window.addEventListener("pointercancel", cleanup);
         }}
       >
-        <span className="h-2 w-14 rounded-full bg-[var(--altteul-bg-muted)]" />
+        <span className="h-1.5 w-12 rounded-full bg-[var(--altteul-bg-muted)]" />
       </button>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="altteulmap-section-kicker">선택한 장소</p>
-          <h2 className="mt-1 text-xl font-bold text-[var(--altteul-text-strong)]">
+          <p className="altteulmap-section-kicker hidden sm:block">선택한 장소</p>
+          <h2 className="text-lg font-bold text-[var(--altteul-text-strong)] sm:mt-1 sm:text-xl">
             {place.name}
           </h2>
-          <p className="mt-1 text-sm text-[var(--altteul-text-secondary)]">
+          <p className="mt-1 text-xs text-[var(--altteul-text-secondary)] sm:text-sm">
             {[category?.name ?? "기타", place.district].join(" · ")}
           </p>
         </div>
@@ -188,17 +188,17 @@ export function PlaceDetailSheet({
           onClick={onClose}
           data-testid={closeTestId}
           aria-label="상세 닫기"
-          className="altteulmap-button flex h-9 w-9 shrink-0 items-center justify-center px-0 text-lg font-semibold leading-none"
+          className="altteulmap-button flex h-11 w-11 shrink-0 items-center justify-center px-0 text-lg font-semibold leading-none"
         >
           ×
         </button>
       </div>
 
-      <div className="mt-4 rounded-[0.85rem] border border-[var(--altteul-primary-border)] bg-[var(--altteul-primary-soft)] px-4 py-3">
+      <div className="mt-3 rounded-[0.85rem] border border-[var(--altteul-primary-border)] bg-[var(--altteul-primary-soft)] px-3.5 py-3 sm:mt-4 sm:px-4">
         <p className="text-[11px] font-semibold text-[var(--altteul-primary-text)]">
           대표가 · {place.representativePriceLabel || "기준 가격"}
         </p>
-        <p className="altteulmap-price-number mt-1 text-3xl">
+        <p className="altteulmap-price-number mt-1 text-2xl sm:text-3xl">
           {formatKrw(place.representativePriceAmount)}원
         </p>
         <p className="mt-2 text-xs text-[var(--altteul-primary-text)]">
@@ -209,14 +209,14 @@ export function PlaceDetailSheet({
         </p>
       </div>
 
-      <p className="mt-4 text-sm leading-6 text-[var(--altteul-text-secondary)]">
+      <p className="mt-3 text-sm leading-6 text-[var(--altteul-text-secondary)] sm:mt-4">
         {place.description || place.note || place.address}
       </p>
       <p className="mt-2 text-xs leading-5 text-[var(--altteul-text-tertiary)]">
         {place.address}
       </p>
 
-      <div className="mt-4 grid gap-3" data-testid="place-detail-inline-details">
+      <div className="mt-3 grid gap-2.5 sm:mt-4 sm:gap-3" data-testid="place-detail-inline-details">
         {detailState.status === "loading" ? (
           <div className="rounded-[0.85rem] border border-dashed border-[var(--altteul-surface-border-strong)] bg-[var(--altteul-bg-subtle)] px-4 py-3 text-sm text-[var(--altteul-text-tertiary)]">
             상세 정보를 불러오는 중입니다.
@@ -317,7 +317,7 @@ export function PlaceDetailSheet({
         ) : null}
       </div>
 
-      <div className="mt-4 flex flex-wrap items-start gap-2">
+      <div className="mt-3 flex flex-wrap items-start gap-2 sm:mt-4">
         <VitePlaceReactionButtons
           placeId={place.id}
           initialDislikeCount={place.dislikeCount}
@@ -342,7 +342,7 @@ export function PlaceDetailSheet({
         />
       </div>
 
-      <div className="mt-4 grid gap-2">
+      <div className="mt-3 grid gap-2 sm:mt-4">
         <Link
           to={`/report?placeId=${encodeURIComponent(
             place.id,

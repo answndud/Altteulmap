@@ -308,6 +308,10 @@ select {
   box-shadow: var(--altteul-shadow-overlay);
 }
 
+.altteulmap-map-viewport {
+  height: clamp(30rem, calc(100dvh - 13rem), 42rem);
+}
+
 .altteulmap-marker-icon {
   display: flex;
   position: relative;
@@ -518,11 +522,20 @@ select {
   .altteulmap-chip-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+
+  .altteulmap-map-viewport {
+    height: 42rem;
+  }
 }
 
 @media (min-width: 1024px) {
   .altteulmap-chip-grid {
     grid-template-columns: repeat(auto-fit, minmax(7.75rem, 1fr));
+  }
+
+  .altteulmap-map-viewport {
+    height: calc(100dvh - 11rem);
+    min-height: 50rem;
   }
 }
 

@@ -5,6 +5,7 @@ type ViteBookmarkToggleButtonProps = {
   placeId: string;
   initialBookmarked: boolean;
   compact?: boolean;
+  iconOnly?: boolean;
   loginHref?: string;
   onUpdate?: (nextBookmarked: boolean) => void;
 };
@@ -30,6 +31,7 @@ export function ViteBookmarkToggleButton({
   placeId,
   initialBookmarked,
   compact = false,
+  iconOnly = false,
   loginHref,
   onUpdate,
 }: ViteBookmarkToggleButtonProps) {
@@ -106,7 +108,11 @@ export function ViteBookmarkToggleButton({
         disabled={isPending}
         data-testid={`bookmark-toggle-${placeId}`}
         className={`altteulmap-button inline-flex shrink-0 items-center justify-center whitespace-nowrap transition disabled:cursor-not-allowed disabled:opacity-60 ${
-          compact
+          iconOnly
+            ? bookmarked
+              ? "altteulmap-accent-ghost h-11 w-11 px-0 text-[var(--altteul-accent-text)]"
+              : "h-11 w-11 border border-stone-300 bg-white px-0 text-stone-700 hover:bg-white"
+            : compact
             ? bookmarked
               ? "altteulmap-accent-ghost gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--altteul-accent-text)]"
               : "gap-1.5 border border-stone-300 bg-white px-3 py-1.5 text-xs font-medium text-stone-700 hover:bg-white"
@@ -116,7 +122,7 @@ export function ViteBookmarkToggleButton({
         }`}
       >
         <BookmarkIcon active={bookmarked} />
-        {isPending ? "저장 중" : bookmarked ? "저장됨" : "북마크"}
+        {iconOnly ? null : isPending ? "저장 중" : bookmarked ? "저장됨" : "북마크"}
       </button>
       {message && !compact ? (
         <p

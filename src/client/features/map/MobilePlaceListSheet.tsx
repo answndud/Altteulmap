@@ -49,7 +49,7 @@ export function MobilePlaceListSheet({
   if (mode === "hidden") {
     return renderMobilePortal(
       <div
-        className="pointer-events-auto fixed left-4 top-[calc(100dvh-4.75rem)] z-[2147483647] flex w-[calc(100dvw-2rem)] justify-start xl:hidden"
+        className="pointer-events-auto fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+0.75rem)] z-[2147483647] flex justify-center xl:hidden"
         onClickCapture={openSheet}
         onPointerDownCapture={openSheet}
         onTouchStartCapture={openSheet}
@@ -61,10 +61,10 @@ export function MobilePlaceListSheet({
           onMouseDown={openSheet}
           onTouchStart={openSheet}
           onClick={openSheet}
-          className="altteulmap-button altteulmap-accent-solid pointer-events-auto inline-flex min-h-11 items-center justify-center gap-2 px-5 py-3 text-sm font-semibold shadow-[var(--altteul-shadow-overlay)]"
+          className="altteulmap-button altteulmap-accent-solid pointer-events-auto inline-flex min-h-12 w-full max-w-[28rem] items-center justify-between gap-3 px-4 py-2.5 text-sm font-semibold shadow-[var(--altteul-shadow-overlay)]"
         >
-          목록 열기
-          <span className="rounded-full bg-white/90 px-2 py-0.5 text-xs text-[var(--altteul-primary-text)]">
+          <span>지도 결과 목록</span>
+          <span className="rounded-full bg-white/90 px-2.5 py-1 text-xs text-[var(--altteul-primary-text)]">
             {state.status === "success" ? `${totalPlaceCount}곳` : "..."}
           </span>
         </button>
@@ -78,17 +78,17 @@ export function MobilePlaceListSheet({
     <section
       data-testid="mobile-place-list-sheet"
       data-sheet-mode={mode}
-      className={`fixed left-3 z-[2147483647] w-[calc(100dvw-1.5rem)] rounded-[1rem] border border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-surface)] p-3 shadow-[var(--altteul-shadow-overlay)] transition-all xl:hidden ${
+      className={`fixed inset-x-2 bottom-[calc(env(safe-area-inset-bottom)+0.5rem)] z-[2147483647] rounded-[1rem] border border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-surface)] p-2.5 shadow-[var(--altteul-shadow-overlay)] transition-all xl:hidden ${
         isExpanded
-          ? "top-[calc(100dvh-88dvh-0.75rem)] max-h-[88dvh]"
-          : "top-[calc(100dvh-58dvh-0.75rem)] max-h-[58dvh]"
+          ? "max-h-[86dvh]"
+          : "max-h-[46dvh]"
       }`}
     >
       <button
         type="button"
         aria-label="목록 시트 크기 조절"
         data-testid="mobile-place-list-drag-handle"
-        className="mx-auto mb-1 flex h-11 w-20 touch-none items-center justify-center rounded-full"
+        className="mx-auto flex h-11 w-20 touch-none items-center justify-center rounded-full"
         onPointerDown={(event) => {
           event.currentTarget.setPointerCapture(event.pointerId);
           setDragStartY(event.clientY);
@@ -106,24 +106,26 @@ export function MobilePlaceListSheet({
         }}
         onPointerCancel={() => setDragStartY(null)}
       >
-        <span className="h-2 w-14 rounded-full bg-[var(--altteul-bg-muted)]" />
+        <span className="h-1.5 w-12 rounded-full bg-[var(--altteul-bg-muted)]" />
       </button>
-      <div className="flex items-center justify-between gap-3 border-b border-[var(--altteul-surface-border)] pb-3">
+      <div className="flex items-center justify-between gap-3 border-b border-[var(--altteul-surface-border)] pb-2">
         <div>
-          <p className="altteulmap-section-kicker text-[11px]">목록</p>
-          <h2 className="mt-1 text-base font-semibold text-[var(--altteul-text-strong)]">
+          <h2 className="text-base font-semibold text-[var(--altteul-text-strong)]">
             지도 결과
           </h2>
+          <p className="mt-0.5 text-xs text-[var(--altteul-text-tertiary)]">
+            가격을 누르면 장소 정보를 봅니다.
+          </p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="altteulmap-badge px-3 py-1 text-xs font-medium">
+          <span className="altteulmap-badge px-2.5 py-1 text-xs font-medium">
             {state.status === "success" ? `${totalPlaceCount}곳` : "..."}
           </span>
           <button
             type="button"
             data-testid="mobile-place-list-toggle-size"
             onClick={() => onModeChange(isExpanded ? "peek" : "expanded")}
-            className="altteulmap-button pointer-events-auto min-h-9 px-3 py-1.5 text-xs font-medium"
+            className="altteulmap-button pointer-events-auto min-h-11 px-3 py-1.5 text-xs font-medium"
           >
             {isExpanded ? "줄이기" : "크게"}
           </button>
@@ -131,10 +133,10 @@ export function MobilePlaceListSheet({
       </div>
       <div
         data-testid="mobile-place-list"
-        className={`mt-3 grid gap-2 overflow-auto pr-1 ${
+        className={`mt-2 grid gap-1.5 overflow-auto pr-1 ${
           isExpanded
-            ? "max-h-[calc(88dvh-7.5rem)]"
-            : "max-h-[calc(58dvh-7.5rem)]"
+            ? "max-h-[calc(86dvh-6.75rem)]"
+            : "max-h-[calc(46dvh-6.75rem)]"
         }`}
       >
         {state.status === "loading" ? (
@@ -158,34 +160,44 @@ export function MobilePlaceListSheet({
           return (
             <article
               key={place.id}
-              className="pointer-events-auto rounded-[0.85rem] border border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-surface)] p-3 text-left"
+              className="pointer-events-auto rounded-[0.75rem] border border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-surface)] p-2 text-left"
             >
               <div className="flex items-start justify-between gap-3">
                 <button
                   type="button"
+                  aria-label={`${place.name} 가격 보기`}
                   data-testid={`mobile-place-list-item-${place.id}`}
                   onClick={() => onSelectPlace(place)}
-                  className="min-w-0 flex-1 rounded-[0.65rem] text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--altteul-primary)]"
+                  className="grid min-w-0 flex-1 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-[0.65rem] text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--altteul-primary)]"
                 >
-                  <span className="block text-[11px] font-semibold text-[var(--altteul-primary-text)]">
-                    대표가 · {place.representativePriceLabel || "기준 가격"}
+                  <span className="min-w-[5.25rem]">
+                    <span className="block text-[10px] font-semibold text-[var(--altteul-primary-text)]">
+                      대표가
+                    </span>
+                    <span className="altteulmap-price-number mt-0.5 block text-lg">
+                      {formatKrw(place.representativePriceAmount)}원
+                    </span>
                   </span>
-                  <span className="altteulmap-price-number mt-1 block text-xl">
-                    {formatKrw(place.representativePriceAmount)}원
-                  </span>
-                  <span
-                    data-testid={`mobile-place-list-item-name-${place.id}`}
-                    className="mt-2 block truncate text-base font-semibold text-[var(--altteul-text-strong)]"
-                  >
-                    {place.name}
-                  </span>
-                  <span className="mt-1 block truncate text-xs text-[var(--altteul-text-secondary)]">
-                    {[category?.name ?? "기타", place.district].join(" · ")}
+                  <span className="min-w-0">
+                    <span
+                      data-testid={`mobile-place-list-item-name-${place.id}`}
+                      className="block truncate text-sm font-semibold text-[var(--altteul-text-strong)]"
+                    >
+                      {place.name}
+                    </span>
+                    <span className="mt-1 block truncate text-xs text-[var(--altteul-text-secondary)]">
+                      {[
+                        place.representativePriceLabel || "기준 가격",
+                        category?.name ?? "기타",
+                        place.district,
+                      ].join(" · ")}
+                    </span>
                   </span>
                 </button>
                 <div className="shrink-0">
                   <ViteBookmarkToggleButton
                     compact
+                    iconOnly
                     initialBookmarked={bookmarkedPlaceIds.has(place.id)}
                     loginHref={loginHref}
                     placeId={place.id}

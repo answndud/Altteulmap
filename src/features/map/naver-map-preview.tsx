@@ -271,7 +271,7 @@ export function PreviewMap({
   return (
     <div
       ref={previewMapRef}
-      className={`${enableLocalWheelZoom ? "pointer-events-auto cursor-grab touch-none active:cursor-grabbing" : "pointer-events-none"} relative h-[42rem] bg-[linear-gradient(to_right,color-mix(in_oklch,var(--altteul-surface-border)_68%,transparent)_1px,transparent_1px),linear-gradient(to_bottom,color-mix(in_oklch,var(--altteul-surface-border)_68%,transparent)_1px,transparent_1px)] bg-[size:32px_32px] bg-[var(--altteul-bg-surface)] lg:h-[calc(100dvh-11rem)] lg:min-h-[50rem]`}
+      className={`${enableLocalWheelZoom ? "pointer-events-auto cursor-grab touch-none active:cursor-grabbing" : "pointer-events-none"} altteulmap-map-viewport relative bg-[linear-gradient(to_right,color-mix(in_oklch,var(--altteul-surface-border)_68%,transparent)_1px,transparent_1px),linear-gradient(to_bottom,color-mix(in_oklch,var(--altteul-surface-border)_68%,transparent)_1px,transparent_1px)] bg-[size:32px_32px] bg-[var(--altteul-bg-surface)]`}
       data-testid="map-panel-preview"
       data-local-zoom={shouldShowLocalTiles ? localFallbackZoom : undefined}
       data-local-center={
@@ -300,7 +300,7 @@ export function PreviewMap({
         onActivateCluster={onActivateCluster}
         onSelectPlace={onSelectPlace}
       />
-      <div className="altteulmap-map-overlay absolute bottom-4 left-4 max-w-[17rem] px-3.5 py-3 text-sm text-[var(--altteul-text-primary)]">
+      <div className="altteulmap-map-overlay absolute bottom-4 left-4 hidden max-w-[17rem] px-3.5 py-3 text-sm text-[var(--altteul-text-primary)] sm:block">
         <p className="font-semibold text-[var(--altteul-text-strong)]">
           {selectedCategoryLabel
             ? `${selectedCategoryLabel} 카테고리`
