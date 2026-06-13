@@ -318,7 +318,7 @@ function NaverMapPanelContent({
       className="altteulmap-panel relative isolate overflow-hidden"
       data-testid="map-panel-shell"
     >
-      <div className="relative isolate z-0 h-[42rem] lg:h-[calc(100dvh-11rem)] lg:min-h-[50rem]">
+      <div className="altteulmap-map-viewport relative isolate z-0">
         <div
           ref={mapContainerRef}
           data-testid="map-panel"
@@ -341,13 +341,15 @@ function NaverMapPanelContent({
           </div>
         ) : null}
 
-        <div className="pointer-events-none absolute inset-x-3 top-3 z-10 flex items-start justify-between gap-3 sm:inset-x-4 sm:top-4">
+        <div className="pointer-events-none absolute inset-x-2 top-2 z-10 flex items-start justify-between gap-2 sm:inset-x-4 sm:top-4 sm:gap-3">
           <div className="pointer-events-auto grid max-w-[13.5rem] gap-2 sm:max-w-[18rem]">
-            <div className="altteulmap-map-overlay px-3 py-2.5 sm:px-3.5 sm:py-3">
+            <div className="altteulmap-map-overlay px-2.5 py-2 sm:px-3.5 sm:py-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="altteulmap-section-kicker text-[10px]">지도</p>
-                  <h2 className="mt-1 text-sm font-semibold text-[var(--altteul-text-strong)] sm:text-base">
+                  <p className="altteulmap-section-kicker hidden text-[10px] sm:block">
+                    지도
+                  </p>
+                  <h2 className="text-sm font-semibold text-[var(--altteul-text-strong)] sm:mt-1 sm:text-base">
                     가격 지도
                   </h2>
                 </div>
@@ -363,7 +365,7 @@ function NaverMapPanelContent({
             </div>
 
             {statusMessage ? (
-              <div className="altteulmap-map-overlay-subtle px-3 py-2 text-xs leading-5 text-[var(--altteul-text-secondary)]">
+              <div className="altteulmap-map-overlay-subtle hidden px-3 py-2 text-xs leading-5 text-[var(--altteul-text-secondary)] sm:block">
                 {statusMessage}
               </div>
             ) : null}
@@ -377,7 +379,7 @@ function NaverMapPanelContent({
                 }}
                 disabled={refreshAction.isLoading}
                 data-testid="map-refresh-button"
-                className="altteulmap-accent-solid altteulmap-button w-fit whitespace-nowrap px-3.5 py-2 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-70 sm:text-sm"
+                className="altteulmap-accent-solid altteulmap-button min-h-11 w-fit whitespace-nowrap px-3 py-2 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-70 sm:px-3.5 sm:text-sm"
               >
                 {refreshAction.isLoading ? "검색 중" : "이 지역 다시 찾기"}
               </button>
@@ -390,7 +392,7 @@ function NaverMapPanelContent({
               onClick={locateCurrentPosition}
               disabled={!canLocateCurrentPosition || isLocating}
               data-testid="map-current-location-button"
-              className="altteulmap-map-overlay-subtle inline-flex whitespace-nowrap px-3 py-2 text-xs font-medium text-[var(--altteul-text-primary)] transition hover:bg-[var(--altteul-bg-surface)] disabled:cursor-not-allowed disabled:text-[var(--altteul-text-tertiary)]"
+              className="altteulmap-map-overlay-subtle inline-flex min-h-11 items-center whitespace-nowrap px-2.5 py-2 text-xs font-medium text-[var(--altteul-text-primary)] transition hover:bg-[var(--altteul-bg-surface)] disabled:cursor-not-allowed disabled:text-[var(--altteul-text-tertiary)] sm:px-3"
             >
               {isLocating ? "위치 확인 중" : "현재 위치"}
             </button>
