@@ -124,6 +124,13 @@ async function main() {
 
     for (const place of mockPlaces) {
       const placeId = crypto.randomUUID();
+      const isImportedGoodprice = place.id.startsWith("goodprice-");
+      const sourceProvider = isImportedGoodprice ? "goodprice" : "seed";
+      const sourceImportBatch = isImportedGoodprice
+        ? place.lastPriceUpdatedAt
+        : "local-seed";
+      const validPriceItems = place.priceItems.filter((item) => item.amount > 0);
+      const validHistory = place.history.filter((entry) => entry.amount > 0);
       placeInternalIdBySlug.set(place.id, placeId);
 
       await tx.insert(places).values({
@@ -135,6 +142,9 @@ async function main() {
         note: place.note,
         roadAddress: place.address,
         district: place.district,
+        sourceProvider,
+        sourceExternalId: place.id,
+        sourceImportBatch,
         latitude: place.latitude,
         longitude: place.longitude,
         status: "active",
@@ -143,7 +153,7 @@ async function main() {
         representativePriceLabel: place.representativePriceLabel,
         likeCount: place.likeCount,
         dislikeCount: place.dislikeCount,
-        verifiedPriceItemCount: place.priceItems.filter(
+        verifiedPriceItemCount: validPriceItems.filter(
           (item) => item.verificationStatus === "verified",
         ).length,
         lastPriceUpdatedAt: toDate(place.lastPriceUpdatedAt),
@@ -163,8 +173,11 @@ async function main() {
       const priceItemRows = await tx
         .insert(priceItems)
         .values(
-          place.priceItems.map((item) => ({
+          validPriceItems.map((item) => ({
             placeId,
+            sourceProvider,
+            sourceExternalId: `${place.id}:${item.id}`,
+            sourceImportBatch,
             label: item.label,
             normalizedLabel: normalizePriceLabel(item.label),
             amount: item.amount,
@@ -188,8 +201,11 @@ async function main() {
       );
 
       await tx.insert(priceReports).values([
-        ...place.history.map((entry) => ({
+        ...validHistory.map((entry) => ({
           placeId,
+          sourceProvider,
+          sourceExternalId: `${place.id}:${entry.id}`,
+          sourceImportBatch,
           priceItemId:
             priceItemIdByNormalizedLabel.get(normalizePriceLabel(entry.label)) ??
             null,
@@ -204,8 +220,11 @@ async function main() {
           snapshotVerificationStatus: entry.verificationStatus,
           createdAt: toDate(entry.recordedAt),
         })),
-        ...place.priceItems.map((item) => ({
+        ...validPriceItems.map((item) => ({
           placeId,
+          sourceProvider,
+          sourceExternalId: `${place.id}:${item.id}:current`,
+          sourceImportBatch,
           priceItemId:
             priceItemIdByNormalizedLabel.get(normalizePriceLabel(item.label)) ??
             null,

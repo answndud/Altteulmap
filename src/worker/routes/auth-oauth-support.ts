@@ -1,4 +1,5 @@
 import { listWorkerSocialAuthProviders } from "@/worker/auth-repository";
+import { z } from "zod";
 import {
   AUTH_OAUTH_STATE_MAX_AGE,
   decodeSignedPayload,
@@ -32,6 +33,17 @@ type OAuthProfile = {
   id: string | null;
   name: string | null;
 };
+
+const oauthTokenResponseSchema = z
+  .object({
+    access_token: z.string().optional(),
+    refresh_token: z.string().optional(),
+    expires_in: z.number().finite().nonnegative().optional(),
+    token_type: z.string().optional(),
+    scope: z.string().optional(),
+    id_token: z.string().optional(),
+  })
+  .passthrough();
 
 function isOAuthProviderId(value: string): value is OAuthProviderId {
   return OAUTH_PROVIDERS.includes(value as OAuthProviderId);
@@ -146,7 +158,13 @@ export async function exchangeOAuthToken(
     throw new Error(`OAuth token exchange failed for ${provider}.`);
   }
 
-  return (await response.json()) as OAuthTokenResponse;
+  const parsed = oauthTokenResponseSchema.safeParse(await response.json());
+
+  if (!parsed.success) {
+    throw new Error(`OAuth token response was malformed for ${provider}.`);
+  }
+
+  return parsed.data satisfies OAuthTokenResponse;
 }
 
 export async function fetchOAuthProfile(

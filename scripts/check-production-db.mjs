@@ -11,6 +11,7 @@ loadEnvFilesWithShellPrecedence({
 
 const MODERATION_TYPES = [
   "moderation_suggestion_action",
+  "moderation_suggestion_status",
   "moderation_suggestion_subject_type",
 ];
 
@@ -191,8 +192,47 @@ async function main() {
         and typname = any(${MODERATION_TYPES})
       order by typname asc
     `;
+    const moderationTableRowsForData = await sql`
+      select exists (
+        select 1
+        from information_schema.tables
+        where table_schema = 'public'
+          and table_name = 'moderation_suggestions'
+      ) as exists
+    `;
+    const invalidModerationRows = moderationTableRowsForData[0]?.exists
+      ? await sql`
+          select count(*)::int as invalid_rows
+          from moderation_suggestions
+          where confidence < 0
+            or confidence > 100
+            or char_length(summary) not between 1 and 2000
+        `
+      : [];
+    const invalidModerationCount = Number(
+      invalidModerationRows[0]?.invalid_rows ?? 0,
+    );
 
     const migrationStatus = await readMigrationStatus(sql);
+    const priceTableRows = await sql`
+      select
+        to_regclass('public.price_reports') as reports,
+        to_regclass('public.price_items') as items
+    `;
+    const hasPriceTables = Boolean(
+      priceTableRows[0]?.reports && priceTableRows[0]?.items,
+    );
+    const invalidPriceRows = hasPriceTables
+      ? await sql`
+          select
+            (select count(*)::int from price_reports where amount <= 0) as invalid_price_reports,
+            (select count(*)::int from price_items where amount <= 0) as invalid_price_items
+        `
+      : [];
+    const invalidPrices = invalidPriceRows[0] ?? {
+      invalid_price_reports: 0,
+      invalid_price_items: 0,
+    };
 
     printSection("Connection result");
     printLine(`status: ok`);
@@ -207,8 +247,15 @@ async function main() {
     printLine(
       `moderation enums: ${moderationTypeRows.length}/${MODERATION_TYPES.length} present`,
     );
+    printLine(`invalid moderation suggestions: ${invalidModerationCount}`);
     printLine(
       `drizzle migrations table: ${migrationStatus.hasDrizzleTable ? "present" : "missing"}`,
+    );
+    printLine(
+      `price tables: ${hasPriceTables ? "present" : "missing"}`,
+    );
+    printLine(
+      `invalid price reports/items: ${invalidPrices.invalid_price_reports}/${invalidPrices.invalid_price_items}`,
     );
 
     if (migrationStatus.latestMigrations.length > 0) {
@@ -222,7 +269,11 @@ async function main() {
 
     if (
       moderationTableRows[0]?.exists &&
-      moderationTypeRows.length === MODERATION_TYPES.length
+      moderationTypeRows.length === MODERATION_TYPES.length &&
+      invalidModerationCount === 0 &&
+      hasPriceTables &&
+      Number(invalidPrices.invalid_price_reports) === 0 &&
+      Number(invalidPrices.invalid_price_items) === 0
     ) {
       printSection("Conclusion");
       printLine("production DB connection and moderation schema look ready.");
@@ -231,7 +282,7 @@ async function main() {
 
     printSection("Conclusion");
     printLine(
-      "production DB connection works, but moderation schema is incomplete. Apply drizzle/0010_military_wildside.sql or the equivalent Drizzle migration before live persistence validation.",
+      "production DB connection works, but schema or price invariants are incomplete. Resolve the reported rows and apply the pending Drizzle migrations before live persistence validation.",
     );
     process.exitCode = 2;
   } catch (error) {

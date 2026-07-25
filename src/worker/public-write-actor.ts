@@ -4,6 +4,10 @@ import {
   type RateLimitPolicyName,
   type RateLimitResult,
 } from "@/lib/rate-limit";
+import {
+  decodeSignedPayload,
+  encodeSignedPayload,
+} from "@/worker/auth/session";
 
 const VISITOR_ID_COOKIE_NAME = "altteulmap_visitor_id";
 const VISITOR_ID_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
@@ -18,7 +22,17 @@ type WorkerSessionUser = {
 export type WorkerPublicWriteActor = {
   user: WorkerSessionUser | null;
   visitorId: string | null;
+  visitorCookieValue: string | null;
   key: string;
+};
+
+type VisitorCookiePayload = {
+  visitorId: string;
+  expiresAt: number;
+};
+
+type VisitorActorEnv = {
+  AUTH_SECRET?: string;
 };
 
 function isUuid(value: string | null | undefined) {
@@ -67,8 +81,33 @@ function getCookieValue(cookieHeader: string | null, cookieName: string) {
   return null;
 }
 
-function getVisitorIdFromRequest(request: Request) {
-  return getCookieValue(request.headers.get("cookie"), VISITOR_ID_COOKIE_NAME);
+export function getVerifiedVisitorIdFromRequest(
+  request: Request,
+  env: VisitorActorEnv,
+) {
+  const value = getCookieValue(request.headers.get("cookie"), VISITOR_ID_COOKIE_NAME);
+  const payload = decodeSignedPayload<VisitorCookiePayload>(value, env);
+
+  if (
+    !payload ||
+    !isUuid(payload.visitorId) ||
+    !Number.isFinite(payload.expiresAt) ||
+    payload.expiresAt <= Date.now()
+  ) {
+    return null;
+  }
+
+  return payload.visitorId;
+}
+
+function createVisitorCookieValue(visitorId: string, env: VisitorActorEnv) {
+  return encodeSignedPayload(
+    {
+      visitorId,
+      expiresAt: Date.now() + VISITOR_ID_COOKIE_MAX_AGE * 1000,
+    } satisfies VisitorCookiePayload,
+    env,
+  );
 }
 
 function buildCookieParts({
@@ -125,14 +164,22 @@ export function getWorkerPublicWriteActor(
   sessionUser: WorkerSessionUser | null,
   options?: {
     createVisitorIfMissing?: boolean;
+    env?: VisitorActorEnv;
   },
 ): WorkerPublicWriteActor {
   const createVisitorIfMissing = options?.createVisitorIfMissing ?? true;
-  const existingVisitorId = sessionUser ? null : getVisitorIdFromRequest(request);
+  const existingVisitorId =
+    sessionUser || !options?.env
+      ? null
+      : getVerifiedVisitorIdFromRequest(request, options.env);
   const visitorId = sessionUser
     ? null
     : (existingVisitorId ??
       (createVisitorIfMissing ? crypto.randomUUID() : null));
+  const visitorCookieValue =
+    visitorId && options?.env
+      ? createVisitorCookieValue(visitorId, options.env)
+      : null;
   const user = sessionUser
     ? {
         ...sessionUser,
@@ -143,6 +190,7 @@ export function getWorkerPublicWriteActor(
   return {
     user: user?.id ? user : null,
     visitorId,
+    visitorCookieValue,
     key:
       user?.id ??
       visitorId ??
@@ -159,7 +207,7 @@ function appendPublicWriteActorCookie(
   if (!actor.user && actor.visitorId) {
     appendCookie(response, request, {
       name: VISITOR_ID_COOKIE_NAME,
-      value: actor.visitorId,
+      value: actor.visitorCookieValue ?? actor.visitorId,
       maxAge: VISITOR_ID_COOKIE_MAX_AGE,
     });
   }

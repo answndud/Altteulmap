@@ -105,6 +105,7 @@ export async function getDatabasePlaceDetail(
           unitLabel: priceItems.unitLabel,
           verificationStatus: priceItems.verificationStatus,
           latestReportedAt: priceItems.latestReportedAt,
+          sourceProvider: priceItems.sourceProvider,
         })
         .from(priceItems)
         .where(
@@ -122,6 +123,7 @@ export async function getDatabasePlaceDetail(
           amount: priceReports.amount,
           verificationStatus: priceReports.snapshotVerificationStatus,
           recordedAt: priceReports.createdAt,
+          sourceProvider: priceReports.sourceProvider,
         })
         .from(priceReports)
         .where(
@@ -157,6 +159,7 @@ export async function getDatabasePlaceDetail(
         unitLabel: priceItem.unitLabel ?? undefined,
         verificationStatus: priceItem.verificationStatus,
         reportedAt: formatDate(priceItem.latestReportedAt),
+        sourceProvider: priceItem.sourceProvider,
       })),
       history: historyRows.map((history) => ({
         id: history.id,
@@ -164,6 +167,7 @@ export async function getDatabasePlaceDetail(
         amount: history.amount,
         verificationStatus: history.verificationStatus,
         recordedAt: formatDate(history.recordedAt),
+        sourceProvider: history.sourceProvider,
       })),
       comments: commentRows.map((comment) => ({
         id: comment.id,

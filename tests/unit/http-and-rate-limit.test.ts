@@ -21,6 +21,25 @@ import {
   getOrigin,
   normalizeCallbackUrl as normalizeWorkerCallbackUrl,
 } from "../../src/worker/http/urls";
+import {
+  decodeSignedPayload,
+  encodeSignedPayload,
+} from "../../src/worker/auth/session";
+import {
+  isLocalTurnstileBypassAllowed,
+} from "../../src/worker/routes/public-write-support";
+import {
+  applyWorkerWriteHeaders,
+  getWorkerPublicWriteActor,
+} from "../../src/worker/public-write-actor";
+import { getPriceReportSubmissionKey } from "../../src/worker/price-report-identity";
+import { readRequestBodyWithinLimit } from "../../src/worker/http/request-body";
+import { parseModerationSuggestion } from "../../src/worker/admin/moderation-suggestion-validation";
+import {
+  createOAuthState,
+  decodeOAuthState,
+  exchangeOAuthToken,
+} from "../../src/worker/routes/auth-oauth-support";
 
 test("rate limit policies consume buckets and expose retry headers", () => {
   const key = `unit-${Date.now()}-${Math.random()}`;
@@ -117,4 +136,233 @@ test("cookie helpers decode values and add secure attributes only for HTTPS", ()
 
   assert.equal(local.headers.get("Set-Cookie")?.includes("Secure"), false);
   assert.equal(secure.headers.get("Set-Cookie")?.includes("Secure"), true);
+});
+
+test("signed auth payloads fail closed when AUTH_SECRET is missing", () => {
+  assert.throws(
+    () => encodeSignedPayload({ role: "admin" }, {}),
+    /AUTH_SECRET is required/,
+  );
+  assert.equal(
+    decodeSignedPayload("v1.invalid.invalid", {}),
+    null,
+  );
+});
+
+test("OAuth state is provider-bound, expiring, and tamper-resistant", () => {
+  const env = {
+    ASSETS: { fetch: async () => new Response() },
+    AUTH_SECRET: "unit-oauth-secret",
+    AUTH_KAKAO_CLIENT_ID: "kakao-client",
+    AUTH_KAKAO_CLIENT_SECRET: "kakao-secret",
+  };
+  const state = createOAuthState("kakao", "/bookmarks", env);
+  const decoded = decodeOAuthState(state, env);
+
+  assert.equal(decoded?.provider, "kakao");
+  assert.equal(decoded?.callbackUrl, "/bookmarks");
+  assert.equal(decodeOAuthState(`${state}tampered`, env), null);
+  assert.equal(
+    decodeOAuthState(
+      encodeSignedPayload(
+        {
+          callbackUrl: "/",
+          expires: Date.now() - 1,
+          nonce: "expired",
+          provider: "kakao",
+        },
+        env,
+      ),
+      env,
+    ),
+    null,
+  );
+});
+
+test("OAuth token exchange rejects malformed provider responses", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ access_token: 42 }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+
+  try {
+    await assert.rejects(
+      exchangeOAuthToken(
+        "kakao",
+        "one-time-code",
+        {
+          ASSETS: { fetch: async () => new Response() },
+          AUTH_KAKAO_CLIENT_ID: "client",
+          AUTH_KAKAO_CLIENT_SECRET: "secret",
+        },
+        "https://example.com",
+      ),
+      /malformed/u,
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("moderation suggestions fail closed when output shape is invalid", () => {
+  assert.equal(
+    parseModerationSuggestion({
+      suggestedAction: "approve",
+      confidence: 101,
+      summary: "bad confidence",
+      checks: [],
+      flags: [],
+    }),
+    null,
+  );
+  assert.deepEqual(
+    parseModerationSuggestion({
+      suggestedAction: "review",
+      confidence: 80,
+      summary: "정상 제안",
+      checks: ["address_match"],
+      flags: [],
+    }),
+    {
+      suggestedAction: "review",
+      confidence: 80,
+      summary: "정상 제안",
+      checks: ["address_match"],
+      flags: [],
+    },
+  );
+});
+
+test("Turnstile bypass is restricted to local hostnames", () => {
+  assert.equal(
+    isLocalTurnstileBypassAllowed(
+      new Request("http://127.0.0.1/api/places"),
+      {
+        ASSETS: { fetch: async () => new Response() },
+        USE_MOCK_DATA: "true",
+      },
+    ),
+    true,
+  );
+  assert.equal(
+    isLocalTurnstileBypassAllowed(
+      new Request("https://production.example/api/places"),
+      {
+        ASSETS: { fetch: async () => new Response() },
+        USE_MOCK_DATA: "true",
+      },
+    ),
+    false,
+  );
+});
+
+test("visitor actor cookies are signed and rotation cannot claim an existing actor", () => {
+  const env = { AUTH_SECRET: "unit-visitor-secret" };
+  const firstRequest = new Request("https://example.com/api/places", {
+    headers: { cookie: "" },
+  });
+  const firstActor = getWorkerPublicWriteActor(firstRequest, null, { env });
+  const firstResponse = applyWorkerWriteHeaders(
+    new Response(null),
+    firstRequest,
+    firstActor,
+  );
+  const setCookie = firstResponse.headers.get("set-cookie");
+
+  assert.ok(setCookie);
+  const cookieHeader = setCookie.split(";", 1)[0];
+  const secondActor = getWorkerPublicWriteActor(
+    new Request("https://example.com/api/places", {
+      headers: { cookie: cookieHeader },
+    }),
+    null,
+    { env },
+  );
+  const rotatedActor = getWorkerPublicWriteActor(
+    new Request("https://example.com/api/places", {
+      headers: { cookie: `altteulmap_visitor_id=${crypto.randomUUID()}` },
+    }),
+    null,
+    { env },
+  );
+
+  assert.equal(secondActor.visitorId, firstActor.visitorId);
+  assert.notEqual(rotatedActor.visitorId, firstActor.visitorId);
+});
+
+test("price report submission keys are actor- and content-specific", () => {
+  const env = { AUTH_SECRET: "unit-price-secret" };
+  const actor = getWorkerPublicWriteActor(
+    new Request("https://example.com"),
+    null,
+    { env },
+  );
+  const sameSubmission = getPriceReportSubmissionKey(
+    "place-1",
+    actor,
+    "김치찌개",
+    7000,
+    null,
+  );
+  const repeatedSubmission = getPriceReportSubmissionKey(
+    "place-1",
+    actor,
+    "김치찌개",
+    7000,
+    null,
+  );
+  const changedAmount = getPriceReportSubmissionKey(
+    "place-1",
+    actor,
+    "김치찌개",
+    8000,
+    null,
+  );
+
+  assert.equal(sameSubmission, repeatedSubmission);
+  assert.notEqual(sameSubmission, changedAmount);
+});
+
+test("request body limits cover chunked bodies without trusting Content-Length", async () => {
+  const requestInit = {
+    method: "POST",
+    body: new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode("first-"));
+        controller.enqueue(new TextEncoder().encode("second"));
+        controller.close();
+      },
+    }),
+    duplex: "half",
+  } as RequestInit & { duplex: "half" };
+  const request = new Request("https://example.com/api/places", requestInit);
+  const accepted = await readRequestBodyWithinLimit(request, 20);
+
+  assert.equal(accepted.ok, true);
+  if (accepted.ok) {
+    assert.equal(new TextDecoder().decode(accepted.body), "first-second");
+  }
+
+  const oversizedRequestInit = {
+    method: "POST",
+    body: new ReadableStream({
+      start(controller) {
+        controller.enqueue(new Uint8Array(12));
+        controller.enqueue(new Uint8Array(12));
+        controller.close();
+      },
+    }),
+    duplex: "half",
+  } as RequestInit & { duplex: "half" };
+  const oversized = new Request(
+    "https://example.com/api/places",
+    oversizedRequestInit,
+  );
+
+  assert.deepEqual(
+    await readRequestBodyWithinLimit(oversized, 20),
+    { ok: false, reason: "too-large" },
+  );
 });

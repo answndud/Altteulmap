@@ -10,6 +10,7 @@ import { mockReports, type MockReportRecord } from "@/features/reports/mock-data
 import type { ReportModerationInput } from "@/features/reports/schema";
 import type { ModerationSuggestion } from "@/shared/admin-contracts";
 import { getWorkerDb, type WorkerDatabaseBindings } from "@/worker/db";
+import { parseModerationSuggestion } from "@/worker/admin/moderation-suggestion-validation";
 
 type DataSource = "database";
 type AdminUser = {
@@ -53,18 +54,21 @@ function toModerationSuggestionRecord(row: {
   checks: unknown;
   flags: unknown;
 }): ModerationSuggestionRecord {
-  const action =
-    row.suggestedAction === "approve" || row.suggestedAction === "reject"
-      ? row.suggestedAction
-      : "review";
-
-  return {
-    suggestedAction: action,
-    confidence: row.confidence,
-    summary: row.summary,
-    checks: Array.isArray(row.checks) ? row.checks.map(String) : [],
-    flags: Array.isArray(row.flags) ? row.flags.map(String) : [],
-  };
+  return (
+    parseModerationSuggestion({
+      suggestedAction: row.suggestedAction,
+      confidence: row.confidence,
+      summary: row.summary,
+      checks: row.checks,
+      flags: row.flags,
+    }) ?? {
+      suggestedAction: "review",
+      confidence: 0,
+      summary: "검수 제안을 표시할 수 없습니다.",
+      checks: [],
+      flags: ["malformed_suggestion"],
+    }
+  );
 }
 
 export async function listWorkerReports(env: WorkerDatabaseBindings) {
@@ -98,6 +102,7 @@ export async function listWorkerReports(env: WorkerDatabaseBindings) {
           .where(
             and(
               eq(moderationSuggestions.subjectType, "content_report"),
+              eq(moderationSuggestions.status, "pending"),
               inArray(
                 moderationSuggestions.subjectKey,
                 rows.map((row) => row.id),
@@ -153,7 +158,12 @@ export async function updateWorkerReportStatus(
             ? now
             : null,
       })
-      .where(eq(contentReports.id, id))
+      .where(
+        and(
+          eq(contentReports.id, id),
+          inArray(contentReports.status, ["open", "reviewing"]),
+        ),
+      )
       .returning({
         id: contentReports.id,
         targetId: contentReports.targetId,
@@ -166,7 +176,7 @@ export async function updateWorkerReportStatus(
     if (!updatedReport) {
       return {
         ok: false,
-        message: "신고를 찾지 못했습니다.",
+        message: "신고가 없거나 이미 최종 처리되었습니다.",
         source: "database" as DataSource,
         item: null,
       };
