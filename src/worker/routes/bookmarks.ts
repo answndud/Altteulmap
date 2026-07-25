@@ -6,8 +6,18 @@ import {
   getSessionFromRequest,
   type LocalSession,
 } from "@/worker/auth/session";
+import {
+  isWorkerDatabaseEnabled,
+  isWorkerMockDataEnabled,
+  withWorkerDatabaseConnection,
+  type WorkerDatabaseBindings,
+} from "@/worker/db";
+import {
+  listDatabaseBookmarks,
+  setDatabaseBookmark,
+} from "@/worker/bookmarks-repository";
 
-type BookmarkBindings = {
+type BookmarkBindings = WorkerDatabaseBindings & {
   ASSETS: {
     fetch(request: Request): Promise<Response> | Response;
   };
@@ -15,6 +25,7 @@ type BookmarkBindings = {
 };
 
 type BookmarkRouteDependencies = {
+  databaseUnavailableResponse(message: string): Response;
   formatDate(date: Date): string;
   noStoreHeaders: Record<string, string>;
 };
@@ -41,7 +52,7 @@ export function registerBookmarkRoutes(
   app: Hono<{ Bindings: BookmarkBindings; Variables: { requestId: string } }>,
   dependencies: BookmarkRouteDependencies,
 ) {
-  app.get("/api/bookmarks", (c) => {
+  app.get("/api/bookmarks", async (c) => {
     const session = getSessionFromRequest(c.req.raw, c.env);
 
     if (!session) {
@@ -53,6 +64,36 @@ export function registerBookmarkRoutes(
         401,
         dependencies.noStoreHeaders,
       );
+    }
+
+    if (isWorkerDatabaseEnabled(c.env)) {
+      try {
+        const items = await withWorkerDatabaseConnection(c.env, () =>
+          listDatabaseBookmarks(c.env, session.user.id),
+        );
+
+        return c.json(
+          {
+            items: items.map((item) => ({
+              placeId: item.placeId,
+              createdAt: dependencies.formatDate(item.createdAt),
+            })),
+            count: items.length,
+            source: "database",
+            userLabel: session.user.name || session.user.email,
+            mock: false,
+          },
+          200,
+          dependencies.noStoreHeaders,
+        );
+      } catch (error) {
+        console.error("Failed to load database bookmarks.", error);
+        return dependencies.databaseUnavailableResponse("북마크를 불러오지 못했습니다.");
+      }
+    }
+
+    if (!isWorkerMockDataEnabled(c.env)) {
+      return dependencies.databaseUnavailableResponse("북마크를 불러오지 못했습니다.");
     }
 
     const bookmarkSet = getUserBookmarkSet(session);
@@ -105,6 +146,55 @@ export function registerBookmarkRoutes(
     }
 
     const placeId = c.req.param("id");
+
+    if (isWorkerDatabaseEnabled(c.env)) {
+      try {
+        const result = await withWorkerDatabaseConnection(c.env, () =>
+          setDatabaseBookmark(
+            c.env,
+            session.user.id,
+            placeId,
+            parsed.data.bookmarked,
+          ),
+        );
+
+        if (!result) {
+          return c.json(
+            {
+              ok: false,
+              source: "database",
+              bookmarked: false,
+              message: "장소를 찾지 못했습니다.",
+              placeId,
+            },
+            404,
+            dependencies.noStoreHeaders,
+          );
+        }
+
+        return c.json(
+          {
+            ok: true,
+            source: "database",
+            bookmarked: result.bookmarked,
+            message: result.bookmarked
+              ? "북마크에 저장했습니다."
+              : "북마크를 해제했습니다.",
+            placeId: result.placeId,
+          },
+          200,
+          dependencies.noStoreHeaders,
+        );
+      } catch (error) {
+        console.error("Failed to update database bookmark.", error);
+        return dependencies.databaseUnavailableResponse("북마크를 저장하지 못했습니다.");
+      }
+    }
+
+    if (!isWorkerMockDataEnabled(c.env)) {
+      return dependencies.databaseUnavailableResponse("북마크를 저장하지 못했습니다.");
+    }
+
     const place = getPlaceById(placeId);
 
     if (!place) {

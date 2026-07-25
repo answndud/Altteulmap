@@ -5,6 +5,7 @@ export type PlacePriceItem = {
   unitLabel?: string;
   verificationStatus: "verified" | "unverified";
   reportedAt: string;
+  sourceProvider?: string;
 };
 
 export type PlaceComment = {
@@ -23,6 +24,7 @@ export type PlaceHistoryEntry = {
   amount: number;
   verificationStatus: "verified" | "unverified";
   recordedAt: string;
+  sourceProvider?: string;
 };
 
 export type PlaceBounds = {

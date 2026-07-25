@@ -1,6 +1,8 @@
+import { sql } from "drizzle-orm";
 import {
   type AnyPgColumn,
   boolean,
+  check,
   doublePrecision,
   index,
   integer,
@@ -47,6 +49,11 @@ export const places = pgTable(
     roadAddress: text("road_address").notNull(),
     lotAddress: text("lot_address"),
     district: varchar("district", { length: 80 }).notNull(),
+    sourceProvider: varchar("source_provider", { length: 40 })
+      .default("user")
+      .notNull(),
+    sourceExternalId: varchar("source_external_id", { length: 160 }),
+    sourceImportBatch: varchar("source_import_batch", { length: 80 }),
     latitude: doublePrecision("latitude"),
     longitude: doublePrecision("longitude"),
     status: placeStatusEnum("status").default("active").notNull(),
@@ -70,6 +77,10 @@ export const places = pgTable(
   },
   (table) => [
     uniqueIndex("places_slug_unique").on(table.slug),
+    uniqueIndex("places_source_external_unique").on(
+      table.sourceProvider,
+      table.sourceExternalId,
+    ),
     index("places_status_updated_at_idx").on(table.status, table.updatedAt),
     index("places_status_primary_category_idx").on(
       table.status,
@@ -90,6 +101,14 @@ export const places = pgTable(
       table.representativePriceAmount,
     ),
     index("places_creator_idx").on(table.createdByUserId),
+    check(
+      "places_latitude_range_check",
+      sql`${table.latitude} is null or (${table.latitude} >= -90 and ${table.latitude} <= 90)`,
+    ),
+    check(
+      "places_longitude_range_check",
+      sql`${table.longitude} is null or (${table.longitude} >= -180 and ${table.longitude} <= 180)`,
+    ),
   ],
 );
 

@@ -11,6 +11,7 @@ import {
 import type { PlaceModerationInput } from "@/features/submission/schema";
 import type { PendingPlace } from "@/shared/admin-contracts";
 import { getWorkerDb, type WorkerDatabaseBindings } from "@/worker/db";
+import { refreshWorkerPlacePricingSummary } from "@/worker/admin/admin-price-helpers";
 
 type DataSource = "database";
 type WorkerDb = ReturnType<typeof getWorkerDb>;
@@ -232,7 +233,7 @@ export async function moderateWorkerPlaceSubmission(
     const nextStatus = input.decision === "approve" ? "active" : "hidden";
     const changedAt = new Date();
 
-    await tx
+    const [claimedPlace] = await tx
       .update(places)
       .set({
         status: nextStatus,
@@ -246,13 +247,30 @@ export async function moderateWorkerPlaceSubmission(
             : existing.longitude,
         updatedAt: changedAt,
       })
-      .where(eq(places.id, existing.id));
+      .where(
+        and(
+          eq(places.id, existing.id),
+          eq(places.status, "pending_review"),
+        ),
+      )
+      .returning({ id: places.id });
+
+    if (!claimedPlace) {
+      return {
+        ok: false,
+        message: "이미 처리된 장소 검토 항목입니다.",
+        source: "database" as DataSource,
+        item: null,
+      };
+    }
+
     await tx
       .update(priceReports)
       .set({
         reportStatus: input.decision === "approve" ? "accepted" : "rejected",
       })
       .where(eq(priceReports.placeId, existing.id));
+    await refreshWorkerPlacePricingSummary(tx, existing.id, changedAt);
     await tx.insert(adminActions).values({
       adminUserId: toAdminActionUserId(adminUser.id),
       actionType:

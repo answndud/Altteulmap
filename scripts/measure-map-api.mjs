@@ -31,7 +31,14 @@ const scenarios = [
     name: "global-query-kimbap",
     path: "/api/places/map?scope=global&query=%EA%B9%80%EB%B0%A5",
   },
+  {
+    name: "wide-bbox-cap",
+    path:
+      "/api/places/map?scope=viewport&zoom=5&minLat=-90&maxLat=90&minLng=-180&maxLng=180",
+  },
 ];
+
+const MAX_EXPECTED_RETURNED_ROWS = 2_000;
 
 function percentile(values, ratio) {
   if (values.length === 0) {
@@ -67,6 +74,12 @@ async function measureScenario({ name, path }) {
     if (payload?.source !== "database" || payload?.mock === true) {
       throw new Error(
         `${name} expected database source but received source=${payload?.source} mock=${payload?.mock}`,
+      );
+    }
+
+    if ((payload?.returnedCount ?? 0) > MAX_EXPECTED_RETURNED_ROWS) {
+      throw new Error(
+        `${name} exceeded the server row cap: ${payload.returnedCount} > ${MAX_EXPECTED_RETURNED_ROWS}`,
       );
     }
 

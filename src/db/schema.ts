@@ -19,6 +19,7 @@ export {
   contentReportStatusEnum,
   contentReportTargetTypeEnum,
   moderationSuggestionActionEnum,
+  moderationSuggestionStatusEnum,
   moderationSuggestionSubjectTypeEnum,
   placeReactionTypeEnum,
   placeStatusEnum,

@@ -39,7 +39,20 @@ function redirectToLoginError(
   redirectUrl.searchParams.set("callbackUrl", normalizeCallbackUrl(callbackUrl));
   redirectUrl.searchParams.set("error", error);
 
-  return Response.redirect(redirectUrl.toString(), 302);
+  const response = Response.redirect(redirectUrl.toString(), 302);
+
+  appendCookie(response, request, {
+    name: AUTH_OAUTH_STATE_COOKIE_NAME,
+    value: "",
+    maxAge: 0,
+  });
+  appendCookie(response, request, {
+    name: AUTH_CALLBACK_COOKIE_NAME,
+    value: "",
+    maxAge: 0,
+  });
+
+  return response;
 }
 
 export function registerAuthOAuthRoutes(
@@ -112,7 +125,8 @@ export function registerAuthOAuthRoutes(
       !decodedState ||
       !decodedCookieState ||
       state !== cookieState ||
-      decodedState.provider !== enabledProvider
+      decodedState.provider !== enabledProvider ||
+      decodedState.nonce !== decodedCookieState.nonce
     ) {
       return redirectToLoginError(c.req.raw, c.env, "OAuthCallback");
     }
@@ -191,7 +205,8 @@ export function registerAuthOAuthRoutes(
       });
       appendCookie(response, c.req.raw, {
         name: AUTH_CALLBACK_COOKIE_NAME,
-        value: decodedState.callbackUrl,
+        value: "",
+        maxAge: 0,
       });
 
       return response;

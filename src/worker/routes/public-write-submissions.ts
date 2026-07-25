@@ -34,6 +34,7 @@ export function registerPublicWriteSubmissionRoutes(
     const actor = getWorkerPublicWriteActor(
       c.req.raw,
       getSessionFromRequest(c.req.raw, c.env)?.user ?? null,
+      { env: c.env },
     );
     const rateLimit = await consumePublicWriteRateLimit(
       c.env,

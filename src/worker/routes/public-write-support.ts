@@ -1,8 +1,5 @@
 import type { PlaceComment, PlaceReactionType } from "@/features/places/types";
 import type { RateLimitPolicyName } from "@/lib/rate-limit";
-import {
-  getOrCreateVisitorId,
-} from "@/worker/http/cookies";
 import { getErrorMessage } from "@/worker/http/errors";
 import { getPublicTurnstileSiteKey } from "@/worker/http/public-config";
 import {
@@ -75,15 +72,14 @@ export function getTurnstileToken(body: unknown) {
 
 export function isLocalTurnstileBypassAllowed(
   request: Request,
-  env: PublicWriteBindings,
+  _env: PublicWriteBindings,
 ) {
   const hostname = new URL(request.url).hostname;
 
   return (
     hostname === "localhost" ||
     hostname === "127.0.0.1" ||
-    hostname === "::1" ||
-    env.USE_MOCK_DATA === "true"
+    hostname === "::1"
   );
 }
 
@@ -170,10 +166,6 @@ export function getMockPublicWriteComments(
   }));
 }
 
-function getReactionActorKey(placeId: string, request: Request) {
-  return `${placeId}:${getOrCreateVisitorId(request)}`;
-}
-
 export function getWorkerReactionActorKey(
   placeId: string,
   actor: WorkerPublicWriteActor,
@@ -181,8 +173,11 @@ export function getWorkerReactionActorKey(
   return `${placeId}:${actor.user?.id ?? actor.visitorId ?? actor.key}`;
 }
 
-export function getMockReactionSummary(placeId: string, request: Request) {
-  const actorKey = getReactionActorKey(placeId, request);
+export function getMockReactionSummary(
+  placeId: string,
+  actor: WorkerPublicWriteActor,
+) {
+  const actorKey = getWorkerReactionActorKey(placeId, actor);
   let likeCount = 0;
   let dislikeCount = 0;
 

@@ -42,3 +42,7 @@ export const moderationSuggestionActionEnum = pgEnum(
   "moderation_suggestion_action",
   ["approve", "review", "reject"],
 );
+export const moderationSuggestionStatusEnum = pgEnum(
+  "moderation_suggestion_status",
+  ["pending", "applied", "superseded"],
+);

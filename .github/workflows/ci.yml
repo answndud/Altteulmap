@@ -118,7 +118,7 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Push schema
-        run: npm run db:push
+        run: ALLOW_LOCAL_MIGRATION=1 npm run db:migrate
 
       - name: Seed database
         run: npm run db:seed

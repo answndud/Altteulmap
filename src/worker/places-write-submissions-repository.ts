@@ -14,6 +14,7 @@ import {
 import type { PlaceSubmissionInput } from "@/features/submission/schema";
 import { getWorkerDb, type WorkerDatabaseBindings } from "@/worker/db";
 import type { WorkerPublicWriteActor } from "@/worker/public-write-actor";
+import { getPriceReportSubmissionKey } from "@/worker/price-report-identity";
 import {
   type DataSource,
   type WorkerDbExecutor,
@@ -142,8 +143,16 @@ export async function createDatabasePlaceSubmission(
         unitLabel: item.unitLabel || null,
         comment: "신규 제보 등록",
         reportStatus: "pending_review" as const,
-        snapshotVerificationStatus: "unverified" as const,
-        reporterUserId: actor.user?.id ?? null,
+          snapshotVerificationStatus: "unverified" as const,
+          reporterUserId: actor.user?.id ?? null,
+          reporterVisitorId: actor.visitorId,
+          submissionKey: getPriceReportSubmissionKey(
+            createdPlace.id,
+            actor,
+            normalizePriceLabel(item.label),
+            item.amount,
+            item.unitLabel || null,
+          ),
         createdAt: now,
       })),
     );

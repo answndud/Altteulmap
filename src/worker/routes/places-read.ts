@@ -7,7 +7,7 @@ import {
   type WorkerPlaceViewer,
 } from "@/worker/places-read-repository";
 import { getSessionFromRequest } from "@/worker/auth/session";
-import { getVisitorIdFromCookie } from "@/worker/http/cookies";
+import { getVerifiedVisitorIdFromRequest } from "@/worker/public-write-actor";
 
 type AssetFetcher = {
   fetch(request: Request): Promise<Response> | Response;
@@ -51,6 +51,19 @@ function parseMapBounds(searchParams: URLSearchParams): PlaceBounds | null {
   const maxLng = parseFiniteNumber(searchParams.get("maxLng"));
 
   if (minLat === null || maxLat === null || minLng === null || maxLng === null) {
+    return null;
+  }
+
+  if (
+    minLat < -90 ||
+    maxLat > 90 ||
+    minLng < -180 ||
+    maxLng > 180 ||
+    minLat > maxLat ||
+    minLng > maxLng ||
+    maxLat - minLat > 30 ||
+    maxLng - minLng > 60
+  ) {
     return null;
   }
 
@@ -154,7 +167,7 @@ function getPlaceViewerFromRequest(
     };
   }
 
-  const visitorId = getVisitorIdFromCookie(request.headers.get("cookie"));
+  const visitorId = getVerifiedVisitorIdFromRequest(request, env);
 
   if (!visitorId) {
     return null;
@@ -180,6 +193,22 @@ export function registerPlacesReadRoutes(
     const searchScope: PlaceSearchScope =
       query && searchParams.get("scope") === "global" ? "global" : "viewport";
     const bounds = parseMapBounds(searchParams);
+    const hasBoundsParameters = ["minLat", "maxLat", "minLng", "maxLng"].some(
+      (key) => searchParams.has(key),
+    );
+
+    if (hasBoundsParameters && !bounds) {
+      return c.json(
+        {
+          error: {
+            code: "INVALID_BOUNDS",
+            message: "지도 검색 범위가 올바르지 않습니다.",
+          },
+        },
+        400,
+        dependencies.noStoreHeaders,
+      );
+    }
     const zoom = parseFiniteNumber(searchParams.get("zoom"));
     const isEdgeCacheable = isMapPreviewEdgeCacheable({
       bounds,
@@ -288,7 +317,7 @@ export function registerPlacesReadRoutes(
           comments: [
             ...dependencies.getMockComments(
               place.id,
-              getVisitorIdFromCookie(c.req.header("cookie") ?? null),
+              getVerifiedVisitorIdFromRequest(c.req.raw, c.env),
             ),
             ...place.comments,
           ],

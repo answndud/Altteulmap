@@ -87,7 +87,7 @@ export function appendCookie(
   return response;
 }
 
-export function getVisitorIdFromCookie(cookieHeader: string | null) {
+function getVisitorIdFromCookie(cookieHeader: string | null) {
   return getCookieValue(cookieHeader, VISITOR_ID_COOKIE_NAME);
 }
 

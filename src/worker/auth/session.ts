@@ -41,7 +41,13 @@ export function createSession(user: WorkerAuthUserRecord): LocalSession {
 }
 
 function getAuthSecret(env: AuthSessionEnv) {
-  return env.AUTH_SECRET || "vite-local-auth-secret";
+  const secret = env.AUTH_SECRET?.trim();
+
+  if (!secret) {
+    throw new Error("AUTH_SECRET is required to sign or verify sessions.");
+  }
+
+  return secret;
 }
 
 function toBase64Url(value: string) {

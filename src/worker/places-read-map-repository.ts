@@ -44,6 +44,7 @@ import type {
 } from "@/worker/places-read-types";
 
 const MAP_MARKER_SUMMARY_ROW_LIMIT = 2_000;
+const MAP_GLOBAL_QUERY_ROW_LIMIT = 2_000;
 
 const mapPlaceSelectFields = {
   internalId: places.id,
@@ -258,6 +259,7 @@ export async function listDatabaseMapPlaces(
     loadDatabaseMapPlaceRows(env, {
       whereClause,
       sort,
+      limit: MAP_GLOBAL_QUERY_ROW_LIMIT,
     }),
   ]);
   const count = Number(countRows[0]?.count ?? 0);

@@ -4,10 +4,6 @@ import { getPlaceById } from "@/features/places/queries";
 import { placeCommentSchema } from "@/features/places/write-schema";
 import { getSessionFromRequest } from "@/worker/auth/session";
 import {
-  getOrCreateVisitorId,
-  getVisitorIdFromCookie,
-} from "@/worker/http/cookies";
-import {
   applyWorkerWriteHeaders,
   getWorkerPublicWriteActor,
 } from "@/worker/public-write-actor";
@@ -45,6 +41,7 @@ export function registerPublicWriteCommentRoutes(
     const actor = getWorkerPublicWriteActor(
       c.req.raw,
       getSessionFromRequest(c.req.raw, c.env)?.user ?? null,
+      { env: c.env },
     );
     const rateLimit = await consumePublicWriteRateLimit(
       c.env,
@@ -145,7 +142,7 @@ export function registerPublicWriteCommentRoutes(
       );
     }
 
-    const visitorId = actor.visitorId ?? getOrCreateVisitorId(c.req.raw);
+    const visitorId = actor.visitorId ?? `user:${actor.user?.id ?? actor.key}`;
     const item = {
       id: `vite-comment-${crypto.randomUUID()}`,
       authorLabel: "익명",
@@ -186,6 +183,7 @@ export function registerPublicWriteCommentRoutes(
       getSessionFromRequest(c.req.raw, c.env)?.user ?? null,
       {
         createVisitorIfMissing: false,
+        env: c.env,
       },
     );
 
@@ -201,7 +199,7 @@ export function registerPublicWriteCommentRoutes(
       }
     }
 
-    const visitorId = getVisitorIdFromCookie(c.req.header("cookie") ?? null);
+    const visitorId = actor.visitorId;
 
     if (isWorkerDatabaseEnabled(c.env)) {
       const result = await runWorkerDatabaseRoute(c.env, () =>

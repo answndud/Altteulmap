@@ -1,4 +1,5 @@
 import {
+  check,
   index,
   integer,
   jsonb,
@@ -16,6 +17,7 @@ import {
   contentReportStatusEnum,
   contentReportTargetTypeEnum,
   moderationSuggestionActionEnum,
+  moderationSuggestionStatusEnum,
   moderationSuggestionSubjectTypeEnum,
 } from "./schema-enums";
 import { withTimestamps } from "./schema-helpers";
@@ -81,6 +83,12 @@ export const moderationSuggestions = pgTable(
       .default("local_rule_agent")
       .notNull(),
     suggestedAction: moderationSuggestionActionEnum("suggested_action").notNull(),
+    status: moderationSuggestionStatusEnum("status")
+      .default("pending")
+      .notNull(),
+    modelVersion: varchar("model_version", { length: 80 }),
+    promptVersion: varchar("prompt_version", { length: 40 }),
+    inputFingerprint: varchar("input_fingerprint", { length: 64 }),
     confidence: integer("confidence").notNull(),
     summary: text("summary").notNull(),
     checks: jsonb("checks")
@@ -101,6 +109,14 @@ export const moderationSuggestions = pgTable(
     index("moderation_suggestions_subject_updated_idx").on(
       table.subjectType,
       table.updatedAt,
+    ),
+    check(
+      "moderation_suggestions_confidence_range_check",
+      sql`${table.confidence} >= 0 and ${table.confidence} <= 100`,
+    ),
+    check(
+      "moderation_suggestions_summary_length_check",
+      sql`char_length(${table.summary}) between 1 and 2000`,
     ),
   ],
 );

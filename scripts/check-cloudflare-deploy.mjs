@@ -93,7 +93,7 @@ function main() {
   if (useMockData === "false") {
     printLine("OK   USE_MOCK_DATA=false");
   } else {
-    printLine("WARN USE_MOCK_DATA should be false before deploy");
+    printLine("FAIL USE_MOCK_DATA must be false before deploy");
   }
 
   const nextAuthUrl = process.env.NEXTAUTH_URL ?? "";
@@ -134,6 +134,12 @@ function main() {
 
   if (!nextAuthUrlOk) {
     console.error("\nDeploy check failed. Fix the invalid URL values above.");
+    process.exitCode = 1;
+    return;
+  }
+
+  if (useMockData !== "false") {
+    console.error("\nDeploy check failed. Set USE_MOCK_DATA=false before deploy.");
     process.exitCode = 1;
     return;
   }

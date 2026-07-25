@@ -12,6 +12,7 @@ import {
 import {
   applySecurityHeaders,
 } from "@/worker/http/security-headers";
+import { readRequestBodyWithinLimit } from "@/worker/http/request-body";
 import { getOrigin } from "@/worker/http/urls";
 import { registerAdminRoutes } from "@/worker/routes/admin";
 import { registerAuthRoutes } from "@/worker/routes/auth";
@@ -65,6 +66,7 @@ const app = new Hono<{
 const noStoreHeaders = {
   "Cache-Control": "no-store, max-age=0",
 };
+const MAX_MUTATION_BODY_BYTES = 256 * 1024;
 app.use("*", async (c, next) => {
   const requestId = createRequestId(c.req.raw);
   c.set("requestId", requestId);
@@ -95,6 +97,49 @@ app.onError((error, c) => {
       "X-Request-Id": requestId,
     },
   );
+});
+
+app.use("/api/*", async (c, next) => {
+  if (["POST", "PUT", "PATCH"].includes(c.req.method)) {
+    const contentLength = Number(c.req.header("content-length"));
+
+    if (
+      Number.isFinite(contentLength) &&
+      contentLength > MAX_MUTATION_BODY_BYTES
+    ) {
+      return c.json(
+        {
+          ok: false,
+          message: "요청 본문이 너무 큽니다.",
+        },
+        413,
+        noStoreHeaders,
+      );
+    }
+
+    const bodyResult = await readRequestBodyWithinLimit(
+      c.req.raw,
+      MAX_MUTATION_BODY_BYTES,
+    );
+
+    if (!bodyResult.ok) {
+      return c.json(
+        {
+          ok: false,
+          message: "요청 본문이 너무 큽니다.",
+        },
+        413,
+        noStoreHeaders,
+      );
+    }
+
+    const requestBody = bodyResult.body.slice();
+    c.req.raw = new Request(c.req.raw, {
+      body: requestBody.buffer as ArrayBuffer,
+    });
+  }
+
+  return await next();
 });
 
 app.use("/api/*", async (c, next) => {
@@ -156,6 +201,7 @@ registerAuthRoutes(app, {
 });
 
 registerBookmarkRoutes(app, {
+  databaseUnavailableResponse,
   formatDate,
   noStoreHeaders,
 });

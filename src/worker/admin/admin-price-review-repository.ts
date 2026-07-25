@@ -33,6 +33,7 @@ export async function moderateWorkerPriceReport(
         placeName: places.name,
         district: places.district,
         reporterUserId: priceReports.reporterUserId,
+        reporterVisitorId: priceReports.reporterVisitorId,
         priceItemId: priceReports.priceItemId,
         label: priceReports.label,
         normalizedLabel: priceReports.normalizedLabel,
@@ -164,7 +165,9 @@ export async function moderateWorkerPriceReport(
     }
 
     const [acceptedCountRow] = await tx
-      .select({ count: sql<number>`count(*)::int` })
+      .select({
+        count: sql<number>`count(distinct coalesce(${priceReports.reporterUserId}::text, ${priceReports.reporterVisitorId}, ${priceReports.id}::text))::int`,
+      })
       .from(priceReports)
       .where(
         and(

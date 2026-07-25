@@ -5,6 +5,7 @@ import { normalizePriceLabel } from "@/features/places/normalization";
 import type { PlacePriceReportInput } from "@/features/places/write-schema";
 import { getWorkerDb, type WorkerDatabaseBindings } from "@/worker/db";
 import type { WorkerPublicWriteActor } from "@/worker/public-write-actor";
+import { getPriceReportSubmissionKey } from "@/worker/price-report-identity";
 import {
   type DataSource,
   getActivePlaceIdentityBySlug,
@@ -30,6 +31,13 @@ export async function createDatabasePlacePriceReport(
   }
 
   const normalizedLabel = normalizePriceLabel(input.label);
+  const submissionKey = getPriceReportSubmissionKey(
+    placeRow.id,
+    actor,
+    normalizedLabel,
+    input.amount,
+    input.unitLabel || null,
+  );
   const [matchedPriceItem] = await db
     .select({
       id: priceItems.id,
@@ -48,6 +56,8 @@ export async function createDatabasePlacePriceReport(
       placeId: placeRow.id,
       priceItemId: matchedPriceItem?.id ?? null,
       reporterUserId: actor.user?.id ?? null,
+      reporterVisitorId: actor.visitorId,
+      submissionKey,
       label: input.label,
       normalizedLabel,
       amount: input.amount,
@@ -57,9 +67,22 @@ export async function createDatabasePlacePriceReport(
       reportStatus: "pending_review",
       snapshotVerificationStatus: "unverified",
     })
+    .onConflictDoNothing({ target: priceReports.submissionKey })
     .returning({
       id: priceReports.id,
     });
+
+  const report =
+    createdReport ??
+    (await db
+      .select({ id: priceReports.id })
+      .from(priceReports)
+      .where(eq(priceReports.submissionKey, submissionKey))
+      .limit(1))[0];
+
+  if (!report) {
+    throw new Error("가격 제보를 저장하지 못했습니다.");
+  }
 
   return {
     ok: true,
@@ -67,7 +90,7 @@ export async function createDatabasePlacePriceReport(
     source: "database" as DataSource,
     mock: false,
     item: {
-      id: createdReport.id,
+      id: report.id,
       placeId: placeRow.slug,
       placeName: placeRow.name,
       label: input.label,

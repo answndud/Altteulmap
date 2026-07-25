@@ -66,6 +66,7 @@ export async function listWorkerPendingPriceReports(
           .where(
             and(
               eq(moderationSuggestions.subjectType, "price_report"),
+              eq(moderationSuggestions.status, "pending"),
               inArray(
                 moderationSuggestions.subjectKey,
                 rows.map((row) => row.id),

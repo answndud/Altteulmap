@@ -128,7 +128,7 @@ function getKstDateStamp() {
 const IMPORTED_AT = getKstDateStamp();
 
 function isUnderPriceCeiling(amount: number, maxPrice: number) {
-  return amount < maxPrice;
+  return amount > 0 && amount < maxPrice;
 }
 
 function parseArgs(argv: string[]): CliOptions {

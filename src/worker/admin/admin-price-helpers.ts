@@ -6,6 +6,7 @@ import type {
   ModerationSuggestion,
 } from "@/shared/admin-contracts";
 import { getWorkerDb } from "@/worker/db";
+import { parseModerationSuggestion } from "@/worker/admin/moderation-suggestion-validation";
 
 type WorkerDb = ReturnType<typeof getWorkerDb>;
 type WorkerDbTransaction = Parameters<Parameters<WorkerDb["transaction"]>[0]>[0];
@@ -50,13 +51,15 @@ export function toModerationSuggestionRecord(row: {
   checks: string[];
   flags: string[];
 }): ModerationSuggestionRecord {
-  return {
-    suggestedAction: row.suggestedAction,
-    confidence: row.confidence,
-    summary: row.summary,
-    checks: row.checks,
-    flags: row.flags,
-  };
+  return (
+    parseModerationSuggestion(row) ?? {
+      suggestedAction: "review",
+      confidence: 0,
+      summary: "검수 제안을 표시할 수 없습니다.",
+      checks: [],
+      flags: ["malformed_suggestion"],
+    }
+  );
 }
 
 export function toAdminPriceItemRecord(item: {
