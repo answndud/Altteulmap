@@ -61,7 +61,7 @@
 
 ## AI-Native Workflow
 
-- `docs/PLAN.md`와 `docs/PROGRESS.md`를 유지하며 계획과 실행 로그를 분리했습니다.
+- 루트 `PLAN.md` 하나에 현재와 미래의 실행 작업만 유지하고, 완료된 작업은 즉시 제거합니다.
 - 관리자 큐에서는 로컬 검수 에이전트가 장소 등록/가격 제보/신고에 대해 권장 액션과 근거를 먼저 생성합니다.
 - 구현 후에는 `lint`, `build`, `Playwright E2E`, `smoke`를 기준으로 종료했습니다.
 - repo-local hooks와 검증 스크립트로 품질 기준을 저장소 안에 고정했습니다.
