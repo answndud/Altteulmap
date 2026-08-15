@@ -1,5 +1,6 @@
 import {
   assertWorkerDatabaseReadEnabled,
+  isWorkerDatabaseConnectivityError,
   isWorkerDatabaseEnabled,
   isWorkerMockDataEnabled,
   markWorkerDatabaseUnavailable,
@@ -36,7 +37,9 @@ export async function listWorkerMapPlaces(
       listDatabaseMapPlaces(env, query),
     );
   } catch (error) {
-    markWorkerDatabaseUnavailable();
+    if (isWorkerDatabaseConnectivityError(error)) {
+      markWorkerDatabaseUnavailable();
+    }
     console.error(
       "Failed to load worker map places from database.",
       error,
@@ -65,7 +68,9 @@ export async function getWorkerPlaceDetail(
       getDatabasePlaceDetail(env, slug, viewer),
     );
   } catch (error) {
-    markWorkerDatabaseUnavailable();
+    if (isWorkerDatabaseConnectivityError(error)) {
+      markWorkerDatabaseUnavailable();
+    }
     console.error(
       "Failed to load worker place detail from database.",
       error,
