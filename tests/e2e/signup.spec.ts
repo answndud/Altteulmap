@@ -23,7 +23,7 @@ test("새 사용자가 이메일로 가입하면 바로 로그인되어 보호 �
 
   await expect(page).toHaveURL(/\/bookmarks$/);
   await expect(
-    page.getByRole("heading", { name: "북마크한 장소" }),
+    page.getByRole("heading", { name: "저장한 장소" }),
   ).toBeVisible();
   await expect(page.getByText(nickname)).toBeVisible();
 });
