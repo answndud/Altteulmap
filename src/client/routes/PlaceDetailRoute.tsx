@@ -134,7 +134,7 @@ export function PlaceDetailRoute() {
   const category = getCategoryBySlug(place.categorySlug);
   const sharePayload = createPlaceSharePayload(place, "detail");
   const verificationLabel =
-    place.verificationStatus === "verified" ? "검증됨" : "미검증";
+    place.verificationStatus === "verified" ? "확인됨" : "확인 전";
   const summaryItems = [category?.name ?? "기타", place.district, verificationLabel];
   const handleReactionUpdate = (nextState: {
     dislikeCount: number;
@@ -191,7 +191,7 @@ export function PlaceDetailRoute() {
                 ))}
               </div>
               <p className="mt-6 text-[11px] font-semibold text-[var(--altteul-primary-text)]">
-                대표가
+                대표 가격
               </p>
               <p className="altteulmap-price-number mt-2 text-[2.4rem] sm:text-[2.8rem]">
                 {formatKrw(place.representativePriceAmount)}원
@@ -280,7 +280,7 @@ export function PlaceDetailRoute() {
                         <div className="min-w-0">
                           <p className="font-medium text-[var(--altteul-text-strong)]">{item.label}</p>
                           <p className="mt-1 text-xs text-[var(--altteul-text-tertiary)]">
-                            마지막 제보 {item.reportedAt}
+                            마지막 가격 확인 {item.reportedAt}
                           </p>
                         </div>
                         <div className="shrink-0 text-left sm:text-right">
@@ -299,12 +299,12 @@ export function PlaceDetailRoute() {
             <aside className="grid content-start gap-3">
               <section className="overflow-hidden rounded-[0.875rem] border border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-surface)]">
                 <div className="px-4 py-3 text-left">
-                  <p className="altteulmap-section-kicker text-[11px]">가격 제보</p>
+                  <p className="altteulmap-section-kicker text-[11px]">가격 정보 추가</p>
                   <h3 className="mt-1 text-base font-semibold text-[var(--altteul-text-strong)]">
-                    새 가격 남기기
+                    가격 정보 추가하기
                   </h3>
                   <p className="mt-1 text-sm leading-6 text-[var(--altteul-text-tertiary)]">
-                    가격표가 달라졌다면 바로 제보할 수 있습니다.
+                    가격표가 달라졌다면 새로운 가격 정보를 알려주세요.
                   </p>
                 </div>
                 <div className="border-t border-[var(--altteul-surface-border)] p-4">

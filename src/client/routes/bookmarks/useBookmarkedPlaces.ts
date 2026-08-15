@@ -49,7 +49,7 @@ async function loadBookmarkedPlaces(signal: AbortSignal) {
   }
 
   if (!bookmarkResponse.ok) {
-    throw new Error("북마크 목록을 불러오지 못했습니다.");
+    throw new Error("저장한 장소를 불러오지 못했습니다.");
   }
 
   const bookmarks = (await bookmarkResponse.json()) as BookmarksResponse;
@@ -117,7 +117,7 @@ export function useBookmarkedPlaces() {
           error:
             error instanceof Error
               ? error.message
-              : "북마크 목록을 불러오지 못했습니다.",
+              : "저장한 장소를 불러오지 못했습니다.",
         });
       });
 

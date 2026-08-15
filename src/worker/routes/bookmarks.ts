@@ -88,12 +88,12 @@ export function registerBookmarkRoutes(
         );
       } catch (error) {
         console.error("Failed to load database bookmarks.", error);
-        return dependencies.databaseUnavailableResponse("북마크를 불러오지 못했습니다.");
+        return dependencies.databaseUnavailableResponse("저장한 장소를 불러오지 못했습니다.");
       }
     }
 
     if (!isWorkerMockDataEnabled(c.env)) {
-      return dependencies.databaseUnavailableResponse("북마크를 불러오지 못했습니다.");
+      return dependencies.databaseUnavailableResponse("저장한 장소를 불러오지 못했습니다.");
     }
 
     const bookmarkSet = getUserBookmarkSet(session);
@@ -137,7 +137,7 @@ export function registerBookmarkRoutes(
       return c.json(
         {
           ok: false,
-          message: "북마크 입력값 검증에 실패했습니다.",
+          message: "저장할 장소 정보를 확인해 주세요.",
           error: parsed.error.flatten(),
         },
         400,
@@ -178,8 +178,8 @@ export function registerBookmarkRoutes(
             source: "database",
             bookmarked: result.bookmarked,
             message: result.bookmarked
-              ? "북마크에 저장했습니다."
-              : "북마크를 해제했습니다.",
+              ? "장소를 저장했습니다."
+              : "저장을 해제했습니다.",
             placeId: result.placeId,
           },
           200,
@@ -187,12 +187,12 @@ export function registerBookmarkRoutes(
         );
       } catch (error) {
         console.error("Failed to update database bookmark.", error);
-        return dependencies.databaseUnavailableResponse("북마크를 저장하지 못했습니다.");
+        return dependencies.databaseUnavailableResponse("장소 저장에 실패했습니다.");
       }
     }
 
     if (!isWorkerMockDataEnabled(c.env)) {
-      return dependencies.databaseUnavailableResponse("북마크를 저장하지 못했습니다.");
+        return dependencies.databaseUnavailableResponse("장소 저장에 실패했습니다.");
     }
 
     const place = getPlaceById(placeId);
@@ -225,8 +225,8 @@ export function registerBookmarkRoutes(
         source: "mock",
         bookmarked: parsed.data.bookmarked,
         message: parsed.data.bookmarked
-          ? "북마크에 저장했습니다."
-          : "북마크를 해제했습니다.",
+          ? "장소를 저장했습니다."
+          : "저장을 해제했습니다.",
         placeId,
       },
       200,
