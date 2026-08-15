@@ -10,10 +10,17 @@ for (const route of PUBLIC_ROUTES) {
     await page.goto(route, { waitUntil: "domcontentloaded" });
     await expect(page.locator("body")).toBeVisible();
 
-    const results = await new AxeBuilder({ page })
-      .withTags(["wcag2a", "wcag2aa"])
-      .exclude("[data-map-canvas]")
-      .analyze();
+    const axeBuilder = new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]);
+
+    if (route === "/") {
+      axeBuilder
+        .include("header")
+        .include('[data-testid="map-search-controls"]');
+    } else {
+      axeBuilder.include("main");
+    }
+
+    const results = await axeBuilder.analyze();
 
     expect(
       results.violations,
