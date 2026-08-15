@@ -39,7 +39,7 @@ export function registerAdminPriceRoutes(
     if (!isWorkerDatabaseEnabled(c.env)) {
       if (!isWorkerMockDataEnabled(c.env)) {
         return dependencies.databaseUnavailableResponse(
-          "가격 제보 검토 목록을 불러오지 못했습니다.",
+          "가격 정보 검토 목록을 불러오지 못했습니다.",
         );
       }
 
@@ -76,7 +76,7 @@ export function registerAdminPriceRoutes(
       return c.json(
         {
           ok: false,
-          message: "가격 제보 검토 목록을 불러오지 못했습니다.",
+          message: "가격 정보 검토 목록을 불러오지 못했습니다.",
         },
         500,
         dependencies.noStoreHeaders,
@@ -98,7 +98,7 @@ export function registerAdminPriceRoutes(
       return c.json(
         {
           ok: false,
-          message: "가격 제보 검토 입력값 검증에 실패했습니다.",
+          message: "가격 정보 검토 입력값을 확인해 주세요.",
           error: parsed.error.flatten(),
         },
         400,
@@ -109,14 +109,14 @@ export function registerAdminPriceRoutes(
     if (!isWorkerDatabaseEnabled(c.env)) {
       if (!isWorkerMockDataEnabled(c.env)) {
         return dependencies.databaseUnavailableResponse(
-          "가격 제보 검토 결과를 저장하지 못했습니다.",
+          "가격 정보 검토 결과를 저장하지 못했습니다.",
         );
       }
 
       return c.json(
         {
           ok: true,
-          message: "목업 모드에서는 가격 제보 검토 결과가 실제 저장되지 않습니다.",
+          message: "목업 모드에서는 가격 정보 검토 결과가 실제 저장되지 않습니다.",
           source: "mock",
           item: null,
         },
@@ -137,7 +137,7 @@ export function registerAdminPriceRoutes(
       return c.json(
         {
           ok: false,
-          message: "가격 제보 검토 처리에 실패했습니다.",
+          message: "가격 정보 검토를 처리하지 못했습니다.",
           source: "database",
           item: null,
         },

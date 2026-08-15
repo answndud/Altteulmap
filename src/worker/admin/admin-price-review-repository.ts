@@ -51,7 +51,7 @@ export async function moderateWorkerPriceReport(
     if (!existingReport) {
       return {
         ok: false,
-        message: "가격 제보를 찾지 못했습니다.",
+        message: "가격 정보를 찾지 못했습니다.",
         source: "database" as DataSource,
         item: null,
       };
@@ -60,7 +60,7 @@ export async function moderateWorkerPriceReport(
     if (existingReport.reportStatus !== "pending_review") {
       return {
         ok: false,
-        message: "이미 처리된 가격 제보입니다.",
+        message: "이미 처리된 가격 정보입니다.",
         source: "database" as DataSource,
         item: null,
       };
@@ -83,7 +83,7 @@ export async function moderateWorkerPriceReport(
       if (!claimedReport) {
         return {
           ok: false,
-          message: "이미 처리된 가격 제보입니다.",
+          message: "이미 처리된 가격 정보입니다.",
           source: "database" as DataSource,
           item: null,
         };
@@ -103,7 +103,7 @@ export async function moderateWorkerPriceReport(
 
       return {
         ok: true,
-        message: "가격 제보를 반려했습니다.",
+      message: "가격 정보를 반려했습니다.",
         source: "database" as DataSource,
         item: {
           id: existingReport.id,
@@ -136,7 +136,7 @@ export async function moderateWorkerPriceReport(
     if (!claimedReport) {
       return {
         ok: false,
-        message: "이미 처리된 가격 제보입니다.",
+        message: "이미 처리된 가격 정보입니다.",
         source: "database" as DataSource,
         item: null,
       };
@@ -273,7 +273,7 @@ export async function moderateWorkerPriceReport(
 
     return {
       ok: true,
-      message: "가격 제보를 반영했습니다.",
+      message: "가격 정보를 반영했습니다.",
       source: "database" as DataSource,
       item: {
         id: existingReport.id,

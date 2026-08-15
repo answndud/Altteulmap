@@ -89,7 +89,7 @@ export function ViteBookmarkToggleButton({
         setMessageTone("error");
       } catch (error) {
         console.error("Failed to toggle bookmark.", error);
-        setMessage("북마크 업데이트에 실패했습니다.");
+        setMessage("저장 상태를 업데이트하지 못했습니다.");
         setMessageTone("error");
       }
     });
@@ -104,7 +104,7 @@ export function ViteBookmarkToggleButton({
       <button
         type="button"
         onClick={toggleBookmark}
-        aria-label={bookmarked ? "북마크 해제" : "북마크 저장"}
+        aria-label={bookmarked ? "저장 해제" : "장소 저장"}
         disabled={isPending}
         data-testid={`bookmark-toggle-${placeId}`}
         className={`altteulmap-button inline-flex shrink-0 items-center justify-center whitespace-nowrap transition disabled:cursor-not-allowed disabled:opacity-60 ${
@@ -122,7 +122,7 @@ export function ViteBookmarkToggleButton({
         }`}
       >
         <BookmarkIcon active={bookmarked} />
-        {iconOnly ? null : isPending ? "저장 중" : bookmarked ? "저장됨" : "북마크"}
+        {iconOnly ? null : isPending ? "저장 중" : bookmarked ? "저장됨" : "저장"}
       </button>
       {message && !compact ? (
         <p

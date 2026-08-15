@@ -173,6 +173,16 @@ export function getWorkerReactionActorKey(
   return `${placeId}:${actor.user?.id ?? actor.visitorId ?? actor.key}`;
 }
 
+export function getWorkerPlaceReactionRateLimitActor(
+  placeId: string,
+  actor: WorkerPublicWriteActor,
+): WorkerPublicWriteActor {
+  return {
+    ...actor,
+    key: `${actor.key}:place:${placeId}`,
+  };
+}
+
 export function getMockReactionSummary(
   placeId: string,
   actor: WorkerPublicWriteActor,

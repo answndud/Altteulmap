@@ -157,7 +157,7 @@ export async function getWorkerAdminPlacePriceDetail(
       district: placeRow.district,
       representativePriceAmount: placeRow.representativePriceAmount ?? 0,
       representativePriceLabel:
-        placeRow.representativePriceLabel ?? "대표 가격 준비 중",
+        placeRow.representativePriceLabel ?? "가격 정보 준비 중",
       verificationStatus:
         placeRow.verifiedPriceItemCount > 0 ? "verified" : "unverified",
       priceItems: itemRows.map(toAdminPriceItemRecord),

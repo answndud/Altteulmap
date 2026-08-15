@@ -1,4 +1,4 @@
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 
 import { getRateLimitFeedbackMessage } from "@/lib/rate-limit-feedback";
 import type { PlaceReactionType } from "@/features/places/types";
@@ -83,54 +83,66 @@ export function VitePlaceReactionButtons({
   });
   const [message, setMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const reactionRequestInFlightRef = useRef(false);
 
   const submitReaction = (targetReaction: PlaceReactionType) => {
-    startTransition(async () => {
-      const nextReaction = getNextReaction(
-        reactionState.viewerReaction,
-        targetReaction,
-      );
-      const response = await fetch(
-        `/api/places/${encodeURIComponent(placeId)}/reaction`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            reaction: nextReaction,
-          }),
-        },
-      );
-      const result = (await response.json()) as {
-        ok: boolean;
-        message: string;
-        retryAfterMs?: number;
-        likeCount: number;
-        dislikeCount: number;
-        reaction: PlaceReactionType | null;
-      };
+    if (reactionRequestInFlightRef.current) {
+      return;
+    }
 
-      if (result.ok) {
-        const nextState = {
-          placeId,
-          likeCount: result.likeCount,
-          dislikeCount: result.dislikeCount,
-          viewerReaction: result.reaction,
+    reactionRequestInFlightRef.current = true;
+    startTransition(async () => {
+      try {
+        const nextReaction = getNextReaction(
+          reactionState.viewerReaction,
+          targetReaction,
+        );
+        const response = await fetch(
+          `/api/places/${encodeURIComponent(placeId)}/reaction`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              reaction: nextReaction,
+            }),
+          },
+        );
+        const result = (await response.json()) as {
+          ok: boolean;
+          message: string;
+          retryAfterMs?: number;
+          likeCount: number;
+          dislikeCount: number;
+          reaction: PlaceReactionType | null;
         };
 
-        setReactionState(nextState);
-        onUpdate?.(nextState);
-      }
+        if (result.ok) {
+          const nextState = {
+            placeId,
+            likeCount: result.likeCount,
+            dislikeCount: result.dislikeCount,
+            viewerReaction: result.reaction,
+          };
 
-      setMessage(
-        getRateLimitFeedbackMessage({
-          response,
-          message: result.message,
-          retryAfterMs: result.retryAfterMs,
-          defaultMessage: "반응 요청이 너무 빠릅니다.",
-        }),
-      );
+          setReactionState(nextState);
+          onUpdate?.(nextState);
+        }
+
+        setMessage(
+          getRateLimitFeedbackMessage({
+            response,
+            message: result.message,
+            retryAfterMs: result.retryAfterMs,
+            defaultMessage: "반응 요청이 너무 빠릅니다.",
+          }),
+        );
+      } catch {
+        setMessage("반응을 저장하지 못했습니다. 잠시 후 다시 시도해주세요.");
+      } finally {
+        reactionRequestInFlightRef.current = false;
+      }
     });
   };
 
