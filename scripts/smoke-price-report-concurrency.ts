@@ -88,7 +88,7 @@ async function main() {
     ]);
     const successCount = results.filter((result) => result.ok).length;
     const alreadyProcessedCount = results.filter(
-      (result) => !result.ok && result.message === "이미 처리된 가격 제보입니다.",
+      (result) => !result.ok && result.message === "이미 처리된 가격 정보입니다.",
     ).length;
 
     if (successCount !== 1 || alreadyProcessedCount !== 1) {

@@ -113,6 +113,12 @@ export function useNaverMapInitialization({
           maps.Event.addListener(map, "idle", () => {
             emitViewportChange();
           });
+          maps.Event.addListener(map, "zoom_changed", () => {
+            window.requestAnimationFrame(syncViewport);
+          });
+          maps.Event.addListener(map, "dragend", () => {
+            window.requestAnimationFrame(syncViewport);
+          });
 
           window.requestAnimationFrame(syncViewport);
           window.setTimeout(syncViewport, 0);

@@ -53,6 +53,9 @@ jobs:
       - name: Quality gates
         run: npm run verify:quality
 
+      - name: Dependency audit (critical gate)
+        run: npm audit --omit=dev --audit-level=critical
+
       - name: Build Vite Worker output
         run: npm run cf:build:vite
 
@@ -104,7 +107,7 @@ jobs:
           cache: npm
 
       - name: Restore Playwright browser cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}

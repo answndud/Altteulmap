@@ -4,6 +4,7 @@ import { visitActivities } from "@/db/schema";
 import {
   closeWorkerDatabaseConnection,
   getWorkerDb,
+  isWorkerDatabaseConnectivityError,
   isWorkerDatabaseEnabled,
   markWorkerDatabaseUnavailable,
   type WorkerDatabaseBindings,
@@ -157,7 +158,9 @@ export async function recordWorkerVisitActivity(
         },
       });
   } catch (error) {
-    markWorkerDatabaseUnavailable();
+    if (isWorkerDatabaseConnectivityError(error)) {
+      markWorkerDatabaseUnavailable();
+    }
 
     if (!isWorkerDatabaseEnabled(env)) {
       return { ok: true, tracked: false, source: "mock" as const };

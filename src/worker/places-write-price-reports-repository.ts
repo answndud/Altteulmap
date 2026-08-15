@@ -81,12 +81,12 @@ export async function createDatabasePlacePriceReport(
       .limit(1))[0];
 
   if (!report) {
-    throw new Error("가격 제보를 저장하지 못했습니다.");
+    throw new Error("가격 정보를 저장하지 못했습니다.");
   }
 
   return {
     ok: true,
-    message: "가격 제보가 접수되었습니다. 운영 검토 후 상세 화면에 반영됩니다.",
+    message: "가격 정보가 등록되었습니다. 확인 후 상세 화면에 반영됩니다.",
     source: "database" as DataSource,
     mock: false,
     item: {

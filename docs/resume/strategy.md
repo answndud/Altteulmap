@@ -9,7 +9,7 @@
 | --- | --- | --- |
 | 문제 재정의 | 주어진 일을 구현하는 사람이 아니라 요구를 다시 정의하는 사람인지 본다. | PRD에서 저가 장소 정보를 “가격 중심 지도 + 제보 + 검증 + 이력” 문제로 정의했다. |
 | 복잡한 요구사항 구조화 | 고객 요구를 기능/데이터/운영 정책으로 번역할 수 있는지 본다. | PRD/TRD, 공개 쓰기 정책, 관리자 검수 큐, 가격 이력, 북마크, 신고, telemetry를 문서와 코드로 분해했다. |
-| AI-native 작업 방식 | AI를 자동완성 수준이 아니라 사고/생산성 증폭 도구로 쓰는지 본다. | repo-local skill, 루트 PLAN 단일 상태 문서, UI critique 반영, AI 1차 검수 패널, migration/검증 문서화 흐름이 있다. |
+| AI-native 작업 방식 | AI를 자동완성 수준이 아니라 사고/생산성 증폭 도구로 쓰는지 본다. | repo-local skill, 루트 PLAN 단일 상태 문서, UI critique 반영, moderation suggestion 계약/패널, migration/검증 문서화 흐름이 있다. 외부 AI 생성 pipeline은 미구현이다. |
 | 빠른 학습과 적용 | 낯선 기술을 익혀 실제 서비스에 적용했는지 본다. | Next.js/OpenNext에서 Vite React SPA + Cloudflare Worker API로 이관했다. |
 | 실제 작동 결과 | 데모용 화면이 아니라 운영 가능한 결과인지 본다. | 운영 URL, Cloudflare deploy guide, Supabase DB, NAVER Maps, admin route, smoke:remote가 있다. |
 | 검증 책임 | AI가 만든 결과까지 본인이 검증하고 품질을 닫는지 본다. | `npm run verify`, unit/E2E/smoke/remote smoke, CI, deploy check, production hardening report가 있다. |
@@ -39,7 +39,7 @@
 - 증거:
   - [`../../AGENTS.md`](../../AGENTS.md): repo-local agent 작업 규칙, 루트 PLAN 단일 상태 운영, 로컬 AI 워크플로우.
   - [`../../.agents/skills/impeccable/SKILL.md`](../../.agents/skills/impeccable/SKILL.md): 디자인/프론트엔드 개선을 repo-local skill로 운영.
-  - [`../../src/client/routes/admin/AdminShared.tsx`](../../src/client/routes/admin/AdminShared.tsx): 관리자 화면의 `AI 1차 검수` 패널.
+  - [`../../src/client/routes/admin/AdminShared.tsx`](../../src/client/routes/admin/AdminShared.tsx): moderation suggestion을 표시하는 관리자 패널.
   - [`../../tests/e2e/submission-admin.spec.ts`](../../tests/e2e/submission-admin.spec.ts): 공개 장소 등록, AI 1차 검수 패널, 관리자 승인, 검색 노출까지 확인.
   - [`../../tests/e2e/price-review.spec.ts`](../../tests/e2e/price-review.spec.ts): 가격 제보와 검수 패널 흐름 확인.
   - [`../../package.json`](../../package.json): verify, quality, E2E, smoke, remote smoke, deploy check scripts.
@@ -74,7 +74,7 @@
   - [`../../src/client/routes/admin/AdminPlacesRoute.tsx`](../../src/client/routes/admin/AdminPlacesRoute.tsx)
 - 말할 포인트:
   - “비회원도 제출할 수 있게 했지만 visitor cookie, rate limit, Turnstile, 관리자 승인으로 운영 리스크를 나눴다.”
-  - “AI 1차 검수는 최종 결정자가 아니라 운영자의 판단을 줄이는 보조 레이어로 뒀다.”
+  - “moderation suggestion은 최종 결정자가 아니라 운영자의 판단을 돕는 보조 레이어로 뒀고, 외부 AI 생성 pipeline은 아직 분리된 backlog다.”
   - “E2E에서 제출, 검수 패널, 승인, 검색 노출까지 확인한다.”
 
 ### 사례 3. 운영 하드닝과 검증 자동화
@@ -120,12 +120,12 @@
   - 알뜰맵은 B2B SaaS가 아니라 생활 정보 서비스다.
 - 방어:
   - “도메인은 다르지만 복잡한 입력을 구조화하고, 운영자 workflow를 설계하고, AI 검수 보조를 붙이고, 배포/검증 책임을 지는 방식은 기업 솔루션 문제와 유사하다.”
-  - “특히 관리자 큐와 AI 1차 검수는 고객 운영 workflow를 제품화하는 연습이다.”
+  - “특히 관리자 큐와 구조화된 moderation suggestion 계약은 고객 운영 workflow를 제품화하는 연습이다.”
 
 ## 제출 전 보강하면 좋은 포인트
 
 1. GitHub README 상단에 “Sionic 제출용 읽는 순서” 링크를 짧게 추가한다.
 2. 운영 URL에서 테스트 계정/관리자 계정 공개 범위를 결정한다. 관리자 credential을 공개하지 않을 경우, admin 화면 캡처와 E2E 링크로 대체한다.
 3. `docs/readme/` 스크린샷이 최신 디자인과 맞는지 다시 캡처한다.
-4. `AI 1차 검수`가 실제 어떤 기준으로 summary/check/flag를 만드는지 짧은 문서를 추가하면 좋다.
+4. 외부 AI provider를 실제 연결할 때 summary/check/flag 생성 기준, 비용·재시도·개인정보 정책을 별도 설계하고 provider sandbox에서 검증한다. 현재는 [주요 도메인 설계](../02-설계/주요-도메인-설계.md)에 미구현 경계가 기록돼 있다.
 5. 큰 파일 hotspot에 대한 후속 PR 1개를 작게 분리해두면 “약점을 알고 줄이는 사람”으로 보이기 좋다.

@@ -274,6 +274,7 @@ function NaverMapPanelContent({
     emitViewportChange,
     failMap,
     focusPlacesKey,
+    initialBounds,
     isReady: status === "ready",
     lastFocusPlacesKeyRef,
     mapInstanceRef,
@@ -316,6 +317,7 @@ function NaverMapPanelContent({
   return (
     <section
       className="altteulmap-panel relative isolate overflow-hidden"
+      data-map-canvas
       data-testid="map-panel-shell"
     >
       <div className="altteulmap-map-viewport relative isolate z-0">
@@ -350,7 +352,7 @@ function NaverMapPanelContent({
                     지도
                   </p>
                   <h2 className="text-sm font-semibold text-[var(--altteul-text-strong)] sm:mt-1 sm:text-base">
-                    가격 지도
+                    알뜰 지도
                   </h2>
                 </div>
                 <span className="altteulmap-badge shrink-0 whitespace-nowrap px-2.5 py-1 text-[11px] font-medium">
@@ -381,7 +383,7 @@ function NaverMapPanelContent({
                 data-testid="map-refresh-button"
                 className="altteulmap-accent-solid altteulmap-button min-h-11 w-fit whitespace-nowrap px-3 py-2 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-70 sm:px-3.5 sm:text-sm"
               >
-                {refreshAction.isLoading ? "검색 중" : "이 지역 다시 찾기"}
+                {refreshAction.isLoading ? "불러오는 중" : "새로고침"}
               </button>
             ) : null}
           </div>

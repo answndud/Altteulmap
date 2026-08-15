@@ -54,7 +54,7 @@ test("가격 제보를 보내면 운영자가 가격 검토 큐에서 반려할 
     await userPage.getByTestId("price-report-submit").click();
 
     await expect(userPage.getByTestId("price-report-message")).toContainText(
-      /가격.*접수되었습니다\./,
+      /가격 정보가 등록되었습니다\./,
     );
 
     adminContext = await browser.newContext();

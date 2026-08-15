@@ -6,7 +6,6 @@ import type {
   PlacePreviewRecord,
 } from "@/features/places/types";
 
-const MAP_LIST_RESPONSE_LIMIT = 120;
 const MAP_CLUSTER_PREVIEW_PLACE_LIMIT = 40;
 
 export function getBoundsFromPlaces(
@@ -24,7 +23,7 @@ export function getBoundsFromPlaces(
 }
 
 export function getCappedMapListItems(items: PlacePreviewRecord[]) {
-  return items.slice(0, MAP_LIST_RESPONSE_LIMIT);
+  return items;
 }
 
 export function toMapPlaceMarkerRecord(
@@ -81,10 +80,6 @@ export function getMapMarkerMode(
   zoom: number | null,
   query: string | null,
 ): PlaceMapMarkerMode {
-  if (query?.trim()) {
-    return "place";
-  }
-
   return itemCount <= getMapMarkerLimit(zoom, query) ? "place" : "cluster";
 }
 

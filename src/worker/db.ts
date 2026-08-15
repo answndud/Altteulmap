@@ -62,6 +62,24 @@ export class WorkerDatabaseUnavailableError extends Error {
   }
 }
 
+export function isWorkerDatabaseConnectivityError(error: unknown) {
+  const code =
+    error && typeof error === "object" && "code" in error
+      ? String((error as { code?: unknown }).code ?? "")
+      : "";
+  const message =
+    error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+
+  return (
+    code.startsWith("08") ||
+    ["53300", "57P01", "57P02", "57P03"].includes(code) ||
+    message.includes("connection") ||
+    message.includes("connect timeout") ||
+    message.includes("timed out") ||
+    message.includes("econn")
+  );
+}
+
 function getWorkerDatabaseConnection(env: WorkerDatabaseBindings) {
   const hyperdriveConnectionString = env.HYPERDRIVE?.connectionString?.trim();
 

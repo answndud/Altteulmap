@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+/* Keep the product language deliberately square across every route and state.
+   This also covers Tailwind utility classes and component-local radius values
+   so overlays, sheets, badges, markers, forms, and admin surfaces cannot drift. */
+*,
+*::before,
+*::after {
+  border-radius: 0 !important;
+}
+
 :root {
   --altteul-bg-canvas: oklch(0.998 0.002 255);
   --altteul-bg-surface: oklch(1 0 0);

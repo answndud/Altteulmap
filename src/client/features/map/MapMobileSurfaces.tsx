@@ -9,9 +9,9 @@ import {
 import type { PlacePreviewRecord } from "@/features/places/types";
 
 type MapMobilePlacesState =
-  | { status: "loading"; data: null; error: null }
+  | { status: "loading"; data: { count: number } | null; error: null }
   | { status: "success"; data: { count: number }; error: null }
-  | { status: "error"; data: null; error: string };
+  | { status: "error"; data: { count: number } | null; error: string };
 
 export function MapMobileSurfaces({
   bookmarkedPlaceIds,
@@ -52,7 +52,7 @@ export function MapMobileSurfaces({
           onSelectPlace={onSelectPlaceFromMobileList}
           places={displayedPlaces}
           state={state}
-          totalPlaceCount={state.status === "success" ? state.data.count : 0}
+          totalPlaceCount={state.data?.count ?? 0}
         />
       ) : null}
 

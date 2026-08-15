@@ -1,7 +1,7 @@
 # 면접 플레이북
 
 ## 30초 자기소개
-안녕하세요. 저는 문제를 제품 구조, 코드, 운영 검증까지 연결해서 구현하는 풀스택 개발자 [이름]입니다. 최근에는 저렴한 식당과 생활 서비스 정보를 지도 기반으로 탐색하고 제보할 수 있는 알뜰맵을 만들었습니다. Vite React, Cloudflare Worker, PostgreSQL, NAVER Maps, 관리자 화면, AI 1차 검수, E2E와 remote smoke까지 포함해 운영 가능한 MVP로 닫았습니다. AI는 코드 자동완성보다 요구사항 구조화, 구현 속도 향상, 검증 루프 설계에 활용하고, 최종 품질은 제가 테스트와 운영 문서로 책임지는 방식으로 일합니다.
+안녕하세요. 저는 문제를 제품 구조, 코드, 운영 검증까지 연결해서 구현하는 풀스택 개발자 [이름]입니다. 최근에는 저렴한 식당과 생활 서비스 정보를 지도 기반으로 탐색하고 제보할 수 있는 알뜰맵을 만들었습니다. Vite React, Cloudflare Worker, PostgreSQL, NAVER Maps, 관리자 화면, moderation suggestion 계약, E2E와 remote smoke까지 포함해 운영 가능한 MVP로 닫았습니다. 외부 AI provider 자동 생성은 아직 구현하지 않았고, AI는 코드 자동완성보다 요구사항 구조화와 검증 루프 설계에 활용했습니다.
 
 ## 3분 프로젝트 설명
 알뜰맵은 고물가 상황에서 사용자가 주변의 저렴한 식당과 생활 서비스를 빠르게 찾도록 만든 지도 기반 웹 서비스입니다.
@@ -10,7 +10,7 @@
 
 사용자는 첫 화면에서 지도를 보고, 카테고리나 검색어로 장소를 찾고, 가격표형 marker와 목록에서 대표 가격을 확인합니다. 상세 시트에서는 가격 항목, 이력, 댓글, 반응, 공유를 확인할 수 있습니다. 비회원도 장소 등록, 가격 제보, 댓글, 신고를 남길 수 있지만 visitor cookie, rate limit, Turnstile, 관리자 승인으로 운영 리스크를 분리했습니다.
 
-관리자는 `/admin`에서 장소 등록, 가격 제보, 신고를 검토합니다. 이때 AI 1차 검수 패널이 suggested action, confidence, summary, checks, flags를 보여주지만, 최종 승인/반려는 운영자가 합니다. AI를 자동 결정자로 두지 않고 운영자 판단을 돕는 레이어로 제한한 것이 의도입니다.
+관리자는 `/admin`에서 장소 등록, 가격 제보, 신고를 검토합니다. 이때 moderation suggestion이 있으면 suggested action, confidence, summary, checks, flags를 보여주지만, 최종 승인/반려는 운영자가 합니다. 현재 외부 AI가 새 suggestion을 생성하는 pipeline은 없으며, 자동 결정자로 만들지 않은 것이 의도적인 경계입니다.
 
 기술적으로는 Next.js/OpenNext에서 Vite React SPA + Cloudflare Worker API로 이관했습니다. 이관 전에는 API path, response shape, auth boundary, admin contract를 문서로 고정했고, 이관 후에는 local smoke, E2E, remote smoke, deploy check로 동작을 확인했습니다. 현재는 Cloudflare Workers에 배포되어 있고 Supabase PostgreSQL 운영 DB를 사용합니다.
 
@@ -43,7 +43,7 @@ AI는 빠르게 그럴듯한 코드를 만들지만, 세 가지 한계가 있다
 
 둘째, 작동하지 않는 edge case를 놓칠 수 있습니다. 그래서 타입 검사와 E2E만이 아니라 smoke script로 실제 Worker runtime과 운영 URL을 확인합니다.
 
-셋째, 제품 판단을 대신할 수 없습니다. 예를 들어 AI 1차 검수도 자동 승인으로 만들지 않았습니다. 가격 정보는 잘못 반영되면 신뢰를 잃기 때문에, AI는 summary와 flags를 만들고 운영자가 최종 결정합니다.
+셋째, 제품 판단을 대신할 수 없습니다. moderation suggestion도 자동 승인으로 연결하지 않았습니다. 가격 정보는 잘못 반영되면 신뢰를 잃기 때문에, 구조화된 summary와 flags가 있더라도 운영자가 최종 결정합니다. 외부 모델 연결·비용·재시도는 아직 검증하지 않았습니다.
 
 제가 보는 AI-native는 “AI에게 맡긴다”가 아니라 “AI로 생산성을 올리되 책임 경계를 더 명확히 한다”입니다.
 
@@ -52,8 +52,8 @@ AI는 빠르게 그럴듯한 코드를 만들지만, 세 가지 한계가 있다
 ### Q. 실제 사용자가 많은 서비스인가요?
 A. 아직 대규모 사용자를 받은 서비스라고 말하지는 않습니다. 대신 운영 가능한 MVP와 성장 대비 기준을 만들었습니다. 운영 DB, Cloudflare Worker 배포, remote smoke, DB timeout, health check, map API p95 측정, bbox index, Hyperdrive 도입 trigger까지 준비했습니다. 트래픽 경험을 과장하기보다, 트래픽이 늘 때 무엇을 봐야 하는지 설계한 상태입니다.
 
-### Q. AI 1차 검수가 실제로 얼마나 의미 있나요?
-A. 자동 결정을 맡길 수준이라고 보지 않았습니다. 그래서 AI를 최종 판단자가 아니라 운영자의 검토 시간을 줄이는 보조 레이어로 뒀습니다. 패널은 suggested action, confidence, summary, checks, flags를 보여주고, 승인/반려는 운영자가 합니다. 이 구조가 초기 MVP에서는 더 책임 있는 선택이라고 봤습니다.
+### Q. moderation suggestion이 실제로 얼마나 의미 있나요?
+A. 현재는 외부 AI provider 자동 생성까지 완료한 기능이 아니라, suggestion의 schema·validation·저장 조회·관리자 표시 경계를 만든 상태입니다. 패널은 suggested action, confidence, summary, checks, flags를 보여줄 수 있고 승인/반려는 운영자가 합니다. 다음 단계는 provider 선택, 비용 상한, timeout/retry, 개인정보와 prompt injection 정책을 먼저 확정하는 것입니다.
 
 ### Q. 개인 프로젝트인데 협업 역량을 어떻게 증명하나요?
 A. 협업은 사람 수만으로 증명되는 것은 아니라고 봅니다. 다음 사람이 이어받을 수 있는 구조와 설명력이 중요합니다. 이 저장소에는 README, PRD/TRD, deploy guide, migration 문서, production hardening report, 루트 PLAN 단일 상태 운영 규칙, CI와 E2E가 있습니다. 제가 혼자 만든 프로젝트지만, 작업을 설명 가능한 단위로 남기는 습관을 보여줄 수 있습니다.

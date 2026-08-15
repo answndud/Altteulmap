@@ -185,3 +185,14 @@ export async function lockWorkerPriceReportModerationGroup(
     )
   `);
 }
+
+export async function lockWorkerPriceReportModerationReport(
+  db: WorkerDbExecutor,
+  reportId: string,
+) {
+  await db.execute(sql`
+    select pg_advisory_xact_lock(
+      hashtextextended(${reportId}, 0)
+    )
+  `);
+}

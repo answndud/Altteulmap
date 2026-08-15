@@ -32,6 +32,7 @@ import {
   applyWorkerWriteHeaders,
   getWorkerPublicWriteActor,
 } from "../../src/worker/public-write-actor";
+import { getWorkerPlaceReactionRateLimitActor } from "../../src/worker/routes/public-write-support";
 import { getPriceReportSubmissionKey } from "../../src/worker/price-report-identity";
 import { readRequestBodyWithinLimit } from "../../src/worker/http/request-body";
 import { parseModerationSuggestion } from "../../src/worker/admin/moderation-suggestion-validation";
@@ -71,6 +72,19 @@ test("rate limit feedback prefers Retry-After and strips duplicate suffixes", ()
     }),
     "요청이 너무 빠릅니다. 약 1분 5초 후 다시 시도해주세요.",
   );
+});
+
+test("place reaction rate limits are isolated per place", () => {
+  const actor = getWorkerPublicWriteActor(
+    new Request("https://altteulmap.example/"),
+    null,
+  );
+  const firstPlaceActor = getWorkerPlaceReactionRateLimitActor("place-a", actor);
+  const secondPlaceActor = getWorkerPlaceReactionRateLimitActor("place-b", actor);
+
+  assert.notEqual(firstPlaceActor.key, secondPlaceActor.key);
+  assert.equal(firstPlaceActor.key.endsWith(":place:place-a"), true);
+  assert.equal(secondPlaceActor.key.endsWith(":place:place-b"), true);
 });
 
 test("client auth navigation keeps only safe callback URLs", () => {
