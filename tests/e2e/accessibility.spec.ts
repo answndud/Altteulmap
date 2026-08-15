@@ -7,7 +7,7 @@ const PUBLIC_ROUTES = ["/", "/login", "/submit"] as const;
 
 for (const route of PUBLIC_ROUTES) {
   test(`접근성 자동 검사: ${route}`, async ({ page }) => {
-    await page.goto(route);
+    await page.goto(route, { waitUntil: "domcontentloaded" });
     await expect(page.locator("body")).toBeVisible();
 
     const results = await new AxeBuilder({ page })
