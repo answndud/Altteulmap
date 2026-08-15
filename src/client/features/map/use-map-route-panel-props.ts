@@ -63,7 +63,7 @@ export function useMapRoutePanelProps({
       mapMarkers,
       placeCount: state.data?.count ?? 0,
       refreshAction:
-        searchScope === "viewport" && viewport
+        searchScope === "global" || (searchScope === "viewport" && viewport)
           ? {
               isVisible: true,
               isLoading: isManualRefreshPending,

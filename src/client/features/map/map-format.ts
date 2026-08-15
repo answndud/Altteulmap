@@ -15,5 +15,5 @@ export function getVerificationBadgeClassName(
 export function getVerificationLabel(
   status: PlacePreviewRecord["verificationStatus"],
 ) {
-  return status === "verified" ? "검증됨" : "확인 필요";
+  return status === "verified" ? "확인됨" : "확인 전";
 }

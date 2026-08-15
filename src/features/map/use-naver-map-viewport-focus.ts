@@ -8,6 +8,7 @@ import {
 } from "@/features/map/naver-map-focus";
 import type { NaverMapInstance } from "@/features/map/naver-map-sdk";
 import type {
+  PlaceBounds,
   PlaceMapMarkerRecord,
   PlaceMapPlaceMarkerRecord,
 } from "@/features/places/types";
@@ -17,6 +18,7 @@ type UseNaverMapViewportFocusOptions = {
   emitViewportChange: () => unknown;
   failMap: (message: string, error?: unknown) => void;
   focusPlacesKey: string | null | undefined;
+  initialBounds: PlaceBounds | null | undefined;
   isReady: boolean;
   lastFocusPlacesKeyRef: MutableRefObject<string | null>;
   mapInstanceRef: MutableRefObject<NaverMapInstance | null>;
@@ -28,6 +30,7 @@ export function useNaverMapViewportFocus({
   emitViewportChange,
   failMap,
   focusPlacesKey,
+  initialBounds,
   isReady,
   lastFocusPlacesKeyRef,
   mapInstanceRef,
@@ -62,6 +65,7 @@ export function useNaverMapViewportFocus({
         !focusNaverMapPlaces({
           emitViewportChange,
           focusPlacesKey,
+          initialBounds,
           lastFocusPlacesKeyRef,
           map: mapInstanceRef.current,
           mapMarkers,
@@ -76,6 +80,7 @@ export function useNaverMapViewportFocus({
     emitViewportChange,
     failMap,
     focusPlacesKey,
+    initialBounds,
     isReady,
     lastFocusPlacesKeyRef,
     mapInstanceRef,

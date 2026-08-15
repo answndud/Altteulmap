@@ -26,12 +26,14 @@ export function buildMapPreviewCacheKey({
   markerLimit,
   normalizedQuery,
   sort,
+  zoom,
 }: {
   bounds?: PlaceBounds | null;
   category?: string | null;
   markerLimit: number;
   normalizedQuery?: string | null;
   sort?: PlaceSort | null;
+  zoom?: number | null;
 }) {
   if (!bounds) {
     return null;
@@ -43,6 +45,7 @@ export function buildMapPreviewCacheKey({
     category ?? "",
     normalizedQuery?.toLowerCase() ?? "",
     markerLimit,
+    zoom === null || zoom === undefined ? "" : zoom.toFixed(2),
     bounds.minLat.toFixed(4),
     bounds.maxLat.toFixed(4),
     bounds.minLng.toFixed(4),

@@ -210,6 +210,7 @@ export function registerPlacesReadRoutes(
       );
     }
     const zoom = parseFiniteNumber(searchParams.get("zoom"));
+    const forceRefresh = searchParams.has("refresh");
     const isEdgeCacheable = isMapPreviewEdgeCacheable({
       bounds,
       query,
@@ -231,6 +232,7 @@ export function registerPlacesReadRoutes(
       category,
       query,
       bounds: searchScope === "viewport" ? bounds : null,
+      skipCache: forceRefresh,
       zoom: searchScope === "viewport" ? zoom : null,
     }).catch((error: unknown) => {
       if (dependencies.isWorkerDatabaseUnavailableError(error)) {

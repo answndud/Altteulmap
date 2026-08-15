@@ -13,6 +13,7 @@ import {
   getMapZoom,
 } from "@/features/map/naver-map-panel-helpers";
 import type {
+  PlaceBounds,
   PlaceMapMarkerRecord,
   PlaceMapPlaceMarkerRecord,
 } from "@/features/places/types";
@@ -49,6 +50,7 @@ export function panNaverMapToActivePlace({
 type FocusNaverMapPlacesOptions = {
   emitViewportChange: () => unknown;
   focusPlacesKey: string | null | undefined;
+  initialBounds: PlaceBounds | null | undefined;
   lastFocusPlacesKeyRef: MutableRefObject<string | null>;
   map: NaverMapInstance | null;
   mapMarkers: PlaceMapMarkerRecord[];
@@ -57,6 +59,7 @@ type FocusNaverMapPlacesOptions = {
 export function focusNaverMapPlaces({
   emitViewportChange,
   focusPlacesKey,
+  initialBounds,
   lastFocusPlacesKeyRef,
   map,
   mapMarkers,
@@ -69,19 +72,32 @@ export function focusNaverMapPlaces({
     return true;
   }
 
-  const LatLng = getLoadedNaverMapSdk()?.maps?.LatLng;
+  const maps = getLoadedNaverMapSdk()?.maps;
+  const LatLng = maps?.LatLng;
 
-  if (!LatLng) {
+  if (!LatLng || !maps) {
     return false;
   }
 
-  const focusCenter = getMapCenter(mapMarkers);
-  const point = new LatLng(focusCenter.lat, focusCenter.lng);
-
   lastFocusPlacesKeyRef.current = focusPlacesKey;
-  map.setCenter?.(point);
-  map.setZoom?.(getMapZoom(mapMarkers.length));
-  map.panTo?.(point);
+
+  if (initialBounds && maps.LatLngBounds) {
+    const southWest = new LatLng(
+      initialBounds.minLat,
+      initialBounds.minLng,
+    );
+    const northEast = new LatLng(
+      initialBounds.maxLat,
+      initialBounds.maxLng,
+    );
+    map.fitBounds?.(new maps.LatLngBounds(southWest, northEast));
+  } else {
+    const focusCenter = getMapCenter(mapMarkers);
+    const point = new LatLng(focusCenter.lat, focusCenter.lng);
+    map.setCenter?.(point);
+    map.setZoom?.(getMapZoom(mapMarkers.length));
+    map.panTo?.(point);
+  }
   window.setTimeout(() => {
     emitViewportChange();
   }, 100);
