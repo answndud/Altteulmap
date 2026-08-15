@@ -317,6 +317,7 @@ function NaverMapPanelContent({
   return (
     <section
       className="altteulmap-panel relative isolate overflow-hidden"
+      data-map-canvas
       data-testid="map-panel-shell"
     >
       <div className="altteulmap-map-viewport relative isolate z-0">
