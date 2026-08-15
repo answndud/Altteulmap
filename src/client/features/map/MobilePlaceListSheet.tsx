@@ -63,7 +63,7 @@ export function MobilePlaceListSheet({
           onClick={openSheet}
           className="altteulmap-button altteulmap-accent-solid pointer-events-auto inline-flex min-h-12 w-full max-w-[28rem] items-center justify-between gap-3 px-4 py-2.5 text-sm font-semibold shadow-[var(--altteul-shadow-overlay)]"
         >
-          <span>지도 결과 목록</span>
+          <span>장소 목록</span>
           <span className="rounded-full bg-white/90 px-2.5 py-1 text-xs text-[var(--altteul-primary-text)]">
             {state.status === "success" ? `${totalPlaceCount}곳` : "..."}
           </span>
@@ -111,7 +111,7 @@ export function MobilePlaceListSheet({
       <div className="flex items-center justify-between gap-3 border-b border-[var(--altteul-surface-border)] pb-2">
         <div>
           <h2 className="text-base font-semibold text-[var(--altteul-text-strong)]">
-            지도 결과
+            장소 목록
           </h2>
           <p className="mt-0.5 text-xs text-[var(--altteul-text-tertiary)]">
             가격을 누르면 장소 정보를 봅니다.
@@ -141,13 +141,18 @@ export function MobilePlaceListSheet({
       >
         {state.status === "loading" ? (
           <div className="rounded-[0.85rem] border border-dashed border-[var(--altteul-surface-border-strong)] bg-[var(--altteul-bg-surface)] p-5 text-center text-sm text-[var(--altteul-text-tertiary)]">
-            지도 결과를 불러오는 중입니다.
+            장소 목록을 불러오는 중입니다.
           </div>
         ) : null}
-        {state.status === "error" ? (
+        {state.status === "error" && places.length === 0 ? (
           <div className="rounded-[0.85rem] border border-[var(--altteul-warning-border)] bg-[var(--altteul-warning-soft)] px-4 py-3 text-sm text-[var(--altteul-warning-text)]">
             {state.error}
           </div>
+        ) : null}
+        {state.status === "error" && places.length > 0 ? (
+          <p className="px-1 text-xs text-[var(--altteul-text-tertiary)]">
+            새 장소를 불러오지 못해 이전 목록을 표시하고 있습니다.
+          </p>
         ) : null}
         {state.status === "success" && places.length === 0 ? (
           <div className="rounded-[0.85rem] border border-dashed border-[var(--altteul-surface-border-strong)] bg-[var(--altteul-bg-surface)] p-5 text-center text-sm text-[var(--altteul-text-tertiary)]">
@@ -172,7 +177,7 @@ export function MobilePlaceListSheet({
                 >
                   <span className="min-w-[5.25rem]">
                     <span className="block text-[10px] font-semibold text-[var(--altteul-primary-text)]">
-                      대표가
+                      대표 가격
                     </span>
                     <span className="altteulmap-price-number mt-0.5 block text-lg">
                       {formatKrw(place.representativePriceAmount)}원
@@ -187,7 +192,7 @@ export function MobilePlaceListSheet({
                     </span>
                     <span className="mt-1 block truncate text-xs text-[var(--altteul-text-secondary)]">
                       {[
-                        place.representativePriceLabel || "기준 가격",
+                        place.representativePriceLabel || "가격 정보 없음",
                         category?.name ?? "기타",
                         place.district,
                       ].join(" · ")}

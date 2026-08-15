@@ -63,7 +63,7 @@ export function PlacePriceReportForm({
         response,
         message: result.message,
         retryAfterMs: result.retryAfterMs,
-        defaultMessage: "가격 제보 요청이 너무 빠릅니다.",
+        defaultMessage: "가격 정보 등록이 너무 잦습니다. 잠시 후 다시 시도해 주세요.",
       });
 
       if (!response.ok || !result.ok) {
@@ -97,7 +97,7 @@ export function PlacePriceReportForm({
     >
       {showHeader ? (
         <div>
-          <p className="altteulmap-section-kicker text-[11px]">가격 제보</p>
+          <p className="altteulmap-section-kicker text-[11px]">가격 정보 추가</p>
           <h4 className="mt-1 text-base font-semibold text-stone-900">새 가격 추가</h4>
           <p className="mt-1 text-sm text-stone-500">
             지금 보이는 대표 가격과 다르면, 확인한 항목 1개만 먼저 남겨주세요.
@@ -181,7 +181,7 @@ export function PlacePriceReportForm({
 
         <div className="flex flex-col gap-3 border-t border-stone-200 pt-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-stone-500">
-            접수된 가격은 운영 검토 후 대표 가격에 반영됩니다.
+            등록한 가격은 확인 후 대표 가격에 반영됩니다.
           </p>
           <PublicWriteTurnstile
             disabled={isPending}
@@ -202,7 +202,7 @@ export function PlacePriceReportForm({
             data-testid="price-report-submit"
             className="altteulmap-accent-solid altteulmap-button inline-flex w-full items-center justify-center whitespace-nowrap px-4 py-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
           >
-            {isPending ? "접수 중..." : "가격 제보하기"}
+            {isPending ? "등록 중..." : "가격 정보 등록하기"}
           </button>
         </div>
       </div>

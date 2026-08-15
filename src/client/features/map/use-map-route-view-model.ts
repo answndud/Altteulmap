@@ -25,9 +25,9 @@ type MapPlacesResponse = {
 };
 
 type MapPlacesLoadState =
-  | { status: "loading"; data: null; error: null }
+  | { status: "loading"; data: MapPlacesResponse | null; error: null }
   | { status: "success"; data: MapPlacesResponse; error: null }
-  | { status: "error"; data: null; error: string };
+  | { status: "error"; data: MapPlacesResponse | null; error: string };
 
 export function useMapRouteViewModel({
   optimisticClusterPlaces,
@@ -53,11 +53,11 @@ export function useMapRouteViewModel({
   const trendingPlaces = useMemo(() => {
     return deriveTrendingPlaces(displayedPlaces, query);
   }, [displayedPlaces, query]);
-  const totalPlaceCount = state.status === "success" ? state.data.count : 0;
+  const totalPlaceCount = state.data?.count ?? 0;
   const visiblePlaceCount =
-    state.status === "success" ? state.data.returnedCount : 0;
+    state.data?.returnedCount ?? 0;
   const isServerTrimmed =
-    state.status === "success" && state.data.count > state.data.returnedCount;
+    state.data !== null && state.data.count > state.data.returnedCount;
 
   return {
     displayedPlaces,

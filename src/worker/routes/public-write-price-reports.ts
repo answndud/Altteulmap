@@ -50,7 +50,7 @@ export function registerPublicWritePriceReportRoutes(
         c.json(
           {
             ok: false,
-            message: "가격 제보 요청이 너무 빠릅니다. 잠시 후 다시 시도해주세요.",
+            message: "가격 정보 등록이 너무 잦습니다. 잠시 후 다시 시도해 주세요.",
             retryAfterMs: rateLimit.retryAfterMs,
           },
           429,
@@ -66,7 +66,7 @@ export function registerPublicWritePriceReportRoutes(
         c.json(
           {
             ok: false,
-            message: "가격 제보 입력값 검증에 실패했습니다.",
+            message: "가격 정보 입력값을 확인해 주세요.",
             error: parsed.error.flatten(),
           },
           400,
@@ -113,7 +113,7 @@ export function registerPublicWritePriceReportRoutes(
 
     if (!isWorkerMockDataEnabled(c.env)) {
       return applyWorkerWriteHeaders(
-        dependencies.databaseUnavailableResponse("가격 제보를 저장하지 못했습니다."),
+        dependencies.databaseUnavailableResponse("가격 정보를 저장하지 못했습니다."),
         c.req.raw,
         actor,
         rateLimit,
@@ -141,7 +141,7 @@ export function registerPublicWritePriceReportRoutes(
     return applyWorkerWriteHeaders(
       c.json({
         ok: true,
-        message: "가격 제보가 접수되었습니다. 검토 후 상세 화면에 반영됩니다.",
+        message: "가격 정보가 등록되었습니다. 확인 후 상세 화면에 반영됩니다.",
         source: "mock",
         mock: true,
         item: {

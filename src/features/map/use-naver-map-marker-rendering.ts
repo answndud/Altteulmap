@@ -46,14 +46,15 @@ export function useNaverMapMarkerRendering({
     }
 
     try {
-      markerInstancesRef.current.forEach((marker) => marker.setMap?.(null));
-      markerInstancesRef.current = renderNaverMapMarkers({
+      const nextMarkerInstances = renderNaverMapMarkers({
         displayMarkers,
         map: mapInstanceRef.current,
         maps,
         onClusterClick,
         onPlaceClick,
       });
+      markerInstancesRef.current.forEach((marker) => marker.setMap?.(null));
+      markerInstancesRef.current = nextMarkerInstances;
     } catch (error) {
       failMap("Failed to render NAVER map markers.", error);
     }

@@ -56,6 +56,7 @@ export function PlaceDetailSheet({
     data: null,
     error: null,
   });
+  const [detailRetryCount, setDetailRetryCount] = useState(0);
 
   useEffect(() => {
     return () => {
@@ -100,7 +101,7 @@ export function PlaceDetailSheet({
     return () => {
       controller.abort();
     };
-  }, [place.id]);
+  }, [detailRetryCount, place.id]);
 
   const detailPlace = detailState.status === "success" ? detailState.data : null;
 
@@ -196,15 +197,15 @@ export function PlaceDetailSheet({
 
       <div className="mt-3 rounded-[0.85rem] border border-[var(--altteul-primary-border)] bg-[var(--altteul-primary-soft)] px-3.5 py-3 sm:mt-4 sm:px-4">
         <p className="text-[11px] font-semibold text-[var(--altteul-primary-text)]">
-          대표가 · {place.representativePriceLabel || "기준 가격"}
+          대표 가격 · {place.representativePriceLabel || "가격 정보 없음"}
         </p>
         <p className="altteulmap-price-number mt-1 text-2xl sm:text-3xl">
           {formatKrw(place.representativePriceAmount)}원
         </p>
         <p className="mt-2 text-xs text-[var(--altteul-primary-text)]">
           {place.verificationStatus === "verified"
-            ? "검증된 가격"
-            : "검증 대기 가격"}{" "}
+            ? "확인된 가격"
+            : "확인 중인 가격"}{" "}
           · 갱신 {place.lastPriceUpdatedAt}
         </p>
       </div>
@@ -225,7 +226,14 @@ export function PlaceDetailSheet({
 
         {detailState.status === "error" ? (
           <div className="rounded-[0.85rem] border border-[var(--altteul-warning-border)] bg-[var(--altteul-warning-soft)] px-4 py-3 text-sm text-[var(--altteul-warning-text)]">
-            {detailState.error}
+            <p>일부 정보를 불러오지 못했습니다. 기본 정보는 표시하고 있습니다.</p>
+            <button
+              type="button"
+              onClick={() => setDetailRetryCount((count) => count + 1)}
+              className="mt-2 underline underline-offset-2"
+            >
+              다시 시도
+            </button>
           </div>
         ) : null}
 
@@ -254,7 +262,7 @@ export function PlaceDetailSheet({
                         {item.label}
                       </p>
                       <p className="mt-1 text-[11px] text-[var(--altteul-text-tertiary)]">
-                        마지막 제보 {item.reportedAt}
+                        마지막 가격 확인 {item.reportedAt}
                       </p>
                     </div>
                     <p className="altteulmap-price-number shrink-0 text-base">

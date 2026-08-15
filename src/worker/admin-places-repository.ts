@@ -91,7 +91,7 @@ function toPendingPlaceRecord(
       row.note ??
       "운영 검토 전 단계이거나 추가 메모가 아직 등록되지 않았습니다.",
     representativePriceAmount: row.representativePriceAmount ?? 0,
-    representativePriceLabel: row.representativePriceLabel ?? "대표 가격 준비 중",
+    representativePriceLabel: row.representativePriceLabel ?? "가격 정보 준비 중",
     createdAt: formatDate(row.createdAt),
     latitude: row.latitude ?? undefined,
     longitude: row.longitude ?? undefined,

@@ -16,6 +16,7 @@ import {
   consumePublicWriteRateLimit,
   getMockReactionSummary,
   getPlaceReactionMessage,
+  getWorkerPlaceReactionRateLimitActor,
   getWorkerReactionActorKey,
   mockReactionStore,
   runWorkerDatabaseRoute,
@@ -41,10 +42,25 @@ export function registerPublicWriteReactionRoutes(
       getSessionFromRequest(c.req.raw, c.env)?.user ?? null,
       { env: c.env },
     );
+    if (!parsed.success) {
+      return applyWorkerWriteHeaders(
+        c.json(
+          {
+            ok: false,
+            message: "반응 입력값 검증에 실패했습니다.",
+            error: parsed.error.flatten(),
+          },
+          400,
+        ),
+        c.req.raw,
+        actor,
+      );
+    }
+
     const rateLimit = await consumePublicWriteRateLimit(
       c.env,
       "placeReaction",
-      actor,
+      getWorkerPlaceReactionRateLimitActor(placeId, actor),
     );
 
     if (!rateLimit.ok) {
@@ -56,22 +72,6 @@ export function registerPublicWriteReactionRoutes(
             retryAfterMs: rateLimit.retryAfterMs,
           },
           429,
-        ),
-        c.req.raw,
-        actor,
-        rateLimit,
-      );
-    }
-
-    if (!parsed.success) {
-      return applyWorkerWriteHeaders(
-        c.json(
-          {
-            ok: false,
-            message: "반응 입력값 검증에 실패했습니다.",
-            error: parsed.error.flatten(),
-          },
-          400,
         ),
         c.req.raw,
         actor,

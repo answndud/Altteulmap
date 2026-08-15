@@ -126,7 +126,7 @@ function PriceItemEditor({
           <p className="mt-2 text-sm text-stone-500">
             {formatKrw(item.amount)}원
             {item.unitLabel ? ` / ${item.unitLabel}` : ""} ·{" "}
-            {item.verificationStatus === "verified" ? "검증됨" : "미검증"} ·{" "}
+            {item.verificationStatus === "verified" ? "확인됨" : "확인 전"} ·{" "}
             {item.isActive ? "노출 중" : "숨김"}
           </p>
         </div>
@@ -169,8 +169,8 @@ function PriceItemEditor({
             }
             className="rounded-xl border border-stone-300 bg-white px-3 py-2"
           >
-            <option value="verified">검증됨</option>
-            <option value="unverified">미검증</option>
+            <option value="verified">확인됨</option>
+            <option value="unverified">확인 전</option>
           </select>
         </label>
       </div>
@@ -204,4 +204,3 @@ function PriceItemEditor({
     </article>
   );
 }
-

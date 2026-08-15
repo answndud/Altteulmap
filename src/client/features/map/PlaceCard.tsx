@@ -39,7 +39,7 @@ export function PlaceCard({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[11px] font-semibold text-[var(--altteul-primary-text)]">
-            대표가 · {place.representativePriceLabel || "기준 가격"}
+            대표 가격 · {place.representativePriceLabel || "가격 정보 없음"}
           </p>
           <p className="altteulmap-price-number mt-1 text-[1.75rem] leading-none">
             {formatKrw(place.representativePriceAmount)}원

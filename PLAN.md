@@ -1,12 +1,6 @@
 # PLAN.md
 
-## Goal
-
-감사 보고서의 실행 순서에 따라 production fail-closed 보안, visitor actor 무결성, 가격 데이터 정합성, query/운영 검증을 구현하고 검증 가능한 상태로 만든다. Cloudflare secret 반영은 Wrangler 인증이 확보된 경우에만 수행한다.
-
-## Active
-
-No active work
+## No active work
 
 ## Backlog
 

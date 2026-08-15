@@ -21,8 +21,11 @@ export function MapSearchControls({
   selectedCategory: { name: string; parentName: string } | null;
 }) {
   return (
-    <section className="grid gap-2 border-b border-[var(--altteul-surface-border)] pb-2 sm:gap-3 sm:pb-4">
-      <h1 className="sr-only sm:hidden">가격 지도</h1>
+    <section
+      className="grid gap-2 border-b border-[var(--altteul-surface-border)] pb-2 sm:gap-3 sm:pb-4"
+      data-testid="map-search-controls"
+    >
+      <h1 className="sr-only sm:hidden">알뜰 지도</h1>
       <div className="hidden items-center justify-between gap-2 sm:flex lg:items-end">
         <div className="min-w-0">
           <p className="altteulmap-section-kicker">탐색</p>
@@ -45,7 +48,7 @@ export function MapSearchControls({
             </span>
           ) : null}
           <span className="altteulmap-badge px-3 py-1.5 text-xs font-medium">
-            {searchScope === "global" ? "전체 지역" : "현재 지도 범위"}
+            {searchScope === "global" ? "전국" : "현재 화면"}
           </span>
         </div>
       </div>
@@ -94,14 +97,14 @@ export function MapSearchControls({
                   type="radio"
                   name="scope"
                   value="viewport"
-                  aria-label="현재 지도 범위"
+                  aria-label="현재 화면"
                   data-testid="search-scope-viewport"
                   defaultChecked={searchScope === "viewport"}
                   className="altteulmap-scope-input sr-only"
                 />
                 <span className={scopeChipClassName}>
                   <span className="sm:hidden">지도</span>
-                  <span className="hidden sm:inline">현재 지도 범위</span>
+                  <span className="hidden sm:inline">현재 화면</span>
                 </span>
               </label>
               <label className="cursor-pointer">
@@ -152,7 +155,7 @@ export function MapSearchControls({
 
           <div className="hidden xl:flex xl:flex-wrap xl:justify-end xl:gap-2">
             <span className="altteulmap-badge whitespace-nowrap px-3 py-1.5 text-xs font-medium">
-              {searchScope === "global" ? "지도 밖 결과 포함" : "보이는 범위 중심"}
+              {searchScope === "global" ? "다른 지역 결과도 포함" : "현재 화면 중심"}
             </span>
             <span className="altteulmap-badge whitespace-nowrap px-3 py-1.5 text-xs font-medium">
               가격 중심 카드
