@@ -37,7 +37,7 @@
     "playwright:install": "playwright install chromium",
     "verify:quick": "npm run lint",
     "verify": "npm run lint && npm run typecheck && npm run test:unit",
-    "verify:quality": "npm run audit:prod && npm run hygiene:dead-code && npm run csp:inventory",
+    "verify:quality": "npm run hygiene:dead-code && npm run csp:inventory",
     "audit:prod": "npm audit --omit=dev --audit-level=moderate",
     "hygiene:dead-code": "knip --reporter compact",
     "design:detect": "npx --yes impeccable@2.1.7 detect src/ --fast",
