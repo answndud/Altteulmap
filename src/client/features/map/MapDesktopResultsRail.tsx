@@ -61,7 +61,7 @@ export function MapDesktopResultsRail({
         <div>
           <p className="altteulmap-section-kicker text-[11px]">목록</p>
           <h2 className="mt-1 text-base font-semibold text-[var(--altteul-text-strong)]">
-            지도 결과
+            장소 목록
           </h2>
         </div>
         <span className="altteulmap-badge px-3 py-1 text-xs font-medium">
@@ -84,20 +84,25 @@ export function MapDesktopResultsRail({
 
       {state.status === "loading" ? (
         <div className="rounded-[0.85rem] border border-dashed border-[var(--altteul-surface-border-strong)] bg-[var(--altteul-bg-surface)] p-6 text-center text-sm text-[var(--altteul-text-tertiary)]">
-          지도 결과를 불러오는 중입니다.
+          장소 목록을 불러오는 중입니다.
         </div>
       ) : null}
-      {state.status === "error" ? (
+      {state.status === "error" && placesLength === 0 ? (
         <div className="rounded-[0.85rem] border border-[var(--altteul-warning-border)] bg-[var(--altteul-warning-soft)] px-4 py-3 text-sm text-[var(--altteul-warning-text)]">
           {state.error}
         </div>
+      ) : null}
+      {state.status === "error" && placesLength > 0 ? (
+        <p className="px-1 text-xs text-[var(--altteul-text-tertiary)]">
+          새 장소를 불러오지 못해 이전 목록을 표시하고 있습니다.
+        </p>
       ) : null}
       {state.status === "success" && placesLength === 0 ? (
         <div className="rounded-[0.85rem] border border-dashed border-[var(--altteul-surface-border-strong)] bg-[var(--altteul-bg-surface)] p-6 text-center text-sm leading-7 text-[var(--altteul-text-tertiary)]">
           조건에 맞는 장소가 없습니다.
         </div>
       ) : null}
-      {state.status === "success" && placesLength > 0 ? (
+      {placesLength > 0 ? (
         <div className="grid gap-3 pr-1" data-testid="place-list">
           {displayedPlaces.map((place) => (
             <PlaceCard

@@ -17,11 +17,18 @@ export const CLUSTER_FOCUS_VIEWPORT_LOCK_MS = 360;
 export function buildMapApiPath(
   searchParams: URLSearchParams,
   viewport?: MapViewport | null,
+  options?: {
+    forceRefresh?: boolean;
+    forceViewportScope?: boolean;
+  },
 ) {
   const apiParams = new URLSearchParams();
   const category = searchParams.get("category");
   const query = searchParams.get("q")?.trim() || "";
-  const scope = searchParams.get("scope") === "global" ? "global" : "viewport";
+  const scope =
+    options?.forceViewportScope || searchParams.get("scope") !== "global"
+      ? "viewport"
+      : "global";
 
   if (category) {
     apiParams.set("category", category);
@@ -42,6 +49,10 @@ export function buildMapApiPath(
     apiParams.set("minLng", String(snappedBounds.minLng));
     apiParams.set("maxLng", String(snappedBounds.maxLng));
     apiParams.set("zoom", String(Math.round(viewport.zoom)));
+  }
+
+  if (options?.forceRefresh) {
+    apiParams.set("refresh", String(Date.now()));
   }
 
   const queryString = apiParams.toString();

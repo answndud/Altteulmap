@@ -43,9 +43,6 @@ import type {
   WorkerMapPlacesResult,
 } from "@/worker/places-read-types";
 
-const MAP_MARKER_SUMMARY_ROW_LIMIT = 2_000;
-const MAP_GLOBAL_QUERY_ROW_LIMIT = 2_000;
-
 const mapPlaceSelectFields = {
   internalId: places.id,
   slug: places.slug,
@@ -144,32 +141,20 @@ async function loadDatabaseMapMarkerRows(
   env: WorkerDatabaseBindings,
   params: {
     whereClause: SQL | undefined;
-    limit: number;
+    limit?: number;
   },
 ) {
   const db = getWorkerDb(env);
 
-  return db
+  const queryBuilder = db
     .select(mapPlaceSelectFields)
     .from(places)
     .where(params.whereClause)
-    .orderBy(asc(places.latitude), asc(places.longitude), asc(places.id))
-    .limit(params.limit);
-}
+    .orderBy(asc(places.latitude), asc(places.longitude), asc(places.id));
 
-async function countDatabaseMapPlaces(
-  env: WorkerDatabaseBindings,
-  whereClause: SQL | undefined,
-) {
-  const db = getWorkerDb(env);
-  const [countRow] = await db
-    .select({
-      count: sql<number>`count(*)::int`,
-    })
-    .from(places)
-    .where(whereClause);
-
-  return Number(countRow?.count ?? 0);
+  return typeof params.limit === "number"
+    ? queryBuilder.limit(params.limit)
+    : queryBuilder;
 }
 
 export async function listDatabaseMapPlaces(
@@ -179,6 +164,7 @@ export async function listDatabaseMapPlaces(
     sort = "price",
     bounds,
     query,
+    skipCache = false,
     zoom = null,
   }: PlaceQuery = {},
 ): Promise<WorkerMapPlacesResult> {
@@ -196,8 +182,9 @@ export async function listDatabaseMapPlaces(
       markerLimit,
       normalizedQuery,
       sort,
+      zoom,
     });
-    const cached = cacheKey
+    const cached = cacheKey && !skipCache
       ? getCachedMapPreviewResult<WorkerMapPlacesResult>(cacheKey)
       : null;
 
@@ -210,13 +197,9 @@ export async function listDatabaseMapPlaces(
 
     const markerRows = await loadDatabaseMapMarkerRows(env, {
       whereClause,
-      limit: MAP_MARKER_SUMMARY_ROW_LIMIT,
     });
     const mapped = toPlacePreviewRecords(markerRows);
-    const count =
-      markerRows.length < MAP_MARKER_SUMMARY_ROW_LIMIT
-        ? mapped.length
-        : await countDatabaseMapPlaces(env, whereClause);
+    const count = mapped.length;
     const sorted = sortPlacePreviewRecords(mapped, sort);
     const items = getCappedMapListItems(sorted);
     const markerMode = getMapMarkerMode(count, zoom, null);
@@ -240,7 +223,7 @@ export async function listDatabaseMapPlaces(
       cacheStatus: "miss",
     } satisfies WorkerMapPlacesResult;
 
-    if (cacheKey) {
+    if (cacheKey && !skipCache) {
       setCachedMapPreviewResult(cacheKey, result);
     }
 
@@ -259,7 +242,6 @@ export async function listDatabaseMapPlaces(
     loadDatabaseMapPlaceRows(env, {
       whereClause,
       sort,
-      limit: MAP_GLOBAL_QUERY_ROW_LIMIT,
     }),
   ]);
   const count = Number(countRows[0]?.count ?? 0);

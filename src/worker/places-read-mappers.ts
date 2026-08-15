@@ -83,7 +83,7 @@ export function toPlacePreviewRecord(
     latitude: row.latitude ?? 37.5665,
     longitude: row.longitude ?? 126.978,
     representativePriceAmount: row.representativePriceAmount ?? 0,
-    representativePriceLabel: row.representativePriceLabel ?? "대표 가격 준비 중",
+    representativePriceLabel: row.representativePriceLabel ?? "가격 정보 준비 중",
     verificationStatus:
       row.verifiedPriceItemCount > 0 ? "verified" : "unverified",
     lastPriceUpdatedAt: formatDate(row.lastPriceUpdatedAt),

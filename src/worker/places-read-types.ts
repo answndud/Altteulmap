@@ -21,6 +21,7 @@ export type PlaceQuery = {
   sort?: PlaceSort;
   bounds?: PlaceQueryBounds | null;
   query?: string | null;
+  skipCache?: boolean;
   zoom?: number | null;
 };
 
