@@ -4,7 +4,7 @@ import { Link, NavLink } from "react-router-dom";
 const adminNavItems = [
   { href: "/admin", label: "대시보드" },
   { href: "/admin/places", label: "장소 승인" },
-  { href: "/admin/prices", label: "가격 제보" },
+  { href: "/admin/prices", label: "가격 정보 검토" },
   { href: "/admin/reports", label: "신고 검토" },
 ];
 

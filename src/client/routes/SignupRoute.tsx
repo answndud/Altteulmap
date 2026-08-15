@@ -105,7 +105,7 @@ export function SignupRoute() {
                 회원가입
               </h1>
               <p className="text-sm text-stone-500">
-                북마크와 제보 내역을 계정에 연결합니다.
+                저장한 장소와 제보 내역을 계정에서 관리할 수 있습니다.
               </p>
             </div>
 
@@ -186,7 +186,7 @@ export function SignupRoute() {
             </button>
 
             <div className="grid gap-2 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-xs leading-5 text-stone-500">
-              <p>회원가입 후 같은 계정으로 북마크와 제보 내역을 이어서 관리할 수 있습니다.</p>
+              <p>회원가입 후 같은 계정으로 저장한 장소와 제보 내역을 관리할 수 있습니다.</p>
               <p>입력한 비밀번호는 안전하게 해시 처리되어 저장됩니다.</p>
             </div>
 

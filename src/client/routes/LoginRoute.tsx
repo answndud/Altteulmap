@@ -87,7 +87,7 @@ export function LoginRoute() {
                 로그인
               </h1>
               <p className="text-sm text-stone-500">
-                저장한 장소와 북마크를 이어서 봅니다.
+                저장한 장소를 다시 확인해 보세요.
               </p>
             </div>
 
@@ -138,7 +138,7 @@ export function LoginRoute() {
 
             <div className="grid gap-2 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-xs leading-5 text-stone-500">
               <p>이메일 로그인과 카카오/네이버 소셜 로그인을 지원합니다.</p>
-              <p>로그인 후 북마크와 운영자 권한이 계정에 맞게 이어집니다.</p>
+              <p>로그인 후 저장한 장소와 운영자 권한을 계정에 맞게 이용할 수 있습니다.</p>
             </div>
 
             <div className="flex items-center justify-center border-t border-stone-200 pt-4 text-sm text-stone-500">

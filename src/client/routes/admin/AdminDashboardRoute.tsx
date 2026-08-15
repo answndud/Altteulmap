@@ -28,7 +28,7 @@ export function AdminDashboardRoute() {
   return (
     <AdminFrame
       title="운영 대시보드"
-      description="승인 대기 장소, 가격 제보, 신고를 한 곳에서 검토합니다."
+      description="승인 대기 장소, 가격 정보, 신고를 한 곳에서 검토합니다."
     >
       <AdminAccessGate state={state}>
         {({ places, prices, reports }) => (
@@ -111,7 +111,7 @@ export function AdminDashboardRoute() {
                 testId="admin-overview-places-link"
               />
               <DashboardCard
-                label="가격 제보"
+                label="가격 정보"
                 value={prices.count}
                 href="/admin/prices"
                 source={prices.source}
