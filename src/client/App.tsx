@@ -12,8 +12,8 @@ import { AdminRoutes } from "@/client/routes/admin/AdminRoutes";
 
 const navItems = [
   { href: "/", label: "지도" },
-  { href: "/submit", label: "가격 제보" },
-  { href: "/bookmarks", label: "북마크" },
+  { href: "/submit", label: "장소 제보" },
+  { href: "/bookmarks", label: "저장한 장소" },
 ];
 
 function Shell({ children }: { children: React.ReactNode }) {

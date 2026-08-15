@@ -22,8 +22,8 @@ export function AdminPricesRoute() {
 
   return (
     <AdminFrame
-      title="가격 제보 검토 큐"
-      description="기존 장소에 들어온 가격 제보를 승인하거나 반려합니다."
+      title="가격 정보 검토"
+      description="기존 장소에 등록된 가격 정보를 승인하거나 반려합니다."
     >
       <AdminAccessGate state={state}>
         {(data) => (
@@ -45,7 +45,7 @@ export function AdminPricesRoute() {
                   />
                 ))
               ) : (
-                <EmptyPanel message="현재 검토 대기 중인 가격 제보가 없습니다." />
+                <EmptyPanel message="현재 검토 대기 중인 가격 정보가 없습니다." />
               )}
             </div>
           </div>
@@ -162,4 +162,3 @@ function PendingPriceCard({
     </article>
   );
 }
-
