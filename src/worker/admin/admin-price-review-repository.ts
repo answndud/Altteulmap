@@ -4,6 +4,7 @@ import { adminActions, places, priceItems, priceReports } from "@/db/schema";
 import type { PriceReportModerationInput } from "@/features/places/write-schema";
 import {
   formatDate,
+  lockWorkerPriceReportModerationReport,
   lockWorkerPriceReportModerationGroup,
   refreshWorkerPlacePricingSummary,
   toAdminActionUserId,
@@ -25,6 +26,8 @@ export async function moderateWorkerPriceReport(
   const db = getWorkerDb(env);
 
   return await db.transaction(async (tx) => {
+    await lockWorkerPriceReportModerationReport(tx, reportId);
+
     const [existingReport] = await tx
       .select({
         id: priceReports.id,
