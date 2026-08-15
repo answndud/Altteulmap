@@ -21,7 +21,10 @@ export function MapSearchControls({
   selectedCategory: { name: string; parentName: string } | null;
 }) {
   return (
-    <section className="grid gap-2 border-b border-[var(--altteul-surface-border)] pb-2 sm:gap-3 sm:pb-4">
+    <section
+      className="grid gap-2 border-b border-[var(--altteul-surface-border)] pb-2 sm:gap-3 sm:pb-4"
+      data-testid="map-search-controls"
+    >
       <h1 className="sr-only sm:hidden">알뜰 지도</h1>
       <div className="hidden items-center justify-between gap-2 sm:flex lg:items-end">
         <div className="min-w-0">
