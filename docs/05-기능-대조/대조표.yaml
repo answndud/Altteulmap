@@ -1,0 +1,29 @@
+기준일: 2026-08-14
+항목:
+  - 이름: 지도 viewport 탐색
+    상태: 구현·검증
+    근거:
+      - src/worker/routes/places-read.ts
+      - src/worker/places-read-map-repository.ts
+      - src/features/map
+  - 이름: 가격 검증 2회 조건
+    상태: 구현·검증
+    근거:
+      - src/worker/routes/public-write-price-reports.ts
+      - src/db/schema-pricing.ts
+  - 이름: 익명 공개 쓰기
+    상태: 구현·부분 검증
+    근거:
+      - src/worker/public-write-actor.ts
+      - src/worker/routes/public-write-submissions.ts
+      - src/worker/routes/public-write-comments.ts
+  - 이름: OAuth
+    상태: route/contract 구현·provider sandbox 미검증
+    근거:
+      - src/worker/routes/auth-oauth.ts
+      - src/worker/routes/auth-oauth-support.ts
+  - 이름: 외부 AI 자동 검수
+    상태: 미구현
+    근거:
+      - src/db/schema-moderation.ts
+      - src/worker/admin/moderation-suggestion-validation.ts
