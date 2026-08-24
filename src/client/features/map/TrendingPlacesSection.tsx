@@ -75,7 +75,7 @@ export function TrendingPlacesSection({
                     <p className="text-[11px] font-semibold text-[var(--altteul-primary-text)]">
                       대표 가격 · {place.representativePriceLabel}
                     </p>
-                    <p className="altteulmap-price-number mt-1 text-[1.55rem]">
+                    <p className="altteulmap-price-number mt-1 text-2xl">
                       {formatKrw(place.representativePriceAmount)}원
                     </p>
                   </div>
