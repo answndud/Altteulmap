@@ -1,4 +1,7 @@
 import { Link, useSearchParams } from "react-router-dom";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 import { useState, useTransition } from "react";
 
 import {
@@ -21,6 +24,13 @@ type CredentialsCallbackResponse = {
   url?: string;
 };
 
+const loginSchema = z.object({
+  email: z.string().email("올바른 이메일 주소를 입력해주세요."),
+  password: z.string().min(1, "비밀번호를 입력해주세요."),
+});
+
+type LoginFormValues = z.infer<typeof loginSchema>;
+
 function getInitialErrorMessage(error: string | null) {
   if (!error) {
     return "";
@@ -33,51 +43,57 @@ export function LoginRoute() {
   const [searchParams] = useSearchParams();
   const callbackUrl = normalizeCallbackUrl(searchParams.get("callbackUrl"));
   const signupHref = createSignupHref(callbackUrl);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [message, setMessage] = useState(
     getInitialErrorMessage(searchParams.get("error")),
   );
   const [isPending, startTransition] = useTransition();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    watch,
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: "", password: "" },
+  });
+  const email = watch("email");
+  const password = watch("password");
   const canSubmit = email.trim().length > 0 && password.length > 0;
+
+  async function onSubmit(values: LoginFormValues) {
+    startTransition(async () => {
+      setMessage("");
+      const body = new URLSearchParams({
+        email: values.email,
+        password: values.password,
+        callbackUrl,
+        json: "true",
+      });
+      const response = await fetch("/api/auth/callback/credentials", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body,
+      });
+      const result =
+        (await response
+          .json()
+          .catch(() => null)) as CredentialsCallbackResponse | null;
+      if (!response.ok) {
+        const errorUrl = result?.url
+          ? new URL(result.url, window.location.origin)
+          : null;
+        const error = errorUrl?.searchParams.get("error");
+        setMessage(errorMessageMap[error ?? ""] ?? errorMessageMap.default);
+        return;
+      }
+      window.location.assign(result?.url ?? callbackUrl);
+    });
+  }
 
   return (
     <main className="bg-[var(--altteul-bg-canvas)] px-4 py-6 sm:px-6 sm:py-8">
       <section className="mx-auto flex min-h-[calc(100dvh-7rem)] max-w-[26rem] flex-col justify-center">
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-
-            startTransition(async () => {
-              setMessage("");
-
-              const body = new URLSearchParams({
-                email,
-                password,
-                callbackUrl,
-                json: "true",
-              });
-              const response = await fetch("/api/auth/callback/credentials", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/x-www-form-urlencoded",
-                },
-                body,
-              });
-              const result =
-                (await response.json().catch(() => null)) as CredentialsCallbackResponse | null;
-
-              if (!response.ok) {
-                const errorUrl = result?.url ? new URL(result.url, window.location.origin) : null;
-                const error = errorUrl?.searchParams.get("error");
-                setMessage(errorMessageMap[error ?? ""] ?? errorMessageMap.default);
-                return;
-              }
-
-              window.location.assign(result?.url ?? callbackUrl);
-            });
-          }}
-          data-testid="login-form"
+        <form onSubmit={handleSubmit(onSubmit)} data-testid="login-form"
           className="altteulmap-panel p-5 sm:p-6"
         >
           <div className="grid gap-5">
@@ -96,29 +112,39 @@ export function LoginRoute() {
                 이메일
                 <input
                   type="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
                   disabled={isPending}
                   data-testid="login-email"
+                  aria-invalid={Boolean(errors.email)}
                   className="altteulmap-input px-4 py-3.5 text-[var(--altteul-text-primary)]"
                   placeholder="이메일 주소"
                   autoComplete="email"
+                  {...register("email")}
                 />
               </label>
+              {errors.email ? (
+                <p className="text-xs text-[var(--altteul-danger-text)]" role="alert">
+                  {errors.email.message}
+                </p>
+              ) : null}
 
               <label className="grid gap-2 text-sm text-[var(--altteul-text-secondary)]">
                 비밀번호
                 <input
                   type="password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
                   disabled={isPending}
                   data-testid="login-password"
+                  aria-invalid={Boolean(errors.password)}
                   className="altteulmap-input px-4 py-3.5 text-[var(--altteul-text-primary)]"
                   placeholder="비밀번호"
                   autoComplete="current-password"
+                  {...register("password")}
                 />
               </label>
+              {errors.password ? (
+                <p className="text-xs text-[var(--altteul-danger-text)]" role="alert">
+                  {errors.password.message}
+                </p>
+              ) : null}
             </section>
 
             {message ? (
