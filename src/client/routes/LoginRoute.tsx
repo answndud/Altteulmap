@@ -83,16 +83,16 @@ export function LoginRoute() {
           <div className="grid gap-5">
             <div className="grid gap-1.5">
               <p className="altteulmap-section-kicker">계정</p>
-              <h1 className="text-[1.8rem] font-semibold text-stone-950">
+              <h1 className="text-[1.8rem] font-semibold text-[var(--altteul-text-strong)]">
                 로그인
               </h1>
-              <p className="text-sm text-stone-500">
-                저장한 장소를 다시 확인해 보세요.
+              <p className="text-sm text-[var(--altteul-text-tertiary)]">
+                저장한 장소와 북마크를 이어서 봅니다.
               </p>
             </div>
 
             <section className="grid gap-3">
-              <label className="grid gap-2 text-sm text-stone-700">
+              <label className="grid gap-2 text-sm text-[var(--altteul-text-secondary)]">
                 이메일
                 <input
                   type="email"
@@ -100,13 +100,13 @@ export function LoginRoute() {
                   onChange={(event) => setEmail(event.target.value)}
                   disabled={isPending}
                   data-testid="login-email"
-                  className="altteulmap-input px-4 py-3.5 text-stone-900"
+                  className="altteulmap-input px-4 py-3.5 text-[var(--altteul-text-primary)]"
                   placeholder="이메일 주소"
                   autoComplete="email"
                 />
               </label>
 
-              <label className="grid gap-2 text-sm text-stone-700">
+              <label className="grid gap-2 text-sm text-[var(--altteul-text-secondary)]">
                 비밀번호
                 <input
                   type="password"
@@ -114,7 +114,7 @@ export function LoginRoute() {
                   onChange={(event) => setPassword(event.target.value)}
                   disabled={isPending}
                   data-testid="login-password"
-                  className="altteulmap-input px-4 py-3.5 text-stone-900"
+                  className="altteulmap-input px-4 py-3.5 text-[var(--altteul-text-primary)]"
                   placeholder="비밀번호"
                   autoComplete="current-password"
                 />
@@ -136,15 +136,15 @@ export function LoginRoute() {
               {isPending ? "로그인 중..." : "로그인"}
             </button>
 
-            <div className="grid gap-2 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-xs leading-5 text-stone-500">
+            <div className="grid gap-2 rounded-2xl border border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-subtle)] px-4 py-3 text-xs leading-5 text-[var(--altteul-text-tertiary)]">
               <p>이메일 로그인과 카카오/네이버 소셜 로그인을 지원합니다.</p>
               <p>로그인 후 저장한 장소와 운영자 권한을 계정에 맞게 이용할 수 있습니다.</p>
             </div>
 
-            <div className="flex items-center justify-center border-t border-stone-200 pt-4 text-sm text-stone-500">
+            <div className="flex items-center justify-center border-t border-[var(--altteul-surface-border)] pt-4 text-sm text-[var(--altteul-text-tertiary)]">
               <Link
                 to={signupHref}
-                className="font-medium text-stone-700 transition hover:text-stone-950"
+                className="font-medium text-[var(--altteul-text-secondary)] transition hover:text-[var(--altteul-text-strong)]"
               >
                 회원가입
               </Link>

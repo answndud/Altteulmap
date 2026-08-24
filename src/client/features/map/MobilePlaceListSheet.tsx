@@ -63,8 +63,8 @@ export function MobilePlaceListSheet({
           onClick={openSheet}
           className="altteulmap-button altteulmap-accent-solid pointer-events-auto inline-flex min-h-12 w-full max-w-[28rem] items-center justify-between gap-3 px-4 py-2.5 text-sm font-semibold shadow-[var(--altteul-shadow-overlay)]"
         >
-          <span>장소 목록</span>
-          <span className="rounded-full bg-white/90 px-2.5 py-1 text-xs text-[var(--altteul-primary-text)]">
+          <span>지도 결과 목록</span>
+          <span className="rounded-full bg-[var(--altteul-bg-surface)]/90 px-2.5 py-1 text-xs text-[var(--altteul-primary-text)]">
             {state.status === "success" ? `${totalPlaceCount}곳` : "..."}
           </span>
         </button>

@@ -29,7 +29,7 @@ export function AdminPlacesRoute() {
           <div className="grid gap-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <DataBadge source={data.source} mock={data.mock} />
-              <span className="altteulmap-badge border-stone-200 bg-white text-stone-600">
+              <span className="altteulmap-badge border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-surface)] text-[var(--altteul-text-secondary)]">
                 {data.count}건
               </span>
             </div>
@@ -101,39 +101,39 @@ function PendingPlaceCard({
           <p className="text-[11px] font-semibold text-[var(--altteul-accent-text)]">
             {place.id}
           </p>
-          <h2 className="mt-2 text-xl font-semibold text-stone-950">
+          <h2 className="mt-2 text-xl font-semibold text-[var(--altteul-text-strong)]">
             {place.name}
           </h2>
-          <p className="mt-2 text-sm text-stone-500">
+          <p className="mt-2 text-sm text-[var(--altteul-text-tertiary)]">
             {place.businessName ?? place.name} · {place.district} · 접수{" "}
             {place.createdAt}
           </p>
         </div>
         <div className="altteulmap-panel-muted px-4 py-3 text-right">
-          <p className="text-[11px] text-stone-500">대표 가격</p>
+          <p className="text-[11px] text-[var(--altteul-text-tertiary)]">대표 가격</p>
           <p className="altteulmap-price-number mt-2 text-lg">
             {formatKrw(place.representativePriceAmount)}원
           </p>
-          <p className="text-sm text-stone-500">
+          <p className="text-sm text-[var(--altteul-text-tertiary)]">
             {place.representativePriceLabel}
           </p>
         </div>
       </div>
       <div className="mt-4 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="grid gap-3 text-sm leading-6 text-stone-700">
+        <div className="grid gap-3 text-sm leading-6 text-[var(--altteul-text-secondary)]">
           <div className="altteulmap-panel-muted p-4">
-            <p className="text-[11px] text-stone-500">주소</p>
+            <p className="text-[11px] text-[var(--altteul-text-tertiary)]">주소</p>
             <p className="mt-2">{place.address}</p>
           </div>
           <div className="altteulmap-panel-muted p-4">
-            <p className="text-[11px] text-stone-500">메모</p>
+            <p className="text-[11px] text-[var(--altteul-text-tertiary)]">메모</p>
             <p className="mt-2">{place.note}</p>
           </div>
           <div className="altteulmap-panel-muted p-4">
-            <p className="text-[11px] text-stone-500">가격 항목</p>
+            <p className="text-[11px] text-[var(--altteul-text-tertiary)]">가격 항목</p>
             <div className="mt-3 grid gap-2">
               {place.priceItems.map((item) => (
-                <div key={item.id} className="rounded-xl bg-white px-4 py-3">
+                <div key={item.id} className="rounded-xl bg-[var(--altteul-bg-surface)] px-4 py-3">
                   {item.label} · {formatKrw(item.amount)}원
                   {item.unitLabel ? ` / ${item.unitLabel}` : ""}
                 </div>
@@ -143,23 +143,23 @@ function PendingPlaceCard({
           <AdminAiReviewPanel fallback="주소, 업종, 가격 입력값을 운영자가 최종 확인한 뒤 승인합니다." />
         </div>
         <div className="altteulmap-panel-muted grid gap-3 p-4">
-          <label className="grid gap-1 text-sm text-stone-700">
+          <label className="grid gap-1 text-sm text-[var(--altteul-text-secondary)]">
             위도
             <input
               value={latitude}
               onChange={(event) => setLatitude(event.target.value)}
               data-testid="admin-latitude"
-              className="rounded-xl border border-stone-300 px-3 py-2"
+              className="rounded-xl border border-[var(--altteul-surface-border-strong)] px-3 py-2"
               placeholder="37.5665"
             />
           </label>
-          <label className="grid gap-1 text-sm text-stone-700">
+          <label className="grid gap-1 text-sm text-[var(--altteul-text-secondary)]">
             경도
             <input
               value={longitude}
               onChange={(event) => setLongitude(event.target.value)}
               data-testid="admin-longitude"
-              className="rounded-xl border border-stone-300 px-3 py-2"
+              className="rounded-xl border border-[var(--altteul-surface-border-strong)] px-3 py-2"
               placeholder="126.9780"
             />
           </label>
@@ -177,12 +177,12 @@ function PendingPlaceCard({
               type="button"
               disabled={disabled}
               onClick={() => void submit("reject")}
-              className="altteulmap-button border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 disabled:opacity-50"
+              className="altteulmap-button border border-[var(--altteul-surface-border-strong)] bg-[var(--altteul-bg-surface)] px-4 py-2 text-sm text-[var(--altteul-text-secondary)] disabled:opacity-50"
             >
               반려
             </button>
           </div>
-          {status ? <p className="text-sm text-stone-600">{status}</p> : null}
+          {status ? <p className="text-sm text-[var(--altteul-text-secondary)]">{status}</p> : null}
         </div>
       </div>
     </article>

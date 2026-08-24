@@ -80,10 +80,10 @@ export function AdminDashboardRoute() {
                 data-testid="admin-share-source-breakdown"
                 className="altteulmap-panel-muted p-4"
               >
-                <p className="text-sm font-semibold text-stone-900">
+                <p className="text-sm font-semibold text-[var(--altteul-text-primary)]">
                   공유 유입 경로
                 </p>
-                <p className="mt-2 text-sm leading-6 text-stone-600">
+                <p className="mt-2 text-sm leading-6 text-[var(--altteul-text-secondary)]">
                   상세 페이지 · 인기 장소 · 지도 목록 기준으로 확인합니다.
                 </p>
               </article>
@@ -93,10 +93,10 @@ export function AdminDashboardRoute() {
               data-testid="admin-recent-user-list"
               className="altteulmap-panel-muted p-4"
             >
-              <p className="text-sm font-semibold text-stone-900">
+              <p className="text-sm font-semibold text-[var(--altteul-text-primary)]">
                 최근 사용자 활동
               </p>
-              <p className="mt-2 text-sm text-stone-600">
+              <p className="mt-2 text-sm text-[var(--altteul-text-secondary)]">
                 로그인, 제보, 공유 유입을 운영 지표와 함께 확인합니다.
               </p>
             </section>
@@ -146,9 +146,9 @@ function AdminMetricCard({
 }) {
   return (
     <article data-testid={testId} className="altteulmap-panel-muted p-4">
-      <p className="text-xs text-stone-500">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-stone-950">{value}</p>
-      <p className="mt-2 text-xs leading-5 text-stone-500">{description}</p>
+      <p className="text-xs text-[var(--altteul-text-tertiary)]">{label}</p>
+      <p className="mt-2 text-2xl font-semibold text-[var(--altteul-text-strong)]">{value}</p>
+      <p className="mt-2 text-xs leading-5 text-[var(--altteul-text-tertiary)]">{description}</p>
     </article>
   );
 }
@@ -172,7 +172,7 @@ function DashboardCard({
     <article className="altteulmap-panel-muted p-5">
       <DataBadge source={source} mock={mock} />
       <p className="mt-5 text-sm text-[var(--altteul-accent-text)]">{label}</p>
-      <p className="mt-2 text-4xl font-semibold text-stone-950">{value}</p>
+      <p className="mt-2 text-4xl font-semibold text-[var(--altteul-text-strong)]">{value}</p>
       <Link
         to={href}
         data-testid={testId}

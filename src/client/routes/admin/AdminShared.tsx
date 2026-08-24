@@ -30,7 +30,7 @@ export function AdminAiReviewPanel({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-[11px] font-semibold text-amber-800">AI 1차 검수</p>
         {suggestion ? (
-          <span className="rounded-full bg-white/85 px-2 py-0.5 text-[11px] font-semibold text-amber-900">
+          <span className="rounded-full bg-[var(--altteul-bg-surface)]/85 px-2 py-0.5 text-[11px] font-semibold text-amber-900">
             {moderationActionMap[suggestion.suggestedAction]} ·{" "}
             {suggestion.confidence}%
           </span>
@@ -54,7 +54,7 @@ export function AdminAiReviewPanel({
 
 export function EmptyPanel({ message }: { message: string }) {
   return (
-    <div className="rounded-[1.75rem] border border-dashed border-stone-300 bg-stone-50 p-8 text-sm leading-6 text-stone-600">
+    <div className="rounded-[1.75rem] border border-dashed border-[var(--altteul-surface-border-strong)] bg-[var(--altteul-bg-subtle)] p-8 text-sm leading-6 text-[var(--altteul-text-secondary)]">
       {message}
     </div>
   );
