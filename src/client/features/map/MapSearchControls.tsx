@@ -29,7 +29,7 @@ export function MapSearchControls({
       <div className="hidden items-center justify-between gap-2 sm:flex lg:items-end">
         <div className="min-w-0">
           <p className="altteulmap-section-kicker">탐색</p>
-          <h1 className="mt-1 truncate text-[1.55rem] font-bold text-[var(--altteul-text-strong)]">
+          <h1 className="mt-1 truncate text-2xl font-bold text-[var(--altteul-text-strong)]">
             가격이 보이는 동네 지도
           </h1>
           <p className="mt-1 hidden max-w-2xl text-sm leading-6 text-[var(--altteul-text-secondary)] sm:block">

@@ -84,8 +84,9 @@ function PlaceCardBase({
           <span
             className="altteulmap-badge px-2.5 py-1 text-[11px] font-medium"
             data-testid={`place-list-like-count-${place.id}`}
+            aria-label={`좋아요 ${place.likeCount}개`}
           >
-            👍 {place.likeCount}
+            좋아요 {place.likeCount}
           </span>
         </div>
         <div className="flex items-center gap-2">
