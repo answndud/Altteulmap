@@ -1,5 +1,8 @@
 import { Link, useSearchParams } from "react-router-dom";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useState, useTransition } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
 import {
   createLoginHref,
@@ -16,86 +19,105 @@ type CredentialsCallbackResponse = {
   url?: string;
 };
 
+const signupSchema = z
+  .object({
+    nickname: z.string().trim().min(1, "닉네임을 입력해주세요."),
+    email: z.string().email("올바른 이메일 주소를 입력해주세요."),
+    password: z.string().min(8, "비밀번호는 8자 이상이어야 합니다."),
+    passwordConfirm: z.string().min(8, "비밀번호 확인을 입력해주세요."),
+  })
+  .refine((values) => values.password === values.passwordConfirm, {
+    message: "비밀번호 확인이 일치하지 않습니다.",
+    path: ["passwordConfirm"],
+  });
+
+type SignupFormValues = z.infer<typeof signupSchema>;
+
 export function SignupRoute() {
   const [searchParams] = useSearchParams();
   const callbackUrl = normalizeCallbackUrl(searchParams.get("callbackUrl"));
   const loginHref = createLoginHref(callbackUrl);
-  const [nickname, setNickname] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [passwordConfirm, setPasswordConfirm] = useState("");
   const [message, setMessage] = useState("");
   const [isPending, startTransition] = useTransition();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    watch,
+  } = useForm<SignupFormValues>({
+    resolver: zodResolver(signupSchema),
+    mode: "onChange",
+    defaultValues: {
+      nickname: "",
+      email: "",
+      password: "",
+      passwordConfirm: "",
+    },
+  });
+  const values = watch();
   const canSubmit =
-    email.trim().length > 0 &&
-    nickname.trim().length > 0 &&
-    password.length >= 8 &&
-    passwordConfirm.length >= 8;
+    values.email.trim().length > 0 &&
+    values.nickname.trim().length > 0 &&
+    values.password.length >= 8 &&
+    values.passwordConfirm.length >= 8;
+
+  async function onSubmit(formValues: SignupFormValues) {
+    startTransition(async () => {
+      setMessage("");
+
+      const response = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: formValues.email,
+          nickname: formValues.nickname,
+          password: formValues.password,
+        }),
+      });
+      const result =
+        (await response
+          .json()
+          .catch(() => null)) as SignupActionResponse | null;
+
+      if (!response.ok || !result?.ok) {
+        setMessage(
+          result?.message ??
+            "회원가입 처리에 실패했습니다. 잠시 후 다시 시도해주세요.",
+        );
+        return;
+      }
+
+      const loginBody = new URLSearchParams({
+        email: formValues.email,
+        password: formValues.password,
+        callbackUrl,
+        json: "true",
+      });
+      const loginResponse = await fetch("/api/auth/callback/credentials", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: loginBody,
+      });
+      const loginResult =
+        (await loginResponse
+          .json()
+          .catch(() => null)) as CredentialsCallbackResponse | null;
+
+      if (!loginResponse.ok) {
+        setMessage(
+          "회원가입은 완료됐지만 자동 로그인에 실패했습니다. 로그인 화면에서 다시 시도해주세요.",
+        );
+        return;
+      }
+
+      window.location.assign(loginResult?.url ?? callbackUrl);
+    });
+  }
 
   return (
     <main className="bg-[var(--altteul-bg-canvas)] px-4 py-6 sm:px-6 sm:py-8">
       <section className="mx-auto flex min-h-[calc(100dvh-7rem)] max-w-[26rem] flex-col justify-center">
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-
-            if (password !== passwordConfirm) {
-              setMessage("비밀번호 확인이 일치하지 않습니다.");
-              return;
-            }
-
-            startTransition(async () => {
-              setMessage("");
-
-              const response = await fetch("/api/auth/signup", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  email,
-                  nickname,
-                  password,
-                }),
-              });
-              const result =
-                (await response.json().catch(() => null)) as SignupActionResponse | null;
-
-              if (!response.ok || !result?.ok) {
-                setMessage(
-                  result?.message ??
-                    "회원가입 처리에 실패했습니다. 잠시 후 다시 시도해주세요.",
-                );
-                return;
-              }
-
-              const loginBody = new URLSearchParams({
-                email,
-                password,
-                callbackUrl,
-                json: "true",
-              });
-              const loginResponse = await fetch("/api/auth/callback/credentials", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/x-www-form-urlencoded",
-                },
-                body: loginBody,
-              });
-              const loginResult =
-                (await loginResponse.json().catch(() => null)) as CredentialsCallbackResponse | null;
-
-              if (!loginResponse.ok) {
-                setMessage(
-                  "회원가입은 완료됐지만 자동 로그인에 실패했습니다. 로그인 화면에서 다시 시도해주세요.",
-                );
-                return;
-              }
-
-              window.location.assign(loginResult?.url ?? callbackUrl);
-            });
-          }}
-          data-testid="signup-form"
+        <form onSubmit={handleSubmit(onSubmit)} data-testid="signup-form"
           className="altteulmap-panel p-5 sm:p-6"
         >
           <div className="grid gap-5">
@@ -114,57 +136,77 @@ export function SignupRoute() {
                 닉네임
                 <input
                   type="text"
-                  value={nickname}
-                  onChange={(event) => setNickname(event.target.value)}
                   disabled={isPending}
                   data-testid="signup-nickname"
+                  aria-invalid={Boolean(errors.nickname)}
                   className="altteulmap-input px-4 py-3.5 text-[var(--altteul-text-primary)]"
                   placeholder="표시 이름"
                   autoComplete="nickname"
+                  {...register("nickname")}
                 />
               </label>
+              {errors.nickname ? (
+                <p className="text-xs text-[var(--altteul-danger-text)]" role="alert">
+                  {errors.nickname.message}
+                </p>
+              ) : null}
 
               <label className="grid gap-2 text-sm text-[var(--altteul-text-secondary)]">
                 이메일
                 <input
                   type="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
                   disabled={isPending}
                   data-testid="signup-email"
+                  aria-invalid={Boolean(errors.email)}
                   className="altteulmap-input px-4 py-3.5 text-[var(--altteul-text-primary)]"
                   placeholder="이메일 주소"
                   autoComplete="email"
+                  {...register("email")}
                 />
               </label>
+              {errors.email ? (
+                <p className="text-xs text-[var(--altteul-danger-text)]" role="alert">
+                  {errors.email.message}
+                </p>
+              ) : null}
 
               <label className="grid gap-2 text-sm text-[var(--altteul-text-secondary)]">
                 비밀번호
                 <input
                   type="password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
                   disabled={isPending}
                   data-testid="signup-password"
+                  aria-invalid={Boolean(errors.password)}
                   className="altteulmap-input px-4 py-3.5 text-[var(--altteul-text-primary)]"
                   placeholder="8자 이상"
                   autoComplete="new-password"
+                  {...register("password")}
                 />
               </label>
+              {errors.password ? (
+                <p className="text-xs text-[var(--altteul-danger-text)]" role="alert">
+                  {errors.password.message}
+                </p>
+              ) : null}
 
               <label className="grid gap-2 text-sm text-[var(--altteul-text-secondary)]">
                 비밀번호 확인
                 <input
                   type="password"
-                  value={passwordConfirm}
-                  onChange={(event) => setPasswordConfirm(event.target.value)}
                   disabled={isPending}
                   data-testid="signup-password-confirm"
+                  aria-invalid={Boolean(errors.passwordConfirm)}
                   className="altteulmap-input px-4 py-3.5 text-[var(--altteul-text-primary)]"
                   placeholder="비밀번호 다시 입력"
                   autoComplete="new-password"
+                  {...register("passwordConfirm")}
                 />
               </label>
+              {errors.passwordConfirm ? (
+                <p className="text-xs text-[var(--altteul-danger-text)]" role="alert">
+                  {errors.passwordConfirm.message}
+                </p>
+              ) : null}
             </section>
 
             {message ? (
