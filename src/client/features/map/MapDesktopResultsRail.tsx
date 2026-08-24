@@ -1,4 +1,9 @@
-import type { PlacePreviewRecord, PlaceSearchScope } from "@/features/places/types";
+import { memo } from "react";
+
+import type {
+  PlacePreviewRecord,
+  PlaceSearchScope,
+} from "@/features/places/types";
 
 import { PlaceCard } from "./PlaceCard";
 import {
@@ -11,7 +16,7 @@ type MapDesktopResultsState =
   | { status: "success"; error: null }
   | { status: "error"; error: string };
 
-export function MapDesktopResultsRail({
+function MapDesktopResultsRailBase({
   bookmarkedPlaceIds,
   displayedPlaces,
   isDesktopLayout,
@@ -120,3 +125,5 @@ export function MapDesktopResultsRail({
     </aside>
   );
 }
+
+export const MapDesktopResultsRail = memo(MapDesktopResultsRailBase);
