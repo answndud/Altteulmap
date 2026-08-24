@@ -1,3 +1,5 @@
+import { memo } from "react";
+
 import { ViteBookmarkToggleButton } from "@/client/components/ViteBookmarkToggleButton";
 import {
   formatKrw,
@@ -9,7 +11,7 @@ import { PlaceShareButton } from "@/features/places/place-share-button";
 import { createPlaceSharePayload } from "@/features/places/share";
 import type { PlacePreviewRecord } from "@/features/places/types";
 
-export function PlaceCard({
+function PlaceCardBase({
   bookmarked,
   isSelected,
   loginHref,
@@ -109,3 +111,5 @@ export function PlaceCard({
     </article>
   );
 }
+
+export const PlaceCard = memo(PlaceCardBase);
