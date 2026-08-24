@@ -151,7 +151,7 @@ export function VitePlaceReactionButtons({
 
   return (
     <div className="grid gap-2">
-      <div className="inline-flex w-fit flex-wrap gap-1 rounded-[1rem] border border-[var(--altteul-surface-border)] bg-white/88 p-1 shadow-sm">
+      <div className="inline-flex w-fit flex-wrap gap-1 rounded-[1rem] border border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-surface)]/88 p-1 shadow-sm">
         <button
           type="button"
           onClick={() => submitReaction("like")}
@@ -161,11 +161,11 @@ export function VitePlaceReactionButtons({
           className={`inline-flex min-w-[6.5rem] items-center justify-center gap-2 whitespace-nowrap rounded-[0.82rem] px-3 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ${
             isLiked
               ? "bg-[var(--altteul-accent-soft)] text-[var(--altteul-accent-text)] shadow-sm"
-              : "text-stone-600 hover:bg-[var(--altteul-bg-subtle)]/85"
+              : "text-[var(--altteul-text-secondary)] hover:bg-[var(--altteul-bg-subtle)]/85"
           }`}
         >
           <span
-            className={isLiked ? "text-[var(--altteul-accent-text)]" : "text-stone-500"}
+            className={isLiked ? "text-[var(--altteul-accent-text)]" : "text-[var(--altteul-text-tertiary)]"}
           >
             <ThumbUpIcon active={isLiked} />
           </span>
@@ -185,11 +185,11 @@ export function VitePlaceReactionButtons({
           data-testid="reaction-dislike-button"
           className={`inline-flex min-w-[6.5rem] items-center justify-center gap-2 whitespace-nowrap rounded-[0.82rem] px-3 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ${
             isDisliked
-              ? "bg-stone-900 text-white shadow-sm"
-              : "text-stone-600 hover:bg-[var(--altteul-bg-subtle)]/85"
+              ? "bg-[var(--altteul-text-strong)] text-white shadow-sm"
+              : "text-[var(--altteul-text-secondary)] hover:bg-[var(--altteul-bg-subtle)]/85"
           }`}
         >
-          <span className={isDisliked ? "text-white" : "text-stone-500"}>
+          <span className={isDisliked ? "text-white" : "text-[var(--altteul-text-tertiary)]"}>
             <ThumbDownIcon active={isDisliked} />
           </span>
           <span>아쉬워요</span>
@@ -198,7 +198,7 @@ export function VitePlaceReactionButtons({
           </span>
         </button>
       </div>
-      {message ? <p className="pl-1 text-[11px] text-stone-500">{message}</p> : null}
+      {message ? <p className="pl-1 text-[11px] text-[var(--altteul-text-tertiary)]">{message}</p> : null}
     </div>
   );
 }

@@ -38,7 +38,7 @@ export function AdminReportsRoute() {
             <div className="grid gap-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <DataBadge source={data.source} mock={data.mock} />
-                <span className="altteulmap-badge border-stone-200 bg-white text-stone-600">
+                <span className="altteulmap-badge border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-surface)] text-[var(--altteul-text-secondary)]">
                   {filteredItems.length} / {data.count}건
                 </span>
               </div>
@@ -108,11 +108,11 @@ function ReportFilterBar({
             className={`altteulmap-chip inline-flex items-center gap-2 border px-4 py-2 text-sm ${
               selected
                 ? "border-[rgba(151,70,29,0.38)] bg-[rgba(181,90,43,0.12)] text-[var(--altteul-accent-text)]"
-                : "border-stone-300 bg-white text-stone-700"
+                : "border-[var(--altteul-surface-border-strong)] bg-[var(--altteul-bg-surface)] text-[var(--altteul-text-secondary)]"
             }`}
           >
             {filter.label}
-            <span className="rounded-full bg-white/80 px-2 py-0.5 text-xs">
+            <span className="rounded-full bg-[var(--altteul-bg-surface)]/80 px-2 py-0.5 text-xs">
               {counts[filter.value as keyof typeof counts]}
             </span>
           </Link>
@@ -161,21 +161,21 @@ function ReportCard({
           <p className="text-[11px] font-semibold text-[var(--altteul-accent-text)]">
             {report.id}
           </p>
-          <h2 className="mt-2 text-xl font-semibold text-stone-950">
+          <h2 className="mt-2 text-xl font-semibold text-[var(--altteul-text-strong)]">
             {report.placeName}
           </h2>
-          <p className="mt-2 text-sm text-stone-500">
+          <p className="mt-2 text-sm text-[var(--altteul-text-tertiary)]">
             {reportReasonMap[report.reasonType]} · 접수 {report.createdAt}
           </p>
         </div>
         <span
           data-testid="admin-report-status-badge"
-          className="rounded-full bg-stone-200 px-3 py-1 text-xs font-semibold text-stone-700"
+          className="rounded-full bg-[var(--altteul-bg-muted)] px-3 py-1 text-xs font-semibold text-[var(--altteul-text-secondary)]"
         >
           {reportStatusMap[status]}
         </span>
       </div>
-      <p className="mt-4 text-sm leading-6 text-stone-700">{report.detail}</p>
+      <p className="mt-4 text-sm leading-6 text-[var(--altteul-text-secondary)]">{report.detail}</p>
       <div className="mt-4">
         <AdminAiReviewPanel
           fallback="신고 사유와 상세 내용을 확인한 뒤 운영자가 상태를 확정합니다."
@@ -196,7 +196,7 @@ function ReportCard({
               className={`altteulmap-button px-4 py-2 text-sm disabled:opacity-50 ${
                 status === nextStatus
                   ? "altteulmap-accent-solid"
-                  : "border border-stone-300 bg-white text-stone-700"
+                  : "border border-[var(--altteul-surface-border-strong)] bg-[var(--altteul-bg-surface)] text-[var(--altteul-text-secondary)]"
               }`}
             >
               {label}
@@ -213,11 +213,11 @@ function ReportCard({
         </button>
         <Link
           to={`/place/${report.placeId}`}
-          className="altteulmap-button border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700"
+          className="altteulmap-button border border-[var(--altteul-surface-border-strong)] bg-[var(--altteul-bg-surface)] px-4 py-2 text-sm text-[var(--altteul-text-secondary)]"
         >
           장소 보기
         </Link>
-        {message ? <p className="w-full text-sm text-stone-600">{message}</p> : null}
+        {message ? <p className="w-full text-sm text-[var(--altteul-text-secondary)]">{message}</p> : null}
       </div>
     </article>
   );

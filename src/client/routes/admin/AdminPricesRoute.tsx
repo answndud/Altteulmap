@@ -30,7 +30,7 @@ export function AdminPricesRoute() {
           <div className="grid gap-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <DataBadge source={data.source} mock={data.mock} />
-              <span className="altteulmap-badge border-stone-200 bg-white text-stone-600">
+              <span className="altteulmap-badge border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-surface)] text-[var(--altteul-text-secondary)]">
                 {data.count}건
               </span>
             </div>
@@ -92,27 +92,27 @@ function PendingPriceCard({
           <p className="text-[11px] font-semibold text-[var(--altteul-accent-text)]">
             {report.id}
           </p>
-          <h2 className="mt-2 text-xl font-semibold text-stone-950">
+          <h2 className="mt-2 text-xl font-semibold text-[var(--altteul-text-strong)]">
             {report.placeName}
           </h2>
-          <p className="mt-2 text-sm text-stone-500">
+          <p className="mt-2 text-sm text-[var(--altteul-text-tertiary)]">
             {report.district} · 접수 {report.createdAt}
           </p>
         </div>
         <div className="altteulmap-panel-muted px-4 py-3 text-right">
-          <p className="text-[11px] text-stone-500">제보 가격</p>
+          <p className="text-[11px] text-[var(--altteul-text-tertiary)]">제보 가격</p>
           <p className="altteulmap-price-number mt-2 text-lg">
             {formatKrw(report.amount)}원
           </p>
-          <p className="text-sm text-stone-500">
+          <p className="text-sm text-[var(--altteul-text-tertiary)]">
             {report.label}
             {report.unitLabel ? ` / ${report.unitLabel}` : ""}
           </p>
         </div>
       </div>
       <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_auto]">
-        <div className="altteulmap-panel-muted p-4 text-sm leading-6 text-stone-700">
-          <p className="text-[11px] text-stone-500">현재 저장된 가격</p>
+        <div className="altteulmap-panel-muted p-4 text-sm leading-6 text-[var(--altteul-text-secondary)]">
+          <p className="text-[11px] text-[var(--altteul-text-tertiary)]">현재 저장된 가격</p>
           {typeof report.existingPriceAmount === "number" ? (
             <p className="mt-2">
               {report.existingPriceLabel} ·{" "}
@@ -146,17 +146,17 @@ function PendingPriceCard({
             disabled={disabled}
             onClick={() => void submit("reject")}
             data-testid="admin-price-reject-button"
-            className="altteulmap-button border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 disabled:opacity-50"
+            className="altteulmap-button border border-[var(--altteul-surface-border-strong)] bg-[var(--altteul-bg-surface)] px-4 py-2 text-sm text-[var(--altteul-text-secondary)] disabled:opacity-50"
           >
             반려
           </button>
           <Link
             to={`/admin/prices/places/${report.placeId}`}
-            className="altteulmap-button border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700"
+            className="altteulmap-button border border-[var(--altteul-surface-border-strong)] bg-[var(--altteul-bg-surface)] px-4 py-2 text-sm text-[var(--altteul-text-secondary)]"
           >
             가격 관리
           </Link>
-          {status ? <p className="w-full text-sm text-stone-600">{status}</p> : null}
+          {status ? <p className="w-full text-sm text-[var(--altteul-text-secondary)]">{status}</p> : null}
         </div>
       </div>
     </article>

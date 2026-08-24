@@ -38,10 +38,10 @@ export function AdminPlacePricesRoute() {
             <div className="grid gap-5">
               <div className="altteulmap-panel-muted p-5">
                 <DataBadge source={data.source} mock={data.source !== "database"} />
-                <h2 className="mt-4 text-2xl font-semibold text-stone-950">
+                <h2 className="mt-4 text-2xl font-semibold text-[var(--altteul-text-strong)]">
                   {data.item.name}
                 </h2>
-                <p className="mt-2 text-sm text-stone-600">
+                <p className="mt-2 text-sm text-[var(--altteul-text-secondary)]">
                   {data.item.district} · 대표 가격{" "}
                   {formatKrw(data.item.representativePriceAmount)}원 ·{" "}
                   {data.item.representativePriceLabel}
@@ -120,61 +120,61 @@ function PriceItemEditor({
           <p className="text-[11px] font-semibold text-[var(--altteul-accent-text)]">
             {item.id}
           </p>
-          <h2 className="mt-2 text-xl font-semibold text-stone-950">
+          <h2 className="mt-2 text-xl font-semibold text-[var(--altteul-text-strong)]">
             {item.label}
           </h2>
-          <p className="mt-2 text-sm text-stone-500">
+          <p className="mt-2 text-sm text-[var(--altteul-text-tertiary)]">
             {formatKrw(item.amount)}원
             {item.unitLabel ? ` / ${item.unitLabel}` : ""} ·{" "}
             {item.verificationStatus === "verified" ? "확인됨" : "확인 전"} ·{" "}
             {item.isActive ? "노출 중" : "숨김"}
           </p>
         </div>
-        <span className="rounded-full bg-stone-200 px-3 py-1 text-xs font-semibold text-stone-700">
+        <span className="rounded-full bg-[var(--altteul-bg-muted)] px-3 py-1 text-xs font-semibold text-[var(--altteul-text-secondary)]">
           {item.isRepresentative ? "대표 가격" : "일반 가격"}
         </span>
       </div>
       <div className="mt-4 grid gap-3 md:grid-cols-2">
-        <label className="grid gap-1 text-sm text-stone-700">
+        <label className="grid gap-1 text-sm text-[var(--altteul-text-secondary)]">
           가격 항목명
           <input
             value={label}
             onChange={(event) => setLabel(event.target.value)}
-            className="rounded-xl border border-stone-300 px-3 py-2"
+            className="rounded-xl border border-[var(--altteul-surface-border-strong)] px-3 py-2"
           />
         </label>
-        <label className="grid gap-1 text-sm text-stone-700">
+        <label className="grid gap-1 text-sm text-[var(--altteul-text-secondary)]">
           가격
           <input
             value={amount}
             onChange={(event) => setAmount(event.target.value)}
-            className="rounded-xl border border-stone-300 px-3 py-2"
+            className="rounded-xl border border-[var(--altteul-surface-border-strong)] px-3 py-2"
             inputMode="numeric"
           />
         </label>
-        <label className="grid gap-1 text-sm text-stone-700">
+        <label className="grid gap-1 text-sm text-[var(--altteul-text-secondary)]">
           단위
           <input
             value={unitLabel}
             onChange={(event) => setUnitLabel(event.target.value)}
-            className="rounded-xl border border-stone-300 px-3 py-2"
+            className="rounded-xl border border-[var(--altteul-surface-border-strong)] px-3 py-2"
           />
         </label>
-        <label className="grid gap-1 text-sm text-stone-700">
+        <label className="grid gap-1 text-sm text-[var(--altteul-text-secondary)]">
           검증 상태
           <select
             value={verificationStatus}
             onChange={(event) =>
               setVerificationStatus(event.target.value as AdminPriceItem["verificationStatus"])
             }
-            className="rounded-xl border border-stone-300 bg-white px-3 py-2"
+            className="rounded-xl border border-[var(--altteul-surface-border-strong)] bg-[var(--altteul-bg-surface)] px-3 py-2"
           >
             <option value="verified">확인됨</option>
             <option value="unverified">확인 전</option>
           </select>
         </label>
       </div>
-      <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-stone-700">
+      <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-[var(--altteul-text-secondary)]">
         <label className="inline-flex items-center gap-2">
           <input
             type="checkbox"
@@ -199,7 +199,7 @@ function PriceItemEditor({
         >
           저장
         </button>
-        {message ? <p className="w-full text-sm text-stone-600">{message}</p> : null}
+        {message ? <p className="w-full text-sm text-[var(--altteul-text-secondary)]">{message}</p> : null}
       </div>
     </article>
   );

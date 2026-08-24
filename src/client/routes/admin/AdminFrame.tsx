@@ -22,14 +22,14 @@ export function AdminFrame({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="altteulmap-section-kicker">운영</p>
-          <h1 className="mt-1 text-3xl font-semibold text-stone-950">{title}</h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-stone-600">
+          <h1 className="mt-1 text-3xl font-semibold text-[var(--altteul-text-strong)]">{title}</h1>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--altteul-text-secondary)]">
             {description}
           </p>
         </div>
         <Link
           to="/"
-          className="altteulmap-button border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700"
+          className="altteulmap-button border border-[var(--altteul-surface-border-strong)] bg-[var(--altteul-bg-surface)] px-4 py-2 text-sm text-[var(--altteul-text-secondary)]"
         >
           지도 화면
         </Link>
@@ -45,7 +45,7 @@ export function AdminFrame({
                 "altteulmap-chip inline-flex border px-4 py-2 text-sm",
                 isActive
                   ? "border-[rgba(151,70,29,0.38)] bg-[rgba(181,90,43,0.12)] text-[var(--altteul-accent-text)]"
-                  : "border-stone-300 bg-white text-stone-700",
+                  : "border-[var(--altteul-surface-border-strong)] bg-[var(--altteul-bg-surface)] text-[var(--altteul-text-secondary)]",
               ].join(" ")
             }
           >

@@ -111,14 +111,14 @@ export function ViteBookmarkToggleButton({
           iconOnly
             ? bookmarked
               ? "altteulmap-accent-ghost h-11 w-11 px-0 text-[var(--altteul-accent-text)]"
-              : "h-11 w-11 border border-stone-300 bg-white px-0 text-stone-700 hover:bg-white"
+              : "h-11 w-11 border border-[var(--altteul-surface-border-strong)] bg-[var(--altteul-bg-surface)] px-0 text-[var(--altteul-text-secondary)] hover:bg-[var(--altteul-bg-surface)]"
             : compact
             ? bookmarked
               ? "altteulmap-accent-ghost gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--altteul-accent-text)]"
-              : "gap-1.5 border border-stone-300 bg-white px-3 py-1.5 text-xs font-medium text-stone-700 hover:bg-white"
+              : "gap-1.5 border border-[var(--altteul-surface-border-strong)] bg-[var(--altteul-bg-surface)] px-3 py-1.5 text-xs font-medium text-[var(--altteul-text-secondary)] hover:bg-[var(--altteul-bg-surface)]"
             : bookmarked
               ? "altteulmap-accent-ghost gap-2 px-4 py-2 text-sm font-medium text-[var(--altteul-accent-text)]"
-              : "gap-2 border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-700 hover:bg-white"
+              : "gap-2 border border-[var(--altteul-surface-border-strong)] bg-[var(--altteul-bg-surface)] px-4 py-2 text-sm font-medium text-[var(--altteul-text-secondary)] hover:bg-[var(--altteul-bg-surface)]"
         }`}
       >
         <BookmarkIcon active={bookmarked} />
@@ -128,7 +128,7 @@ export function ViteBookmarkToggleButton({
         <p
           data-testid={`bookmark-message-${placeId}`}
           className={`text-xs ${
-            messageTone === "success" ? "text-[var(--altteul-primary-text)]" : "text-stone-500"
+            messageTone === "success" ? "text-[var(--altteul-primary-text)]" : "text-[var(--altteul-text-tertiary)]"
           }`}
         >
           {message}

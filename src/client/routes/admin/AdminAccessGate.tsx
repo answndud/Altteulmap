@@ -12,7 +12,7 @@ export function AdminAccessGate<T>({
 }) {
   if (state.status === "loading") {
     return (
-      <div className="altteulmap-panel-muted p-6 text-sm text-stone-600">
+      <div className="altteulmap-panel-muted p-6 text-sm text-[var(--altteul-text-secondary)]">
         관리자 데이터를 불러오는 중입니다.
       </div>
     );
@@ -21,8 +21,8 @@ export function AdminAccessGate<T>({
   if (state.status === "unauthenticated") {
     return (
       <div className="altteulmap-panel-muted p-6">
-        <h2 className="text-xl font-semibold text-stone-950">로그인이 필요합니다</h2>
-        <p className="mt-2 text-sm leading-6 text-stone-600">
+        <h2 className="text-xl font-semibold text-[var(--altteul-text-strong)]">로그인이 필요합니다</h2>
+        <p className="mt-2 text-sm leading-6 text-[var(--altteul-text-secondary)]">
           관리자 화면은 운영자 계정으로 로그인해야 볼 수 있습니다.
         </p>
         <Link
@@ -38,15 +38,15 @@ export function AdminAccessGate<T>({
   if (state.status === "forbidden") {
     return (
       <div className="altteulmap-panel-muted p-6">
-        <h2 className="text-xl font-semibold text-stone-950">
+        <h2 className="text-xl font-semibold text-[var(--altteul-text-strong)]">
           운영자 권한이 필요합니다
         </h2>
-        <p className="mt-2 text-sm leading-6 text-stone-600">
+        <p className="mt-2 text-sm leading-6 text-[var(--altteul-text-secondary)]">
           {state.user.name} 계정은 관리자 작업을 수행할 수 없습니다.
         </p>
         <Link
           to="/login?callbackUrl=/admin"
-          className="altteulmap-button border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700"
+          className="altteulmap-button border border-[var(--altteul-surface-border-strong)] bg-[var(--altteul-bg-surface)] px-4 py-2 text-sm text-[var(--altteul-text-secondary)]"
         >
           다른 계정으로 로그인
         </Link>
