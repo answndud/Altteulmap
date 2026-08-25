@@ -17,6 +17,7 @@ import {
 } from "@/worker/db";
 import {
   requireAdminSession,
+  getAdminQueuePagination,
   type AdminBindings,
   type AdminRouteDependencies,
   type AdminVariables,
@@ -56,14 +57,19 @@ export function registerAdminPriceRoutes(
     }
 
     try {
+      const pagination = getAdminQueuePagination(c.req.raw);
       const result = await dependencies.runWorkerDatabaseRoute(c.env, () =>
-        listWorkerPendingPriceReports(c.env),
+        listWorkerPendingPriceReports(c.env, pagination),
       );
 
       return c.json(
         {
           items: result.items,
-          count: result.items.length,
+          count: result.count,
+          page: result.page,
+          limit: result.limit,
+          returnedCount: result.items.length,
+          truncated: result.items.length < result.count,
           source: result.source,
           mock: false,
         },

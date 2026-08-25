@@ -26,6 +26,17 @@ export type AdminRouteDependencies = {
   runWorkerDatabaseRoute<T>(env: AdminBindings, load: () => Promise<T>): Promise<T>;
 };
 
+export function getAdminQueuePagination(request: Request) {
+  const searchParams = new URL(request.url).searchParams;
+  const page = Number(searchParams.get("page") ?? "1");
+  const limit = Number(searchParams.get("limit") ?? "50");
+
+  return {
+    page: Number.isFinite(page) ? page : 1,
+    limit: Number.isFinite(limit) ? limit : 50,
+  };
+}
+
 export async function requireAdminSession(
   request: Request,
   env: AdminBindings,

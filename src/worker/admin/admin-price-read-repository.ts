@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
 
 import {
   moderationSuggestions,
@@ -13,6 +13,10 @@ import {
   toModerationSuggestionRecord,
 } from "@/worker/admin/admin-price-helpers";
 import { getWorkerDb, type WorkerDatabaseBindings } from "@/worker/db";
+import {
+  ADMIN_QUEUE_MAX_PAGE_SIZE,
+  ADMIN_QUEUE_PAGE_SIZE,
+} from "@/worker/admin/admin-queue-config";
 
 type DataSource = "database";
 type VerificationStatus = "verified" | "unverified";
@@ -23,8 +27,14 @@ type PendingPriceReportRecord = PendingPriceReport & {
 
 export async function listWorkerPendingPriceReports(
   env: WorkerDatabaseBindings,
+  { page = 1, limit = ADMIN_QUEUE_PAGE_SIZE } = {},
 ) {
   const db = getWorkerDb(env);
+  const safePage = Math.max(1, Math.floor(page));
+  const safeLimit = Math.min(
+    ADMIN_QUEUE_MAX_PAGE_SIZE,
+    Math.max(1, Math.floor(limit)),
+  );
   const rows = await db
     .select({
       id: priceReports.id,
@@ -50,7 +60,19 @@ export async function listWorkerPendingPriceReports(
         eq(places.status, "active"),
       ),
     )
-    .orderBy(desc(priceReports.createdAt));
+    .orderBy(desc(priceReports.createdAt), desc(priceReports.id))
+    .limit(safeLimit)
+    .offset((safePage - 1) * safeLimit);
+  const [countRow] = await db
+    .select({ count: count() })
+    .from(priceReports)
+    .innerJoin(places, eq(priceReports.placeId, places.id))
+    .where(
+      and(
+        eq(priceReports.reportStatus, "pending_review"),
+        eq(places.status, "active"),
+      ),
+    );
   const suggestionRows =
     rows.length > 0
       ? await db
@@ -99,6 +121,9 @@ export async function listWorkerPendingPriceReports(
         row.existingPriceVerificationStatus ?? undefined,
       moderationSuggestion: suggestionsBySubject.get(row.id),
     })) satisfies PendingPriceReportRecord[],
+    count: Number(countRow?.count ?? 0),
+    page: safePage,
+    limit: safeLimit,
     source: "database" as DataSource,
   };
 }

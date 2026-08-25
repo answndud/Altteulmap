@@ -43,6 +43,8 @@ import type {
   WorkerMapPlacesResult,
 } from "@/worker/places-read-types";
 
+const MAP_QUERY_ROW_LIMIT = 2_000;
+
 const mapPlaceSelectFields = {
   internalId: places.id,
   slug: places.slug,
@@ -195,11 +197,19 @@ export async function listDatabaseMapPlaces(
       };
     }
 
-    const markerRows = await loadDatabaseMapMarkerRows(env, {
-      whereClause,
-    });
-    const mapped = toPlacePreviewRecords(markerRows);
-    const count = mapped.length;
+    const db = getWorkerDb(env);
+    const [countRows, markerRows] = await Promise.all([
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(places)
+        .where(whereClause),
+      loadDatabaseMapMarkerRows(env, {
+        whereClause,
+        limit: MAP_QUERY_ROW_LIMIT + 1,
+      }),
+    ]);
+    const mapped = toPlacePreviewRecords(markerRows.slice(0, MAP_QUERY_ROW_LIMIT));
+    const count = Number(countRows[0]?.count ?? 0);
     const sorted = sortPlacePreviewRecords(mapped, sort);
     const items = getCappedMapListItems(sorted);
     const markerMode = getMapMarkerMode(count, zoom, null);
@@ -242,10 +252,14 @@ export async function listDatabaseMapPlaces(
     loadDatabaseMapPlaceRows(env, {
       whereClause,
       sort,
+      limit: MAP_QUERY_ROW_LIMIT + 1,
     }),
   ]);
   const count = Number(countRows[0]?.count ?? 0);
-  const mapped = sortPlacePreviewRecords(toPlacePreviewRecords(rows), sort);
+  const mapped = sortPlacePreviewRecords(
+    toPlacePreviewRecords(rows.slice(0, MAP_QUERY_ROW_LIMIT)),
+    sort,
+  );
   const resultBounds =
     mapped.length > 0 ? getBoundsFromPlaces(mapped) : bounds ?? null;
   const markerMode = getMapMarkerMode(count, zoom, normalizedQuery);

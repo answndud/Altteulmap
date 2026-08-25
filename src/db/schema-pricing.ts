@@ -118,6 +118,10 @@ export const priceReports = pgTable(
       table.amount,
     ),
     index("price_reports_created_at_idx").on(table.createdAt),
+    index("price_reports_status_created_at_idx").on(
+      table.reportStatus,
+      table.createdAt,
+    ),
     uniqueIndex("price_reports_submission_key_unique").on(table.submissionKey),
     uniqueIndex("price_reports_source_external_unique").on(
       table.sourceProvider,
