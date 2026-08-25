@@ -54,6 +54,7 @@
     "map:measure": "node scripts/measure-map-api.mjs",
     "perf:client": "node scripts/run-local-e2e.mjs performance",
     "search:analyze": "node scripts/analyze-global-search-query.mjs",
+    "search:benchmark": "node scripts/measure-search-benchmark.mjs",
     "places:duplicates": "node scripts/analyze-place-duplicates.mjs",
     "migration:contract": "node scripts/compare-vite-contract.mjs",
     "readme:screenshots": "node scripts/capture-readme-screenshots.mjs",
