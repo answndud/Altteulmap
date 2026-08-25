@@ -5,12 +5,15 @@ import { and, eq, inArray } from "drizzle-orm";
 
 import {
   adminActions,
+  bookmarks,
   places,
   priceItems,
   priceReports,
   users,
 } from "../../src/db/schema";
 import { moderateWorkerPriceReport } from "../../src/worker/admin/admin-price-review-repository";
+import { createDatabasePlacePriceReport } from "../../src/worker/places-write-price-reports-repository";
+import { setDatabaseBookmark } from "../../src/worker/bookmarks-repository";
 import {
   closeWorkerDatabaseConnection,
   getWorkerDb,
@@ -169,5 +172,78 @@ test("동시에 같은 가격 report를 승인하면 하나의 상태 전이만 
     assert.ok(["accepted", "rejected"].includes(report.status));
     assert.equal(actions.length, 1);
     assert.ok(items.length <= 1);
+  });
+});
+
+test("같은 공개 가격 제보 재전송은 submission key 하나만 저장한다", async () => {
+  const actor = {
+    user: null,
+    visitorId: crypto.randomUUID(),
+    visitorCookieValue: null,
+    key: crypto.randomUUID(),
+  };
+  const input = {
+    label: "재전송 메뉴",
+    amount: 8100,
+    unitLabel: "1인분",
+    comment: "동일 요청 재전송",
+  };
+
+  const results = await Promise.all(
+    Array.from({ length: 5 }, () =>
+      withWorkerDatabaseConnection(workerEnv, () =>
+        createDatabasePlacePriceReport(workerEnv, fixturePrefix, input, actor),
+      ),
+    ),
+  );
+
+  assert.ok(results.every((result) => result.ok));
+
+  await withDatabase(async () => {
+    const db = getWorkerDb(workerEnv);
+    const reports = await db
+      .select({ id: priceReports.id })
+      .from(priceReports)
+      .where(eq(priceReports.placeId, fixturePlaceId));
+
+    assert.equal(reports.length, 3);
+  });
+});
+
+test("동시 bookmark 설정은 unique 제약으로 한 행만 유지한다", async () => {
+  await Promise.all(
+    Array.from({ length: 5 }, () =>
+      withWorkerDatabaseConnection(workerEnv, () =>
+        setDatabaseBookmark(workerEnv, fixtureAdminId, fixturePrefix, true),
+      ),
+    ),
+  );
+
+  await withDatabase(async () => {
+    const db = getWorkerDb(workerEnv);
+    const saved = await db
+      .select({ userId: bookmarks.userId })
+      .from(bookmarks)
+      .where(eq(bookmarks.userId, fixtureAdminId));
+
+    assert.equal(saved.length, 1);
+  });
+
+  await Promise.all(
+    Array.from({ length: 5 }, () =>
+      withWorkerDatabaseConnection(workerEnv, () =>
+        setDatabaseBookmark(workerEnv, fixtureAdminId, fixturePrefix, false),
+      ),
+    ),
+  );
+
+  await withDatabase(async () => {
+    const db = getWorkerDb(workerEnv);
+    const saved = await db
+      .select({ userId: bookmarks.userId })
+      .from(bookmarks)
+      .where(eq(bookmarks.userId, fixtureAdminId));
+
+    assert.equal(saved.length, 0);
   });
 });
