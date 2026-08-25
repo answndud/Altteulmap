@@ -20,9 +20,13 @@ function assertSeedTarget() {
   const url = new URL(rawUrl);
   const isLocal = ["localhost", "127.0.0.1", "::1"].includes(url.hostname);
 
-  if (!isLocal && process.env.ALLOW_NONLOCAL_SEED !== "1") {
+  if (
+    !isLocal &&
+    (process.env.ALLOW_NONLOCAL_SEED !== "1" ||
+      process.env.PRODUCTION_SEED_CONFIRM !== "I_UNDERSTAND_DESTRUCTIVE_SEED")
+  ) {
     throw new Error(
-      "Refusing to run destructive seed against a non-local database. Use db:seed:production only after its empty-database preflight.",
+      "Refusing to run destructive seed against a non-local database. Use db:seed:production only after its empty-database preflight and explicit confirmation.",
     );
   }
 }

@@ -11,6 +11,13 @@
 - production DB는 애플리케이션 계정과 분리된 백업 권한으로 백업한다.
 - 백업 파일과 복구 자격 증명은 저장소·CI 로그·개발자 노트북에 저장하지 않는다.
 
+## P0 seed 사고 확인 기록
+
+- 2026-08-25 read-only 확인에서 원격 PostgreSQL 연결, migration history, 핵심 제약조건이 정상이고 데이터가 존재했다: places 1,002개, price_items 2,491개, price_reports 4,982개, users 2명.
+- 현재 행 수는 seed 형식의 데이터가 존재한다는 사실만 증명하며, 과거 seed 실행 전후의 삭제·재삽입 여부는 백업/PITR 시점 없이는 소급 확정할 수 없다. 따라서 원본 DB에 임의 복구·재seed를 실행하지 않는다.
+- 직접 read-only 검증 명령은 `npm run db:check:production`이며, 출력에 비밀번호·연결 문자열을 기록하지 않는다.
+- production seed는 빈 테이블 preflight뿐 아니라 `PRODUCTION_SEED_CONFIRM=I_UNDERSTAND_DESTRUCTIVE_SEED` 명시 확인이 모두 있어야 실행된다. 일반 `npm run db:seed`는 비로컬 DB에서 계속 차단된다.
+
 ## 배포 전 확인
 
 1. `npm run db:check:production`으로 연결 대상, migration history, invalid data를 읽기 전용 확인한다.

@@ -13,6 +13,12 @@
 3. DB 장애면 mock 전환으로 숨기지 않고 503 상태를 유지하며 연결 고갈·공급자 상태를 확인한다.
 4. 영향이 계속되면 Cloudflare에서 이전 호환 Worker 버전으로 code rollback을 검토한다. 이미 적용된 migration은 되돌리지 않는다.
 
+### Seed 오실행 대응
+
+1. `npm run db:seed`와 `npm run db:seed:production`을 중지하고, `npm run db:check:production`으로 read-only 스냅샷과 migration history를 보존한다.
+2. 백업/PITR 시점과 감사 로그 없이는 원본 DB에 재seed하거나 덮어쓰지 않는다.
+3. 별도 복구 DB에서 데이터 차이·사용자·가격 이력·관리자 감사 기록을 검증한 뒤 승인된 복구 계획만 실행한다.
+
 ## 외부 제공자 장애
 
 - OAuth/Turnstile/Naver 호출은 제한 시간 초과를 사용자 일반 오류로 끝내고 자동 재시도하지 않는다.

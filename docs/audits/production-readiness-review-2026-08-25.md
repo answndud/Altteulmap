@@ -79,6 +79,10 @@
   - Turnstile 사이트 키·비밀 키 필수화
 - `/Users/alex/project/altteulmap/src/worker/routes/health.ts`
   - 공개 health 응답에서 DB 오류 상세 제거
+- `/Users/alex/project/altteulmap/src/db/seed.ts`, `/Users/alex/project/altteulmap/scripts/seed-production.mjs`
+  - 비로컬 destructive seed 이중 확인과 빈 DB preflight 강제
+- `/Users/alex/project/altteulmap/scripts/check-production-db.mjs`
+  - read-only 애플리케이션 테이블별 행 수 출력
 
 ## 검증 결과
 

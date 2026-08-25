@@ -6,13 +6,7 @@
 
 ## Active
 
-### P0 - 원격 seed 실행 영향 확인
-
-1. P0.1 - 원격 DB 변경 영향과 복구 가능성 확인
-   - 파일: `scripts/seed-production.mjs`, `src/db/seed.ts`, `docs/ops/backup-restore.md`, `docs/ops/incident-response.md`
-   - 변경: 원격 seed 실행 범위를 read-only query·운영 로그·백업 시점으로 확인하고, backup/PITR 복구 가능성을 검토한다. production URL seed 실행을 local-only guard로 차단하고 영향·복구·재발 방지 내용을 기록한다.
-   - 검증: 원격 read-only count/invariant query, backup restore rehearsal, `npm run db:check:production`, `git diff --check`
-   - 완료: 영향 범위와 복구 결정이 근거와 함께 기록되고 production URL seed 명령이 사전 차단된다.
+No active work
 
 ## Backlog
 
