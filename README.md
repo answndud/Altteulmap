@@ -98,12 +98,14 @@ npm run smoke:remote
 ## Run Locally
 
 ```bash
-npm run db:up
-npm run db:push
-npm run db:seed
+npm run db:local:setup
 npm run dev
 ```
 
+- `db:local:setup`은 Docker PostgreSQL을 기동하고 readiness 확인, Drizzle migration, local seed를 순서대로 실행합니다.
+- 앱 기본 DB는 `postgresql://postgres:postgres@127.0.0.1:5432/altteulmap`입니다. PostgreSQL 없이 UI만 확인하려면 `USE_MOCK_DATA=true npm run dev`를 사용합니다.
+- 실제 DB E2E는 `npm run test:e2e:all`, DB 독립적인 접근성·모바일 E2E는 `npm run test:e2e:mock`으로 실행합니다. 두 모드를 섞어 실행하지 않습니다.
+- 데이터베이스를 중지하려면 `npm run db:local:down`을 사용합니다. volume까지 삭제하는 초기화는 `CONFIRM_RESET=1 npm run db:local:reset`이 필요합니다.
 - App: `http://localhost:5173`
 - Admin: `http://localhost:5173/admin`
 - README screenshots: `npm run readme:screenshots`

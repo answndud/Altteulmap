@@ -10,6 +10,25 @@ import { mockReports } from "../features/reports/mock-data";
 
 process.env.USE_MOCK_DATA = "false";
 
+function assertSeedTarget() {
+  const rawUrl = process.env.DATABASE_URL;
+
+  if (!rawUrl) {
+    throw new Error("DATABASE_URL is required to run the seed.");
+  }
+
+  const url = new URL(rawUrl);
+  const isLocal = ["localhost", "127.0.0.1", "::1"].includes(url.hostname);
+
+  if (!isLocal && process.env.ALLOW_NONLOCAL_SEED !== "1") {
+    throw new Error(
+      "Refusing to run destructive seed against a non-local database. Use db:seed:production only after its empty-database preflight.",
+    );
+  }
+}
+
+assertSeedTarget();
+
 function toDate(value: string) {
   return new Date(`${value}T12:00:00+09:00`);
 }

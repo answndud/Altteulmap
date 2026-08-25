@@ -125,6 +125,7 @@ async function main() {
     env: {
       ...process.env,
       USE_MOCK_DATA: "false",
+      ALLOW_NONLOCAL_SEED: "1",
     },
     stdio: "inherit",
   });

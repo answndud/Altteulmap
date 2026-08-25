@@ -60,6 +60,18 @@ npm run smoke:vite:local
 git diff --check
 ```
 
+로컬에서 실제 DB 기준 검증을 수행할 때는 Docker PostgreSQL을 먼저 준비한다.
+
+```bash
+npm run db:local:setup
+npm run test:e2e:all
+npm run db:local:down
+```
+
+`test:e2e:all`은 기본적으로 Docker PostgreSQL을 사용한다. DB 독립적인 화면만 확인할 때만 `USE_MOCK_DATA=true`를 명시한다. `db:push`는 로컬 임시 작업에 한정하고, migration이 포함된 변경은 `npm run db:migrate`로 검증한다.
+
+접근성·모바일·외부 지도 SDK fallback만 확인할 때는 `npm run test:e2e:mock`을 사용한다. 이 모드는 DB 전용 API·관리자 검증을 포함하지 않는다.
+
 `npm run build`는 아래 산출물을 만든다.
 
 ```text
