@@ -35,6 +35,7 @@ import {
   getWorkerPublicWriteActor,
 } from "../../src/worker/public-write-actor";
 import { getWorkerPlaceReactionRateLimitActor } from "../../src/worker/routes/public-write-support";
+import { getAdminQueuePagination } from "../../src/worker/routes/admin-support";
 import { getPriceReportSubmissionKey } from "../../src/worker/price-report-identity";
 import { readRequestBodyWithinLimit } from "../../src/worker/http/request-body";
 import { parseModerationSuggestion } from "../../src/worker/admin/moderation-suggestion-validation";
@@ -87,6 +88,20 @@ test("place reaction rate limits are isolated per place", () => {
   assert.notEqual(firstPlaceActor.key, secondPlaceActor.key);
   assert.equal(firstPlaceActor.key.endsWith(":place:place-a"), true);
   assert.equal(secondPlaceActor.key.endsWith(":place:place-b"), true);
+});
+
+test("admin queue pagination clamps invalid and expensive page values", () => {
+  const pagination = getAdminQueuePagination(
+    new Request("https://altteulmap.example/api/admin/places?page=999999&limit=100000"),
+  );
+
+  assert.deepEqual(pagination, { page: 1000, limit: 100000 });
+  assert.deepEqual(
+    getAdminQueuePagination(
+      new Request("https://altteulmap.example/api/admin/places?page=-2"),
+    ),
+    { page: 1, limit: 50 },
+  );
 });
 
 test("client auth navigation keeps only safe callback URLs", () => {

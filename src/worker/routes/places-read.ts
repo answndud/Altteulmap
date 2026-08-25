@@ -34,6 +34,8 @@ type PlacesReadRouteDependencies = {
   noStoreHeaders: Record<string, string>;
 };
 
+const MAX_MAP_QUERY_LENGTH = 120;
+
 function parseFiniteNumber(value: string | null) {
   if (!value) {
     return null;
@@ -190,6 +192,19 @@ export function registerPlacesReadRoutes(
     const searchParams = new URL(c.req.url).searchParams;
     const category = searchParams.get("category");
     const query = searchParams.get("query")?.trim() || null;
+
+    if (query && query.length > MAX_MAP_QUERY_LENGTH) {
+      return c.json(
+        {
+          error: {
+            code: "QUERY_TOO_LONG",
+            message: "검색어는 120자 이하로 입력해 주세요.",
+          },
+        },
+        400,
+        dependencies.noStoreHeaders,
+      );
+    }
     const searchScope: PlaceSearchScope =
       query && searchParams.get("scope") === "global" ? "global" : "viewport";
     const bounds = parseMapBounds(searchParams);
