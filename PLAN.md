@@ -6,26 +6,6 @@
 
 ## Active
 
-### P1 - 운영 복구와 외부 연동 증거 확보
-
-1. P1.1 - staging 인증·권한·외부 연동 smoke를 완성한다.
-   - 파일: `scripts/qa-production-admin-flows.ts`, `scripts/smoke-remote.mjs`, `scripts/lib/url-checks.mjs`, `docs/09-운영-가이드/배포-절차.md`
-   - 변경: staging 전용 환경변수 검증, OAuth/OIDC authorization-code·PKCE 성공/실패·state 불일치·callback 재시도, Turnstile 실패, 관리자 role 강등과 비관리자 접근 차단을 실제 HTTP 흐름으로 기록한다. 비밀값·토큰·개인정보는 출력하지 않고 requestId와 판정 결과만 artifact로 남긴다.
-   - 검증: `npm run typecheck && npm run build && npm run smoke:remote && npm run qa:production:admin`
-   - 완료: staging에서 익명·일반 사용자·관리자별 API 권한 matrix와 OAuth 실패 계약이 자동 실행되고, 성공 artifact와 미실행 조건이 구분된다.
-
-2. P1.2 - 백업·복구와 배포 중단 절차를 실제로 리허설한다.
-   - 파일: `scripts/migrate-production.mjs`, `scripts/check-production-db.mjs`, `docs/09-운영-가이드/백업-복구.md`, `docs/09-운영-가이드/롤백.md`, `docs/audits/production-readiness-review-2026-08-25.md`
-   - 변경: 백업 생성 시점·암호화·보존·복구 검증 쿼리, migration 전후 snapshot, 실패 migration rollback/forward-fix, 앱과 DB 버전 불일치 시 중단 조건을 명령 단위로 고정한다. RPO/RTO 측정값과 실제 복구 데이터 무결성 확인 항목을 기록한다.
-   - 검증: `npm run db:check:production`, 별도 복구 DB에서 `npm run db:migrate`, seed 금지 preflight, 샘플 read/write checksum 비교
-   - 완료: 운영 공급자 권한으로 복구 리허설 1회 이상 성공하고 복구 시간·데이터 손실 범위·rollback 판정이 문서 artifact에 남는다. 권한이 없으면 blocker로 기록한다.
-
-3. P1.3 - 장애 알림과 request telemetry를 운영자가 사용할 수 있게 연결한다.
-   - 파일: `src/worker/routes/telemetry.ts`, `src/worker/http/errors.ts`, `src/worker/index.ts`, `docs/09-운영-가이드/장애-대응.md`, `.github/workflows/ci.yml`
-   - 변경: 5xx 급증·p95 지연·DB 오류·rate-limit 급증·OAuth 실패를 requestId 기준으로 집계하는 구조와 알림 threshold, deduplication, severity, owner, runbook 링크를 정의한다. 사용자 응답에는 안정적인 error code만, 로그에는 원인과 correlation 정보만 남긴다.
-   - 검증: 오류 주입 integration test, `npm run verify`, staging synthetic event 생성 후 알림 수신 확인
-   - 완료: API 응답→로그→대시보드→알림→runbook 추적이 가능하고 민감정보가 관측 데이터에 포함되지 않는다.
-
 ### P2 - 성장·동시성·데이터 정합성 증명
 
 4. P2.1 - 검색·관리자 조회의 규모별 성능 예산을 고정한다.

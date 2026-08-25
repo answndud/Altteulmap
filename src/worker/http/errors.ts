@@ -47,6 +47,21 @@ export function logWorkerRequest(
   );
 }
 
+export function logWorkerOperationalEvent(
+  event: string,
+  fields: Record<string, string | number | boolean | null | undefined>,
+) {
+  console.error(
+    JSON.stringify({
+      level: "error",
+      event,
+      ...Object.fromEntries(
+        Object.entries(fields).filter(([, value]) => value !== undefined),
+      ),
+    }),
+  );
+}
+
 export function createWorkerErrorResponse({
   status,
   code,

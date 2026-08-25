@@ -6,6 +6,7 @@ import {
   applyWorkerWriteHeaders,
   getWorkerPublicWriteActor,
 } from "@/worker/public-write-actor";
+import { logWorkerOperationalEvent } from "@/worker/http/errors";
 import { recordWorkerVisitActivity } from "@/worker/telemetry-repository";
 
 type AssetFetcher = {
@@ -132,7 +133,12 @@ export function registerTelemetryRoutes(
         actor,
       );
     } catch (error) {
-      console.error("Failed to record worker visit activity.", error);
+      logWorkerOperationalEvent("worker_telemetry_write_failed", {
+        requestId: c.get("requestId"),
+        method: c.req.method,
+        path: new URL(c.req.url).pathname,
+        errorName: error instanceof Error ? error.name : typeof error,
+      });
 
       return applyWorkerWriteHeaders(
         c.json(
