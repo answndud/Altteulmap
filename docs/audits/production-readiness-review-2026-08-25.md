@@ -97,6 +97,7 @@
 - 지도 API 측정 결과에 p99·응답 bytes·timeout 예산을 포함하도록 고정했다.
 - 실제 배포 버전 `02c4126a-9b98-40fa-a1d7-e885e123f94a`에서 deep health와 원격 smoke를 통과했다.
 - 원격 smoke는 공개 홈·지도·상세·OAuth redirect·관리자 미인증 401·공개 쓰기 검증 400을 확인했고, 관리자 credentials smoke는 계정 미제공으로 실행하지 않았다.
+- P5 `pg_trgm` migration을 production에 seed 없이 적용했고, 최신 Worker `5ac57223-4273-43a0-9558-3ae006ee551e`에서 위 smoke를 재실행해 통과했다.
 
 ## 배포 전 잔여 조건
 

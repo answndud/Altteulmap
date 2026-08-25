@@ -112,3 +112,19 @@ P3에서는 지도 SDK 무한 대기·실패 Promise 재사용을 `8초 timeout`
 ### 최종 판정
 
 **READY WITH RISKS** — 코드·CI·배포·기본 원격 동작은 승인 가능하지만, 실제 관리자 인증, PITR 복구와 운영 알림을 완료하기 전에는 무조건적인 production 승인으로 올리지 않는다.
+
+## P4~P6 및 재배포 후 최종 점수
+
+P4~P6에서 request telemetry와 API error contract를 공통화하고, 검색어·관리자 page·PostgreSQL query 작업량을 제한했다. `pg_trgm` migration을 원격에 seed 없이 적용했으며, Worker version `5ac57223-4273-43a0-9558-3ae006ee551e`에서 deep health와 공개 원격 smoke를 재통과했다.
+
+| 영역 | 점수 | 최종 근거 |
+| --- | ---: | --- |
+| 아키텍처 | 8/10 | 단일 Worker·PostgreSQL 경계를 유지하면서 공통 오류 응답·request telemetry·검색 인덱스 migration을 추가했다. mock/production 분기와 가격 summary 결합은 남아 있다. |
+| 코드 품질 | 9/10 | TypeScript·Zod·fail-closed 처리, bounded input/page, 공통 error helper와 migration replay가 lint/typecheck/integration을 통과했다. 일부 route 중복은 남아 있다. |
+| 보안 | 9/10 | 인증과 권한을 분리하고 관리자 role을 DB에서 재확인하며, API no-store·요청 상한·seed 이중 확인·OAuth redirect를 검증했다. 실제 OAuth callback은 미검증이다. |
+| 성능 | 8/10 | 지도 2,000행·관리자 100행·검색어 120자·page 1,000 상한과 trigram index를 적용했다. 1만/10만 dataset p95/p99 실측은 남아 있다. |
+| 신뢰성 | 9/10 | DB transaction/CAS·동시성 통합 테스트·503/413/429 contract·request telemetry·migration guard·원격 health를 확보했다. PITR 복구는 외부 리허설이 필요하다. |
+| 테스트 가능성 | 9/10 | unit 26개, PostgreSQL integration 6개, 동시성 smoke, E2E, 원격 smoke, CI PostgreSQL gate를 유지한다. 관리자 credentials smoke만 계정 미제공으로 건너뛰었다. |
+| 유지보수성 | 8/10 | phase별 migration·운영 런북·공통 오류 계약을 정리했다. 기능별 mock/DB 분기와 일부 중복 route는 장기 과제다. |
+| UX | 8/10 | 모바일·접근성·입력 보존·장애 fallback을 검증했고 오류 응답 의미를 안정화했다. 실제 iOS·스크린리더 조합은 남아 있다. |
+| 프로덕션 준비도 | 8/10 | migration·배포·deep health·공개 smoke는 통과했다. 실제 관리자 인증, PITR 복구, Cloudflare 알림 규칙이 완료되기 전에는 `READY WITH RISKS`다. |
