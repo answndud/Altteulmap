@@ -44,19 +44,19 @@
 - 현실적 실패: 로컬·CI에서는 통과하지만 운영 secret 이름 오류, provider 응답 차이 또는 원격 DB 연결 정책으로 로그인·쓰기·관리자 기능이 첫 배포에서 실패한다.
 - 권고: 배포 전 staging에서 실제 provider sandbox callback, `GET /api/health?deep=1`, 읽기 전용 관리자 smoke, 공개 쓰기·실패 응답을 실행한다.
 
-### PR-002 — 백업·복구 절차가 저장소에 자동화되어 있지 않음
+### PR-002 — 실제 백업 복구 리허설은 운영 권한이 필요함
 
-- 증거: 저장소에는 production 백업 생성·복구·복구 리허설 명령이 없고 `scripts/migrate-production.mjs`는 마이그레이션 전제조건만 검사한다.
+- 증거: 저장소에는 공급자 백업을 직접 생성·복구할 권한이 없으며, `scripts/migrate-production.mjs`는 마이그레이션 전제조건을 검사하고 복구 절차는 런북으로 고정한다.
 - 영향 경로: PostgreSQL 데이터, 가격 이력, 댓글·신고·관리자 감사 기록.
 - 현실적 실패: 잘못된 운영자 mutation이나 migration 후 데이터 손상이 발생해도 검증된 복구 지점과 복구 시간 목표를 확인할 수 없다.
-- 권고: Supabase PITR/백업 보존 기간을 설정하고, 별도 staging 복구 리허설과 RPO/RTO를 배포 승인 항목으로 기록한다.
+- 권고: Supabase PITR/백업 보존 기간을 확인하고, 별도 staging 복구 리허설과 RPO/RTO를 배포 승인 항목으로 기록한다.
 
-### PR-003 — 운영 오류 알림·SLO 연동 증거 부족
+### PR-003 — 운영 오류 알림·SLO 연동은 외부 설정이 필요함
 
-- 증거: 애플리케이션은 `requestId`와 구조화된 `console.error`를 남기지만 저장소에 Sentry 설정, 알림 규칙, 오류율·지연시간 대시보드가 없다.
+- 증거: 애플리케이션은 `requestId`와 구조화된 `console.error`를 남기고 런북에 임계치·담당자를 기록하지만, Cloudflare 로그 수집기와 실제 알림 규칙은 저장소 밖 설정이다.
 - 영향 경로: 전역 예외, DB 503, 외부 provider timeout, 요청 제한 저장소 장애.
 - 현실적 실패: 사용자는 503을 받고 운영자는 로그를 수동 검색하기 전까지 장애를 인지하지 못해 복구가 지연된다.
-- 권고: Cloudflare 로그 또는 오류 수집기에 `requestId`, route, status, latency를 연결하고 5xx·DB unavailable·timeout 알림을 설정한다.
+- 권고: Cloudflare 로그 또는 오류 수집기에 `requestId`, route, status, latency를 연결하고 런북 임계치에 맞는 5xx·DB unavailable·timeout 알림을 설정한다.
 
 ## LOW
 
@@ -89,6 +89,8 @@
 - `npm ci --dry-run` 통과
 - 배포 검사 유효 설정 통과, production HTTP URL 차단 확인
 - `git diff --check` 통과
+- CI에 PostgreSQL 통합 게이트, migration·seed·동시성 순서, 실패 시 Playwright artifact 업로드를 추가했다.
+- 지도 API 측정 결과에 p99·응답 bytes·timeout 예산을 포함하도록 고정했다.
 
 ## 배포 전 잔여 조건
 

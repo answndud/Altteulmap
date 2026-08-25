@@ -97,11 +97,13 @@ async function measureScenario({ name, path }) {
     mapMarkerCount: lastPayload?.mapMarkerCount ?? null,
     markerMode: lastPayload?.markerMode ?? null,
     cache: lastPayload?.cacheStatus ?? null,
+    payloadBytes: lastPayload ? Buffer.byteLength(JSON.stringify(lastPayload)) : null,
     minMs: Math.round(Math.min(...durations)),
     avgMs: Math.round(
       durations.reduce((sum, value) => sum + value, 0) / durations.length,
     ),
     p95Ms: Math.round(percentile(durations, 0.95)),
+    p99Ms: Math.round(percentile(durations, 0.99)),
     maxMs: Math.round(Math.max(...durations)),
   };
 }
@@ -121,9 +123,12 @@ async function main() {
         iterations,
         warmups,
         target: {
-          p95MsAt1k: 300,
-          p95MsAt10k: 500,
-          p95MsAt100k: 800,
+        p95MsAt1k: 300,
+        p95MsAt10k: 500,
+        p95MsAt100k: 800,
+        p99MsAt1k: 500,
+        p99MsAt10k: 800,
+        p99MsAt100k: 1_200,
         },
         results,
       },

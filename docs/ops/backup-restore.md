@@ -26,6 +26,13 @@
 4. `SMOKE_PUBLIC_URL`과 관리자 계정으로 `SMOKE_REQUIRE_ADMIN=true npm run smoke:remote`를 실행한다.
 5. 복구 시간, 누락 데이터, smoke 결과, 로그의 `requestId`를 기록한다.
 
+## 배포 중단·롤백
+
+- Worker 배포가 중단되면 이전 호환 버전으로 코드만 rollback하고, 이미 적용된 migration은 역방향으로 되돌리지 않는다.
+- migration 실패 시 트래픽을 유지하지 말고 `npm run db:check:production`으로 history와 핵심 불변조건을 재확인한다.
+- 데이터 변경이 필요하면 forward-fix migration을 별도로 만들고, destructive SQL은 백업 복구 승인 없이 실행하지 않는다.
+- 복구 후 `GET /api/health?deep=1`, `SMOKE_REQUIRE_ADMIN=true npm run smoke:remote`, 핵심 읽기·관리자 권한 검증을 순서대로 통과시킨다.
+
 ## 사고 시 데이터 변경
 
 - 실수로 인한 삭제·오염은 즉시 쓰기 경로를 차단하고 마지막 정상 시점과 영향 범위를 보존한다.
