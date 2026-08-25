@@ -6,13 +6,7 @@
 
 ## Active
 
-### P3 - 유지보수성과 사용자 품질의 마지막 결함 제거
-
-9. P3.3 - 중복 추상화·의존성·문서 계약을 정리하고 최종 평가를 갱신한다.
-   - 파일: `package.json`, `package-lock.json`, `knip.json`, `src/worker/*`, `src/client/*`, `docs/audits/production-readiness-review-2026-08-25.md`, `README.md`
-   - 변경: import·runtime convention·routing/config/build-time 사용을 확인한 뒤 dead code, 중복 API helper, single-use wrapper, unused dependency만 제거한다. dependency는 사용 근거·runtime/dev 분류·transitive risk를 기록하고 불필요한 패키지만 삭제한다. 모든 감사·운영 문서를 한국어로 일치시킨다.
-   - 검증: `npm run verify`, `npm run verify:quality`, `npm audit --omit=dev --audit-level=moderate`, `npm run build`, `npm run test:e2e:all:ci`, `git diff --check`
-   - 완료: lint/typecheck/unit/integration/e2e/build/dependency/hygiene가 통과하고 최종 문서가 각 10점의 수치 근거·외부 증거·잔여 위험을 정확히 반영한다.
+No active work
 
 ## Backlog
 

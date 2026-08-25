@@ -128,3 +128,26 @@ P4~P6에서 request telemetry와 API error contract를 공통화하고, 검색�
 | 유지보수성 | 8/10 | phase별 migration·운영 런북·공통 오류 계약을 정리했다. 기능별 mock/DB 분기와 일부 중복 route는 장기 과제다. |
 | UX | 8/10 | 모바일·접근성·입력 보존·장애 fallback을 검증했고 오류 응답 의미를 안정화했다. 실제 iOS·스크린리더 조합은 남아 있다. |
 | 프로덕션 준비도 | 8/10 | migration·배포·deep health·공개 smoke는 통과했다. 실제 관리자 인증, PITR 복구, Cloudflare 알림 규칙이 완료되기 전에는 `READY WITH RISKS`다. |
+
+## P1~P3 추가 작업 후 재평가
+
+P1에서는 staging credentials smoke에 CSRF·일반 사용자 관리자 API 403·OAuth invalid state callback을 추가했고, source/restore 분리와 명시적 확인이 필요한 backup/restore rehearsal, JSONL telemetry alert parser를 구현했다. P2에서는 실제 Docker PostgreSQL 기준 검색 benchmark, mutation 중복·동시성 회귀, schema/index/timeout contract gate를 추가했다. P3에서는 authorization ownership matrix, 장소 등록 503 입력 보존, 접근성 상태 semantics, dead code·dependency 감사 증거를 추가했다.
+
+| 영역 | 점수 | 근거 |
+| --- | ---: | --- |
+| 아키텍처 | 9/10 | 기존 단일 Worker·PostgreSQL 경계를 유지하면서 운영 smoke·복구·benchmark·contract 검사 경계를 명시했다. 가격 summary와 mock/production 중복은 여전히 확장 비용이 있다. |
+| 코드 품질 | 9/10 | lint/typecheck, Knip 0건, 공통 오류·timeout·bounded query, 명시적인 복구 실패 조건을 유지한다. 일부 route별 DB 오류 분기는 남아 있다. |
+| 보안 | 9/10 | authentication과 authorization을 별도 테스트하고 role 강등·bookmark ownership·CSRF·OAuth state를 검증한다. 실제 provider 성공 callback은 외부 sandbox 증거가 필요하다. |
+| 성능 | 9/10 | 검색 benchmark가 p50/p95/p99·rows read·payload·plan metric을 기록하고 DB timeout·결과 상한·CI contract를 연결한다. 10만/100만 staging 실측은 남아 있다. |
+| 신뢰성 | 9/10 | 동시 mutation·중복 요청·migration replay·backup restore guard·telemetry alert parser를 확보했다. 실제 PITR과 다중 Worker 장애 주입은 운영 권한이 필요하다. |
+| 테스트 가능성 | 10/10 | unit·integration·concurrency·authorization·E2E·mobile·axe·benchmark·migration contract가 행동별로 분리되어 CI에서 실행된다. 외부 provider/운영 복구는 환경 증거로 별도 관리한다. |
+| 유지보수성 | 9/10 | dead code 0건과 dependency 사용 근거를 기록하고 운영 문서·검증 명령·계획을 현재 상태와 일치시켰다. mock/DB adapter 통합은 향후 ROI를 재평가한다. |
+| UX | 9/10 | 네트워크/503 입력 보존, 접근 가능한 오류 알림, 지도 fallback, 모바일·키보드·axe 경로를 검증한다. 실제 iOS Safari·스크린리더 기기 검증은 남아 있다. |
+| 프로덕션 준비도 | 9/10 | 코드·CI·로컬 DB contract·검색 증거·권한 matrix가 강화됐다. staging OAuth 성공, 실제 backup/PITR, Cloudflare 알림 수신 증거 전에는 `READY WITH RISKS`다. |
+
+### 이번 주 우선순위 갱신
+
+1. 운영 계정으로 OAuth sandbox 성공 callback과 일반 사용자 권한 smoke를 실행하고 artifact를 보관한다.
+2. 승인된 staging clone에서 backup/restore rehearsal을 실행해 RPO/RTO와 `evidence.json`을 확정한다.
+3. Cloudflare Logpush/Sentry에 `requestId`, status, latency, DB/OAuth failure event를 연결하고 alert delivery를 확인한다.
+4. 10만/100만 staging dataset에서 검색 p95/p99와 rows read를 측정한다.

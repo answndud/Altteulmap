@@ -51,3 +51,10 @@
 - `npm run test:unit`
 - `npx playwright test tests/e2e/comments.spec.ts`
 - `git diff --check`
+
+## P2·P3 추가 보호 대상
+
+- authorization 통합 테스트는 인증 없음 401, 일반 사용자 관리자 API 403, DB role 강등 후 세션 거부, 사용자별 bookmark 격리를 실제 PostgreSQL과 Worker route에서 확인한다.
+- 가격 제보 재전송과 bookmark 동시 설정은 unique constraint와 submission key가 중복 행을 만들지 않는지 확인한다.
+- 장소 등록 503은 입력 보존과 접근 가능한 `alert` 상태 메시지를 확인하고, 모바일 지도·axe 검사는 기존 핵심 여정을 유지한다.
+- 검색 benchmark와 DB contract check는 성능·schema·timeout 조건이 CI에서 재현되는지 확인한다.
