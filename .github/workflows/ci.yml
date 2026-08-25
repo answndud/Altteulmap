@@ -156,5 +156,8 @@ jobs:
 
       - name: Run remote smoke
         run: |
-          export SMOKE_PUBLIC_URL="${SMOKE_PUBLIC_URL:-https://altteulmap.altteul-lab.workers.dev}"
+          test -n "$SMOKE_PUBLIC_URL" || { echo "SMOKE_PUBLIC_URL secret is required"; exit 1; }
+          test -n "$SMOKE_ADMIN_EMAIL" || { echo "SMOKE_ADMIN_EMAIL secret is required"; exit 1; }
+          test -n "$SMOKE_ADMIN_PASSWORD" || { echo "SMOKE_ADMIN_PASSWORD secret is required"; exit 1; }
+          export SMOKE_REQUIRE_ADMIN="true"
           npm run smoke:remote

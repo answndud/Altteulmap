@@ -2,31 +2,11 @@
 
 ## Goal
 
-Principal Engineer 평가의 6.7/10을 10점 수준으로 끌어올린다. 운영 인증·복구·관측 증거, 가격 데이터 생명주기 정합성, 성장 시 성능, 실제 브라우저·접근성 검증이 모두 자동화되고 배포 승인 기준에 기록된 상태를 완료 조건으로 한다.
+Principal Engineer 평가의 6.7/10을 10점 수준으로 끌어올린다. 가격 데이터 생명주기 정합성, 성장 시 성능, 실제 브라우저·접근성 검증이 자동화되고 배포 승인 기준에 기록된 상태를 완료 조건으로 한다.
 
 ## Active
 
-### P1 - 배포 안전성과 운영 복구 증명
-
-1. P1.1 - 현재 인증 수정과 최종 리뷰를 릴리스 커밋으로 고정
-   - 파일: `src/worker/auth/session.ts`, `tests/unit/http-and-rate-limit.test.ts`, `docs/audits/principal-engineer-final-review-2026-08-25.md`
-   - 변경: 평문 레거시 세션 거부와 관리자 세션 위조 회귀 테스트를 유지하고, 최종 리뷰의 현재 점수·잔여 위험을 코드 상태와 일치시킨다.
-   - 검증: `npm run verify && npm run verify:quality && npm run build && git diff --check`
-   - 완료: 서명되지 않은 관리자 세션은 거부되고 인증 회귀 테스트 25개가 통과하며 작업 트리가 커밋 가능한 상태다.
-
-2. P1.2 - staging 운영 계약과 배포 승인 게이트 추가
-   - 파일: `scripts/smoke-remote.mjs`, `scripts/qa-production-admin-flows.ts`, `.github/workflows/ci.yml`, `docs/audits/production-readiness-review-2026-08-25.md`
-   - 변경: 실제 staging URL에서 OAuth callback, `GET /api/health?deep=1`, 관리자 읽기, 공개 쓰기·429·503을 실행하고 secret/binding 누락·HTTP URL을 배포 전에 실패시킨다.
-   - 검증: `npm run deploy:check`, `npm run smoke:remote`, `npm run qa:production:admin`, CI의 `npm run test:e2e:all`
-   - 완료: 실제 자격 증명을 저장하지 않고 GitHub secret으로 staging smoke가 재현되며 실패 시 배포가 중단된다.
-
-3. P1.3 - 백업·복구와 장애 알림 실행 절차 확정
-   - 파일: `docs/ops/backup-restore.md`, `docs/ops/incident-response.md`, `scripts/check-production-db.mjs`, `docs/audits/production-readiness-review-2026-08-25.md`
-   - 변경: PostgreSQL PITR/백업 보존, staging 복구 리허설, RPO/RTO, migration 중단·롤백 절차와 5xx·DB unavailable·외부 timeout 알림 조건을 문서·검사 명령으로 고정한다.
-   - 검증: `npm run db:check:production`, staging 복구 리허설 명령, `git diff --check`
-   - 완료: 운영자가 복구 지점·복구 시간·알림 수신 여부를 한 번의 런북으로 증명하고 readiness가 READY로 승격될 조건이 명시된다.
-
-### P2 - 데이터 생명주기와 성장 경계 고정
+### P1 - 데이터 생명주기와 성장 경계 고정
 
 4. P2.1 - 가격 제보·항목·장소 요약 불변조건을 통합 테스트로 고정
    - 파일: `src/worker/admin/admin-price-review-repository.ts`, `src/worker/admin-places-repository.ts`, `tests/integration/price-lifecycle.test.ts`, `drizzle/`
@@ -40,7 +20,7 @@ Principal Engineer 평가의 6.7/10을 10점 수준으로 끌어올린다. 운�
    - 검증: `npm run search:analyze`, `npm run map:measure`, `npm run places:duplicates`, `npm run test:e2e:performance`, 1만/10만 synthetic dataset p95·rows-read 측정
    - 완료: global/wide bbox 요청이 고정된 rows·메모리·시간 상한 안에서 종료되고 관리자 목록이 전체 row를 읽지 않는다.
 
-### P3 - 사용자 표면과 장기 유지보수 완성
+### P2 - 사용자 표면과 장기 유지보수 완성
 
 6. P3.1 - 실제 브라우저·접근성·외부 SDK 장애 매트릭스 CI화
    - 파일: `tests/e2e/accessibility.spec.ts`, `tests/e2e/map.mobile.spec.ts`, `tests/e2e/map.spec.ts`, `.github/workflows/ci.yml`

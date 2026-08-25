@@ -230,8 +230,15 @@ function expectDeepHealth(payload) {
 async function runOptionalCredentialsSmoke() {
   const adminEmail = process.env.SMOKE_ADMIN_EMAIL;
   const adminPassword = process.env.SMOKE_ADMIN_PASSWORD;
+  const requireCredentials = process.env.SMOKE_REQUIRE_ADMIN === "true";
 
   if (!adminEmail || !adminPassword) {
+    if (requireCredentials) {
+      throw new Error(
+        "SMOKE_ADMIN_EMAIL and SMOKE_ADMIN_PASSWORD are required when SMOKE_REQUIRE_ADMIN=true",
+      );
+    }
+
     logStep("credentials/admin smoke", "skipped; set SMOKE_ADMIN_EMAIL and SMOKE_ADMIN_PASSWORD");
     return;
   }
@@ -356,6 +363,25 @@ async function runOptionalCredentialsSmoke() {
   logStep("credentials/admin smoke", "ok");
 }
 
+async function runPublicWriteContractSmoke(placeId) {
+  const response = await request(`/api/places/${encodeURIComponent(placeId)}/comments`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ body: "staging smoke validation" }),
+  });
+  const payload = await response.json().catch(() => null);
+
+  if (response.status !== 400 || payload?.ok !== false) {
+    throw new Error(
+      `public write validation returned ${response.status}; expected a safe 400 response`,
+    );
+  }
+
+  logStep("public write contract", "validation failure returned safe 400");
+}
+
 async function main() {
   const normalizedBaseUrl = assertHttpsUrl(baseUrl, "SMOKE_PUBLIC_URL/NEXTAUTH_URL");
 
@@ -403,6 +429,8 @@ async function main() {
   }
 
   logStep("map api", `${mapApiPayload.items.length} items`);
+
+  await runPublicWriteContractSmoke(samplePlaceId);
 
   await expectTextOk(`/place/${samplePlaceId}`, (body) => body.includes("알뜰맵"), "place page");
   logStep("place page", samplePlaceId);
