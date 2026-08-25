@@ -44,6 +44,11 @@ const commandsByMode = {
     "npm run build",
     "playwright test tests/e2e/performance.spec.ts --project chromium",
   ],
+  mock: [
+    "npm run e2e:prepare",
+    "npm run build",
+    "playwright test tests/e2e/accessibility.spec.ts tests/e2e/map.mobile.spec.ts tests/e2e/map-price-filter.mobile.spec.ts --project mobile-chromium",
+  ],
 };
 
 const commands = commandsByMode[mode];
@@ -61,6 +66,10 @@ loadEnvFilesWithShellPrecedence({
 const env = {
   ...process.env,
 };
+
+if (mode === "mock") {
+  env.USE_MOCK_DATA = "true";
+}
 
 env.AUTH_SECRET ??= "altteulmap-local-auth-secret-change-me";
 env.NEXTAUTH_URL = "http://127.0.0.1:3107";
@@ -105,8 +114,11 @@ function writeGeneratedDevVars() {
   );
 }
 
-if (mode !== "ui" && env.USE_MOCK_DATA !== "true" && env.DATABASE_URL) {
-  commandsToRun.splice(1, 0, "npm run db:push", "npm run db:seed");
+if (mode !== "ui" && env.USE_MOCK_DATA !== "true") {
+  commandsToRun.splice(1, 0, "npm run db:local:setup");
+  console.log("[e2e] source: Docker PostgreSQL");
+} else {
+  console.log("[e2e] source: mock data");
 }
 
 for (const command of commandsToRun) {
