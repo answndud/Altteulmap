@@ -46,3 +46,37 @@ export function logWorkerRequest(
     }),
   );
 }
+
+export function createWorkerErrorResponse({
+  status,
+  code,
+  message,
+  requestId,
+  headers,
+}: {
+  status: number;
+  code: string;
+  message: string;
+  requestId?: string;
+  headers: Record<string, string>;
+}) {
+  return new Response(
+    JSON.stringify({
+      ok: false,
+      message,
+      error: {
+        code,
+        message,
+      },
+      ...(requestId ? { requestId } : {}),
+    }),
+    {
+      status,
+      headers: {
+        ...headers,
+        "content-type": "application/json; charset=utf-8",
+        ...(requestId ? { "X-Request-Id": requestId } : {}),
+      },
+    },
+  );
+}
