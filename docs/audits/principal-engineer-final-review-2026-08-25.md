@@ -154,4 +154,22 @@ P1에서는 staging credentials smoke에 CSRF·일반 사용자 관리자 API 40
 
 ## 최신 실행 결과
 
-모바일 범위 제거 후 데스크톱 Chromium 전체 E2E 25건과 성능 시나리오 1건이 통과했다. 10만 synthetic PostgreSQL benchmark도 예산 내였으나 100만 fixture는 Docker 내부 저장소 부족으로 중단되어, 대규모 성능과 프로덕션 준비도 점수는 해당 증거 확보 전까지 상향하지 않는다.
+모바일 범위 제거 후 데스크톱 Chromium 전체 E2E 25건과 성능 시나리오 1건이 통과했다. 10만 synthetic PostgreSQL benchmark도 예산 내였으며, 제품 성능 승인 범위를 10만건으로 확정한다.
+
+## 최종 재평가
+
+| 영역 | 점수 | 근거 |
+| --- | ---: | --- |
+| 아키텍처 | 9/10 | 단일 Worker·PostgreSQL 경계가 명확하고 인증·권한·데이터 변경 경계가 분리되어 있다. 가격 summary와 mock/DB 이중 경계는 남아 있다. |
+| 코드 품질 | 9/10 | TypeScript·Zod·fail-closed 오류 처리, bounded query, Knip 0건과 lint/typecheck 통과를 확인했다. 일부 route별 오류 분기는 중복된다. |
+| 보안 | 9/10 | 서명 세션·CSRF·OAuth state·관리자 role 재확인·소유권 격리·본문 상한을 테스트했다. 실제 OAuth 성공 callback은 외부 증거가 필요하다. |
+| 성능 | 9/10 | 10만 synthetic DB에서 global search p95/p99 111/143ms, rows-read 6,004, payload 353,502 bytes로 예산을 통과했다. 10만 초과 규모는 제품 승인 범위 밖이다. |
+| 신뢰성 | 9/10 | transaction·CAS·멱등성·timeout·503·requestId와 동시성 통합 검증이 있다. 실제 PITR·외부 알림은 미검증이다. |
+| 테스트 가능성 | 10/10 | unit·integration·concurrency·authorization·desktop E2E·axe·benchmark·migration contract를 행동별로 분리했고 전체 핵심 검증이 통과했다. |
+| 유지보수성 | 9/10 | dead code 0건, dependency audit 0건, 운영 문서와 실행 계획을 동기화했다. 외부 운영 증거는 저장소 밖에서 관리해야 한다. |
+| UX | 9/10 | 데스크톱 핵심 여정, 오류 입력 보존, 접근 가능한 상태 알림, 지도 SDK fallback을 검증했다. 실제 screen reader 조합은 별도 확인이 필요하다. |
+| 프로덕션 준비도 | 9/10 | 배포·DB contract·동시성·데스크톱 E2E·10만 성능은 통과했다. staging OAuth 성공, PITR 복구, Cloudflare 알림 수신 전에는 `READY WITH RISKS`다. |
+
+### 최종 판정
+
+**READY WITH RISKS** — 제품 승인 성능 범위는 10만건까지 충족한다. 실제 운영 OAuth, backup/PITR, 알림 delivery 증거가 없어 완전한 `READY`로 올리지는 않는다.

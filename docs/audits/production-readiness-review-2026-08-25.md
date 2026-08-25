@@ -116,4 +116,4 @@ P1~P3 코드·CI·로컬 PostgreSQL 증거는 추가되었지만, 실제 운영 
 
 2026-08-25 최신 실행에서 Docker PostgreSQL 기반 데스크톱 Chromium E2E 25건과 성능 시나리오 1건이 모두 통과했다. 성능 측정값은 초기 목록 238ms, 지도 갱신 170ms, 클러스터 상세 209ms, 관리자 가격 큐 210ms로 각 예산 이내였다. 모바일 전용 테스트와 모바일 기기 검증은 제품 범위에서 제외했다.
 
-10만 synthetic PostgreSQL benchmark는 지도 p95/p99 4/5ms, global search p95/p99 111/143ms, 최대 rows-read 6,004건, 최대 payload 353,502 bytes로 통과했다. 100만 fixture 적재는 Docker 내부 저장소 부족으로 중단했으며 production 승인 증거로 사용하지 않는다.
+10만 synthetic PostgreSQL benchmark는 지도 p95/p99 4/5ms, global search p95/p99 111/143ms, 최대 rows-read 6,004건, 최대 payload 353,502 bytes로 통과했다. 제품 성능 승인 범위는 10만건으로 한정한다.
