@@ -6,26 +6,6 @@
 
 ## Active
 
-### P2 - 성장·동시성·데이터 정합성 증명
-
-4. P2.1 - 검색·관리자 조회의 규모별 성능 예산을 고정한다.
-   - 파일: `scripts/measure-map-api.mjs`, `scripts/analyze-global-search-query.mjs`, `scripts/measure-search-benchmark.mjs`, `src/worker/places-read-map-repository.ts`, `src/worker/admin-repository.ts`, `docs/09-운영-가이드/성능-예산.md`
-   - 변경: 1만/10만/100만 장소 fixture를 재현하고 bbox·검색어·카테고리·관리자 큐의 p50/p95/p99, rows read, response size, DB time, timeout 비율을 측정한다. FTS/trigram 선택 근거와 query timeout·pagination·result cap을 수치로 고정한다.
-   - 검증: `npm run search:analyze`, `npm run map:measure`, benchmark의 `--dataset-size 10000 --dataset-size 100000`, `EXPLAIN (ANALYZE, BUFFERS)` 비교
-   - 완료: 핵심 조회가 p95/p99 예산을 만족하고 초과 시 429/400/503 중 올바른 bounded response와 operator signal을 낸다.
-
-5. P2.2 - 모든 mutation의 중복·동시 실행·재시작 안전성을 회귀 테스트로 고정한다.
-   - 파일: `src/worker/places-write-submissions-repository.ts`, `src/worker/places-write-price-reports-repository.ts`, `src/worker/bookmarks-repository.ts`, `src/worker/admin/admin-price-review-repository.ts`, `tests/integration/*`, `scripts/smoke-price-report-concurrency.ts`
-   - 변경: 같은 요청 재전송, 동일 unique key 경쟁, 가격 검증 count 경쟁, bookmark toggle 경쟁, admin merge/review 동시 실행, deadlock·serialization failure·process restart 중 commit 경계를 검증한다. 재시도 가능한 작업과 안전하지 않은 작업을 분리하고 idempotency key 또는 unique constraint 기반으로만 중복을 제거한다.
-   - 검증: `npm run test:integration`, `npm run smoke:price-concurrency`, PostgreSQL isolation/deadlock regression test, 실패 주입 후 row-count·audit invariant 확인
-   - 완료: 성공 응답은 실제 commit 이후에만 반환되고, 중복 요청은 데이터 1회 반영, 경쟁 요청은 명확한 결과와 rollback을 보장한다.
-
-6. P2.3 - migration·제약·자원 한도를 CI gate로 강화한다.
-   - 파일: `.github/workflows/ci.yml`, `drizzle/*.sql`, `scripts/check-production-db.mjs`, `docker-compose.yml`, `docs/09-운영-가이드/배포-절차.md`
-   - 변경: 빈 DB·기존 데이터 migration, forward-only/rollback 판정, foreign key·unique·check constraint, connection pool·statement timeout·body limit·worker duration을 CI에서 검증한다. migration 중 앱 배포 중단에도 안전한 expand/contract 순서를 강제한다.
-   - 검증: `npm run db:local:setup`, `npm run test:integration`, `npm run build`, CI workflow 및 migration contract 비교
-   - 완료: 깨진 schema·무제한 query·oversized body·connection exhaustion이 merge 전에 실패하고 호환 가능한 이전/이후 앱 버전이 문서화된다.
-
 ### P3 - 유지보수성과 사용자 품질의 마지막 결함 제거
 
 7. P3.1 - 인증·권한·소유권 matrix와 고가치 API 계약을 단일 테스트로 유지한다.
