@@ -25,3 +25,24 @@ export function logWorkerError(error: unknown, request: Request, requestId: stri
     }),
   );
 }
+
+export function logWorkerRequest(
+  request: Request,
+  requestId: string,
+  status: number,
+  durationMs: number,
+) {
+  const url = new URL(request.url);
+
+  console.log(
+    JSON.stringify({
+      level: status >= 500 ? "error" : status >= 400 ? "warn" : "info",
+      event: "worker_request_complete",
+      requestId,
+      method: request.method,
+      path: url.pathname,
+      status,
+      durationMs: Math.round(durationMs),
+    }),
+  );
+}

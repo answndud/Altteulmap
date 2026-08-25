@@ -36,3 +36,4 @@
 - Cloudflare 로그 또는 연결된 오류 수집기에서 5분 이동 창의 `5xx >= 5%`, DB unavailable 3회 연속, read timeout 3회 연속을 운영 알림으로 설정한다.
 - 알림에는 route, status, latency, `requestId`만 포함하고 요청 본문·쿠키·토큰·연결 문자열은 포함하지 않는다.
 - 1차 담당자는 배포를 중지하고 health·migration 상태를 확인하며, 데이터 영향이 의심되면 백업 복구 담당자 승인 전까지 쓰기 경로를 차단한다.
+- `worker_request_complete` 로그의 `status >= 500`, `durationMs`, `path`, `requestId`를 기준으로 오류율·지연 알림을 집계한다. 로그 원문을 사용자 입력과 결합하거나 검색 인덱스에 PII를 저장하지 않는다.

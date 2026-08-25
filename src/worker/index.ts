@@ -8,6 +8,7 @@ import {
 import {
   createRequestId,
   logWorkerError,
+  logWorkerRequest,
 } from "@/worker/http/errors";
 import {
   applySecurityHeaders,
@@ -69,10 +70,17 @@ const noStoreHeaders = {
 const MAX_MUTATION_BODY_BYTES = 256 * 1024;
 app.use("*", async (c, next) => {
   const requestId = createRequestId(c.req.raw);
+  const startedAt = performance.now();
   c.set("requestId", requestId);
 
   await next();
   c.header("X-Request-Id", requestId);
+  logWorkerRequest(
+    c.req.raw,
+    requestId,
+    c.res.status,
+    performance.now() - startedAt,
+  );
 });
 
 app.use("*", async (c, next) => {

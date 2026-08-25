@@ -217,8 +217,17 @@ jobs:
 
       - name: Run remote smoke
         run: |
+          set -o pipefail
           test -n "$SMOKE_PUBLIC_URL" || { echo "SMOKE_PUBLIC_URL secret is required"; exit 1; }
           test -n "$SMOKE_ADMIN_EMAIL" || { echo "SMOKE_ADMIN_EMAIL secret is required"; exit 1; }
           test -n "$SMOKE_ADMIN_PASSWORD" || { echo "SMOKE_ADMIN_PASSWORD secret is required"; exit 1; }
           export SMOKE_REQUIRE_ADMIN="true"
-          npm run smoke:remote
+          npm run smoke:remote 2>&1 | tee remote-smoke.log
+
+      - name: Upload remote smoke evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: remote-smoke-evidence
+          path: remote-smoke.log
+          if-no-files-found: ignore
