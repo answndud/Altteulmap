@@ -101,6 +101,7 @@ export const DEFAULT_MAP_CENTER: MapPoint = {
 };
 
 const NAVER_MAP_SCRIPT_ID = "altteulmap-naver-map-sdk";
+const NAVER_MAP_SDK_TIMEOUT_MS = 8_000;
 let naverMapSdkPromise: Promise<NaverMapsSdk> | null = null;
 
 export function getNaverMapKeyId() {
@@ -128,6 +129,26 @@ export function loadNaverMapSdk(keyId: string) {
 
   naverMapSdkPromise = new Promise<NaverMapsSdk>((resolve, reject) => {
     const callbackName = "__altteulmapNaverMapReady__";
+    let settled = false;
+    const timeoutId = window.setTimeout(() => {
+      cleanup();
+      document.getElementById(NAVER_MAP_SCRIPT_ID)?.remove();
+      naverMapSdkPromise = null;
+      reject(new Error("NAVER Maps SDK timed out while loading."));
+    }, NAVER_MAP_SDK_TIMEOUT_MS);
+
+    const settleError = (error: Error) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      window.clearTimeout(timeoutId);
+      cleanup();
+      document.getElementById(NAVER_MAP_SCRIPT_ID)?.remove();
+      naverMapSdkPromise = null;
+      reject(error);
+    };
 
     const cleanup = () => {
       delete sdkWindow[callbackName];
@@ -136,18 +157,18 @@ export function loadNaverMapSdk(keyId: string) {
 
     sdkWindow[callbackName] = () => {
       if (sdkWindow.naver?.maps) {
+        settled = true;
+        window.clearTimeout(timeoutId);
         cleanup();
         resolve(sdkWindow.naver);
         return;
       }
 
-      cleanup();
-      reject(new Error("NAVER Maps SDK loaded without a maps namespace."));
+      settleError(new Error("NAVER Maps SDK loaded without a maps namespace."));
     };
 
     sdkWindow.navermap_authFailure = () => {
-      cleanup();
-      reject(new Error("NAVER Maps authentication failed."));
+      settleError(new Error("NAVER Maps authentication failed."));
     };
 
     const existingScript = document.getElementById(
@@ -157,10 +178,7 @@ export function loadNaverMapSdk(keyId: string) {
     if (existingScript) {
       existingScript.addEventListener(
         "error",
-        () => {
-          cleanup();
-          reject(new Error("Failed to load the NAVER Maps SDK script."));
-        },
+        () => settleError(new Error("Failed to load the NAVER Maps SDK script.")),
         { once: true },
       );
 
@@ -172,10 +190,8 @@ export function loadNaverMapSdk(keyId: string) {
     script.async = true;
     script.defer = true;
     script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${encodeURIComponent(keyId)}&submodules=geocoder&callback=${callbackName}`;
-    script.onerror = () => {
-      cleanup();
-      reject(new Error("Failed to load the NAVER Maps SDK script."));
-    };
+    script.onerror = () =>
+      settleError(new Error("Failed to load the NAVER Maps SDK script."));
 
     document.head.appendChild(script);
   });

@@ -87,6 +87,22 @@ test("홈 첫 지도 요청은 서울 bootstrap bounds와 zoom을 사용한다",
   await mapResponsePromise;
 });
 
+test("지도 SDK가 실패하면 사용자는 미리보기로 계속 장소를 확인할 수 있다", async ({ page }) => {
+  await page.route("**/api/config/public", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ naverMapKeyId: "e2e-map-key" }),
+    }),
+  );
+  await page.route("https://oapi.map.naver.com/**", (route) => route.abort());
+
+  await page.goto("http://test.localhost:3107/");
+
+  await expect(page.getByTestId("map-panel-shell")).toBeVisible();
+  await expect(page.getByText("지도를 불러오지 못해 임시 미리보기로 표시합니다.")).toBeVisible();
+});
+
 test("지도 map API는 좁아진 클러스터 bounds에서 marker mode를 다시 계산한다", async ({ page }) => {
   const search = new URLSearchParams({
     minLat: String(SEOUL_BOOTSTRAP_BOUNDS.minLat),

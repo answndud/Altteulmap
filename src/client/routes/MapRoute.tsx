@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { useMapDesktopLayout } from "@/client/features/map/use-map-desktop-layout";
@@ -15,8 +15,13 @@ import { MapDesktopResultsRail } from "@/client/features/map/MapDesktopResultsRa
 import { MapMobileSurfaces } from "@/client/features/map/MapMobileSurfaces";
 import { MapSearchControls } from "@/client/features/map/MapSearchControls";
 import { TrendingPlacesSection } from "@/client/features/map/TrendingPlacesSection";
-import { NaverMapPanel } from "@/features/map/naver-map-panel";
 import { createCurrentLoginHref } from "@/lib/auth-navigation";
+
+const NaverMapPanel = lazy(() =>
+  import("@/features/map/naver-map-panel").then((module) => ({
+    default: module.NaverMapPanel,
+  })),
+);
 
 export function MapRoute() {
   const [searchParams] = useSearchParams();
@@ -105,7 +110,20 @@ export function MapRoute() {
         />
 
         <section ref={mapSectionRef} className="relative min-h-0">
-          <NaverMapPanel {...mapPanelProps} />
+          <Suspense
+            fallback={
+              <section
+                className="altteulmap-panel relative isolate overflow-hidden"
+                data-testid="map-panel-shell"
+              >
+                <div className="altteulmap-map-viewport flex items-center justify-center bg-[var(--altteul-bg-subtle)] text-sm text-[var(--altteul-text-tertiary)]">
+                  지도를 준비하는 중입니다.
+                </div>
+              </section>
+            }
+          >
+            <NaverMapPanel {...mapPanelProps} />
+          </Suspense>
 
           <MapDesktopResultsRail
             bookmarkedPlaceIds={bookmarkedPlaceIds}

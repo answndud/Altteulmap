@@ -70,3 +70,25 @@
 - `npm run verify:quality` 통과
 - `npm run build` 통과(Node `20.20.2`)
 - `git diff --check` 통과
+
+## P3 완료 후 재평가
+
+P3에서는 지도 SDK 무한 대기·실패 Promise 재사용을 `8초 timeout`과 실패 후 정리로 제한했고, 지도 패널을 별도 청크로 지연 로딩했다. 초기 client chunk는 `500.31KB`에서 `471.65KB`로 줄고 지도 패널은 `29.30KB` 청크로 분리됐다. SDK 차단 fallback, Chromium 접근성 3개 경로, 모바일 지도 2개 경로를 통과했다.
+
+| 영역 | 점수 | 근거 |
+| --- | ---: | --- |
+| 아키텍처 | 7/10 | 단일 Worker·React·PostgreSQL 경계는 유지하면서 지도 SDK를 지연 로딩하고 DB 조회 상한·관리자 페이지 경계를 추가했다. 가격 생명주기와 mock/production 이중 경계는 여전히 크다. |
+| 코드 품질 | 8/10 | TypeScript·Zod·fail-closed 처리와 명시적 SDK 실패 정리가 있다. 관리자 route의 DB 오류 분기 중복은 남아 있다. |
+| 보안 | 8/10 | 서명 세션, CSRF, OAuth state, 관리자 DB role 재확인과 입력 상한이 검증됐다. 실제 OAuth provider sandbox 검증은 남아 있다. |
+| 성능 | 8/10 | 지도 DB 행 읽기를 `2,000`으로 제한하고 관리자 큐를 최대 `100`개 페이지로 제한했으며 client chunk를 분리했다. global 검색의 text ILIKE와 실제 대규모 p95 측정은 남아 있다. |
+| 신뢰성 | 8/10 | DB timeout·트랜잭션·CAS에 더해 외부 지도 SDK timeout·fallback·재로드 가능성을 보장한다. 백업 복구 리허설과 운영 알림은 문서 단계다. |
+| 테스트 가능성 | 8/10 | 단위 25개, 접근성, SDK 장애 fallback, Chromium·모바일 핵심 여정을 자동화했다. 실제 DB 동시성·OAuth·다중 Worker 부하는 환경 의존적이다. |
+| 유지보수성 | 7/10 | 지도 로딩 경계를 분리하고 현재 계획을 종료 상태로 정리했다. 지도 훅 분해와 mock/DB 분기 중복은 장기 비용으로 남는다. |
+| UX | 8/10 | SDK 실패 시 장소 preview를 유지하고 모바일 목록·상세 이동 및 접근성 검사를 통과했다. 실제 iOS·스크린 리더 조합은 별도 확인이 필요하다. |
+| 프로덕션 준비도 | 7/10 | 인증·조회 상한·운영 런북·브라우저 장애 검증이 개선됐다. 원격 OAuth/DB smoke, 백업 복구 증명, 모니터링 연동 없이는 완전 승인할 수 없다. |
+
+### 남은 고위험 검증
+
+- 로컬 PostgreSQL 부재로 `npm run test:e2e:all`의 DB 초기화가 실행되지 않았고, 목업 모드의 접근성·SDK fallback·모바일 경로만 통과했다.
+- `migration:contract`는 `localhost:3118` 서버 부재로 실행되지 않았다.
+- 실제 OAuth/PKCE provider, PostgreSQL 백업 복구, 1만/10만 synthetic dataset의 p95·rows-read는 운영 자격 증명과 환경에서 수행해야 한다.
