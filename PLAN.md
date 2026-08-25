@@ -4,21 +4,7 @@
 
 Principal Engineer 평가의 6.7/10을 10점 수준으로 끌어올린다. 실제 브라우저·접근성 검증과 성능 예산이 자동화되고 배포 승인 기준에 기록된 상태를 완료 조건으로 한다.
 
-## Active
-
-### P2 - 사용자 표면과 장기 유지보수 완성
-
-6. P3.1 - 실제 브라우저·접근성·외부 SDK 장애 매트릭스 CI화
-   - 파일: `tests/e2e/accessibility.spec.ts`, `tests/e2e/map.mobile.spec.ts`, `tests/e2e/map.spec.ts`, `.github/workflows/ci.yml`
-   - 변경: iOS/Chromium 핵심 흐름, 위치 권한 거부, 지도 SDK timeout/fallback, 키보드·screen reader 이름·포커스·오류 상태를 deterministic fixture로 검증한다.
-   - 검증: `npm run test:e2e:all`, `npx playwright test tests/e2e/accessibility.spec.ts tests/e2e/map.mobile.spec.ts --project mobile-chromium`
-   - 완료: 모바일 핵심 여정과 장애 대체 흐름이 CI에서 임의 sleep·통제되지 않은 외부 네트워크 없이 재현된다.
-
-7. P3.2 - 관측 가능한 성능 예산과 모듈 경계 정리
-   - 파일: `src/client/features/map/`, `tests/e2e/performance.spec.ts`, `scripts/measure-map-api.mjs`, `docs/audits/principal-engineer-final-review-2026-08-25.md`
-   - 변경: 지도 초기 로딩·검색 p95, client chunk, DB rows/read·connection 예산을 측정하고 예산을 넘는 지도 훅·청크만 통합 또는 동적 로딩한다.
-   - 검증: `npm run perf:client`, `npm run map:measure`, `npm run build`, `npm run test:e2e:performance`
-   - 완료: 성능 예산이 수치로 기록되고 지도 구조 변경은 측정 전후 지표와 함께 승인된다.
+No active work
 
 ## Backlog
 
