@@ -8,12 +8,6 @@
 
 ### P3 - 유지보수성과 사용자 품질의 마지막 결함 제거
 
-8. P3.2 - 브라우저 장애와 접근성·모바일 핵심 여정을 검증한다.
-   - 파일: `tests/e2e/accessibility.spec.ts`, `tests/e2e/map.mobile.spec.ts`, `tests/e2e/comments.spec.ts`, `src/client/routes/MapRoute.tsx`, `src/client/routes/SubmitRoute.tsx`, `src/client/components/*`
-   - 변경: 모바일 Safari 대체 검증, 네트워크 단절·429·401/403·422·500·stale response에서 오류 안내·입력 보존·중복 제출 방지·재시도 UX를 검증한다. 키보드 focus, screen reader label, 44px target, 지도 대체 목록과 overflow를 점검한다.
-   - 검증: `npm run test:e2e:full:ci`, `npm run test:e2e:performance:ci`, Playwright network interception, axe artifact
-   - 완료: 핵심 여정이 실패해도 입력과 현재 상태를 잃지 않고 모바일·키보드·스크린리더에서 완료 가능하다.
-
 9. P3.3 - 중복 추상화·의존성·문서 계약을 정리하고 최종 평가를 갱신한다.
    - 파일: `package.json`, `package-lock.json`, `knip.json`, `src/worker/*`, `src/client/*`, `docs/audits/production-readiness-review-2026-08-25.md`, `README.md`
    - 변경: import·runtime convention·routing/config/build-time 사용을 확인한 뒤 dead code, 중복 API helper, single-use wrapper, unused dependency만 제거한다. dependency는 사용 근거·runtime/dev 분류·transitive risk를 기록하고 불필요한 패키지만 삭제한다. 모든 감사·운영 문서를 한국어로 일치시킨다.

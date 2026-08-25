@@ -39,7 +39,12 @@ export function ResultMessage({
   const toneClassName = isOk ? okClassName : errorClassName;
 
   return (
-    <div data-testid={testId} className={`${className} ${toneClassName}`}>
+    <div
+      data-testid={testId}
+      role={isOk ? "status" : "alert"}
+      aria-live={isOk ? "polite" : "assertive"}
+      className={`${className} ${toneClassName}`}
+    >
       {children}
     </div>
   );
