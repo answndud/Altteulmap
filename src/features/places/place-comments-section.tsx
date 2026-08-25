@@ -37,53 +37,56 @@ export function PlaceCommentsSection({
 
   const handleSubmit = () => {
     startTransition(async () => {
-      const response = await fetch(`/api/places/${encodeURIComponent(placeId)}/comments`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ body, turnstileToken }),
-      });
+      try {
+        const response = await fetch(`/api/places/${encodeURIComponent(placeId)}/comments`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ body, turnstileToken }),
+        });
+        const result = (await response.json().catch(() => null)) as CommentActionResponse | null;
+        setMessage(
+          getRateLimitFeedbackMessage({
+            response,
+            message: result?.message,
+            retryAfterMs: result?.retryAfterMs,
+            defaultMessage: "코멘트 등록에 실패했습니다.",
+          }),
+        );
 
-      const result = (await response.json()) as CommentActionResponse;
-      setTurnstileResetSignal((current) => current + 1);
-      setMessage(
-        getRateLimitFeedbackMessage({
-          response,
-          message: result.message,
-          retryAfterMs: result.retryAfterMs,
-          defaultMessage: "코멘트 등록 요청이 너무 빠릅니다.",
-        }),
-      );
+        if (!response.ok || !result?.ok || !result.item) {
+          return;
+        }
 
-      if (!response.ok || !result.ok || !result.item) {
-        return;
+        setComments((currentComments) => [result.item!, ...currentComments]);
+        setBody("");
+      } catch {
+        setMessage("네트워크 연결을 확인한 뒤 다시 시도해주세요. 입력 내용은 유지됩니다.");
+      } finally {
+        setTurnstileResetSignal((current) => current + 1);
       }
-
-      setComments((currentComments) => [result.item!, ...currentComments]);
-      setBody("");
     });
   };
 
   const handleDelete = (commentId: string) => {
     startTransition(async () => {
-      const response = await fetch(
-        `/api/places/${encodeURIComponent(placeId)}/comments/${encodeURIComponent(commentId)}`,
-        {
-          method: "DELETE",
-        },
-      );
+      try {
+        const response = await fetch(
+          `/api/places/${encodeURIComponent(placeId)}/comments/${encodeURIComponent(commentId)}`,
+          { method: "DELETE" },
+        );
+        const result = (await response.json().catch(() => null)) as CommentActionResponse | null;
+        setMessage(result?.message ?? "코멘트를 삭제하지 못했습니다.");
 
-      const result = (await response.json()) as CommentActionResponse;
-      setMessage(result.message);
+        if (!response.ok || !result?.ok || !result.deletedCommentId) {
+          return;
+        }
 
-      if (!response.ok || !result.ok || !result.deletedCommentId) {
-        return;
+        setComments((currentComments) =>
+          currentComments.filter((comment) => comment.id !== result.deletedCommentId),
+        );
+      } catch {
+        setMessage("네트워크 연결을 확인한 뒤 다시 시도해주세요.");
       }
-
-      setComments((currentComments) =>
-        currentComments.filter((comment) => comment.id !== result.deletedCommentId),
-      );
     });
   };
   const rootClassName = surface === "plain" ? "grid gap-4" : "altteulmap-panel p-5";

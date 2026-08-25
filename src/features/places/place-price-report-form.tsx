@@ -43,45 +43,38 @@ export function PlacePriceReportForm({
   const handleSubmit = () => {
     startTransition(async () => {
       setFeedback(null);
-      const response = await fetch(`/api/places/${encodeURIComponent(placeId)}/prices`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          label,
-          amount,
-          unitLabel,
-          comment,
-          turnstileToken,
-        }),
-      });
+      try {
+        const response = await fetch(`/api/places/${encodeURIComponent(placeId)}/prices`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ label, amount, unitLabel, comment, turnstileToken }),
+        });
+        const result = (await response.json().catch(() => null)) as PriceReportActionResponse | null;
+        const resolvedMessage = getRateLimitFeedbackMessage({
+          response,
+          message: result?.message,
+          retryAfterMs: result?.retryAfterMs,
+          defaultMessage: "가격 정보 등록에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+        });
 
-      const result = (await response.json()) as PriceReportActionResponse;
-      setTurnstileResetSignal((current) => current + 1);
-      const resolvedMessage = getRateLimitFeedbackMessage({
-        response,
-        message: result.message,
-        retryAfterMs: result.retryAfterMs,
-        defaultMessage: "가격 정보 등록이 너무 잦습니다. 잠시 후 다시 시도해 주세요.",
-      });
+        if (!response.ok || !result?.ok) {
+          setFeedback({ tone: "error", text: resolvedMessage });
+          return;
+        }
 
-      if (!response.ok || !result.ok) {
+        setFeedback({ tone: "success", text: resolvedMessage });
+        setLabel("");
+        setAmount("");
+        setUnitLabel("");
+        setComment("");
+      } catch {
         setFeedback({
           tone: "error",
-          text: resolvedMessage,
+          text: "네트워크 연결을 확인한 뒤 다시 시도해주세요. 입력 내용은 유지됩니다.",
         });
-        return;
+      } finally {
+        setTurnstileResetSignal((current) => current + 1);
       }
-
-      setFeedback({
-        tone: "success",
-        text: resolvedMessage,
-      });
-      setLabel("");
-      setAmount("");
-      setUnitLabel("");
-      setComment("");
     });
   };
   const rootClassName =

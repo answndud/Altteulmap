@@ -6,6 +6,7 @@ import {
   encodeSignedPayload,
 } from "@/worker/auth/session";
 import { normalizeCallbackUrl } from "@/worker/http/urls";
+import { fetchWithTimeout } from "@/worker/http/fetch";
 import type { AuthBindings } from "@/worker/routes/auth-support";
 
 const OAUTH_PROVIDERS = ["kakao", "naver"] as const;
@@ -147,13 +148,13 @@ export async function exchangeOAuthToken(
     redirect_uri: config.redirectUri,
   });
 
-  const response = await fetch(config.tokenUrl, {
+  const response = await fetchWithTimeout(config.tokenUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
     },
     body,
-  });
+  }, 8_000);
 
   if (!response.ok) {
     throw new Error(`OAuth token exchange failed for ${provider}.`);
@@ -175,11 +176,11 @@ export async function fetchOAuthProfile(
   origin: string,
 ): Promise<OAuthProfile> {
   const config = getOAuthProviderConfig(env, provider, origin);
-  const response = await fetch(config.userInfoUrl, {
+  const response = await fetchWithTimeout(config.userInfoUrl, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
-  });
+  }, 8_000);
 
   if (!response.ok) {
     throw new Error(`OAuth profile fetch failed for ${provider}.`);

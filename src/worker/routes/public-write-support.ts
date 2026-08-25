@@ -8,6 +8,7 @@ import {
 } from "@/worker/public-write-actor";
 import { consumeWorkerPersistentRateLimit } from "@/worker/rate-limit-repository";
 import { withWorkerDatabaseConnection } from "@/worker/db";
+import { fetchWithTimeout } from "@/worker/http/fetch";
 
 export type AssetFetcher = {
   fetch(request: Request): Promise<Response> | Response;
@@ -126,12 +127,13 @@ export async function verifyTurnstileForPublicWrite(
   }
 
   try {
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       "https://challenges.cloudflare.com/turnstile/v0/siteverify",
       {
         method: "POST",
         body: formData,
       },
+      5_000,
     );
     const result = (await response.json().catch(() => null)) as
       | { success?: boolean; "error-codes"?: string[] }
