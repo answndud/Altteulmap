@@ -37,13 +37,9 @@
 | --- | --- |
 | ![Home](docs/readme/hero-home.png) | ![Detail Sheet](docs/readme/place-detail.png) |
 
-| Mobile | Submission |
+| Submission | Admin |
 | --- | --- |
-| ![Mobile Map Sheet](docs/readme/mobile-map-sheet.png) | ![Submission Form](docs/readme/submit-form.png) |
-
-| Admin |
-| --- |
-| ![Admin Console](docs/readme/admin-console.png) |
+| ![Submission Form](docs/readme/submit-form.png) | ![Admin Console](docs/readme/admin-console.png) |
 
 ## How It Works
 
@@ -70,7 +66,7 @@
 
 - `Live data`: Supabase PostgreSQL 운영 DB에 migration과 초기 seed를 적용했고, public/admin worker가 DB source로 동작합니다.
 - `Moderation boundary`: 관리자 큐는 moderation_suggestions의 구조화된 제안을 Zod로 검증해 표시하지만, 외부 AI 자동 생성·비용·재시도 pipeline은 아직 없습니다.
-- `Operational QA`: iPhone Safari와 Android Chrome 실기기 QA에서 blocker 없이 통과했습니다.
+- `Operational QA`: 데스크톱 Chromium 기준 핵심 운영 흐름을 검증했습니다.
 - `Launch URL`: 현재 운영 URL은 `https://altteulmap.altteul-lab.workers.dev`이며, admin은 같은 Worker의 `/admin` route로 통합했습니다. custom domain은 별도 후속 작업입니다.
 - `Share checklist`: 공개 공유 전 점검 항목은 [public share checklist](docs/project/public-share-checklist.md)에 정리했습니다.
 
@@ -104,7 +100,7 @@ npm run dev
 
 - `db:local:setup`은 Docker PostgreSQL을 기동하고 readiness 확인, Drizzle migration, local seed를 순서대로 실행합니다.
 - 앱 기본 DB는 `postgresql://postgres:postgres@127.0.0.1:5432/altteulmap`입니다. PostgreSQL 없이 UI만 확인하려면 `USE_MOCK_DATA=true npm run dev`를 사용합니다.
-- 실제 DB E2E는 `npm run test:e2e:all`, DB 독립적인 접근성·모바일 E2E는 `npm run test:e2e:mock`으로 실행합니다. 두 모드를 섞어 실행하지 않습니다.
+- 실제 DB E2E는 `npm run test:e2e:all`, DB 독립적인 접근성 E2E는 `npm run test:e2e:mock`으로 실행합니다. 두 모드를 섞어 실행하지 않습니다.
 - 데이터베이스를 중지하려면 `npm run db:local:down`을 사용합니다. volume까지 삭제하는 초기화는 `CONFIRM_RESET=1 npm run db:local:reset`이 필요합니다.
 - App: `http://localhost:5173`
 - Admin: `http://localhost:5173/admin`

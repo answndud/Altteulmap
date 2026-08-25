@@ -60,8 +60,8 @@
 
 ## LOW
 
-- production 빌드에서 500KB를 초과하는 클라이언트 청크 경고가 남아 초기 로딩 비용을 높일 수 있다. 기능·보안 차단 사유는 아니며 실제 모바일 p95 측정 후 코드 분할을 결정한다.
-- 실제 iOS Safari, 저사양 기기, screen reader, Naver SDK 장애 및 위치 권한 거부 검증은 실행하지 않았다.
+- production 빌드에서 500KB를 초과하는 클라이언트 청크 경고가 남아 초기 로딩 비용을 높일 수 있다. 기능·보안 차단 사유는 아니며 데스크톱 Chromium p95와 bundle 분석을 기준으로 코드 분할을 결정한다.
+- 실제 screen reader, Naver SDK 장애 및 위치 권한 거부 검증은 실행하지 않았다.
 - 운영 DB·Hyperdrive 연결 수, 광범위 지도 검색 p95, 프로세스 재시작·배포 중단 후 복구는 부하·운영 환경 검증으로 남아 있다.
 
 ## 확인된 보호 장치
@@ -107,7 +107,7 @@ P1~P3 코드·CI·로컬 PostgreSQL 증거는 추가되었지만, 실제 운영 
 
 - `npm run search:benchmark`를 Docker PostgreSQL 1,000개 데이터에서 실행했고, global search p95 7ms, 지도 p95 2ms, 관리자 큐 p95 1ms를 기록했다.
 - `npm run db:check:contract`가 핵심 table, constraint/index, statement/lock/idle timeout, invalid 데이터 0건을 확인했다.
-- PostgreSQL integration은 12개, Chromium 핵심 E2E는 24개, mobile E2E는 3개를 통과했다.
+- PostgreSQL integration은 12개, Chromium 핵심 E2E는 24개를 통과했다.
 - authorization matrix는 익명 401, 일반 사용자 403, DB role 강등 403, bookmark ownership 격리를 확인했다.
 - `npm run hygiene:dead-code` 0건과 `npm audit --omit=dev --audit-level=moderate` 취약점 0건을 확인했다.
 - 실제 운영 provider 성공 callback·PITR·외부 alert delivery는 자격 증명과 운영 계정이 없어 실행하지 않았다.

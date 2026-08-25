@@ -41,7 +41,7 @@
 | 신뢰성 | 7/10 | 트랜잭션, CAS, timeout, 503, request ID가 있다. 백업 복구, 외부 장애 전환, 운영 알림과 실제 배포 중단 검증은 부족하다. (`src/worker/db.ts:17-35`, `src/worker/index.ts:83-100`) |
 | 테스트 가능성 | 7/10 | 단위 25개, 핵심 E2E, migration·동시성 smoke가 있다. 실제 OAuth, production DB, 다중 Worker, 복구·부하 시나리오는 미검증이다. (`tests/unit`, `tests/e2e`, `.github/workflows/ci.yml`) |
 | 유지보수성 | 6/10 | 기능별 파일 분리는 명확하지만 지도 훅과 public/admin mock·DB 이중 경계가 많아 기능 추가 시 읽어야 할 파일이 많다. (`src/features/map`, `src/worker/routes`) |
-| UX | 7/10 | 모바일 지도, 폼 입력 보존, 오류 메시지, 접근성 E2E가 있다. 실제 iOS·저사양·스크린 리더·외부 SDK 장애 경험은 확인하지 못했다. (`tests/e2e/map.mobile.spec.ts`, `tests/e2e/accessibility.spec.ts`) |
+| UX | 7/10 | 데스크톱 지도, 폼 입력 보존, 오류 메시지, 접근성 E2E가 있다. 실제 스크린 리더·외부 SDK 장애 경험은 확인하지 못했다. (`tests/e2e/accessibility.spec.ts`) |
 | 프로덕션 준비도 | 6/10 | 배포 가드·health·CI는 갖췄고 기본 검증은 통과한다. 실제 secret/provider/DB smoke, 백업 복구, 관측 알림이 없으므로 조건부 승인만 가능하다. (`scripts/check-cloudflare-deploy.mjs`, `scripts/migrate-production.mjs`) |
 
 ## 유지할 것
@@ -56,7 +56,7 @@
 - 실제 OAuth/PKCE와 provider별 프로필·토큰 만료 동작은 원격 검증 전까지 확정할 수 없다.
 - 운영 DB 백업·복구와 migration 중단/롤백은 코드만으로 보장되지 않는다.
 - 데이터가 증가하면 global 지도 검색, 관리자 queue, Hyperdrive/DB 연결 수가 먼저 운영 한계에 도달할 가능성이 높다.
-- 지도 SDK·모바일 브라우저·스크린 리더의 실제 조합은 자동 테스트 결과만으로 승인할 수 없다.
+- 지도 SDK·스크린 리더의 실제 조합은 자동 테스트 결과만으로 승인할 수 없다.
 
 ## 변경 사항
 
@@ -73,7 +73,7 @@
 
 ## P3 완료 후 재평가
 
-P3에서는 지도 SDK 무한 대기·실패 Promise 재사용을 `8초 timeout`과 실패 후 정리로 제한했고, 지도 패널을 별도 청크로 지연 로딩했다. 초기 client chunk는 `500.31KB`에서 `471.65KB`로 줄고 지도 패널은 `29.30KB` 청크로 분리됐다. SDK 차단 fallback, Chromium 접근성 3개 경로, 모바일 지도 2개 경로를 통과했다.
+P3에서는 지도 SDK 무한 대기·실패 Promise 재사용을 `8초 timeout`과 실패 후 정리로 제한했고, 지도 패널을 별도 청크로 지연 로딩했다. 초기 client chunk는 `500.31KB`에서 `471.65KB`로 줄고 지도 패널은 `29.30KB` 청크로 분리됐다. SDK 차단 fallback과 Chromium 접근성 3개 경로를 통과했다.
 
 | 영역 | 점수 | 근거 |
 | --- | ---: | --- |
@@ -82,14 +82,14 @@ P3에서는 지도 SDK 무한 대기·실패 Promise 재사용을 `8초 timeout`
 | 보안 | 8/10 | 서명 세션, CSRF, OAuth state, 관리자 DB role 재확인과 입력 상한이 검증됐다. 실제 OAuth provider sandbox 검증은 남아 있다. |
 | 성능 | 8/10 | 지도 DB 행 읽기를 `2,000`으로 제한하고 관리자 큐를 최대 `100`개 페이지로 제한했으며 client chunk를 분리했다. global 검색의 text ILIKE와 실제 대규모 p95 측정은 남아 있다. |
 | 신뢰성 | 8/10 | DB timeout·트랜잭션·CAS에 더해 외부 지도 SDK timeout·fallback·재로드 가능성을 보장한다. 백업 복구 리허설과 운영 알림은 문서 단계다. |
-| 테스트 가능성 | 8/10 | 단위 25개, 접근성, SDK 장애 fallback, Chromium·모바일 핵심 여정을 자동화했다. 실제 DB 동시성·OAuth·다중 Worker 부하는 환경 의존적이다. |
+| 테스트 가능성 | 8/10 | 단위 25개, 접근성, SDK 장애 fallback, Chromium 핵심 여정을 자동화했다. 실제 DB 동시성·OAuth·다중 Worker 부하는 환경 의존적이다. |
 | 유지보수성 | 7/10 | 지도 로딩 경계를 분리하고 현재 계획을 종료 상태로 정리했다. 지도 훅 분해와 mock/DB 분기 중복은 장기 비용으로 남는다. |
-| UX | 8/10 | SDK 실패 시 장소 preview를 유지하고 모바일 목록·상세 이동 및 접근성 검사를 통과했다. 실제 iOS·스크린 리더 조합은 별도 확인이 필요하다. |
+| UX | 8/10 | SDK 실패 시 장소 preview를 유지하고 데스크톱 목록·상세 이동 및 접근성 검사를 통과했다. 실제 스크린 리더 조합은 별도 확인이 필요하다. |
 | 프로덕션 준비도 | 7/10 | 인증·조회 상한·운영 런북·브라우저 장애 검증이 개선됐다. 원격 OAuth/DB smoke, 백업 복구 증명, 모니터링 연동 없이는 완전 승인할 수 없다. |
 
 ### 남은 고위험 검증
 
-- 로컬 PostgreSQL 부재로 `npm run test:e2e:all`의 DB 초기화가 실행되지 않았고, 목업 모드의 접근성·SDK fallback·모바일 경로만 통과했다.
+- 로컬 PostgreSQL 부재로 `npm run test:e2e:all`의 DB 초기화가 실행되지 않았고, 목업 모드의 접근성·SDK fallback 경로만 통과했다.
 - `migration:contract`는 `localhost:3118` 서버 부재로 실행되지 않았다.
 - 실제 OAuth/PKCE provider, PostgreSQL 백업 복구, 1만/10만 synthetic dataset의 p95·rows-read는 운영 자격 증명과 환경에서 수행해야 한다.
 
@@ -106,7 +106,7 @@ P3에서는 지도 SDK 무한 대기·실패 Promise 재사용을 `8초 timeout`
 | 신뢰성 | 9/10 | PostgreSQL 트랜잭션·CAS·동시성 통합 테스트, API 503/413/429 계약, CI artifact·복구 런북을 갖췄다. 실제 PITR 복구 리허설은 외부 권한이 필요하다. |
 | 테스트 가능성 | 9/10 | unit 25개, PostgreSQL integration, 동시성 smoke, E2E, 원격 smoke와 CI 게이트를 연결했다. 실제 provider·부하·복구 시나리오는 남아 있다. |
 | 유지보수성 | 8/10 | 실행 계획을 종료 상태로 정리하고 운영 명령·실패 계약·복구 절차를 문서화했다. 기능별 mock/production 중복은 장기 부채다. |
-| UX | 8/10 | 모바일·접근성·입력 보존·실패 fallback을 검증했다. 실제 iOS·스크린리더 조합은 별도 확인이 필요하다. |
+| UX | 8/10 | 데스크톱·접근성·입력 보존·실패 fallback을 검증했다. 실제 스크린리더 조합은 별도 확인이 필요하다. |
 | 프로덕션 준비도 | 8/10 | 실제 배포·deep health·공개 원격 smoke까지 통과했다. 관리자 credentials smoke, 백업 복구, 관측 알림 설정이 완료되기 전에는 `READY WITH RISKS`다. |
 
 ### 최종 판정
@@ -126,7 +126,7 @@ P4~P6에서 request telemetry와 API error contract를 공통화하고, 검색�
 | 신뢰성 | 9/10 | DB transaction/CAS·동시성 통합 테스트·503/413/429 contract·request telemetry·migration guard·원격 health를 확보했다. PITR 복구는 외부 리허설이 필요하다. |
 | 테스트 가능성 | 9/10 | unit 26개, PostgreSQL integration 6개, 동시성 smoke, E2E, 원격 smoke, CI PostgreSQL gate를 유지한다. 관리자 credentials smoke만 계정 미제공으로 건너뛰었다. |
 | 유지보수성 | 8/10 | phase별 migration·운영 런북·공통 오류 계약을 정리했다. 기능별 mock/DB 분기와 일부 중복 route는 장기 과제다. |
-| UX | 8/10 | 모바일·접근성·입력 보존·장애 fallback을 검증했고 오류 응답 의미를 안정화했다. 실제 iOS·스크린리더 조합은 남아 있다. |
+| UX | 8/10 | 데스크톱·접근성·입력 보존·장애 fallback을 검증했고 오류 응답 의미를 안정화했다. 실제 스크린리더 조합은 남아 있다. |
 | 프로덕션 준비도 | 8/10 | migration·배포·deep health·공개 smoke는 통과했다. 실제 관리자 인증, PITR 복구, Cloudflare 알림 규칙이 완료되기 전에는 `READY WITH RISKS`다. |
 
 ## P1~P3 추가 작업 후 재평가
@@ -140,9 +140,9 @@ P1에서는 staging credentials smoke에 CSRF·일반 사용자 관리자 API 40
 | 보안 | 9/10 | authentication과 authorization을 별도 테스트하고 role 강등·bookmark ownership·CSRF·OAuth state를 검증한다. 실제 provider 성공 callback은 외부 sandbox 증거가 필요하다. |
 | 성능 | 9/10 | 검색 benchmark가 p50/p95/p99·rows read·payload·plan metric을 기록하고 DB timeout·결과 상한·CI contract를 연결한다. 10만/100만 staging 실측은 남아 있다. |
 | 신뢰성 | 9/10 | 동시 mutation·중복 요청·migration replay·backup restore guard·telemetry alert parser를 확보했다. 실제 PITR과 다중 Worker 장애 주입은 운영 권한이 필요하다. |
-| 테스트 가능성 | 10/10 | unit·integration·concurrency·authorization·E2E·mobile·axe·benchmark·migration contract가 행동별로 분리되어 CI에서 실행된다. 외부 provider/운영 복구는 환경 증거로 별도 관리한다. |
+| 테스트 가능성 | 10/10 | unit·integration·concurrency·authorization·E2E·axe·benchmark·migration contract가 행동별로 분리되어 CI에서 실행된다. 외부 provider/운영 복구는 환경 증거로 별도 관리한다. |
 | 유지보수성 | 9/10 | dead code 0건과 dependency 사용 근거를 기록하고 운영 문서·검증 명령·계획을 현재 상태와 일치시켰다. mock/DB adapter 통합은 향후 ROI를 재평가한다. |
-| UX | 9/10 | 네트워크/503 입력 보존, 접근 가능한 오류 알림, 지도 fallback, 모바일·키보드·axe 경로를 검증한다. 실제 iOS Safari·스크린리더 기기 검증은 남아 있다. |
+| UX | 9/10 | 네트워크/503 입력 보존, 접근 가능한 오류 알림, 지도 fallback, 키보드·axe 경로를 검증한다. 실제 스크린리더 기기 검증은 남아 있다. |
 | 프로덕션 준비도 | 9/10 | 코드·CI·로컬 DB contract·검색 증거·권한 matrix가 강화됐다. staging OAuth 성공, 실제 backup/PITR, Cloudflare 알림 수신 증거 전에는 `READY WITH RISKS`다. |
 
 ### 이번 주 우선순위 갱신

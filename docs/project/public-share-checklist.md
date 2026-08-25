@@ -21,7 +21,6 @@
 | Admin login | pass | `npm run smoke:remote` 통과 |
 | Production DB connection | pass | `npm run db:check:production` 통과 |
 | Moderation schema | pass | `moderation_suggestions`, enum, drizzle migration table 확인 |
-| Mobile real-device QA | pass | iPhone Safari, Android Chrome 사용자 QA 문제 없음 |
 | Anonymous write flow | pass | 장소 등록, 가격 제보, 신고 운영 검증 완료 |
 | Admin moderation flow | pass | 장소/가격/신고 큐와 AI 패널 운영 검증 완료 |
 | OAuth provider redirect | pass | `npm run smoke:remote`에서 Kakao/Naver authorization redirect 확인 |
