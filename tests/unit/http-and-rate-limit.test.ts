@@ -24,6 +24,7 @@ import {
 import {
   decodeSignedPayload,
   encodeSignedPayload,
+  getSessionFromRequest,
   isValidCsrfToken,
 } from "../../src/worker/auth/session";
 import {
@@ -162,6 +163,27 @@ test("signed auth payloads fail closed when AUTH_SECRET is missing", () => {
     decodeSignedPayload("v1.invalid.invalid", {}),
     null,
   );
+});
+
+test("legacy unsigned session cookies cannot authenticate", () => {
+  const unsignedSession = encodeURIComponent(
+    JSON.stringify({
+      user: {
+        id: "00000000-0000-4000-8000-000000000001",
+        email: "attacker@example.com",
+        name: "attacker",
+        role: "admin",
+      },
+      expires: new Date(Date.now() + 60_000).toISOString(),
+    }),
+  );
+  const request = new Request("https://altteulmap.example/", {
+    headers: {
+      cookie: `next-auth.session-token=${unsignedSession}`,
+    },
+  });
+
+  assert.equal(getSessionFromRequest(request, { AUTH_SECRET: "test-secret" }), null);
 });
 
 test("credential login requires the CSRF token issued to the browser", () => {
