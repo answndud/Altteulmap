@@ -67,28 +67,30 @@ export function PlaceSubmitForm() {
     startTransition(async () => {
       setSubmitResult(null);
 
-      const response = await fetch("/api/places", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ...values,
-          turnstileToken,
-        }),
-      });
-
-      const result = (await response.json()) as SubmitResult;
-      setTurnstileResetSignal((current) => current + 1);
-      setSubmitResult({
-        ...result,
-        message: getRateLimitFeedbackMessage({
-          response,
-          message: result.message,
-          retryAfterMs: result.retryAfterMs,
-          defaultMessage: "장소 등록 요청이 너무 빠릅니다.",
-        }),
-      });
+      try {
+        const response = await fetch("/api/places", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...values, turnstileToken }),
+        });
+        const result = (await response.json().catch(() => null)) as SubmitResult | null;
+        setSubmitResult({
+          ...(result ?? { ok: false }),
+          message: getRateLimitFeedbackMessage({
+            response,
+            message: result?.message,
+            retryAfterMs: result?.retryAfterMs,
+            defaultMessage: "장소 등록 요청에 실패했습니다. 잠시 후 다시 시도해주세요.",
+          }),
+        });
+      } catch {
+        setSubmitResult({
+          ok: false,
+          message: "네트워크 연결을 확인한 뒤 다시 시도해주세요. 입력 내용은 유지됩니다.",
+        });
+      } finally {
+        setTurnstileResetSignal((current) => current + 1);
+      }
     });
   });
 

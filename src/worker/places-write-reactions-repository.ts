@@ -94,60 +94,70 @@ export async function setDatabasePlaceReaction(
   }
 
   const db = getWorkerDb(env);
-  const place = await getActivePlaceIdentityBySlug(db, placeSlug);
 
-  if (!place) {
+  return await db.transaction(async (tx) => {
+    const place = await getActivePlaceIdentityBySlug(tx, placeSlug);
+
+    if (!place) {
+      return {
+        ok: false,
+        source: "database" as DataSource,
+        reaction: null,
+        likeCount: 0,
+        dislikeCount: 0,
+        message: "장소를 찾지 못했습니다.",
+        placeId: placeSlug,
+      };
+    }
+
+    await tx.execute(sql`
+      select ${places.id}
+      from ${places}
+      where ${places.id} = ${place.id}
+      for update
+    `);
+
+    if (reaction) {
+      await tx
+        .insert(placeReactions)
+        .values({
+          userId: actor.user?.id ?? null,
+          visitorId: actor.visitorId,
+          placeId: place.id,
+          reactionType: reaction,
+        })
+        .onConflictDoUpdate({
+          target: actor.user?.id
+            ? [placeReactions.userId, placeReactions.placeId]
+            : [placeReactions.visitorId, placeReactions.placeId],
+          set: {
+            reactionType: reaction,
+            updatedAt: new Date(),
+          },
+        });
+    } else {
+      await tx
+        .delete(placeReactions)
+        .where(
+          and(
+            eq(placeReactions.placeId, place.id),
+            actor.user?.id
+              ? eq(placeReactions.userId, actor.user.id)
+              : eq(placeReactions.visitorId, actor.visitorId ?? ""),
+          ),
+        );
+    }
+
+    const summary = await refreshPlaceReactionSummary(tx, place.id);
+
     return {
-      ok: false,
+      ok: true,
       source: "database" as DataSource,
-      reaction: null,
-      likeCount: 0,
-      dislikeCount: 0,
-      message: "장소를 찾지 못했습니다.",
+      reaction,
+      likeCount: summary.likeCount,
+      dislikeCount: summary.dislikeCount,
+      message: getPlaceReactionMessage(reaction),
       placeId: placeSlug,
     };
-  }
-
-  if (reaction) {
-    await db
-      .insert(placeReactions)
-      .values({
-        userId: actor.user?.id ?? null,
-        visitorId: actor.visitorId,
-        placeId: place.id,
-        reactionType: reaction,
-      })
-      .onConflictDoUpdate({
-        target: actor.user?.id
-          ? [placeReactions.userId, placeReactions.placeId]
-          : [placeReactions.visitorId, placeReactions.placeId],
-        set: {
-          reactionType: reaction,
-          updatedAt: new Date(),
-        },
-      });
-  } else {
-    await db
-      .delete(placeReactions)
-      .where(
-        and(
-          eq(placeReactions.placeId, place.id),
-          actor.user?.id
-            ? eq(placeReactions.userId, actor.user.id)
-            : eq(placeReactions.visitorId, actor.visitorId ?? ""),
-        ),
-      );
-  }
-
-  const summary = await refreshPlaceReactionSummary(db, place.id);
-
-  return {
-    ok: true,
-    source: "database" as DataSource,
-    reaction,
-    likeCount: summary.likeCount,
-    dislikeCount: summary.dislikeCount,
-    message: getPlaceReactionMessage(reaction),
-    placeId: placeSlug,
-  };
+  });
 }
