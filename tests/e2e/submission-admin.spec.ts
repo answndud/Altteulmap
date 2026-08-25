@@ -21,6 +21,54 @@ test("공개 장소 등록 폼은 텍스트 입력만 노출한다", async ({
   await expect(page.getByTestId("submit-longitude")).toHaveCount(0);
 });
 
+test("장소 등록 서버 오류에서도 입력 내용을 유지한다", async ({ page }) => {
+  test.setTimeout(60_000);
+
+  await page.goto("/submit");
+  await expect(page.getByTestId("place-submit-form")).toBeVisible();
+  await page.route("**/api/places", async (route) => {
+    await route.fulfill({
+      status: 503,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ok: false,
+        message: "장소 등록 요청을 처리하지 못했습니다.",
+      }),
+    });
+  });
+
+  const values = {
+    name: `장애 테스트 장소 ${Date.now()}`,
+    district: "서울 테스트구",
+    roadAddress: "서울 테스트구 테스트로 1",
+    priceLabel: "테스트 메뉴",
+    priceAmount: "7000",
+    priceUnit: "1인분",
+    note: "서버 오류 후에도 보존되어야 합니다.",
+  };
+
+  await page.getByTestId("submit-name").fill(values.name);
+  await page.getByTestId("submit-category").selectOption("korean");
+  await page.getByTestId("submit-district").fill(values.district);
+  await page.getByTestId("submit-road-address").fill(values.roadAddress);
+  await page.getByTestId("submit-price-label-0").fill(values.priceLabel);
+  await page.getByTestId("submit-price-amount-0").fill(values.priceAmount);
+  await page.getByTestId("submit-price-unit-0").fill(values.priceUnit);
+  await page.getByTestId("submit-note").fill(values.note);
+  await page.getByTestId("submit-place-button").click();
+
+  await expect(page.getByTestId("submit-result-message")).toContainText(
+    "장소 등록 요청을 처리하지 못했습니다.",
+  );
+  await expect(page.getByTestId("submit-name")).toHaveValue(values.name);
+  await expect(page.getByTestId("submit-district")).toHaveValue(values.district);
+  await expect(page.getByTestId("submit-road-address")).toHaveValue(values.roadAddress);
+  await expect(page.getByTestId("submit-price-label-0")).toHaveValue(values.priceLabel);
+  await expect(page.getByTestId("submit-price-amount-0")).toHaveValue(values.priceAmount);
+  await expect(page.getByTestId("submit-price-unit-0")).toHaveValue(values.priceUnit);
+  await expect(page.getByTestId("submit-note")).toHaveValue(values.note);
+});
+
 test("장소를 등록하고 운영자가 승인하면 홈 검색에 노출된다", async ({
   browser,
 }) => {
