@@ -47,7 +47,7 @@ https://altteulmap.altteul-lab.workers.dev/api/auth/callback/naver
 Turnstile:
 - Cloudflare Turnstile에서 운영 도메인용 site key/secret을 만든다.
 - `NEXT_PUBLIC_TURNSTILE_SITE_KEY`는 공개 var로, `TURNSTILE_SECRET_KEY`는 secret으로 설정한다.
-- `TURNSTILE_BYPASS_TOKEN`은 로컬/E2E 보조용이며 production 우회로 사용하지 않는다. Worker는 localhost 또는 `USE_MOCK_DATA=true`에서만 bypass를 허용한다.
+- `TURNSTILE_BYPASS_TOKEN`은 로컬/E2E 보조용이며 production 우회로 사용하지 않는다. Worker는 localhost에서만 bypass를 허용한다.
 - 보호 대상 public write route는 장소 등록, 가격 제보, 댓글, 신고다. 북마크/반응/삭제는 기존 인증·권한·rate limit 정책을 유지한다.
 
 ## 배포 전 검증
@@ -290,7 +290,7 @@ CI에서 확인하는 항목:
 - PostgreSQL service 기반 full E2E
 
 수동 실행(`workflow_dispatch`)과 6시간 간격 schedule에서는 `remote-smoke` job도 실행한다.
-GitHub repository secrets에 아래 값을 넣으면 관리자 credentials까지 포함해 운영 URL smoke를 확인한다.
+staging 운영 계약 smoke를 활성화하려면 GitHub repository secrets에 아래 값을 넣는다. 세 값이 모두 없으면 CI remote-smoke가 실패한다.
 
 ```text
 SMOKE_PUBLIC_URL
@@ -298,8 +298,7 @@ SMOKE_ADMIN_EMAIL
 SMOKE_ADMIN_PASSWORD
 ```
 
-`SMOKE_PUBLIC_URL`이 비어 있으면 schedule job은 기본 운영 URL `https://altteulmap.altteul-lab.workers.dev`를 사용한다.
-`SMOKE_ADMIN_EMAIL`, `SMOKE_ADMIN_PASSWORD`가 비어 있으면 credentials/admin smoke만 skip하고 public/deep health smoke는 계속 실행한다.
+CI remote-smoke는 `SMOKE_REQUIRE_ADMIN=true`로 관리자 credentials 검사를 강제한다. 로컬에서 관리자 검사를 생략하려면 해당 환경 변수를 설정하지 않는다.
 
 ## 배포 후 Smoke
 ```bash
