@@ -1,0 +1,2 @@
+export const ADMIN_QUEUE_PAGE_SIZE = 50;
+export const ADMIN_QUEUE_MAX_PAGE_SIZE = 100;

@@ -82,6 +82,7 @@ export const places = pgTable(
       table.sourceExternalId,
     ),
     index("places_status_updated_at_idx").on(table.status, table.updatedAt),
+    index("places_status_created_at_idx").on(table.status, table.createdAt),
     index("places_status_primary_category_idx").on(
       table.status,
       table.primaryCategorySlug,

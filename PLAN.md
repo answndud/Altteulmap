@@ -2,23 +2,9 @@
 
 ## Goal
 
-Principal Engineer 평가의 6.7/10을 10점 수준으로 끌어올린다. 가격 데이터 생명주기 정합성, 성장 시 성능, 실제 브라우저·접근성 검증이 자동화되고 배포 승인 기준에 기록된 상태를 완료 조건으로 한다.
+Principal Engineer 평가의 6.7/10을 10점 수준으로 끌어올린다. 실제 브라우저·접근성 검증과 성능 예산이 자동화되고 배포 승인 기준에 기록된 상태를 완료 조건으로 한다.
 
 ## Active
-
-### P1 - 데이터 생명주기와 성장 경계 고정
-
-4. P2.1 - 가격 제보·항목·장소 요약 불변조건을 통합 테스트로 고정
-   - 파일: `src/worker/admin/admin-price-review-repository.ts`, `src/worker/admin-places-repository.ts`, `tests/integration/price-lifecycle.test.ts`, `drizzle/`
-   - 변경: 승인·반려·중복·동시 승인·트랜잭션 rollback에서 report/item/summary/status/audit가 함께 일관되는지 실제 PostgreSQL로 검증하고 새 상태 전이는 하나의 도메인 경로로 제한한다.
-   - 검증: `npm run db:up`, `ALLOW_LOCAL_MIGRATION=1 npm run db:migrate`, `npm run smoke:price-concurrency`, `node --import tsx --test tests/integration/price-lifecycle.test.ts`, `npm run db:down`
-   - 완료: 동일 actor 중복은 검증 수를 늘리지 않고, 동시 운영자 결정은 하나만 성공하며 실패 transaction은 부분 데이터를 남기지 않는다.
-
-5. P2.2 - 지도 검색·관리자 큐의 DB 작업량 상한과 페이지네이션 적용
-   - 파일: `src/worker/places-read-map-repository.ts`, `src/worker/routes/places-read.ts`, `src/worker/admin-places-repository.ts`, `src/worker/admin/admin-price-read-repository.ts`
-   - 변경: 검색어·bbox·zoom 계약을 DB query에 반영하고 FTS/trigram 또는 검증된 인덱스 전략, 결과 cursor/page cap, 관리자 queue page limit을 추가한다.
-   - 검증: `npm run search:analyze`, `npm run map:measure`, `npm run places:duplicates`, `npm run test:e2e:performance`, 1만/10만 synthetic dataset p95·rows-read 측정
-   - 완료: global/wide bbox 요청이 고정된 rows·메모리·시간 상한 안에서 종료되고 관리자 목록이 전체 row를 읽지 않는다.
 
 ### P2 - 사용자 표면과 장기 유지보수 완성
 

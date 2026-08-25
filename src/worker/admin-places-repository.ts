@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
 
 import {
   adminActions,
@@ -12,6 +12,10 @@ import type { PlaceModerationInput } from "@/features/submission/schema";
 import type { PendingPlace } from "@/shared/admin-contracts";
 import { getWorkerDb, type WorkerDatabaseBindings } from "@/worker/db";
 import { refreshWorkerPlacePricingSummary } from "@/worker/admin/admin-price-helpers";
+import {
+  ADMIN_QUEUE_MAX_PAGE_SIZE,
+  ADMIN_QUEUE_PAGE_SIZE,
+} from "@/worker/admin/admin-queue-config";
 
 type DataSource = "database";
 type WorkerDb = ReturnType<typeof getWorkerDb>;
@@ -125,8 +129,16 @@ async function loadCategoryMap(db: WorkerDbExecutor, placeIds: string[]) {
   return categoryMap;
 }
 
-export async function listWorkerPendingPlaces(env: WorkerDatabaseBindings) {
+export async function listWorkerPendingPlaces(
+  env: WorkerDatabaseBindings,
+  { page = 1, limit = ADMIN_QUEUE_PAGE_SIZE } = {},
+) {
   const db = getWorkerDb(env);
+  const safePage = Math.max(1, Math.floor(page));
+  const safeLimit = Math.min(
+    ADMIN_QUEUE_MAX_PAGE_SIZE,
+    Math.max(1, Math.floor(limit)),
+  );
   const rows = await db
     .select({
       internalId: places.id,
@@ -145,7 +157,13 @@ export async function listWorkerPendingPlaces(env: WorkerDatabaseBindings) {
     })
     .from(places)
     .where(eq(places.status, "pending_review"))
-    .orderBy(desc(places.createdAt));
+    .orderBy(desc(places.createdAt), desc(places.id))
+    .limit(safeLimit)
+    .offset((safePage - 1) * safeLimit);
+  const [countRow] = await db
+    .select({ count: count() })
+    .from(places)
+    .where(eq(places.status, "pending_review"));
   const pendingPlaceIds = rows.map((row) => row.internalId);
   const categoryMap = await loadCategoryMap(db, pendingPlaceIds);
   const priceItemRows =
@@ -188,6 +206,9 @@ export async function listWorkerPendingPlaces(env: WorkerDatabaseBindings) {
         priceItemsByPlaceId.get(row.internalId) ?? [],
       ),
     ),
+    count: Number(countRow?.count ?? 0),
+    page: safePage,
+    limit: safeLimit,
     source: "database" as DataSource,
   };
 }
