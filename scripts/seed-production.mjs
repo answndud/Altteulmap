@@ -118,6 +118,12 @@ async function assertDatabaseIsEmpty() {
 }
 
 async function main() {
+  if (process.env.PRODUCTION_SEED_CONFIRM !== "I_UNDERSTAND_DESTRUCTIVE_SEED") {
+    throw new Error(
+      "Set PRODUCTION_SEED_CONFIRM=I_UNDERSTAND_DESTRUCTIVE_SEED only after reviewing the empty-database preflight and backup state.",
+    );
+  }
+
   await assertDatabaseIsEmpty();
 
   const result = spawnSync("npx", ["tsx", "src/db/seed.ts"], {
@@ -126,6 +132,7 @@ async function main() {
       ...process.env,
       USE_MOCK_DATA: "false",
       ALLOW_NONLOCAL_SEED: "1",
+      PRODUCTION_SEED_CONFIRM: "I_UNDERSTAND_DESTRUCTIVE_SEED",
     },
     stdio: "inherit",
   });

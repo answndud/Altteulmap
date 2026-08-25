@@ -141,6 +141,31 @@ async function readMigrationStatus(sql) {
   };
 }
 
+async function readApplicationTableCounts(sql) {
+  return sql`
+    select table_name, row_count
+    from (
+      select 'admin_actions' as table_name, count(*)::int as row_count from admin_actions
+      union all select 'auth_accounts', count(*)::int from auth_accounts
+      union all select 'auth_sessions', count(*)::int from auth_sessions
+      union all select 'auth_verification_tokens', count(*)::int from auth_verification_tokens
+      union all select 'bookmarks', count(*)::int from bookmarks
+      union all select 'categories', count(*)::int from categories
+      union all select 'comments', count(*)::int from comments
+      union all select 'content_reports', count(*)::int from content_reports
+      union all select 'moderation_suggestions', count(*)::int from moderation_suggestions
+      union all select 'place_categories', count(*)::int from place_categories
+      union all select 'place_reactions', count(*)::int from place_reactions
+      union all select 'places', count(*)::int from places
+      union all select 'price_items', count(*)::int from price_items
+      union all select 'price_reports', count(*)::int from price_reports
+      union all select 'users', count(*)::int from users
+      union all select 'visit_activity', count(*)::int from visit_activity
+    ) counts
+    order by table_name asc
+  `;
+}
+
 async function main() {
   const rawUrl = process.env.DATABASE_URL;
 
@@ -214,6 +239,7 @@ async function main() {
     );
 
     const migrationStatus = await readMigrationStatus(sql);
+    const applicationTableCounts = await readApplicationTableCounts(sql);
     const priceTableRows = await sql`
       select
         to_regclass('public.price_reports') as reports,
@@ -257,6 +283,10 @@ async function main() {
     printLine(
       `invalid price reports/items: ${invalidPrices.invalid_price_reports}/${invalidPrices.invalid_price_items}`,
     );
+    printSection("Application row counts (read-only)");
+    for (const table of applicationTableCounts) {
+      printLine(`${table.table_name}: ${table.row_count}`);
+    }
 
     if (migrationStatus.latestMigrations.length > 0) {
       printLine("latest migrations:");
