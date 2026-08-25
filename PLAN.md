@@ -8,12 +8,6 @@
 
 ### P3 - 유지보수성과 사용자 품질의 마지막 결함 제거
 
-7. P3.1 - 인증·권한·소유권 matrix와 고가치 API 계약을 단일 테스트로 유지한다.
-   - 파일: `src/worker/auth/session.ts`, `src/worker/routes/admin.ts`, `src/worker/routes/bookmarks.ts`, `src/worker/routes/public-write.ts`, `tests/integration/authorization.test.ts`, `tests/e2e/*`
-   - 변경: authentication과 authorization/resource ownership을 별도 assertion으로 분리한다. 익명·일반·관리자·다른 사용자·숨김 리소스 조합의 read/create/update/delete matrix를 고정하고 IDOR/BOLA, role 강등, soft-delete 누출을 회귀 테스트한다.
-   - 검증: `npm run test:integration && npm run test:e2e:full:ci`, 다른 actor가 교차 요청하는 API contract test
-   - 완료: 허용되지 않은 actor는 리소스 존재 여부와 무관하게 일관된 응답을 받고, owner/admin만 의도된 변경을 수행한다.
-
 8. P3.2 - 브라우저 장애와 접근성·모바일 핵심 여정을 검증한다.
    - 파일: `tests/e2e/accessibility.spec.ts`, `tests/e2e/map.mobile.spec.ts`, `tests/e2e/comments.spec.ts`, `src/client/routes/MapRoute.tsx`, `src/client/routes/SubmitRoute.tsx`, `src/client/components/*`
    - 변경: 모바일 Safari 대체 검증, 네트워크 단절·429·401/403·422·500·stale response에서 오류 안내·입력 보존·중복 제출 방지·재시도 UX를 검증한다. 키보드 focus, screen reader label, 44px target, 지도 대체 목록과 overflow를 점검한다.
