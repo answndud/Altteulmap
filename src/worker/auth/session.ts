@@ -140,7 +140,7 @@ function decodeSession(value: string | null, env: AuthSessionEnv) {
       return signed ? parseSession(JSON.stringify(signed)) : null;
     }
 
-    return parseSession(value);
+    return null;
   } catch {
     return null;
   }
