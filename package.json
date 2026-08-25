@@ -23,6 +23,7 @@
     "typecheck": "tsc --noEmit",
     "e2e:prepare": "node scripts/prepare-e2e.mjs",
     "test:unit": "node --import tsx --test tests/unit/*.test.ts",
+    "test:integration": "node --import tsx --test tests/integration/*.test.ts",
     "test:e2e:smoke:ci": "playwright test tests/e2e/map.spec.ts tests/e2e/admin-dashboard.spec.ts tests/e2e/signup.spec.ts tests/e2e/submission-admin.spec.ts",
     "test:e2e:full:ci": "npm run test:e2e:smoke:ci && playwright test tests/e2e/login.spec.ts tests/e2e/map-price-filter.spec.ts tests/e2e/bookmarks.spec.ts tests/e2e/comments.spec.ts tests/e2e/price-review.spec.ts tests/e2e/report-admin.spec.ts tests/e2e/accessibility.spec.ts && USE_MOCK_DATA=true playwright test tests/e2e/map.mobile.spec.ts tests/e2e/map-price-filter.mobile.spec.ts --project mobile-chromium",
     "test:e2e:performance:ci": "playwright test tests/e2e/performance.spec.ts --project chromium",

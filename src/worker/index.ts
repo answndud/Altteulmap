@@ -77,6 +77,11 @@ app.use("*", async (c, next) => {
 
 app.use("*", async (c, next) => {
   await next();
+
+  if (c.req.path.startsWith("/api/") && !c.res.headers.has("cache-control")) {
+    c.header("Cache-Control", noStoreHeaders["Cache-Control"]);
+  }
+
   c.res = applySecurityHeaders(c.res, c.req.raw);
 });
 
@@ -88,6 +93,9 @@ app.onError((error, c) => {
   return c.json(
     {
       ok: false,
+      error: {
+        code: "INTERNAL_ERROR",
+      },
       message: "서버 오류가 발생했습니다.",
       requestId,
     },
@@ -110,6 +118,9 @@ app.use("/api/*", async (c, next) => {
       return c.json(
         {
           ok: false,
+          error: {
+            code: "REQUEST_BODY_TOO_LARGE",
+          },
           message: "요청 본문이 너무 큽니다.",
         },
         413,
@@ -126,6 +137,9 @@ app.use("/api/*", async (c, next) => {
       return c.json(
         {
           ok: false,
+          error: {
+            code: "REQUEST_BODY_TOO_LARGE",
+          },
           message: "요청 본문이 너무 큽니다.",
         },
         413,

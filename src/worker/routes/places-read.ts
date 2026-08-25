@@ -304,7 +304,7 @@ export function registerPlacesReadRoutes(
         {
           error: {
             code: "NOT_FOUND",
-            message: "Place not found",
+            message: "장소를 찾지 못했습니다.",
           },
         },
         404,
