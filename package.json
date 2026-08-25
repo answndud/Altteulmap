@@ -65,6 +65,7 @@
     "clean:artifacts": "rm -rf dist .wrangler test-results playwright-report tsconfig.tsbuildinfo",
     "db:generate": "drizzle-kit generate",
     "db:check:production": "node scripts/check-production-db.mjs",
+    "db:check:contract": "node scripts/check-database-contract.mjs",
     "db:rehearse:backup": "node scripts/backup-restore-rehearsal.mjs",
     "db:repair:production-price-data": "node scripts/repair-production-price-data.mjs",
     "db:migrate": "node scripts/migrate-production.mjs",

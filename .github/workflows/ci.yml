@@ -133,6 +133,9 @@ jobs:
       - name: Seed database
         run: npm run db:seed
 
+      - name: Verify migration is repeatable
+        run: ALLOW_LOCAL_MIGRATION=1 npm run db:migrate
+
       - name: Run price concurrency smoke
         run: npm run smoke:price-concurrency
 
@@ -198,6 +201,7 @@ jobs:
         run: |
           npm run test:integration
           npm run smoke:price-concurrency
+          npm run db:check:contract
 
   remote-smoke:
     name: Remote Smoke
