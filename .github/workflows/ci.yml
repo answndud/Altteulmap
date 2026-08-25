@@ -202,6 +202,8 @@ jobs:
       SMOKE_PUBLIC_URL: ${{ secrets.SMOKE_PUBLIC_URL }}
       SMOKE_ADMIN_EMAIL: ${{ secrets.SMOKE_ADMIN_EMAIL }}
       SMOKE_ADMIN_PASSWORD: ${{ secrets.SMOKE_ADMIN_PASSWORD }}
+      SMOKE_USER_EMAIL: ${{ secrets.SMOKE_USER_EMAIL }}
+      SMOKE_USER_PASSWORD: ${{ secrets.SMOKE_USER_PASSWORD }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -222,6 +224,11 @@ jobs:
           test -n "$SMOKE_ADMIN_EMAIL" || { echo "SMOKE_ADMIN_EMAIL secret is required"; exit 1; }
           test -n "$SMOKE_ADMIN_PASSWORD" || { echo "SMOKE_ADMIN_PASSWORD secret is required"; exit 1; }
           export SMOKE_REQUIRE_ADMIN="true"
+          if [ -n "$SMOKE_USER_EMAIL" ] || [ -n "$SMOKE_USER_PASSWORD" ]; then
+            test -n "$SMOKE_USER_EMAIL" || { echo "SMOKE_USER_EMAIL must be paired with SMOKE_USER_PASSWORD"; exit 1; }
+            test -n "$SMOKE_USER_PASSWORD" || { echo "SMOKE_USER_PASSWORD must be paired with SMOKE_USER_EMAIL"; exit 1; }
+            export SMOKE_REQUIRE_USER="true"
+          fi
           npm run smoke:remote 2>&1 | tee remote-smoke.log
 
       - name: Upload remote smoke evidence

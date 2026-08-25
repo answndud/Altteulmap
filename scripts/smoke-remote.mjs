@@ -243,7 +243,21 @@ async function runOptionalCredentialsSmoke() {
     return;
   }
 
+  const csrfResponse = await request("/api/auth/csrf");
+  if (!csrfResponse.ok) {
+    throw new Error(`credentials csrf returned ${csrfResponse.status}`);
+  }
+
+  const csrfPayload = await csrfResponse.json();
+  const csrfCookies = extractCookies(csrfResponse.headers);
+  const csrfToken = csrfPayload?.csrfToken;
+
+  if (!csrfToken) {
+    throw new Error("credentials csrf token was missing");
+  }
+
   const body = new URLSearchParams({
+    csrfToken,
     email: adminEmail,
     password: adminPassword,
     callbackUrl: "/admin",
@@ -253,6 +267,7 @@ async function runOptionalCredentialsSmoke() {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
+      Cookie: createCookieHeader(csrfCookies),
     },
     body,
   });
@@ -361,6 +376,108 @@ async function runOptionalCredentialsSmoke() {
   }
 
   logStep("credentials/admin smoke", "ok");
+
+  const userEmail = process.env.SMOKE_USER_EMAIL;
+  const userPassword = process.env.SMOKE_USER_PASSWORD;
+  const requireUser = process.env.SMOKE_REQUIRE_USER === "true";
+
+  if (!userEmail || !userPassword) {
+    if (requireUser) {
+      throw new Error(
+        "SMOKE_USER_EMAIL and SMOKE_USER_PASSWORD are required when SMOKE_REQUIRE_USER=true",
+      );
+    }
+
+    logStep("credentials/user authorization smoke", "skipped; set SMOKE_USER_EMAIL and SMOKE_USER_PASSWORD");
+    return;
+  }
+
+  const userCsrfResponse = await request("/api/auth/csrf");
+  if (!userCsrfResponse.ok) {
+    throw new Error(`user credentials csrf returned ${userCsrfResponse.status}`);
+  }
+
+  const userCsrfPayload = await userCsrfResponse.json();
+  const userCsrfCookies = extractCookies(userCsrfResponse.headers);
+  const userCsrfToken = userCsrfPayload?.csrfToken;
+
+  if (!userCsrfToken) {
+    throw new Error("user credentials csrf token was missing");
+  }
+
+  const userLoginResponse = await request("/api/auth/callback/credentials", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Cookie: createCookieHeader(userCsrfCookies),
+    },
+    body: new URLSearchParams({
+      csrfToken: userCsrfToken,
+      email: userEmail,
+      password: userPassword,
+      callbackUrl: "/bookmarks",
+      json: "true",
+    }),
+  });
+
+  if (!userLoginResponse.ok) {
+    throw new Error(`user credentials login returned ${userLoginResponse.status}`);
+  }
+
+  const userCookieHeader = mergeCookieHeader(
+    createCookieHeader(userCsrfCookies),
+    extractCookies(userLoginResponse.headers),
+  );
+  const userSessionResponse = await request("/api/auth/session", {
+    headers: { Cookie: userCookieHeader },
+  });
+  const userSessionPayload = await userSessionResponse.json();
+
+  if (
+    !userSessionResponse.ok ||
+    userSessionPayload?.user?.email !== userEmail ||
+    userSessionPayload?.user?.role !== "user"
+  ) {
+    throw new Error("user credentials login did not produce a user session");
+  }
+
+  const forbiddenAdminResponse = await request("/api/admin/places", {
+    headers: { Cookie: userCookieHeader },
+  });
+  const forbiddenAdminPayload = await forbiddenAdminResponse.json().catch(() => null);
+
+  if (forbiddenAdminResponse.status !== 403 || forbiddenAdminPayload?.error?.code !== "FORBIDDEN") {
+    throw new Error(
+      `regular user admin api returned ${forbiddenAdminResponse.status}; expected 403/FORBIDDEN`,
+    );
+  }
+
+  logStep("credentials/user authorization smoke", "user session cannot access admin API");
+}
+
+async function runOAuthCallbackFailureSmoke(provider) {
+  const response = await request(
+    `/api/auth/callback/${provider}?code=synthetic-invalid-code&state=synthetic-invalid-state`,
+  );
+
+  if (response.status !== 302) {
+    throw new Error(`${provider} invalid callback returned ${response.status}`);
+  }
+
+  const location = response.headers.get("location");
+  const redirectUrl = location ? new URL(location, baseUrl) : null;
+  const callbackCookies = extractCookies(response.headers);
+
+  if (
+    !redirectUrl ||
+    redirectUrl.pathname !== "/login" ||
+    redirectUrl.searchParams.get("error") !== "OAuthCallback" ||
+    callbackCookies.some((cookie) => findSetCookie([cookie], "next-auth.session-token"))
+  ) {
+    throw new Error(`${provider} invalid callback was not rejected without a session`);
+  }
+
+  logStep(`${provider} callback failure`, "invalid state rejected without session");
 }
 
 async function runPublicWriteContractSmoke(placeId) {
@@ -481,6 +598,7 @@ async function main() {
     }
 
     logStep(`${provider} signin`, "provider redirect ok");
+    await runOAuthCallbackFailureSmoke(provider);
   }
 
   await runOptionalCredentialsSmoke();
