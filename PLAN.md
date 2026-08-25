@@ -6,6 +6,8 @@
 
 ## Active
 
+No active work
+
 ## Backlog
 
 - 이메일 발송 provider sandbox와 bounce/재전송 멱등성 계약 테스트
