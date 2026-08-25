@@ -7,6 +7,7 @@ import {
 } from "@/worker/db";
 import {
   createRequestId,
+  createWorkerErrorResponse,
   logWorkerError,
   logWorkerRequest,
 } from "@/worker/http/errors";
@@ -98,21 +99,13 @@ app.onError((error, c) => {
 
   logWorkerError(error, c.req.raw, requestId);
 
-  return c.json(
-    {
-      ok: false,
-      error: {
-        code: "INTERNAL_ERROR",
-      },
-      message: "서버 오류가 발생했습니다.",
-      requestId,
-    },
-    500,
-    {
-      ...noStoreHeaders,
-      "X-Request-Id": requestId,
-    },
-  );
+  return createWorkerErrorResponse({
+    status: 500,
+    code: "INTERNAL_ERROR",
+    message: "서버 오류가 발생했습니다.",
+    requestId,
+    headers: noStoreHeaders,
+  });
 });
 
 app.use("/api/*", async (c, next) => {
@@ -123,17 +116,13 @@ app.use("/api/*", async (c, next) => {
       Number.isFinite(contentLength) &&
       contentLength > MAX_MUTATION_BODY_BYTES
     ) {
-      return c.json(
-        {
-          ok: false,
-          error: {
-            code: "REQUEST_BODY_TOO_LARGE",
-          },
-          message: "요청 본문이 너무 큽니다.",
-        },
-        413,
-        noStoreHeaders,
-      );
+      return createWorkerErrorResponse({
+        status: 413,
+        code: "REQUEST_BODY_TOO_LARGE",
+        message: "요청 본문이 너무 큽니다.",
+        requestId: c.get("requestId"),
+        headers: noStoreHeaders,
+      });
     }
 
     const bodyResult = await readRequestBodyWithinLimit(
@@ -142,17 +131,13 @@ app.use("/api/*", async (c, next) => {
     );
 
     if (!bodyResult.ok) {
-      return c.json(
-        {
-          ok: false,
-          error: {
-            code: "REQUEST_BODY_TOO_LARGE",
-          },
-          message: "요청 본문이 너무 큽니다.",
-        },
-        413,
-        noStoreHeaders,
-      );
+      return createWorkerErrorResponse({
+        status: 413,
+        code: "REQUEST_BODY_TOO_LARGE",
+        message: "요청 본문이 너무 큽니다.",
+        requestId: c.get("requestId"),
+        headers: noStoreHeaders,
+      });
     }
 
     const requestBody = bodyResult.body.slice();
@@ -184,22 +169,12 @@ function isWorkerDatabaseUnavailableError(error: unknown) {
 }
 
 function databaseUnavailableResponse(message: string) {
-  return new Response(
-    JSON.stringify({
-      ok: false,
-      error: {
-        code: "DATABASE_UNAVAILABLE",
-        message,
-      },
-    }),
-    {
-      status: 503,
-      headers: {
-        ...noStoreHeaders,
-        "content-type": "application/json; charset=utf-8",
-      },
-    },
-  );
+  return createWorkerErrorResponse({
+    status: 503,
+    code: "DATABASE_UNAVAILABLE",
+    message,
+    headers: noStoreHeaders,
+  });
 }
 
 function formatDate(date: Date) {
