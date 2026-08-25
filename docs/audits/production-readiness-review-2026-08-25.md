@@ -95,6 +95,8 @@
 - `git diff --check` 통과
 - CI에 PostgreSQL 통합 게이트, migration·seed·동시성 순서, 실패 시 Playwright artifact 업로드를 추가했다.
 - 지도 API 측정 결과에 p99·응답 bytes·timeout 예산을 포함하도록 고정했다.
+- 실제 배포 버전 `02c4126a-9b98-40fa-a1d7-e885e123f94a`에서 deep health와 원격 smoke를 통과했다.
+- 원격 smoke는 공개 홈·지도·상세·OAuth redirect·관리자 미인증 401·공개 쓰기 검증 400을 확인했고, 관리자 credentials smoke는 계정 미제공으로 실행하지 않았다.
 
 ## 배포 전 잔여 조건
 

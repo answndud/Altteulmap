@@ -92,3 +92,23 @@ P3에서는 지도 SDK 무한 대기·실패 Promise 재사용을 `8초 timeout`
 - 로컬 PostgreSQL 부재로 `npm run test:e2e:all`의 DB 초기화가 실행되지 않았고, 목업 모드의 접근성·SDK fallback·모바일 경로만 통과했다.
 - `migration:contract`는 `localhost:3118` 서버 부재로 실행되지 않았다.
 - 실제 OAuth/PKCE provider, PostgreSQL 백업 복구, 1만/10만 synthetic dataset의 p95·rows-read는 운영 자격 증명과 환경에서 수행해야 한다.
+
+## P0~P3 및 실제 배포 후 재평가
+
+2026-08-25 기준 P0~P3 변경을 `main`에 푸시하고 `https://altteulmap.altteul-lab.workers.dev`에 배포했다. deep health에서 runtime·public-config·auth-providers·database·static-assets가 모두 `ok`였고, 원격 smoke에서 홈·지도·상세·OAuth provider redirect·관리자 미인증 401·공개 쓰기 400 계약을 확인했다.
+
+| 영역 | 점수 | 최신 근거 |
+| --- | ---: | --- |
+| 아키텍처 | 7/10 | 단일 Worker·React·PostgreSQL 구조와 CI/배포 경계는 명확하다. 가격 summary와 mock/DB 분기 중복은 남아 있다. |
+| 코드 품질 | 8/10 | TypeScript·Zod·fail-closed 오류 처리, seed 보호, 운영 검증 스크립트가 있다. 일부 route 오류 분기 중복은 남아 있다. |
+| 보안 | 9/10 | 관리자 DB role 재확인, 서명 세션·CSRF·OAuth state, API no-store·본문 상한·seed 이중 확인을 실제 smoke/테스트로 검증했다. 실제 OAuth callback 성공은 미검증이다. |
+| 성능 | 8/10 | 지도 2,000행·관리자 100행 cap, timeout, p99 측정 기준을 적용했다. 1만/10만 데이터 실측은 남아 있다. |
+| 신뢰성 | 9/10 | PostgreSQL 트랜잭션·CAS·동시성 통합 테스트, API 503/413/429 계약, CI artifact·복구 런북을 갖췄다. 실제 PITR 복구 리허설은 외부 권한이 필요하다. |
+| 테스트 가능성 | 9/10 | unit 25개, PostgreSQL integration, 동시성 smoke, E2E, 원격 smoke와 CI 게이트를 연결했다. 실제 provider·부하·복구 시나리오는 남아 있다. |
+| 유지보수성 | 8/10 | 실행 계획을 종료 상태로 정리하고 운영 명령·실패 계약·복구 절차를 문서화했다. 기능별 mock/production 중복은 장기 부채다. |
+| UX | 8/10 | 모바일·접근성·입력 보존·실패 fallback을 검증했다. 실제 iOS·스크린리더 조합은 별도 확인이 필요하다. |
+| 프로덕션 준비도 | 8/10 | 실제 배포·deep health·공개 원격 smoke까지 통과했다. 관리자 credentials smoke, 백업 복구, 관측 알림 설정이 완료되기 전에는 `READY WITH RISKS`다. |
+
+### 최종 판정
+
+**READY WITH RISKS** — 코드·CI·배포·기본 원격 동작은 승인 가능하지만, 실제 관리자 인증, PITR 복구와 운영 알림을 완료하기 전에는 무조건적인 production 승인으로 올리지 않는다.
