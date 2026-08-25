@@ -70,6 +70,12 @@ jobs:
       - name: Check whitespace
         run: git diff --check
 
+      - name: Validate telemetry alert parser
+        run: |
+          printf '%s\n' '{"event":"worker_request_complete","status":200,"durationMs":12,"path":"/"}' > telemetry-fixture.jsonl
+          npm run ops:check-alerts -- telemetry-fixture.jsonl
+          rm telemetry-fixture.jsonl
+
   e2e-full:
     name: E2E Full
     needs: [verify, integration]

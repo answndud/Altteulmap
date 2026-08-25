@@ -45,6 +45,7 @@
     "design:detect": "npx --yes impeccable@2.1.7 detect src/ --fast",
     "design:detect:json": "npx --yes impeccable@2.1.7 detect src/ --fast --json",
     "csp:inventory": "node scripts/check-csp-inline-style-inventory.mjs",
+    "ops:check-alerts": "node scripts/check-telemetry-alerts.mjs",
     "smoke:local": "npm run smoke:vite:local",
     "smoke:vite:local": "npm run cf:build:vite && node scripts/smoke-vite-local.mjs",
     "smoke:remote": "node scripts/smoke-remote.mjs",
