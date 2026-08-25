@@ -12,7 +12,7 @@
    - 파일: `scripts/measure-search-benchmark.mjs`, `scripts/measure-map-api.mjs`, `scripts/analyze-global-search-query.mjs`, `docs/09-운영-가이드/성능-예산.md`
    - 변경: production 데이터를 복제하지 않고 익명 synthetic staging DB에 10만/100만 fixture를 생성해 지도 bbox·global search·category·admin queue를 반복 측정한다. p50/p95/p99, DB execution/planning time, rows read, shared blocks, payload, timeout, connection 사용량을 비교하고 FTS/trigram 선택 근거를 기록한다.
    - 검증: `BENCHMARK_DATABASE_URL="$STAGING_DATABASE_URL" BENCHMARK_ITERATIONS=20 npm run search:benchmark`, `MAP_MEASURE_URL="$STAGING_URL" npm run map:measure`, `SEARCH_ANALYZE_EXECUTE=1 npm run search:analyze`
-   - 완료: 각 규모의 p95/p99·rows-read 예산이 통과하거나, 초과 시 bounded API response·인덱스·쿼리 개선과 운영 alert가 함께 반영된다.
+   - 완료: 10만 규모는 p95/p99·rows-read·payload 예산을 통과했다. 100만 규모는 Docker PostgreSQL 저장소 부족으로 중단되어 실제 증거가 생성될 때까지 이 slice를 완료로 처리하지 않는다.
 
 ### P3 - 데스크톱 품질과 장기 유지보수 마감
 
