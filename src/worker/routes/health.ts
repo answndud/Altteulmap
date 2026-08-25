@@ -103,11 +103,17 @@ async function getDatabaseHealthCheck<TBindings extends HealthBindings>(
       latencyMs: Date.now() - startedAt,
     };
   } catch (error) {
+    console.error("Worker database health check failed.", {
+      source: connectionSource,
+      errorName: error instanceof Error ? error.name : typeof error,
+      message: getErrorMessage(error),
+    });
+
     return {
       name: "database",
       status: "fail" as const,
       source: connectionSource,
-      message: getErrorMessage(error),
+      message: "데이터베이스 연결 상태를 확인하지 못했습니다.",
     };
   }
 }

@@ -26,6 +26,8 @@ const requiredVars = [
   "AUTH_KAKAO_CLIENT_SECRET",
   "AUTH_NAVER_CLIENT_ID",
   "AUTH_NAVER_CLIENT_SECRET",
+  "NEXT_PUBLIC_TURNSTILE_SITE_KEY",
+  "TURNSTILE_SECRET_KEY",
 ];
 
 const optionalVars = [
@@ -59,8 +61,8 @@ function printUrlCheck(name, value, options = {}) {
   }
 
   if ((target === "production" || requireHttps) && !isHttpsUrl(value)) {
-    printLine(`WARN ${name} should use https`);
-    return true;
+    printLine(`${requireHttps ? "FAIL" : "WARN"} ${name} should use https`);
+    return !requireHttps;
   }
 
   printLine(`OK   ${name} format looks valid`);
@@ -97,7 +99,9 @@ function main() {
   }
 
   const nextAuthUrl = process.env.NEXTAUTH_URL ?? "";
-  const nextAuthUrlOk = printUrlCheck("NEXTAUTH_URL", nextAuthUrl);
+  const nextAuthUrlOk = printUrlCheck("NEXTAUTH_URL", nextAuthUrl, {
+    requireHttps: target === "production",
+  });
   const wranglerConfigPath = path.join(cwd, "wrangler.jsonc");
 
   printLine(
