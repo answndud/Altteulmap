@@ -74,7 +74,6 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
-    "dotenv": "^17.3.1",
     "drizzle-orm": "^0.45.2",
     "hono": "^4.13.2",
     "postgres": "^3.4.8",
@@ -94,6 +93,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "6.0.1",
+    "dotenv": "^17.3.1",
     "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-plugin-jsx-a11y": "^6.10.2",
