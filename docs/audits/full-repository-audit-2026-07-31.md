@@ -1,21 +1,21 @@
-# AltteulMap 전체 저장소 위험 기반 감사 보고서
+# 알뜰맵 전체 저장소 위험 기반 감사 보고서
 
 감사일: 2026-07-31 (Asia/Seoul)  
 대상 커밋: c0f233c fix: improve mobile map layout  
-초기 감사 기준: 애플리케이션 코드는 수정하지 않고 기준 보고서만 생성했다. 이후 후속 조치에서 감사 발견사항을 코드·schema·검증에 반영했다.
+초기 감사 기준: 애플리케이션 코드는 수정하지 않고 기준 보고서만 생성했다. 이후 후속 조치에서 감사 발견사항을 코드·스키마·검증에 반영했다.
 
-## 1. Executive Summary
+## 1. 요약
 
-저장소는 Worker/Hono route 분리, 서버 측 admin role 확인, Zod validation, 가격 승인 transaction/advisory lock, CSP inventory, DB timeout, map cache, E2E 기반을 갖추고 있다. 반면 세션 secret, 익명 actor, Turnstile bypass, 가격 검증의 독립성은 실제 호출 가능한 위험 경계다. 특히 설정 실수와 visitor cookie rotation이 결합되면 공개 쓰기 제한과 가격 신뢰를 우회할 수 있다.
+저장소는 Worker/Hono 라우트 분리, 서버 측 관리자 역할 확인, Zod 검증, 가격 승인 트랜잭션/자문 잠금, CSP 점검, DB 제한 시간, 지도 캐시, E2E 기반을 갖추고 있다. 반면 세션 비밀값, 익명 행위자, Turnstile 우회, 가격 검증의 독립성은 실제 호출 가능한 위험 경계다. 특히 설정 실수와 방문자 쿠키 교체가 결합되면 공개 쓰기 제한과 가격 신뢰를 우회할 수 있다.
 
 | 심각도 | 발견 수 |
 | --- | ---: |
-| P0 | 0 |
-| P1 | 4 |
-| P2 | 10 |
-| P3 | 3 |
+| P0(긴급) | 0 |
+| P1(매우 높음) | 4 |
+| P2(높음) | 10 |
+| P3(보통) | 3 |
 
-P0/P1은 실제 route와 발생 조건을 명시했다. 아래 후속 검증에는 로컬 disposable DB와 인증된 Cloudflare read-only smoke가 포함되며, 실제 OAuth credential login과 외부 provider callback 성공은 여전히 별도 수동 검증 범위다.
+P0/P1은 실제 라우트와 발생 조건을 명시했다. 아래 후속 검증에는 로컬 임시 DB와 인증된 Cloudflare 읽기 전용 스모크가 포함되며, 실제 OAuth 자격 증명 로그인과 외부 provider callback 성공은 여전히 별도 수동 검증 범위다.
 
 ### 즉시 처리할 다섯 가지
 
@@ -25,25 +25,25 @@ P0/P1은 실제 route와 발생 조건을 명시했다. 아래 후속 검증에�
 4. 동일 actor 또는 동일 source의 가격 제보가 verified count에 중복 기여하지 않도록 모델 변경.
 5. 장소 승인 transaction에서 initial price report, price item, 대표 가격 summary를 함께 재계산.
 
-### Audit health score
+### 감사 상태 점수
 
 | 차원 | 점수 | 근거 |
 | --- | ---: | --- |
 | 접근성 | 2/4 | 주요 input/button에는 label/aria가 있으나 댓글 textarea가 placeholder에 의존하며 실제 screen reader 검증은 미실행 |
 | 성능 | 2/4 | viewport cache/marker cap은 있으나 global 검색 결과 상한·FTS·bbox 최대 범위가 없음 |
-| 테마 | 3/4 | CSS token 사용과 CSP parity는 좋지만 지도 marker 동적 inline style로 unsafe-inline 유지 |
-| 반응형 | 3/4 | mobile bottom sheet와 E2E가 있으나 실제 iOS/저사양 수동 검증 미실행 |
-| anti-pattern | 3/4 | map-first 방향은 적절하나 dynamic marker style과 surface 복잡도가 남음 |
-| 합계 | 13/20 | Acceptable — 보안·데이터 경계와 운영 검증을 먼저 보강해야 함 |
+| 테마 | 3/4 | CSS 토큰 사용과 CSP 일치는 좋지만 지도 marker 동적 인라인 스타일로 unsafe-inline 유지 |
+| 반응형 | 3/4 | 모바일 bottom sheet와 E2E가 있으나 실제 iOS/저사양 수동 검증 미실행 |
+| 안티패턴 | 3/4 | 지도 우선 방향은 적절하나 동적 marker 스타일과 화면 표면 복잡도가 남음 |
+| 합계 | 13/20 | 허용 가능 — 보안·데이터 경계와 운영 검증을 먼저 보강해야 함 |
 
 ### 강점
 
 - src/worker/routes/admin-support.ts:27-60에서 admin route마다 서버 측 session과 role을 검사한다.
-- public write는 대체로 validation → persistent rate limit → Turnstile → DB write 순서를 가진다.
+- 공개 쓰기는 대체로 검증 → 영속적 요청 제한 → Turnstile → DB 쓰기 순서를 가진다.
 - src/worker/admin/admin-price-review-repository.ts:27-292는 transaction, pending CAS, advisory lock, admin_actions 기록을 사용한다.
 - src/worker/http/security-headers.ts와 public/_headers가 CSP/header parity를 유지하고 npm run csp:inventory가 이를 검사한다.
 - src/worker/db.ts:218-233은 요청 단위 connection 정리, timeout, unavailable TTL을 가진다.
-- slug/price label/user email/bookmark/reaction unique key와 FK가 여러 기본 invariant를 보호한다.
+- slug/가격 라벨/사용자 이메일/북마크/반응 고유 키와 FK가 여러 기본 불변조건을 보호한다.
 
 ## 2. 분석 범위와 한계
 
@@ -74,7 +74,7 @@ React/Vite SPA가 map/search/detail/bookmark/submit/report/comment UI를 제공�
 | 요구 | 상태 | 근거와 gap |
 | --- | --- | --- |
 | 지도/카테고리/대표 가격/상세 | 구현 | places-read, map UI, seed/import |
-| viewport 갱신 | 구현 | places-read-map-repository, map E2E |
+| 표시 영역 갱신 | 구현 | places-read-map-repository, 지도 E2E |
 | 비회원 장소/가격/댓글/신고 | 구현 | public write routes |
 | 동일 가격 2회 검증 | 부분 | accepted count만 세고 독립 actor를 보장하지 않음 |
 | 가격 이력 | 부분 | place approval이 initial report와 summary를 재계산하지 않음 |
@@ -83,13 +83,13 @@ React/Vite SPA가 map/search/detail/bookmark/submit/report/comment UI를 제공�
 | 관리자 검수 | 구현 | role guard와 admin_actions 존재 |
 | 장소 병합 | 미구현 | TRD/화면 문서에는 merge가 있으나 route/repository 없음 |
 | AI 1차 + 운영자 최종 | 제안 레이어 | suggestion 조회/UI는 있으나 생성 lifecycle·version binding 불명확 |
-| 공공데이터 1,000건 | 파일/seed 구현 | DB source/external id/provenance 없음 |
+| 공공데이터 1,000건 | 파일/시드 구현 | DB 원천/외부 ID/출처 정보 없음 |
 | 방문/공유 지표 | 구현 | visitor actor 위조 시 unique 지표 신뢰 저하 |
 
 ## 5. P0/P1 최우선 발견사항
 
 ### ALT-AUTH-001
-제목: AUTH_SECRET 미설정 시 알려진 고정 secret으로 admin session 위조 가능  
+제목: AUTH_SECRET 미설정 시 알려진 고정 비밀값으로 관리자 세션 위조 가능
 분류: 인증·권한 / 보안  
 심각도: P1 (배포 환경 확인 필요)  
 확신도: 높음  
@@ -105,7 +105,7 @@ React/Vite SPA가 map/search/detail/bookmark/submit/report/comment UI를 제공�
 기존 문서에 기록된 문제인지: 아니오. signed session 요구는 있으나 fallback 위험은 미기록.
 
 ### ALT-SEC-001
-제목: 서명되지 않은 visitor cookie가 rate-limit·소유권·방문자 지표의 actor identity임  
+제목: 서명되지 않은 방문자 쿠키가 요청 제한·소유권·방문자 지표의 행위자 식별자임
 분류: 보안 / abuse / 데이터 정합성  
 심각도: P1  
 확신도: 높음  
@@ -121,7 +121,7 @@ React/Vite SPA가 map/search/detail/bookmark/submit/report/comment UI를 제공�
 기존 문서에 기록된 문제인지: 부분적으로 아니오. TRD는 visitor cookie를 actor로 정의하지만 서명/rotation 방어는 없다.
 
 ### ALT-SEC-002
-제목: USE_MOCK_DATA=true가 원격 hostname에서도 Turnstile을 bypass함  
+제목: USE_MOCK_DATA=true가 원격 호스트 이름에서도 Turnstile을 우회함
 분류: 보안 / 운영  
 심각도: P1 (배포 환경 확인 필요)  
 확신도: 높음  
@@ -137,7 +137,7 @@ React/Vite SPA가 map/search/detail/bookmark/submit/report/comment UI를 제공�
 기존 문서에 기록된 문제인지: 부분적으로 아니오. deploy guide는 false를 요구하지만 runtime OR와 WARN-only는 없다.
 
 ### ALT-COR-001
-제목: 가격 검증이 독립 actor를 요구하지 않고 anonymous 제보자를 저장하지 않음  
+제목: 가격 검증이 독립 행위자를 요구하지 않고 익명 제보자를 저장하지 않음
 분류: 정확성·정합성 / 신뢰 경계  
 심각도: P1  
 확신도: 높음  
@@ -157,7 +157,7 @@ React/Vite SPA가 map/search/detail/bookmark/submit/report/comment UI를 제공�
 ### 인증·권한·보안
 
 #### ALT-AUTH-002
-제목: 30일 self-contained session이 role 변경과 계정 삭제를 즉시 반영하지 않음  
+제목: 30일 자체 포함 세션이 역할 변경과 계정 삭제를 즉시 반영하지 않음
 분류: 인증·권한  
 심각도: P2  
 확신도: 높음  
@@ -173,7 +173,7 @@ React/Vite SPA가 map/search/detail/bookmark/submit/report/comment UI를 제공�
 기존 문서에 기록된 문제인지: 아니오.
 
 #### ALT-SEC-003
-제목: JSON/form body 전체 크기 제한이 없음  
+제목: JSON/폼 본문 전체 크기 제한이 없음
 분류: 보안 / 운영  
 심각도: P2  
 확신도: 높음  
@@ -223,7 +223,7 @@ React/Vite SPA가 map/search/detail/bookmark/submit/report/comment UI를 제공�
 기존 문서에 기록된 문제인지: 부분적으로 예. 기존 보고서는 price concurrency만 기록.
 
 #### ALT-DATA-001
-제목: 공공데이터 import가 source/external id를 DB에 보존하지 않아 재수집·정정·provenance 추적이 어려움  
+제목: 공공데이터 가져오기가 원천/외부 ID를 DB에 보존하지 않아 재수집·정정·출처 추적이 어려움
 분류: 데이터·공공데이터  
 심각도: P2  
 확신도: 높음  
@@ -239,7 +239,7 @@ React/Vite SPA가 map/search/detail/bookmark/submit/report/comment UI를 제공�
 기존 문서에 기록된 문제인지: 아니오.
 
 #### ALT-COR-004
-제목: 핵심 invariant가 DB CHECK 없이 application validation에만 있음  
+제목: 핵심 불변조건이 DB CHECK 없이 애플리케이션 검증에만 있음
 분류: DB 정합성  
 심각도: P2  
 확신도: 높음  
@@ -257,7 +257,7 @@ React/Vite SPA가 map/search/detail/bookmark/submit/report/comment UI를 제공�
 ### 성능·지도
 
 #### ALT-PERF-001
-제목: global search와 malformed viewport가 결과·비용 상한 없이 query를 확장시킬 수 있음  
+제목: 전체 검색과 잘못된 표시 영역이 결과·비용 상한 없이 질의를 확장시킬 수 있음
 분류: 성능·비용 / 지도·공간검색  
 심각도: P2  
 확신도: 높음  
@@ -273,7 +273,7 @@ React/Vite SPA가 map/search/detail/bookmark/submit/report/comment UI를 제공�
 기존 문서에 기록된 문제인지: 부분적으로 예. global index가 future bottleneck이라는 기록은 있으나 입력/결과 상한은 없다.
 
 #### ALT-MAP-001
-제목: 좌표 read filter는 null만 제외하고 범위·lat/lng 의미를 DB에 보장하지 않음  
+제목: 좌표 읽기 필터는 null만 제외하고 범위·위도/경도 의미를 DB에 보장하지 않음
 분류: 지도·공간검색 / 데이터 정합성  
 심각도: P2  
 확신도: 높음  
@@ -289,7 +289,7 @@ React/Vite SPA가 map/search/detail/bookmark/submit/report/comment UI를 제공�
 기존 문서에 기록된 문제인지: 아니오.
 
 #### ALT-ARCH-001
-제목: DB mode에서도 북마크가 process-local mock store임  
+제목: DB 모드에서도 북마크가 프로세스 로컬 모의 저장소임
 분류: 아키텍처 / 제품 기능  
 심각도: P2  
 확신도: 높음  
@@ -305,7 +305,7 @@ React/Vite SPA가 map/search/detail/bookmark/submit/report/comment UI를 제공�
 기존 문서에 기록된 문제인지: 아니오.
 
 #### ALT-OPS-001
-제목: 현재 Worker는 Hyperdrive binding 없이 Supabase DATABASE_URL 직접 연결을 사용함  
+제목: 현재 Worker는 Hyperdrive 바인딩 없이 Supabase DATABASE_URL 직접 연결을 사용함
 분류: 운영 / 성능·비용  
 심각도: P2 (운영 환경 확인 필요)  
 확신도: 높음  
@@ -323,7 +323,7 @@ React/Vite SPA가 map/search/detail/bookmark/submit/report/comment UI를 제공�
 ### AI 검수·운영
 
 #### ALT-OPS-002
-제목: moderation suggestion의 confidence/version/lifecycle invariant가 강제되지 않음  
+제목: 운영 검수 제안의 신뢰도/버전/생명주기 불변조건이 강제되지 않음
 분류: 운영 / AI 신뢰 경계  
 심각도: P2  
 확신도: 중간  
@@ -341,7 +341,7 @@ React/Vite SPA가 map/search/detail/bookmark/submit/report/comment UI를 제공�
 ### 테스트·CI·배포
 
 #### ALT-TEST-001
-제목: CI가 migration replay 대신 db:push에 의존하고 high-risk contract coverage가 비어 있음  
+제목: CI가 마이그레이션 재실행 대신 db:push에 의존하고 고위험 계약 테스트 범위가 비어 있음
 분류: 테스트·CI / 운영  
 심각도: P2  
 확신도: 높음  
@@ -357,13 +357,13 @@ React/Vite SPA가 map/search/detail/bookmark/submit/report/comment UI를 제공�
 기존 문서에 기록된 문제인지: 부분적으로 예. CI drift check는 있으나 replay gap은 미기록.
 
 #### ALT-OPS-003
-제목: build가 package engine보다 오래된 Node에서 성공하고 warning만 남김  
+제목: 빌드가 package 엔진 요구사항보다 오래된 Node에서 성공하고 경고만 남김
 분류: 운영 / 빌드  
 심각도: P2  
 확신도: 높음  
 관련 파일과 line 또는 함수: package.json:6-8; .node-version; vite.config.mts:3; src/worker/auth/session.ts:1; src/worker/db.ts:2  
 영향받는 route와 사용자 흐름: 전체 Worker build와 auth/DB runtime  
-현재 동작: 이번 환경 Node 20.13.1, package engine >=20.19.0. npm run build는 성공했지만 Vite가 upgrade warning을 출력했다. Worker source는 node:crypto/node:async_hooks/Buffer와 nodejs_compat에 의존한다.  
+현재 동작: 당시 환경 Node 20.13.1, package 엔진 >=20.19.0. npm run build는 성공했지만 Vite가 업그레이드 경고를 출력했다. Worker 소스는 node:crypto/node:async_hooks/Buffer와 nodejs_compat에 의존한다.
 코드 근거: engine mismatch를 hard fail하지 않고 local Node와 workerd compatibility가 다르다.  
 발생 조건: CI/Dashboard가 .node-version을 무시하거나 version drift.  
 영향: build 재현성과 edge runtime 호환성 불확실성.  
@@ -375,7 +375,7 @@ React/Vite SPA가 map/search/detail/bookmark/submit/report/comment UI를 제공�
 ### UX·접근성·문서
 
 #### ALT-UX-001
-제목: 댓글 textarea가 placeholder에만 의존하고 accessible name이 없음  
+제목: 댓글 입력 영역이 placeholder에만 의존하고 접근 가능한 이름이 없음
 분류: UI·접근성  
 심각도: P2  
 확신도: 높음  
@@ -405,7 +405,7 @@ React/Vite SPA가 map/search/detail/bookmark/submit/report/comment UI를 제공�
 기존 문서에 기록된 문제인지: 아니오.
 
 #### ALT-UX-002
-제목: map fallback과 mobile sheet의 실제 외부 SDK 장애·보조기술 parity가 자동 검증되지 않음  
+제목: 지도 대체 화면과 모바일 시트의 실제 외부 SDK 장애·보조기술 일치 여부가 자동 검증되지 않음
 분류: UI·접근성 / 제품 경험  
 심각도: P3  
 확신도: 중간  
@@ -457,7 +457,7 @@ React/Vite SPA가 map/search/detail/bookmark/submit/report/comment UI를 제공�
 | GET | /manifest.webmanifest | Public | 없음 | 없음 | N/A | 없음 | direct coverage 없음 | P3 |
 | GET | /sitemap.xml | Public | 없음 | 없음 | N/A | read | remote smoke | size/DB live check |
 
-## 8. DB 정합성·transaction·index 감사
+## 8. DB 정합성·트랜잭션·인덱스 감사
 
 좋은 점: FK cascade/set-null, unique slug/email/price label/bookmark/reaction, price approval transaction/advisory lock, rate-limit/visit bucket unique, map status/lat/lng index가 있다.
 
@@ -493,22 +493,22 @@ React/Vite SPA가 map/search/detail/bookmark/submit/report/comment UI를 제공�
 - disposable migration/seed/check와 local DB full E2E는 실행했다.
 - actual OAuth credential login/provider callback 성공, screen reader·실기기 검증, production DB migration은 미실행.
 
-### 테스트 coverage gap
+### 테스트 범위 공백
 
 credentials brute-force와 enumeration, 실제 provider OAuth code replay/PKCE, spoofed forwarded header, import remote re-fetch idempotency, production migration 실행은 운영 검증 범위다. OAuth state/token malformed, visitor rotation, distinct price actor, admin CAS, DB bookmark persistence, malformed bbox/body, DB constraints, migration replay는 자동 검증했다.
 
 ## 10. 리팩터링 후보
 
-1. auth/session fail-closed와 session revocation/version.
-2. signed visitor actor와 IP trust boundary.
-3. Turnstile policy/local test adapter와 body cap middleware.
-4. 공통 admin moderation claim/CAS/audit service.
-5. price report provenance/idempotency/verification domain model.
-6. map search/viewport adapter와 FTS/bounds validation.
-7. DB-backed bookmark repository와 mock adapter 분리.
-8. import/seed external source upsert와 destructive guard.
-9. moderation suggestion version/lifecycle service.
-10. UI form accessibility/status/focus primitives.
+1. 인증/세션의 안전 실패와 세션 폐기/버전.
+2. 서명된 방문자 행위자와 IP 신뢰 경계.
+3. Turnstile 정책/로컬 테스트 어댑터와 본문 크기 제한 미들웨어.
+4. 공통 관리자 검수 주장/CAS/감사 서비스.
+5. 가격 제보 출처/멱등성/검증 도메인 모델.
+6. 지도 검색/표시 영역 어댑터와 FTS/범위 검증.
+7. DB 기반 북마크 저장소와 모의 어댑터 분리.
+8. 가져오기/시드 외부 원천 upsert와 파괴적 작업 방어.
+9. 운영 검수 제안 버전/생명주기 서비스.
+10. UI 폼 접근성/상태/포커스 기본 구성요소.
 
 ## 11. 기능 아이디어
 
@@ -521,7 +521,7 @@ credentials brute-force와 enumeration, 실제 provider OAuth code replay/PKCE, 
 - 난이도: 높음. 기대 효과: 허위 검증 감소.
 - 성공 지표: verified 가격 신고율, independent confirmation rate. 우선순위 A.
 
-### 2) 공공데이터·사용자 제보 provenance timeline
+### 2) 공공데이터·사용자 제보 출처 이력
 - 해결할 문제: 기준일과 최신 확인을 구분하기 어렵다.
 - 현재 코드·데이터 근거: import manifest와 price history.
 - MVP 범위: source/기준일/사용자 확인일/운영 승인일.
@@ -548,7 +548,7 @@ credentials brute-force와 enumeration, 실제 provider OAuth code replay/PKCE, 
 - 난이도: 중간. 기대 효과: 지역 coverage·제보 전환 상승.
 - 성공 지표: low-density submit CTR, 신규 active place/주. 우선순위 B.
 
-### 5) 1인 운영 workload dashboard
+### 5) 1인 운영 업무 현황판
 - 해결할 문제: queue 우선순위를 수동으로 파악한다.
 - 현재 코드·데이터 근거: admin queue, admin_actions, suggestions, visit_activity.
 - MVP 범위: pending age, duplicate cluster, high-risk flag.
@@ -557,7 +557,7 @@ credentials brute-force와 enumeration, 실제 provider OAuth code replay/PKCE, 
 - 난이도: 중간. 기대 효과: 검수 비용 감소.
 - 성공 지표: median pending age, admin 처리량. 우선순위 B.
 
-### 6) bookmark 가격 freshness prompt
+### 6) 북마크 가격 최신성 알림
 - 해결할 문제: 오래된 가격으로 재방문 결정한다.
 - 현재 코드·데이터 근거: bookmarks schema, lastPriceUpdatedAt, visit_activity.
 - MVP 범위: stale badge와 in-app update prompt.
@@ -575,7 +575,7 @@ credentials brute-force와 enumeration, 실제 provider OAuth code replay/PKCE, 
 - 난이도: 중간. 기대 효과: 공유→bookmark/report 전환.
 - 성공 지표: source별 CTR. 우선순위 D.
 
-### 8) 공공 가격과 현장 제보 충돌 view
+### 8) 공공 가격과 현장 제보 충돌 보기
 - 해결할 문제: source와 current price가 다를 때 운영자가 비교하기 어렵다.
 - 현재 코드·데이터 근거: imported data, price history, admin queue.
 - MVP 범위: 동일 label/단위 side-by-side와 차이율.
@@ -584,7 +584,7 @@ credentials brute-force와 enumeration, 실제 provider OAuth code replay/PKCE, 
 - 난이도: 중간. 기대 효과: 승인 속도·품질 개선.
 - 성공 지표: approval median time, correction rate. 우선순위 A.
 
-### 9) target-aware 신고·댓글 abuse queue
+### 9) 대상별 신고·댓글 악용 대기열
 - 해결할 문제: actor별 limit만으로 특정 장소를 폭탄 처리할 수 있다.
 - 현재 코드·데이터 근거: content_reports, comments, rate limit, admin reports.
 - MVP 범위: target cap, same-reason dedupe, burst flag, bulk dismiss.
@@ -593,7 +593,7 @@ credentials brute-force와 enumeration, 실제 provider OAuth code replay/PKCE, 
 - 난이도: 중간. 기대 효과: queue 고갈 감소.
 - 성공 지표: duplicate dismissal, queue age. 우선순위 A.
 
-### 10) 장소 merge assistant와 보존 preview
+### 10) 장소 병합 보조 도구와 보존 미리보기
 - 해결할 문제: 공공/사용자 중복 장소와 문서상 미구현 merge.
 - 현재 코드·데이터 근거: name/address/coordinate, comments, prices, bookmarks, reports.
 - MVP 범위: candidate pair, price/comment/report/bookmark 보존 preview, admin confirm.
@@ -620,7 +620,7 @@ ALT-ARCH-001, Hyperdrive trigger 기반 전환, provenance/merge model, moderati
 
 verified evidence badge, provenance timeline, density CTA, conflict view, share card, freshness prompt, workload dashboard, merge assistant.
 
-## 13. 독립 PR 단위 추천 실행 순서
+## 13. 독립 변경 단위 추천 실행 순서
 
 1. security/session-fail-closed — fallback 제거, runtime/deploy gate, forged-cookie tests.
 2. security/visitor-actor-integrity — signed visitor token, IP policy, rotation/ownership tests.
@@ -637,7 +637,7 @@ verified evidence badge, provenance timeline, density CTA, conflict view, share 
 13. product/provenance-and-density — freshness/source/density UX와 metrics.
 14. product/merge-assistant — reversible merge와 preservation preview.
 
-## 14. 분석 커버리지와 추가 확인 사항
+## 14. 분석 범위와 추가 확인 사항
 
 31개 Worker API route를 access/validation/rate/Turnstile/DB write/test 상태로 매트릭스화했다. auth/session/cookie/OAuth, public write actor/support, admin routes/repositories, map read, schema 7개와 migrations 13개, import/seed/production scripts, CI/workflows, E2E/unit tests, product/deploy/project docs, UI form/sheet/fallback을 확인했다.
 

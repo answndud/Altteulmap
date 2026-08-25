@@ -1,68 +1,68 @@
-# Production Reliability Audit — 2026-08-25
+# 운영 신뢰성 감사 보고서 — 2026-08-25
 
-## Scope and method
+## 범위와 방법
 
-요청 진입부터 Worker route, DB transaction, 외부 API, HTTP 응답, React 상태와 사용자 메시지까지 실패 생명주기를 추적했다. 자동 retry는 추가하지 않았고, 반복 가능한 쓰기에는 기존 idempotency/unique constraint가 있는지 먼저 확인했다. 동시성은 특히 denormalized summary와 moderation claim을 실제 SQL 순서로 검토했다.
+요청 진입부터 Worker 라우트, DB 트랜잭션, 외부 API, HTTP 응답, React 상태와 사용자 메시지까지 실패 생명주기를 추적했다. 자동 재시도는 추가하지 않았고, 반복 가능한 쓰기에는 기존 멱등성/고유 제약이 있는지 먼저 확인했다. 동시성은 특히 비정규화 요약과 운영 검수 점유 처리를 실제 SQL 순서로 검토했다.
 
-## Findings and remediation
+## 발견사항 및 조치
 
-### REL-001 — 반응 집계가 동시 요청에서 stale count를 저장할 수 있음
+### REL-001 — 반응 집계가 동시 요청에서 오래된 수치를 저장할 수 있음
 
-- Severity: High
-- Confidence: High
-- Status: Fixed
-- Path: `setDatabasePlaceReaction`가 reaction row 변경과 별도로 count를 읽고 `places.like_count/dislike_count`를 갱신했다.
-- Failure: 동시에 한 요청이 반응을 추가하고 다른 요청이 삭제하면 각 요청이 서로 다른 snapshot을 집계한 뒤 마지막 update가 실제 row 상태와 다른 count를 저장할 수 있었다.
-- Impact: 사용자에게 잘못된 좋아요/싫어요 수가 지속 노출되고 후속 정렬·지도 요약이 오염된다.
-- Remediation: place row를 `FOR UPDATE`로 잠그고 reaction mutation 및 summary refresh를 하나의 DB transaction으로 묶었다. 두 요청은 같은 장소에서 직렬화된다.
+- 심각도: 높음
+- 신뢰도: 높음
+- 상태: 수정 완료
+- 경로: `setDatabasePlaceReaction`가 반응 행 변경과 별도로 수치를 읽고 `places.like_count/dislike_count`를 갱신했다.
+- 실패 상황: 동시에 한 요청이 반응을 추가하고 다른 요청이 삭제하면 서로 다른 스냅샷을 집계한 뒤 마지막 갱신이 실제 행 상태와 다른 수치를 저장할 수 있었다.
+- 영향: 잘못된 좋아요/싫어요 수가 지속 노출되고 후속 정렬·지도 요약이 오염된다.
+- 조치: 장소 행을 `FOR UPDATE`로 잠그고 반응 변경과 요약 갱신을 하나의 DB 트랜잭션으로 묶었다. 같은 장소의 요청은 직렬화된다.
 
-### REL-002 — OAuth/Turnstile 외부 호출에 상한 시간이 없음
+### REL-002 — OAuth/Turnstile 외부 호출에 제한 시간이 없음
 
-- Severity: High
-- Confidence: High
-- Status: Fixed
-- Path: OAuth token/profile fetch와 Turnstile siteverify fetch가 네트워크 응답을 무기한 기다릴 수 있었다.
-- Failure: 외부 provider 지연·연결 정체 시 Worker request와 DB transaction 전 단계가 오래 점유된다.
-- Impact: 사용자 요청 hang, Worker concurrency 고갈, 로그인/공개 쓰기 장애 전파.
-- Remediation: 공통 `fetchWithTimeout`으로 OAuth는 8초, Turnstile은 5초 deadline을 적용했다. retry는 하지 않으며 timeout은 기존 generic error lifecycle로 전달된다.
+- 심각도: 높음
+- 신뢰도: 높음
+- 상태: 수정 완료
+- 경로: OAuth 토큰/프로필 조회와 Turnstile 검증 조회가 네트워크 응답을 무기한 기다릴 수 있었다.
+- 실패 상황: 외부 제공자 지연·연결 정체 시 Worker 요청과 DB 트랜잭션 전 단계가 오래 점유된다.
+- 영향: 사용자 요청 정지, Worker 동시 처리 용량 고갈, 로그인·공개 쓰기 장애 전파.
+- 조치: 공통 `fetchWithTimeout`으로 OAuth는 8초, Turnstile은 5초 제한을 적용했다. 재시도는 하지 않으며 제한 시간 초과는 기존 일반 오류 흐름으로 전달된다.
 
-### REL-003 — 네트워크 단절/비JSON 응답이 공개 폼에서 사용자 상태로 전파되지 않음
+### REL-003 — 네트워크 단절/비JSON 응답이 공개 폼의 사용자 상태로 전파되지 않음
 
-- Severity: Medium
-- Confidence: High
-- Status: Fixed
-- Path: 장소 등록, 가격 제보, 코멘트, 신고 폼이 `fetch`와 `response.json()`을 await하면서 예외를 catch하지 않았다.
-- Failure: 네트워크 중단 또는 proxy의 HTML/빈 응답에서 transition callback이 reject되어 사용자에게 결과가 보이지 않고, retry 방법도 없었다.
-- Impact: 사용자는 저장 여부를 알 수 없어 중복 재제출할 수 있고 입력 상태·신뢰성을 잃는다.
-- Remediation: fetch와 JSON parse를 catch/finally로 감싸고, HTTP 오류·malformed response·network failure에 명확한 실패 메시지를 표시한다. 실패 시 입력은 유지하고 성공 때만 초기화한다.
+- 심각도: 중간
+- 신뢰도: 높음
+- 상태: 수정 완료
+- 경로: 장소 등록, 가격 제보, 코멘트, 신고 폼이 `fetch`와 `response.json()`을 기다리면서 예외를 처리하지 않았다.
+- 실패 상황: 네트워크 중단 또는 프록시의 HTML/빈 응답에서 전환 콜백이 거부되어 사용자에게 결과가 보이지 않고 재시도 방법도 없었다.
+- 영향: 저장 여부를 알 수 없어 중복 재제출할 수 있고 입력 상태와 신뢰성을 잃는다.
+- 조치: fetch와 JSON 분석을 예외 처리하고, HTTP 오류·잘못된 응답·네트워크 실패에 명확한 메시지를 표시한다. 실패 시 입력은 유지하고 성공 때만 초기화한다.
 
-### REL-004 — 장소 신규 등록은 클라이언트 재전송에 완전한 idempotency가 없음
+### REL-004 — 장소 신규 등록은 클라이언트 재전송에 완전한 멱등성이 없음
 
-- Severity: Medium
-- Confidence: High
-- Status: Open / documented
-- Path: `POST /api/places`는 하나의 transaction으로 원자적이지만, 같은 요청이 다시 오면 새로운 slug/place/price report를 만든다. 현재 `submissionKey` idempotency는 가격 제보 endpoint에만 적용된다.
-- Attacker/user prerequisite: 응답 유실, 모바일 재전송, 브라우저 중복 요청 또는 네트워크 retry가 필요하다.
-- Impact: pending place 중복과 운영 moderation queue 중복이 발생한다. slug collision은 unique constraint 경합 시 500으로 끝날 수 있다.
-- Safe next step: public API에 `Idempotency-Key`를 도입하고 별도 request-result 저장/unique constraint를 migration으로 추가해야 한다. 의미가 다른 동일 내용 제보를 임의 deduplicate하는 방식은 적용하지 않았다.
+- 심각도: 중간
+- 신뢰도: 높음
+- 상태: 미해결 / 문서화
+- 경로: `POST /api/places`는 하나의 트랜잭션으로 원자적이지만 같은 요청이 다시 오면 새 장소·가격 제보를 만든다. 현재 `submissionKey` 멱등성은 가격 제보 API에만 적용된다.
+- 공격자/사용자 전제: 응답 유실, 모바일 재전송, 브라우저 중복 요청 또는 네트워크 재시도가 필요하다.
+- 영향: 검토 대기 장소와 운영 검수 큐가 중복된다. slug 충돌은 고유 제약 경합 시 500으로 끝날 수 있다.
+- 안전한 다음 단계: 공개 API에 `Idempotency-Key`를 도입하고 요청 결과 저장소와 고유 제약을 마이그레이션으로 추가해야 한다. 의미가 다른 동일 내용 제보를 임의로 중복 제거하지는 않았다.
 
-## Positive reliability controls
+## 확인된 신뢰성 제어
 
-- Read DB operations have a 5-second application timeout plus PostgreSQL statement/lock/idle transaction timeouts.
-- Public price reports use an actor/content-derived unique `submissionKey`, and bookmarks/reactions use database conflict-safe writes.
-- Place submission uses a DB transaction, so place/category/price/report partial writes roll back together.
-- Admin moderation uses transaction claim predicates and advisory locks for report/group verification races.
-- Global Worker error handling returns a bounded generic 500 response with `requestId`; structured logs retain method/path/error name for operators without returning stack traces.
-- Read fetches abort on component cleanup and map requests use sequence checks, limiting stale response overwrites.
+- DB 읽기 작업은 5초 애플리케이션 제한과 PostgreSQL 문장/잠금/유휴 트랜잭션 제한을 사용한다.
+- 공개 가격 제보는 행위자·내용 기반 고유 `submissionKey`를 사용하고, 북마크·반응은 충돌 안전한 DB 쓰기를 사용한다.
+- 장소 등록은 DB 트랜잭션을 사용해 장소·카테고리·가격·제보의 부분 쓰기를 함께 롤백한다.
+- 관리자 검수는 트랜잭션 점유 조건과 자문 잠금으로 제보·검증 그룹의 경합을 제어한다.
+- 전역 Worker 오류 처리는 `requestId`가 포함된 제한된 일반 500 응답을 반환하고, 구조화 로그에는 운영자용 메서드·경로·오류 이름을 남기되 스택 추적은 반환하지 않는다.
+- 읽기 fetch는 컴포넌트 정리 시 중단되고 지도 요청은 순번을 확인해 오래된 응답 덮어쓰기를 제한한다.
 
-## Remaining risks and observations
+## 잔여 위험과 관찰사항
 
-- Map edge cache is intentionally short-lived (12 seconds); mutation invalidation is process-local, so another Worker isolate can serve bounded stale map data until TTL expiry. This is a consistency tradeoff, not a correctness-critical write loss.
-- Public write rate-limit persistence failing can turn a request into a generic 500 rather than silently accepting an unbounded operation; this is fail-closed but needs an operator-visible dependency error metric.
-- No background jobs, email delivery, Redis, file upload, or deployment-time migration runner are present in the inspected runtime, so those failure classes are not applicable to current code.
-- Frontend admin mutations surface backend messages through `fetchJson`; public forms now use stable status-aware fallback messages rather than requiring exact backend wording.
+- 지도 엣지 캐시는 의도적으로 짧은 12초 수명이며 무효화는 프로세스 로컬이므로 다른 Worker 격리가 TTL 만료 전까지 제한된 오래된 지도 데이터를 제공할 수 있다. 이는 정합성 절충이며 정확성이 중요한 쓰기 손실은 아니다.
+- 공개 쓰기 rate limit 영속화가 실패하면 제한 없는 작업을 묵인하지 않고 일반 500으로 끝난다. 이는 fail-closed 동작이지만 운영자가 확인할 의존성 오류 지표가 필요하다.
+- 확인한 런타임에는 백그라운드 작업, 이메일 전송, Redis, 파일 업로드, 배포 시점 마이그레이션 실행기가 없어 해당 실패 유형은 현재 코드에 적용되지 않는다.
+- 관리자 프론트엔드 변경은 `fetchJson`을 통해 백엔드 메시지를 표시하고, 공개 폼은 백엔드 문구에 의존하지 않는 상태 기반 기본 메시지를 사용한다.
 
-## Verification
+## 검증
 
 - `npm run lint`
 - `npm run typecheck`
@@ -70,4 +70,4 @@
 - `npm run verify`
 - `git diff --check`
 
-Remote provider outage, production Worker isolate behavior, and live database failover still require staging credentials and deployment access; they were not simulated by local mock tests.
+외부 제공자 장애, 운영 Worker 격리 동작, 실제 DB 장애 전환은 스테이징 자격 증명과 배포 접근 권한이 필요하므로 로컬 mock 테스트에서는 시뮬레이션하지 않았다.
