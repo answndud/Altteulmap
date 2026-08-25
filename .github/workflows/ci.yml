@@ -72,6 +72,7 @@ jobs:
 
   e2e-full:
     name: E2E Full
+    needs: [verify, integration]
     runs-on: ubuntu-latest
     timeout-minutes: 35
     services:
@@ -131,6 +132,66 @@ jobs:
 
       - name: Run all E2E
         run: npm run test:e2e:all
+
+      - name: Upload Playwright artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results
+          path: |
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore
+
+  integration:
+    name: PostgreSQL Integration
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: altteulmap
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d altteulmap"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/altteulmap
+      TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/altteulmap
+      USE_MOCK_DATA: "false"
+      AUTH_SECRET: ci-auth-secret
+      NEXTAUTH_URL: http://127.0.0.1:3107
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply migrations
+        run: ALLOW_LOCAL_MIGRATION=1 npm run db:migrate
+
+      - name: Seed local database
+        run: npm run db:seed
+
+      - name: Run integration and concurrency tests
+        run: |
+          npm run test:integration
+          npm run smoke:price-concurrency
 
   remote-smoke:
     name: Remote Smoke
