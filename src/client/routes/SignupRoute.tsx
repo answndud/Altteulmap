@@ -93,6 +93,15 @@ export function SignupRoute() {
         callbackUrl,
         json: "true",
       });
+      const csrfResponse = await fetch("/api/auth/csrf", { cache: "no-store" });
+      const csrfPayload = (await csrfResponse.json().catch(() => null)) as
+        | { csrfToken?: string }
+        | null;
+      if (!csrfResponse.ok || !csrfPayload?.csrfToken) {
+        setMessage("회원가입은 완료됐지만 자동 로그인 보안 확인을 준비하지 못했습니다.");
+        return;
+      }
+      loginBody.set("csrfToken", csrfPayload.csrfToken);
       const loginResponse = await fetch("/api/auth/callback/credentials", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },

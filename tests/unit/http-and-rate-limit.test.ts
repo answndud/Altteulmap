@@ -24,6 +24,7 @@ import {
 import {
   decodeSignedPayload,
   encodeSignedPayload,
+  isValidCsrfToken,
 } from "../../src/worker/auth/session";
 import {
   isLocalTurnstileBypassAllowed,
@@ -161,6 +162,16 @@ test("signed auth payloads fail closed when AUTH_SECRET is missing", () => {
     decodeSignedPayload("v1.invalid.invalid", {}),
     null,
   );
+});
+
+test("credential login requires the CSRF token issued to the browser", () => {
+  const request = new Request("https://altteulmap.example/api/auth/callback/credentials", {
+    headers: { cookie: "next-auth.csrf-token=csrf-token%7Cvite-mock" },
+  });
+
+  assert.equal(isValidCsrfToken(request, "csrf-token"), true);
+  assert.equal(isValidCsrfToken(request, "wrong-token"), false);
+  assert.equal(isValidCsrfToken(new Request(request), "csrf-token"), true);
 });
 
 test("OAuth state is provider-bound, expiring, and tamper-resistant", () => {

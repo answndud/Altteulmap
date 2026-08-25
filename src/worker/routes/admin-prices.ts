@@ -30,7 +30,7 @@ export function registerAdminPriceRoutes(
   dependencies: AdminRouteDependencies,
 ) {
   app.get("/api/admin/prices", async (c) => {
-    const admin = requireAdminSession(c.req.raw, c.env, dependencies.noStoreHeaders);
+    const admin = await requireAdminSession(c.req.raw, c.env, dependencies.noStoreHeaders, dependencies);
 
     if (admin.response) {
       return admin.response;
@@ -85,7 +85,7 @@ export function registerAdminPriceRoutes(
   });
 
   app.patch("/api/admin/prices/:id", async (c) => {
-    const admin = requireAdminSession(c.req.raw, c.env, dependencies.noStoreHeaders);
+    const admin = await requireAdminSession(c.req.raw, c.env, dependencies.noStoreHeaders, dependencies);
 
     if (admin.response) {
       return admin.response;
@@ -148,7 +148,7 @@ export function registerAdminPriceRoutes(
   });
 
   app.get("/api/admin/prices/places/:id", async (c) => {
-    const admin = requireAdminSession(c.req.raw, c.env, dependencies.noStoreHeaders);
+    const admin = await requireAdminSession(c.req.raw, c.env, dependencies.noStoreHeaders, dependencies);
 
     if (admin.response) {
       return admin.response;
@@ -212,7 +212,7 @@ export function registerAdminPriceRoutes(
   });
 
   app.patch("/api/admin/price-items/:id", async (c) => {
-    const admin = requireAdminSession(c.req.raw, c.env, dependencies.noStoreHeaders);
+    const admin = await requireAdminSession(c.req.raw, c.env, dependencies.noStoreHeaders, dependencies);
 
     if (admin.response) {
       return admin.response;
