@@ -6,26 +6,6 @@
 
 ## Active
 
-### P5 - 성장 한계와 데이터 정합성 제거
-
-1. P5.1 - global/map/admin 조회의 DB 작업량 제한
-   - 파일: `src/worker/places-read-map-repository.ts`, `src/worker/admin/*-repository.ts`, `drizzle/`, `scripts/measure-map-api.mjs`
-   - 변경: global 검색의 다중 ILIKE를 검토 후 PostgreSQL FTS 또는 trigram index 중 실제 benchmark 우위가 있는 방식을 선택한다. count와 row scan을 bounded contract로 만들고 검색어·bbox·page/limit 상한, 관리자 queue keyset/page query와 필요한 covering index를 고정한다. 자동 retry는 추가하지 않는다.
-   - 검증: `npm run db:local:setup`, 1천/1만/10만 synthetic dataset benchmark, `npm run map:measure`, `EXPLAIN (ANALYZE, BUFFERS)` 비교, p95/p99·rows·payload bytes 기록
-   - 완료: global/wide bbox/category/admin queue가 정의된 p95·p99·rows 예산을 만족하고 limit을 늘려도 서버가 무제한 scan·응답하지 않는다.
-
-2. P5.2 - 가격·장소 mutation 실패와 동시성 완전 고정
-   - 파일: `tests/integration/price-lifecycle.test.ts`, `tests/integration/fixtures.ts`, `src/worker/admin/admin-price-review-repository.ts`, `src/db/schema-pricing.ts`
-   - 변경: 승인·반려·중복 제출·unique conflict·audit insert 실패·summary 갱신 실패·deadlock/lock timeout을 disposable DB에서 주입한다. 트랜잭션 rollback 후 report/item/place/admin action의 orphan·double count·stale summary를 검사하고 같은 actor의 duplicate request와 서로 다른 운영자의 경쟁 결정을 구분한다.
-   - 검증: `npm run test:integration`, `npm run smoke:price-concurrency`, 동일 suite 20회, 병렬 worker 실행, 실패 후 invariant query, `npm run typecheck`
-   - 완료: 모든 실패는 성공으로 오인되지 않고 재실행 가능한 요청은 멱등하며, 최종 상태·summary·audit가 하나의 결정으로 수렴한다.
-
-3. P5.3 - migration·rollback·자원 한도 CI 게이트 강화
-   - 파일: `.github/workflows/ci.yml`, `scripts/migrate-production.mjs`, `scripts/check-vite-worker-output.mjs`, `package.json`
-   - 변경: fresh migration replay와 기존 fixture upgrade를 모두 실행하고 schema drift·migration history·destructive SQL 검토를 자동 게이트로 둔다. Worker/DB/query/body/external fetch timeout, connection 상한, Playwright timeout, 실패 artifact 보존을 검증하며 code rollback과 forward-fix를 분리한다.
-   - 검증: clean runner `npm ci`, `npm run db:migrate`, `npm run db:seed`, `npm run test:integration`, `npm run test:e2e:all`, deploy output check, 의도적 migration 실패 job
-   - 완료: migration·DB·Worker·E2E 중 어느 단계가 실패해도 배포 job이 차단되고 원인 artifact가 남으며 부분 성공을 성공으로 보고하지 않는다.
-
 ### P6 - 변경 비용과 실제 사용자 품질 개선
 
 4. P6.1 - mock/production·오류 계약 중복 축소

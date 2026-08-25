@@ -26,13 +26,17 @@ export type AdminRouteDependencies = {
   runWorkerDatabaseRoute<T>(env: AdminBindings, load: () => Promise<T>): Promise<T>;
 };
 
+const ADMIN_QUEUE_MAX_PAGE_NUMBER = 1_000;
+
 export function getAdminQueuePagination(request: Request) {
   const searchParams = new URL(request.url).searchParams;
   const page = Number(searchParams.get("page") ?? "1");
   const limit = Number(searchParams.get("limit") ?? "50");
 
   return {
-    page: Number.isFinite(page) ? page : 1,
+    page: Number.isFinite(page)
+      ? Math.min(ADMIN_QUEUE_MAX_PAGE_NUMBER, Math.max(1, Math.floor(page)))
+      : 1,
     limit: Number.isFinite(limit) ? limit : 50,
   };
 }

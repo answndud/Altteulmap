@@ -77,6 +77,17 @@ test("잘못된 JSON과 본문 초과는 bounded error contract를 반환한다"
   assert.ok(oversized.headers.get("x-request-id"));
 });
 
+test("지도 검색어 상한은 비용이 큰 입력을 SQL까지 전달하지 않는다", async () => {
+  const response = await request(
+    `/api/places/map?scope=global&query=${"가".repeat(121)}`,
+  );
+  const body = await readJson(response);
+
+  assert.equal(response.status, 400);
+  assert.equal(getErrorCode(body), "QUERY_TOO_LONG");
+  assert.equal(response.headers.get("cache-control"), "no-store, max-age=0");
+});
+
 test("공개 등록 rate limit은 동일 visitor의 반복 요청을 429로 제한한다", async () => {
   const body = JSON.stringify({
     name: "장애경로 테스트 장소",
