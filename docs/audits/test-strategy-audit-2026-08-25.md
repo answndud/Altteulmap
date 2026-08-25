@@ -52,6 +52,8 @@
 - `npx playwright test tests/e2e/comments.spec.ts`
 - `git diff --check`
 
+최신 데스크톱 Chromium 전체 E2E는 25건, 성능 시나리오는 1건 모두 통과했다. 모바일 전용 브라우저·기기 검증은 범위에서 제외했다.
+
 ## P2·P3 추가 보호 대상
 
 - authorization 통합 테스트는 인증 없음 401, 일반 사용자 관리자 API 403, DB role 강등 후 세션 거부, 사용자별 bookmark 격리를 실제 PostgreSQL과 Worker route에서 확인한다.

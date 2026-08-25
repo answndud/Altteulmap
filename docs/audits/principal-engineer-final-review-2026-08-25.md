@@ -151,3 +151,7 @@ P1에서는 staging credentials smoke에 CSRF·일반 사용자 관리자 API 40
 2. 승인된 staging clone에서 backup/restore rehearsal을 실행해 RPO/RTO와 `evidence.json`을 확정한다.
 3. Cloudflare Logpush/Sentry에 `requestId`, status, latency, DB/OAuth failure event를 연결하고 alert delivery를 확인한다.
 4. 10만/100만 staging dataset에서 검색 p95/p99와 rows read를 측정한다.
+
+## 최신 실행 결과
+
+모바일 범위 제거 후 데스크톱 Chromium 전체 E2E 25건과 성능 시나리오 1건이 통과했다. 10만 synthetic PostgreSQL benchmark도 예산 내였으나 100만 fixture는 Docker 내부 저장소 부족으로 중단되어, 대규모 성능과 프로덕션 준비도 점수는 해당 증거 확보 전까지 상향하지 않는다.

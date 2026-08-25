@@ -111,3 +111,9 @@ P1~P3 코드·CI·로컬 PostgreSQL 증거는 추가되었지만, 실제 운영 
 - authorization matrix는 익명 401, 일반 사용자 403, DB role 강등 403, bookmark ownership 격리를 확인했다.
 - `npm run hygiene:dead-code` 0건과 `npm audit --omit=dev --audit-level=moderate` 취약점 0건을 확인했다.
 - 실제 운영 provider 성공 callback·PITR·외부 alert delivery는 자격 증명과 운영 계정이 없어 실행하지 않았다.
+
+## 최신 데스크톱 검증
+
+2026-08-25 최신 실행에서 Docker PostgreSQL 기반 데스크톱 Chromium E2E 25건과 성능 시나리오 1건이 모두 통과했다. 성능 측정값은 초기 목록 238ms, 지도 갱신 170ms, 클러스터 상세 209ms, 관리자 가격 큐 210ms로 각 예산 이내였다. 모바일 전용 테스트와 모바일 기기 검증은 제품 범위에서 제외했다.
+
+10만 synthetic PostgreSQL benchmark는 지도 p95/p99 4/5ms, global search p95/p99 111/143ms, 최대 rows-read 6,004건, 최대 payload 353,502 bytes로 통과했다. 100만 fixture 적재는 Docker 내부 저장소 부족으로 중단했으며 production 승인 증거로 사용하지 않는다.
