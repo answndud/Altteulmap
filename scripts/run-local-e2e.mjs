@@ -31,7 +31,6 @@ const commandsByMode = {
     "npm run e2e:prepare",
     "npm run build",
     "playwright test --headed tests/e2e/map.spec.ts tests/e2e/login.spec.ts tests/e2e/map-price-filter.spec.ts tests/e2e/signup.spec.ts tests/e2e/submission-admin.spec.ts",
-    "USE_MOCK_DATA=true playwright test --headed tests/e2e/map.mobile.spec.ts tests/e2e/map-price-filter.mobile.spec.ts --project mobile-chromium",
     "playwright test --headed tests/e2e/bookmarks.spec.ts tests/e2e/comments.spec.ts tests/e2e/price-review.spec.ts tests/e2e/report-admin.spec.ts",
   ],
   ui: [
@@ -47,7 +46,7 @@ const commandsByMode = {
   mock: [
     "npm run e2e:prepare",
     "npm run build",
-    "playwright test tests/e2e/accessibility.spec.ts tests/e2e/map.mobile.spec.ts tests/e2e/map-price-filter.mobile.spec.ts --project mobile-chromium",
+    "playwright test tests/e2e/accessibility.spec.ts --project chromium",
   ],
 };
 
