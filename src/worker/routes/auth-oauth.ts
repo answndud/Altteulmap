@@ -151,7 +151,7 @@ export function registerAuthOAuthRoutes(
         origin,
       );
 
-      if (!profile.email || !profile.id) {
+      if (!profile.email || !profile.id || !profile.emailVerified) {
         return redirectToLoginError(
           c.req.raw,
           c.env,

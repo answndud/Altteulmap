@@ -152,3 +152,16 @@ export function getSessionFromRequest(request: Request, env: AuthSessionEnv) {
     env,
   );
 }
+
+export function isValidCsrfToken(request: Request, token: string | null) {
+  if (!token) {
+    return false;
+  }
+
+  const cookieToken = getCookieValue(
+    request.headers.get("cookie"),
+    AUTH_CSRF_COOKIE_NAME,
+  )?.split("|", 1)[0];
+
+  return Boolean(cookieToken && timingSafeStringEqual(cookieToken, token));
+}

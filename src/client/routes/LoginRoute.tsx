@@ -11,6 +11,7 @@ import {
 
 const errorMessageMap: Record<string, string> = {
   CredentialsSignin: "이메일 또는 비밀번호가 맞지 않습니다.",
+  CSRFCheck: "로그인 보안 확인에 실패했습니다. 다시 시도해주세요.",
   OAuthEmailRequired: "소셜 로그인 계정에서 이메일을 가져오지 못했습니다.",
   OAuthAccountSyncFailed:
     "소셜 로그인 계정을 로컬 사용자와 연결하지 못했습니다.",
@@ -63,7 +64,16 @@ export function LoginRoute() {
   async function onSubmit(values: LoginFormValues) {
     startTransition(async () => {
       setMessage("");
+      const csrfResponse = await fetch("/api/auth/csrf", { cache: "no-store" });
+      const csrfPayload = (await csrfResponse.json().catch(() => null)) as
+        | { csrfToken?: string }
+        | null;
+      if (!csrfResponse.ok || !csrfPayload?.csrfToken) {
+        setMessage("로그인 보안 확인을 준비하지 못했습니다. 다시 시도해주세요.");
+        return;
+      }
       const body = new URLSearchParams({
+        csrfToken: csrfPayload.csrfToken,
         email: values.email,
         password: values.password,
         callbackUrl,

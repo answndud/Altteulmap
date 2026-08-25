@@ -7,6 +7,7 @@ import {
 } from "@/worker/auth-repository";
 import {
   AUTH_CALLBACK_COOKIE_NAME,
+  isValidCsrfToken,
   AUTH_SESSION_COOKIE_NAME,
   AUTH_SESSION_MAX_AGE,
   createSession,
@@ -17,6 +18,10 @@ import { getOrigin, normalizeCallbackUrl } from "@/worker/http/urls";
 import type {
   AuthBindings,
   AuthRouteDependencies,
+} from "@/worker/routes/auth-support";
+import {
+  applyAuthRateLimitHeaders,
+  consumeAuthRateLimit,
 } from "@/worker/routes/auth-support";
 
 export function registerAuthCredentialsRoutes(
@@ -34,6 +39,32 @@ export function registerAuthCredentialsRoutes(
     const shouldReturnJson =
       body.json === "true" ||
       c.req.header("accept")?.includes("application/json") === true;
+    if (!isValidCsrfToken(c.req.raw, typeof body.csrfToken === "string" ? body.csrfToken : null)) {
+      const errorUrl = `${origin}/api/auth/error?error=CSRFCheck&provider=credentials`;
+
+      if (!shouldReturnJson) {
+        return c.redirect(errorUrl);
+      }
+
+      return c.json({ url: errorUrl }, 403, dependencies.noStoreHeaders);
+    }
+    const rateLimit = await consumeAuthRateLimit(
+      c.env,
+      "authLogin",
+      c.req.raw,
+      email.trim().toLowerCase(),
+      dependencies.runWorkerDatabaseRoute,
+    );
+    if (!rateLimit.ok) {
+      return applyAuthRateLimitHeaders(
+        c.json(
+          { ok: false, message: "로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요." },
+          429,
+          dependencies.noStoreHeaders,
+        ),
+        rateLimit,
+      );
+    }
     const callbackUrl = normalizeCallbackUrl(
       typeof body.callbackUrl === "string" ? body.callbackUrl : "/",
       origin,
@@ -85,6 +116,24 @@ export function registerAuthCredentialsRoutes(
         },
         400,
         dependencies.noStoreHeaders,
+      );
+    }
+
+    const rateLimit = await consumeAuthRateLimit(
+      c.env,
+      "authSignup",
+      c.req.raw,
+      parsed.data.email.trim().toLowerCase(),
+      dependencies.runWorkerDatabaseRoute,
+    );
+    if (!rateLimit.ok) {
+      return applyAuthRateLimitHeaders(
+        c.json(
+          { ok: false, message: "회원가입 요청이 너무 많습니다. 잠시 후 다시 시도해주세요." },
+          429,
+          dependencies.noStoreHeaders,
+        ),
+        rateLimit,
       );
     }
 

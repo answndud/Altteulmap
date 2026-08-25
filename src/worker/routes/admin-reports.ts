@@ -25,7 +25,7 @@ export function registerAdminReportRoutes(
   dependencies: AdminRouteDependencies,
 ) {
   app.get("/api/admin/reports", async (c) => {
-    const admin = requireAdminSession(c.req.raw, c.env, dependencies.noStoreHeaders);
+    const admin = await requireAdminSession(c.req.raw, c.env, dependencies.noStoreHeaders, dependencies);
 
     if (admin.response) {
       return admin.response;
@@ -80,7 +80,7 @@ export function registerAdminReportRoutes(
   });
 
   app.patch("/api/admin/reports/:id", async (c) => {
-    const admin = requireAdminSession(c.req.raw, c.env, dependencies.noStoreHeaders);
+    const admin = await requireAdminSession(c.req.raw, c.env, dependencies.noStoreHeaders, dependencies);
 
     if (admin.response) {
       return admin.response;

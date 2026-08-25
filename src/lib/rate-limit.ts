@@ -42,6 +42,11 @@ export const RATE_LIMIT_POLICIES = {
     limit: 3,
     windowMs: 30 * 60 * 1000,
   },
+  authLogin: {
+    scope: "auth_login",
+    limit: 10,
+    windowMs: 15 * 60 * 1000,
+  },
 } as const;
 
 export type RateLimitPolicyName = keyof typeof RATE_LIMIT_POLICIES;

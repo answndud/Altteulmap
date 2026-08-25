@@ -41,6 +41,25 @@ async function getWorkerAuthUserByEmail(
   return user ?? null;
 }
 
+export async function getWorkerAuthUserById(
+  env: WorkerAuthBindings,
+  userId: string,
+) {
+  const db = getWorkerDb(env);
+  const [user] = await db
+    .select({
+      id: users.id,
+      email: users.email,
+      nickname: users.nickname,
+      role: users.role,
+    })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  return user ?? null;
+}
+
 async function getWorkerCredentialsUserByEmail(
   env: WorkerAuthBindings,
   email: string,

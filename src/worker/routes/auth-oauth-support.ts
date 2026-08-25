@@ -30,6 +30,7 @@ type OAuthTokenResponse = {
 
 type OAuthProfile = {
   email: string | null;
+  emailVerified: boolean;
   id: string | null;
   name: string | null;
 };
@@ -195,6 +196,9 @@ export async function fetchOAuthProfile(
     return {
       email:
         typeof kakaoAccount?.email === "string" ? kakaoAccount.email : null,
+      emailVerified:
+        kakaoAccount?.is_email_valid === true &&
+        kakaoAccount?.is_email_verified === true,
       id: typeof profile.id === "number" || typeof profile.id === "string"
         ? String(profile.id)
         : null,
@@ -215,6 +219,7 @@ export async function fetchOAuthProfile(
   return {
     email:
       typeof responseProfile?.email === "string" ? responseProfile.email : null,
+    emailVerified: true,
     id: typeof responseProfile?.id === "string" ? responseProfile.id : null,
     name: typeof responseProfile?.name === "string" ? responseProfile.name : null,
   };
