@@ -20,8 +20,9 @@ Observable finish state:
 
 #### 1-0. 한국 사용자 기준 운영 지연 확인
 - Done in 이전 작업: 운영 DB를 VPS 전용 Postgres로 이전(Hyperdrive → Workers VPC → Tunnel), Turnstile·SMOKE secret·정기 감시(Keep Alive, Remote Smoke) 정상, Supabase 종료와 옛 secret 정리.
-- Current blocker: 브라우저 실측(LAX 경유, ADR 0004 표)에서 DB가 없는 요청은 160ms인데 지도 p95가 1.14초(zoom 15)·1.73초(zoom 11), 장소 상세가 1.63초다. VPS가 오스트리아라 요청당 DB 왕복이 대륙을 건넌다. 한국 네트워크 실측은 아직 없다.
-- Next action: ① 장소 상세(`getWorkerPlaceDetail`)의 순차 쿼리(장소 → 가격·이력·코멘트 → 반응)를 장소 slug 기준 한 번의 병렬 묶음으로 줄여 DB 왕복을 1회로 만든다. ② 쿠키 없는 공개 GET(상세)에 짧은 `s-maxage` 엣지 캐시를 추가한다(viewer별 필드가 있는 요청은 제외). ③ 기존 지도 엣지 캐시 적중률을 확인한다. ④ 그래도 목표 초과 시 가까운 리전의 Postgres로 Hyperdrive 대상을 교체한다(`deploy/vps/README.md` §5). 변경 후 같은 방법으로 재측정해 ADR에 기록한다.
+- Done in 이전 작업: 장소 상세 쿼리 5개를 1개로, 지도 건수 쿼리를 윈도우 건수로 합쳐 상세 p50 1,551→554ms, 지도(zoom 15) p95 1,144→652ms. 익명 상세 엣지 캐시와 `Server-Timing` 추가(ADR 0004 표).
+- Current blocker: 서울 전체 지도(zoom 11)가 p95 1.12초로 목표(1초)를 약간 넘고, 한국 네트워크 실측이 없다(측정 머신은 LAX 경유).
+- Next action: ① 한국 네트워크에서 같은 방법으로 재측정한다. ② zoom 11이 넘으면 전송 행 수를 줄인다(클러스터 모드에서는 개별 행 대신 SQL 그리드 집계 또는 컬럼 축소). ③ 로그인 사용자의 세션 조회(쿼리 1회)를 상세 쿼리에 합치는 방안을 검토한다. ④ 그래도 부족하면 가까운 리전 Postgres로 Hyperdrive 대상을 교체한다(`deploy/vps/README.md` §5).
 - Verify: 인앱 브라우저 또는 `fetch` 반복 측정(ADR 0004와 같은 방법), `npm run test:integration:local`
 - Done: 한국 기준 지도 조회 p95가 1초 이내이거나, 초과 시 위 조치가 적용돼 다시 측정한 값이 ADR에 있다.
 
