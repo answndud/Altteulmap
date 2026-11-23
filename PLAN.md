@@ -27,16 +27,6 @@ Observable finish state:
 
 ### Phase 3. 저장소 위생·화면 정직성·문서 정리
 
-#### 3-5. 지도 첫 화면 단순화와 목록·지도 연동
-- Likely files: `src/client/routes/MapRoute.tsx`, `src/client/features/map/MapSearchControls.tsx`, `src/client/features/map/PlaceDetailSheet.tsx`, `src/features/map/naver-map-marker-visuals.ts`
-- Changes:
-  - 지도 위 제목·설명 블록과 지도 안의 "알뜰 지도" 설명 카드를 제거한다. 첫 화면 헤더는 검색 한 줄과 필터 한 줄로 줄인다.
-  - 버튼 라벨을 정리한다: "현재 화면", "현재 화면 중심", "가격 중심 카드", "지도 영역 검색" → `이 지역 다시 찾기` 하나로 합친다. 필터 토글 라벨은 `열기`/`닫기`로 바뀌게 하고, 쓰임이 없는 빈 입력칸을 제거한다. 필터는 지도를 밀어내지 않는 popover로 연다.
-  - 데스크톱 목록 rail 폭을 420~480px로 넓히고, 카드에서 반복 설명 문구를 뺀다.
-  - 목록에서 장소를 고르면 지도를 그 마커로 이동하고 강조한다. 클러스터 마커에는 최저가("6,000원~")를 보여 준다.
-- Verify: `npm run verify && npm run test:e2e:full && npm run design:detect`
-- Done: 1440×900에서 지도가 첫 화면 높이의 75% 이상을 차지하고, 목록에서 고른 장소가 지도 중앙에 강조되는 E2E가 통과한다.
-
 #### 3-6. 디자인 토큰 일치와 상세 페이지 정리
 - Likely files: `src/client/styles.css`, `.impeccable.md`, `src/client/routes/PlaceDetailRoute.tsx`, `src/client/features/map/PlaceDetailSheet.tsx`
 - Changes:

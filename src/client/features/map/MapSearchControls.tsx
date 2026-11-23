@@ -25,33 +25,7 @@ export function MapSearchControls({
       className="grid gap-2 border-b border-[var(--altteul-surface-border)] pb-2 sm:gap-3 sm:pb-4"
       data-testid="map-search-controls"
     >
-      <h1 className="sr-only sm:hidden">알뜰 지도</h1>
-      <div className="hidden items-center justify-between gap-2 sm:flex lg:items-end">
-        <div className="min-w-0">
-          <p className="altteulmap-section-kicker">탐색</p>
-          <h1 className="mt-1 truncate text-2xl font-bold text-[var(--altteul-text-strong)]">
-            가격이 보이는 동네 지도
-          </h1>
-          <p className="mt-1 hidden max-w-2xl text-sm leading-6 text-[var(--altteul-text-secondary)] sm:block">
-            대표 가격, 검증 상태, 최근 갱신을 기준으로 지금 갈 곳을 빠르게 비교합니다.
-          </p>
-        </div>
-        <div className="hidden flex-wrap justify-end gap-1.5 sm:flex">
-          {query ? (
-            <span className="altteulmap-badge px-3 py-1.5 text-xs font-medium">
-              검색: {query}
-            </span>
-          ) : null}
-          {selectedCategory ? (
-            <span className="altteulmap-badge px-3 py-1.5 text-xs font-medium">
-              업종: {selectedCategory.name}
-            </span>
-          ) : null}
-          <span className="altteulmap-badge px-3 py-1.5 text-xs font-medium">
-            {searchScope === "global" ? "전국" : "현재 화면"}
-          </span>
-        </div>
-      </div>
+      <h1 className="sr-only">알뜰 지도</h1>
 
       <form action="/" className="grid gap-2" data-testid="place-search-form">
         <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
@@ -86,7 +60,7 @@ export function MapSearchControls({
           ) : null}
         </div>
 
-        <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-2 xl:grid-cols-[auto_minmax(0,1fr)_auto]">
+        <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-2">
           <div className="flex min-w-0 items-center gap-2">
             <span className="sr-only text-xs font-semibold text-[var(--altteul-text-secondary)] sm:not-sr-only">
               검색 범위
@@ -127,7 +101,7 @@ export function MapSearchControls({
 
           <RouteResetDetails
             key={`${activeCategory ?? "all"}:${query || "all"}:${searchScope}`}
-            className="min-w-0 overflow-hidden rounded-[0.85rem] border border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-surface)]"
+            className="group relative min-w-0 rounded-[0.85rem] border border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-surface)]"
             summaryClassName="flex h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 text-sm font-semibold text-[var(--altteul-text-primary)] sm:gap-3 sm:px-3.5 [&::-webkit-details-marker]:hidden"
             summary={
               <>
@@ -140,11 +114,12 @@ export function MapSearchControls({
                   </p>
                 </div>
                 <span className="shrink-0 text-[11px] font-medium text-[var(--altteul-primary-text)] sm:text-xs">
-                  열기
+                  <span className="group-open:hidden">열기</span>
+                  <span className="hidden group-open:inline">닫기</span>
                 </span>
               </>
             }
-            bodyClassName="border-t border-[var(--altteul-surface-border)] px-3 py-3 sm:px-3.5 sm:py-3.5"
+            bodyClassName="absolute inset-x-0 top-full z-30 mt-1 max-h-[60vh] overflow-auto rounded-[0.85rem] border border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-surface)] px-3 py-3 shadow-[var(--altteul-shadow-overlay)] sm:px-3.5 sm:py-3.5"
           >
             <MapCategoryTray
               activeCategory={activeCategory}
@@ -153,14 +128,6 @@ export function MapSearchControls({
             />
           </RouteResetDetails>
 
-          <div className="hidden xl:flex xl:flex-wrap xl:justify-end xl:gap-2">
-            <span className="altteulmap-badge whitespace-nowrap px-3 py-1.5 text-xs font-medium">
-              {searchScope === "global" ? "다른 지역 결과도 포함" : "현재 화면 중심"}
-            </span>
-            <span className="altteulmap-badge whitespace-nowrap px-3 py-1.5 text-xs font-medium">
-              가격 중심 카드
-            </span>
-          </div>
         </div>
       </form>
     </section>

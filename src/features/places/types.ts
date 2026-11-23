@@ -73,6 +73,8 @@ export type PlaceMapClusterMarkerRecord = {
   longitude: number;
   bounds: PlaceBounds;
   placeCount: number;
+  /** 묶음 안 장소의 최저 대표 가격(원). 가격 정보가 있는 장소가 없으면 생략한다. */
+  minPriceAmount?: number;
   previewPlaces?: PlacePreviewRecord[];
 };
 

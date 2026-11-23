@@ -41,7 +41,11 @@ export function renderNaverMapMarkers({
       zIndex: markerItem.kind === "cluster" ? 10 : markerItem.zIndex,
       icon:
         markerItem.kind === "cluster"
-          ? createClusterMarkerIcon(markerItem.placeCount, { maps })
+          ? createClusterMarkerIcon(
+              markerItem.placeCount,
+              { maps },
+              markerItem.minPriceAmount,
+            )
           : createMapMarkerIcon(
               markerItem.place,
               markerItem.isActive,

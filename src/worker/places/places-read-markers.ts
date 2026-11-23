@@ -146,6 +146,10 @@ export function getClusterOnlyMapMarkers(
   return [...cells.entries()]
     .sort(([left], [right]) => left.localeCompare(right))
     .map(([cellKey, bucket]) => {
+      const prices = bucket
+        .map((place) => place.representativePriceAmount)
+        .filter((amount) => amount > 0);
+
       return {
         kind: "cluster",
         id: `cluster:${cellKey}`,
@@ -157,6 +161,7 @@ export function getClusterOnlyMapMarkers(
           bucket.length,
         bounds: getBoundsFromPlaces(bucket),
         placeCount: bucket.length,
+        ...(prices.length > 0 ? { minPriceAmount: Math.min(...prices) } : {}),
         previewPlaces:
           bucket.length <= MAP_CLUSTER_PREVIEW_PLACE_LIMIT ? bucket : undefined,
       };

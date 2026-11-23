@@ -84,13 +84,16 @@ select {
   background-color: var(--altteul-primary-hover);
 }
 
-.altteulmap-accent-chip {
+/* .altteulmap-chip(뒤쪽에 선언)의 배경이 이기면 흰 글씨가 흰 바탕에 묻히므로 같은 요소에 붙을 때 우선한다. */
+.altteulmap-accent-chip,
+.altteulmap-chip.altteulmap-accent-chip {
   border-color: var(--altteul-primary-hover);
   background-color: var(--altteul-primary);
   color: #fff;
 }
 
-.altteulmap-accent-chip:hover {
+.altteulmap-accent-chip:hover,
+.altteulmap-chip.altteulmap-accent-chip:hover {
   border-color: var(--altteul-primary-hover);
   background-color: var(--altteul-primary-hover);
   color: #fff;
@@ -428,9 +431,28 @@ select {
 }
 
 .altteulmap-cluster-marker {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* 묶음 마커 아래의 최저가 라벨: 클러스터에서도 가격이 먼저 읽히도록 한다. */
+.altteulmap-cluster-marker__price {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translate(-50%, -2px);
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: #fffdf9;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.22);
+  color: #171411;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .altteulmap-cluster-marker__badge {

@@ -65,11 +65,11 @@ function PlaceCardBase({
       <p className="mt-1 truncate text-xs text-[var(--altteul-text-secondary)]">
         {[category?.name ?? "기타", place.district].join(" · ")}
       </p>
-      <p className="mt-3 line-clamp-2 text-sm leading-6 text-[var(--altteul-text-secondary)]">
-        {place.description || place.note || place.address}
+      <p className="mt-1 truncate text-xs text-[var(--altteul-text-tertiary)]">
+        {place.address}
       </p>
 
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+      <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap gap-2">
           <span
             className={`${getVerificationBadgeClassName(

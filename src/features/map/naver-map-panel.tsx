@@ -3,12 +3,14 @@
 import {
   Component,
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
 
 import {
+  getLoadedNaverMapSdk,
   type MapViewport,
   type NaverMapInstance,
   type NaverMarkerInstance,
@@ -154,6 +156,27 @@ function NaverMapPanelContent({
     [activePlaceId, mapMarkers],
   );
   const showPreview = status !== "ready";
+
+  // 목록에서 장소를 고르면 지도가 해당 위치로 이동해 강조된 마커와 같은 화면에 놓인다.
+  const activePlaceLatitude = activePlace?.latitude;
+  const activePlaceLongitude = activePlace?.longitude;
+  useEffect(() => {
+    if (
+      status !== "ready" ||
+      activePlaceLatitude === undefined ||
+      activePlaceLongitude === undefined
+    ) {
+      return;
+    }
+
+    const maps = getLoadedNaverMapSdk()?.maps;
+
+    if (maps?.LatLng) {
+      mapInstanceRef.current?.panTo?.(
+        new maps.LatLng(activePlaceLatitude, activePlaceLongitude),
+      );
+    }
+  }, [activePlace?.id, activePlaceLatitude, activePlaceLongitude, status]);
 
   const selectPlace = useCallback(
     (place: PlacePreviewRecord) => {
@@ -345,26 +368,13 @@ function NaverMapPanelContent({
 
         <div className="pointer-events-none absolute inset-x-2 top-2 z-10 flex items-start justify-between gap-2 sm:inset-x-4 sm:top-4 sm:gap-3">
           <div className="pointer-events-auto grid max-w-[13.5rem] gap-2 sm:max-w-[18rem]">
-            <div className="altteulmap-map-overlay px-2.5 py-2 sm:px-3.5 sm:py-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="altteulmap-section-kicker hidden text-[10px] sm:block">
-                    지도
-                  </p>
-                  <h2 className="text-sm font-semibold text-[var(--altteul-text-strong)] sm:mt-1 sm:text-base">
-                    알뜰 지도
-                  </h2>
-                </div>
-                <span className="altteulmap-badge shrink-0 whitespace-nowrap px-2.5 py-1 text-[11px] font-medium">
-                  {placeCountLabel}
-                </span>
-              </div>
-              <p className="mt-2 hidden text-xs leading-5 text-[var(--altteul-text-secondary)] sm:block">
-                {selectedCategoryLabel
-                  ? `${selectedCategoryLabel} 카테고리 기준으로 보고 있습니다.`
-                  : "대표 가격과 최근 제보를 함께 확인합니다."}
-              </p>
-            </div>
+            <span
+              className="altteulmap-map-overlay w-fit whitespace-nowrap px-3 py-1.5 text-xs font-semibold text-[var(--altteul-text-strong)]"
+              data-testid="map-place-count"
+            >
+              {selectedCategoryLabel ? `${selectedCategoryLabel} · ` : ""}
+              {placeCountLabel}
+            </span>
 
             {statusMessage ? (
               <div className="altteulmap-map-overlay-subtle hidden px-3 py-2 text-xs leading-5 text-[var(--altteul-text-secondary)] sm:block">

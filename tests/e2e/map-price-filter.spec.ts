@@ -21,10 +21,7 @@ test("preview fallback에서도 bootstrap fetch와 카테고리 탐색은 유지
 
   expect(initialPayload.count).toBeGreaterThan(0);
 
-  const mapBadge = page
-    .getByTestId("map-panel-shell")
-    .locator(".altteulmap-badge")
-    .first();
+  const mapBadge = page.getByTestId("map-place-count");
 
   await expect.poll(async () => parseCount(await mapBadge.textContent())).toBe(
     initialPayload.count,

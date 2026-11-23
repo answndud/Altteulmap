@@ -50,7 +50,7 @@ function MapDesktopResultsRailBase({
   visiblePlaceCount: number;
 }) {
   return (
-    <aside className="hidden content-start gap-3 overflow-auto rounded-[0.875rem] border border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-surface)] p-3 shadow-[var(--altteul-shadow-overlay)] xl:absolute xl:right-3 xl:top-3 xl:z-20 xl:grid xl:max-h-[calc(100%-1.5rem)] xl:w-[18rem] 2xl:w-[20rem]">
+    <aside className="hidden content-start gap-3 overflow-auto rounded-[0.875rem] border border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-surface)] p-3 shadow-[var(--altteul-shadow-overlay)] xl:absolute xl:right-3 xl:top-3 xl:z-20 xl:grid xl:grid-cols-[minmax(0,1fr)] xl:max-h-[calc(100%-1.5rem)] xl:w-[26rem] 2xl:w-[30rem]">
       {selectedPlace && isDesktopLayout ? (
         <PlaceDetailSheet
           bookmarked={bookmarkedPlaceIds.has(selectedPlace.id)}
@@ -108,7 +108,7 @@ function MapDesktopResultsRailBase({
         </div>
       ) : null}
       {placesLength > 0 ? (
-        <div className="grid gap-3 pr-1" data-testid="place-list">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-3 pr-1" data-testid="place-list">
           {displayedPlaces.map((place) => (
             <PlaceCard
               key={place.id}

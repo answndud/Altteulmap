@@ -4,6 +4,7 @@ import type {
 } from "@/features/map/naver-map-display-markers";
 import {
   formatMarkerCount,
+  formatClusterMinPrice,
   getClusterMarkerVisual,
   getPlaceMarkerVisual,
 } from "@/features/map/naver-map-marker-visuals";
@@ -109,6 +110,7 @@ export function PreviewMarkerLayer({
           return (
             <foreignObject
               key={marker.id}
+              style={{ overflow: "visible" }}
               height={clusterVisual.hitSize}
               width={clusterVisual.hitSize}
               x={left - clusterVisual.hitSize / 2}
@@ -124,6 +126,11 @@ export function PreviewMarkerLayer({
                 <span className="altteulmap-cluster-marker__badge">
                   {formatMarkerCount(marker.placeCount)}
                 </span>
+                {formatClusterMinPrice(marker.minPriceAmount) ? (
+                  <span className="altteulmap-cluster-marker__price">
+                    {formatClusterMinPrice(marker.minPriceAmount)}
+                  </span>
+                ) : null}
               </button>
             </foreignObject>
           );

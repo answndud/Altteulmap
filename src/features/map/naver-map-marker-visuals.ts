@@ -163,7 +163,14 @@ export function createMapMarkerIcon(
   };
 }
 
-function createClusterIconHtml(placeCount: number) {
+/** 묶음 마커 아래에 보이는 최저가 문구. 예: 6,000원~ */
+export function formatClusterMinPrice(amount: number | undefined) {
+  return amount && amount > 0 ? `${amount.toLocaleString("ko-KR")}원~` : null;
+}
+
+function createClusterIconHtml(placeCount: number, minPriceAmount?: number) {
+  const priceLabel = formatClusterMinPrice(minPriceAmount);
+
   const sizeClass =
     placeCount >= 100
       ? "altteulmap-cluster-marker--lg"
@@ -176,6 +183,7 @@ function createClusterIconHtml(placeCount: number) {
       <span class="altteulmap-cluster-marker__badge">
         ${formatMarkerCount(placeCount)}
       </span>
+      ${priceLabel ? `<span class="altteulmap-cluster-marker__price">${priceLabel}</span>` : ""}
     </div>
   `;
 }
@@ -183,6 +191,7 @@ function createClusterIconHtml(placeCount: number) {
 export function createClusterMarkerIcon(
   placeCount: number,
   naver: ReturnType<typeof getLoadedNaverMapSdk>,
+  minPriceAmount?: number,
 ) {
   const Point = naver?.maps.Point;
   const Size = naver?.maps.Size;
@@ -194,7 +203,7 @@ export function createClusterMarkerIcon(
   const visual = getClusterMarkerVisual(placeCount);
 
   return {
-    content: createClusterIconHtml(placeCount),
+    content: createClusterIconHtml(placeCount, minPriceAmount),
     size: new Size(visual.hitSize, visual.hitSize),
     anchor: new Point(visual.hitSize / 2, visual.hitSize / 2),
   };
