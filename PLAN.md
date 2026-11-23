@@ -27,14 +27,6 @@ Observable finish state:
 
 ### Phase 3. 저장소 위생·화면 정직성·문서 정리
 
-#### 3-0. 로컬 실행 경로 복구
-- Likely files: `README.md`, `.gitignore`, `.dev.vars.example`(신규), `docs/04-실행-가이드/로컬-개발-워크플로.md`
-- Changes:
-  - Cloudflare vite plugin은 `.dev.vars`가 있으면 `.env`를 읽지 않는다. 그래서 `npm run db:local:setup && npm run dev`를 해도 `DATABASE_URL`이 Worker에 전달되지 않아 지도 API가 503이 된다. 이 동작을 README에 적는다.
-  - Worker 런타임 변수는 `.dev.vars` 하나로 통일하고, 로컬 DB 값이 든 `.dev.vars.example`을 커밋한다(`.gitignore`에 `!.dev.vars.example`).
-- Verify: `cp .dev.vars.example .dev.vars && npm run db:local:setup && npm run dev` 실행 후 `curl -s -o /dev/null -w '%{http_code}' 'http://localhost:5173/api/places/map?minLat=37.4&maxLat=37.7&minLng=126.7&maxLng=127.3&zoom=11'`
-- Done: 새 clone에서 README 순서만 따라 해도 위 curl이 200을 반환한다.
-
 #### 3-1. Next.js 잔재와 env 템플릿 정리
 - Likely files: `src/lib/env.ts`, `src/worker/index.ts`, `src/features/map/naver-map-sdk.ts`, `.gitignore`
 - Changes:

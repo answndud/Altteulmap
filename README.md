@@ -95,9 +95,12 @@ npm run smoke:remote
 ## Run Locally
 
 ```bash
+cp .dev.vars.example .dev.vars
 npm run db:local:setup
 npm run dev
 ```
+
+- Worker가 읽는 값(DB·인증)은 `.dev.vars` 하나에 둡니다. Cloudflare vite plugin은 `.dev.vars`가 있으면 `.env`를 읽지 않으므로, `.dev.vars`가 없거나 `DATABASE_URL`이 비어 있으면 지도 API가 503이 됩니다.
 
 - `db:local:setup`은 Docker PostgreSQL을 기동하고 readiness 확인, Drizzle migration, local seed를 순서대로 실행합니다.
 - 앱 기본 DB는 `postgresql://postgres:postgres@127.0.0.1:5432/altteulmap`입니다. PostgreSQL 없이 UI만 확인하려면 `USE_MOCK_DATA=true npm run dev`를 사용합니다.

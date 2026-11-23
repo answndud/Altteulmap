@@ -1,0 +1,10 @@
+# Worker 런타임 변수(로컬 개발용). `cp .dev.vars.example .dev.vars` 로 사용한다.
+# Cloudflare vite plugin은 .dev.vars가 있으면 .env를 읽지 않으므로,
+# Worker가 쓰는 값(DB·인증)은 이 파일 하나에 둔다.
+DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap
+USE_MOCK_DATA=false
+AUTH_SECRET=local-dev-secret-change-me
+SITE_URL=http://localhost:5173
+# USE_MOCK_DATA=true 일 때만 쓰는 고정 계정 비밀번호
+AUTH_DEMO_PASSWORD=demo1234
+AUTH_ADMIN_PASSWORD=admin1234
