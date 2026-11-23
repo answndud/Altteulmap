@@ -86,7 +86,9 @@ function isMapPreviewEdgeCacheable({
   return searchScope === "viewport" && Boolean(bounds) && !query;
 }
 
-const MAP_EDGE_CACHE_SECONDS = 12;
+// 첫 화면(서울 bootstrap bounds)은 모든 방문자가 같은 URL을 요청하고, 한국 방문자는 같은 콜로로 들어오므로
+// 캐시 적중률이 높다. 가격 승인이 반영되기까지 최대 이 시간만큼 지연될 수 있다.
+const MAP_EDGE_CACHE_SECONDS = 60;
 // 쿠키 없는 익명 상세만 캐시한다. 반응·코멘트 삭제 권한처럼 사용자별 값이 없어 모두에게 같은 응답이다.
 const DETAIL_EDGE_CACHE_SECONDS = 20;
 
