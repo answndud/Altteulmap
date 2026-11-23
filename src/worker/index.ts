@@ -272,10 +272,7 @@ registerPlacesReadRoutes(app, {
   noStoreHeaders,
 });
 
-registerPublicWriteRoutes(app, {
-  databaseUnavailableResponse,
-  formatDate,
-});
+registerPublicWriteRoutes(app);
 
 registerAdminRoutes(app, {
   databaseUnavailableResponse,

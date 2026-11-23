@@ -2,7 +2,6 @@ import type { Hono } from "hono";
 
 import {
   type PublicWriteBindings,
-  type PublicWriteRouteDependencies,
   type PublicWriteVariables,
 } from "@/worker/routes/public-write-support";
 import { registerPublicWriteCommentRoutes } from "@/worker/routes/public-write-comments";
@@ -16,15 +15,14 @@ export function registerPublicWriteRoutes(
     Bindings: PublicWriteBindings;
     Variables: PublicWriteVariables;
   }>,
-  dependencies: PublicWriteRouteDependencies,
 ) {
   registerPublicWritePriceReportRoutes(app);
 
-  registerPublicWriteCommentRoutes(app, dependencies);
+  registerPublicWriteCommentRoutes(app);
 
-  registerPublicWriteReactionRoutes(app, dependencies);
+  registerPublicWriteReactionRoutes(app);
 
-  registerPublicWriteSubmissionRoutes(app, dependencies);
+  registerPublicWriteSubmissionRoutes(app);
 
-  registerPublicWriteReportRoutes(app, dependencies);
+  registerPublicWriteReportRoutes(app);
 }

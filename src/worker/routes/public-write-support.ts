@@ -31,23 +31,11 @@ export type PublicWriteVariables = {
   requestId: string;
 };
 
-export type PublicWriteRouteDependencies = {
-  databaseUnavailableResponse(message: string): Response;
-  formatDate(date: Date): string;
-};
-
 export const mockCommentStore = new Map<
   string,
   Array<PlaceComment & { ownerVisitorId: string }>
 >();
 export const mockReactionStore = new Map<string, PlaceReactionType>();
-
-export async function runWorkerDatabaseRoute<T>(
-  env: PublicWriteBindings,
-  load: () => Promise<T>,
-) {
-  return withWorkerDatabaseConnection(env, load);
-}
 
 export async function consumePublicWriteRateLimit(
   env: PublicWriteBindings,
@@ -55,7 +43,7 @@ export async function consumePublicWriteRateLimit(
   actor: WorkerPublicWriteActor,
 ) {
   return (
-    (await runWorkerDatabaseRoute(env, () =>
+    (await withWorkerDatabaseConnection(env, () =>
       consumeWorkerPersistentRateLimit(env, policyName, actor),
     )) ?? consumeWorkerRateLimit(policyName, actor)
   );

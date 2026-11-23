@@ -2,6 +2,7 @@ import { and, eq, sql } from "drizzle-orm";
 
 import { placeReactions, places } from "@/db/schema";
 import type { PlaceReactionType } from "@/features/places/types";
+import { DomainError } from "@/worker/http/api-error";
 import { getWorkerDb, type WorkerDatabaseBindings } from "@/worker/db";
 import type { WorkerPublicWriteActor } from "@/worker/public-write-actor";
 import {
@@ -82,15 +83,7 @@ export async function setDatabasePlaceReaction(
   const actorKey = getReactionActorKey(actor);
 
   if (!actorKey) {
-    return {
-      ok: false,
-      source: "database" as DataSource,
-      reaction: null,
-      likeCount: 0,
-      dislikeCount: 0,
-      message: "반응 대상을 확인하지 못했습니다.",
-      placeId: placeSlug,
-    };
+    throw new DomainError("BAD_REQUEST", "반응 대상을 확인하지 못했습니다.");
   }
 
   const db = getWorkerDb(env);
@@ -99,15 +92,7 @@ export async function setDatabasePlaceReaction(
     const place = await getActivePlaceIdentityBySlug(tx, placeSlug);
 
     if (!place) {
-      return {
-        ok: false,
-        source: "database" as DataSource,
-        reaction: null,
-        likeCount: 0,
-        dislikeCount: 0,
-        message: "장소를 찾지 못했습니다.",
-        placeId: placeSlug,
-      };
+      throw new DomainError("NOT_FOUND", "장소를 찾지 못했습니다.");
     }
 
     await tx.execute(sql`

@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 
 import { contentReports, places } from "@/db/schema";
 import type { ReportSubmissionInput } from "@/features/reports/schema";
+import { DomainError } from "@/worker/http/api-error";
 import { getWorkerDb, type WorkerDatabaseBindings } from "@/worker/db";
 import type { WorkerPublicWriteActor } from "@/worker/public-write-actor";
 
@@ -22,7 +23,7 @@ export async function createDatabaseReportSubmission(
     .limit(1);
 
   if (!placeRow) {
-    throw new Error("Selected place does not exist.");
+    throw new DomainError("NOT_FOUND", "신고할 장소를 찾지 못했습니다.");
   }
 
   const [createdReport] = await db

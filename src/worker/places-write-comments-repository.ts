@@ -3,6 +3,8 @@ import { and, eq } from "drizzle-orm";
 import { comments } from "@/db/schema";
 import type { PlaceCommentInput } from "@/features/places/write-schema";
 import { getWorkerDb, type WorkerDatabaseBindings } from "@/worker/db";
+import { DomainError } from "@/worker/http/api-error";
+import { canDeleteComment } from "@/worker/services/comment-rules";
 import type { WorkerPublicWriteActor } from "@/worker/public-write-actor";
 import {
   type DataSource,
@@ -53,13 +55,7 @@ export async function createDatabasePlaceComment(
   const placeRow = await getActivePlaceIdentityBySlug(db, slug);
 
   if (!placeRow) {
-    return {
-      ok: false,
-      message: "장소를 찾지 못했습니다.",
-      source: "database" as DataSource,
-      mock: false,
-      item: null,
-    };
+    throw new DomainError("NOT_FOUND", "장소를 찾지 못했습니다.");
   }
 
   const [createdComment] = await db
@@ -103,13 +99,7 @@ export async function deleteDatabasePlaceComment(
   const placeRow = await getActivePlaceIdentityBySlug(db, slug);
 
   if (!placeRow) {
-    return {
-      ok: false,
-      message: "장소를 찾지 못했습니다.",
-      source: "database" as DataSource,
-      mock: false,
-      deletedCommentId: null,
-    };
+    throw new DomainError("NOT_FOUND", "장소를 찾지 못했습니다.");
   }
 
   const [existingComment] = await db
@@ -124,29 +114,20 @@ export async function deleteDatabasePlaceComment(
     .limit(1);
 
   if (!existingComment || existingComment.status !== "visible") {
-    return {
-      ok: false,
-      message: "코멘트를 찾지 못했습니다.",
-      source: "database" as DataSource,
-      mock: false,
-      deletedCommentId: null,
-    };
+    throw new DomainError("NOT_FOUND", "코멘트를 찾지 못했습니다.");
   }
 
-  const canDeleteAsOwner =
-    (Boolean(existingComment.userId) &&
-      existingComment.userId === actor.user?.id) ||
-    (Boolean(existingComment.visitorId) &&
-      existingComment.visitorId === actor.visitorId);
-
-  if (actor.user?.role !== "admin" && !canDeleteAsOwner) {
-    return {
-      ok: false,
-      message: "삭제 권한이 없습니다.",
-      source: "database" as DataSource,
-      mock: false,
-      deletedCommentId: null,
-    };
+  if (
+    !canDeleteComment(
+      {
+        userId: actor.user?.id ?? null,
+        role: actor.user?.role ?? null,
+        visitorId: actor.visitorId,
+      },
+      { userId: existingComment.userId, visitorId: existingComment.visitorId },
+    )
+  ) {
+    throw new DomainError("FORBIDDEN", "삭제 권한이 없습니다.");
   }
 
   await db

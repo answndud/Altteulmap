@@ -6,18 +6,12 @@ import {
   applyWorkerWriteHeaders,
   getWorkerPublicWriteActor,
 } from "@/worker/public-write-actor";
-import { createDatabasePlaceSubmission } from "@/worker/places-write-submissions-repository";
-import {
-  isWorkerDatabaseEnabled,
-  isWorkerMockDataEnabled,
-} from "@/worker/db";
+import { getSubmissionService } from "@/worker/services/submission-service";
 import {
   consumePublicWriteRateLimit,
   getTurnstileToken,
-  runWorkerDatabaseRoute,
   verifyTurnstileForPublicWrite,
   type PublicWriteBindings,
-  type PublicWriteRouteDependencies,
   type PublicWriteVariables,
 } from "@/worker/routes/public-write-support";
 
@@ -26,7 +20,6 @@ export function registerPublicWriteSubmissionRoutes(
     Bindings: PublicWriteBindings;
     Variables: PublicWriteVariables;
   }>,
-  dependencies: PublicWriteRouteDependencies,
 ) {
   app.post("/api/places", async (c) => {
     const body = await c.req.json().catch(() => null);
@@ -95,46 +88,8 @@ export function registerPublicWriteSubmissionRoutes(
       );
     }
 
-    if (isWorkerDatabaseEnabled(c.env)) {
-      const result = await runWorkerDatabaseRoute(c.env, () =>
-        createDatabasePlaceSubmission(c.env, parsed.data, actor),
-      );
+    const result = await getSubmissionService(c.env).submit(parsed.data, actor);
 
-      return applyWorkerWriteHeaders(
-        c.json(result),
-        c.req.raw,
-        actor,
-        rateLimit,
-      );
-    }
-
-    if (!isWorkerMockDataEnabled(c.env)) {
-      return applyWorkerWriteHeaders(
-        dependencies.databaseUnavailableResponse("장소 등록 요청을 저장하지 못했습니다."),
-        c.req.raw,
-        actor,
-        rateLimit,
-      );
-    }
-
-    return applyWorkerWriteHeaders(
-      c.json({
-        ok: true,
-        message: "장소 등록 요청이 접수되었습니다. 검토 후 공개 목록에 반영됩니다.",
-        mock: true,
-        source: "mock",
-        preview: {
-          id: `vite-submission-${crypto.randomUUID()}`,
-          name: parsed.data.name,
-          categorySlug: parsed.data.categorySlug,
-          roadAddress: parsed.data.roadAddress,
-          district: parsed.data.district,
-          priceItems: parsed.data.priceItems,
-        },
-      }),
-      c.req.raw,
-      actor,
-      rateLimit,
-    );
+    return applyWorkerWriteHeaders(c.json(result), c.req.raw, actor, rateLimit);
   });
 }
