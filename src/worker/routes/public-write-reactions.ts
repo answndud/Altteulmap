@@ -39,7 +39,7 @@ export function registerPublicWriteReactionRoutes(
     const parsed = placeReactionSchema.safeParse(body);
     const actor = getWorkerPublicWriteActor(
       c.req.raw,
-      getSessionFromRequest(c.req.raw, c.env)?.user ?? null,
+      (await getSessionFromRequest(c.req.raw, c.env))?.user ?? null,
       { env: c.env },
     );
     if (!parsed.success) {

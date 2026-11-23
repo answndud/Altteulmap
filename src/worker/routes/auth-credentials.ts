@@ -9,9 +9,7 @@ import {
   AUTH_CALLBACK_COOKIE_NAME,
   isValidCsrfToken,
   AUTH_SESSION_COOKIE_NAME,
-  AUTH_SESSION_MAX_AGE,
-  createSession,
-  encodeSession,
+  issueSession,
 } from "@/worker/auth/session";
 import { appendCookie } from "@/worker/http/cookies";
 import { getOrigin, normalizeCallbackUrl } from "@/worker/http/urls";
@@ -96,7 +94,9 @@ export function registerAuthCredentialsRoutes(
       return c.json({ url: errorUrl }, 401, dependencies.noStoreHeaders);
     }
 
-    const session = createSession(user);
+    const session = await dependencies.runWorkerDatabaseRoute(c.env, () =>
+      issueSession(c.env, user),
+    );
     const redirectUrl = new URL(callbackUrl, origin).toString();
     const response = shouldReturnJson
       ? c.json({ url: callbackUrl }, 200, dependencies.noStoreHeaders)
@@ -104,8 +104,8 @@ export function registerAuthCredentialsRoutes(
 
     appendCookie(response, c.req.raw, {
       name: AUTH_SESSION_COOKIE_NAME,
-      value: encodeSession(session, c.env),
-      maxAge: AUTH_SESSION_MAX_AGE,
+      value: session.value,
+      maxAge: session.maxAge,
     });
     appendCookie(response, c.req.raw, {
       name: AUTH_CALLBACK_COOKIE_NAME,

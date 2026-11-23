@@ -3,8 +3,12 @@ import assert from "node:assert/strict";
 
 import { and, eq } from "drizzle-orm";
 
-import { authAccounts, bookmarks, places, users } from "../../src/db/schema";
-import { encodeSession } from "../../src/worker/auth/session";
+import { authAccounts, authSessions, bookmarks, places, users } from "../../src/db/schema";
+import {
+  AUTH_SESSION_COOKIE_NAME,
+  issueSession,
+  revokeUserSessions,
+} from "../../src/worker/auth/session";
 import app from "../../src/worker/index";
 import {
   closeWorkerDatabaseConnection,
@@ -29,13 +33,13 @@ let otherUserId: string;
 let placeId: string;
 let placeSlug: string;
 
-function sessionCookie(id: string, email: string, role: "admin" | "user") {
-  const session = {
-    user: { id, email, name: role, role },
-    expires: new Date(Date.now() + 60_000).toISOString(),
-  };
+async function sessionCookie(id: string, email: string, role: "admin" | "user") {
+  // 쿠키에는 랜덤 토큰만 들어가고, role은 요청마다 DB의 users에서 읽는다.
+  const session = await withWorkerDatabaseConnection(workerEnv, () =>
+    issueSession(workerEnv, { id, email, nickname: role, role }),
+  );
 
-  return `next-auth.session-token=${encodeSession(session, { AUTH_SECRET: authSecret })}`;
+  return `${AUTH_SESSION_COOKIE_NAME}=${session.value}`;
 }
 
 function request(path: string, cookie?: string, init?: RequestInit) {
@@ -107,7 +111,7 @@ test("인증되지 않은 요청은 관리자 API에 접근할 수 없다", asyn
 test("일반 사용자 session은 관리자 role을 대신하지 못한다", async () => {
   const response = await request(
     "/api/admin/places",
-    sessionCookie(userId, `${fixturePrefix}-user@example.test`, "user"),
+    await sessionCookie(userId, `${fixturePrefix}-user@example.test`, "user"),
   );
   const body = await readJson(response);
 
@@ -123,7 +127,7 @@ test("관리자 session도 DB role이 강등되면 관리자 API가 거부한다
 
   const response = await request(
     "/api/admin/places",
-    sessionCookie(adminId, `${fixturePrefix}-admin@example.test`, "admin"),
+    await sessionCookie(adminId, `${fixturePrefix}-admin@example.test`, "admin"),
   );
   const body = await readJson(response);
 
@@ -137,8 +141,8 @@ test("관리자 session도 DB role이 강등되면 관리자 API가 거부한다
 });
 
 test("bookmark는 actor별로만 조회·변경된다", async () => {
-  const userCookie = sessionCookie(userId, `${fixturePrefix}-user@example.test`, "user");
-  const otherCookie = sessionCookie(otherUserId, `${fixturePrefix}-other@example.test`, "user");
+  const userCookie = await sessionCookie(userId, `${fixturePrefix}-user@example.test`, "user");
+  const otherCookie = await sessionCookie(otherUserId, `${fixturePrefix}-other@example.test`, "user");
   const saveResponse = await request(`/api/bookmarks/${placeSlug}`, userCookie, {
     method: "PUT",
     headers: { "content-type": "application/json" },
@@ -204,7 +208,7 @@ test("DB circuit breaker가 열려도 공개된 기본 비밀번호로 관리자
     const response = await loginAsAdmin("admin1234", workerEnv);
 
     assert.equal(response.status, 503);
-    assert.equal((response.headers.get("set-cookie") ?? "").includes("session-token"), false);
+    assert.equal((response.headers.get("set-cookie") ?? "").includes(AUTH_SESSION_COOKIE_NAME), false);
   } finally {
     globals.__altteulmapWorkerDbUnavailableUntil = 0;
   }
@@ -217,7 +221,7 @@ test("DB 모드에서는 env 평문 비밀번호로 로그인할 수 없다", as
   });
 
   assert.equal(response.status, 401);
-  assert.equal((response.headers.get("set-cookie") ?? "").includes("session-token"), false);
+  assert.equal((response.headers.get("set-cookie") ?? "").includes(AUTH_SESSION_COOKIE_NAME), false);
 });
 
 test("같은 이메일의 동시 회원가입은 500 없이 201 하나와 409만 반환한다", async () => {
@@ -270,4 +274,84 @@ test("health 응답은 내부 에러 문자열을 노출하지 않는다", async
 
   assert.equal(text.includes("ECONNREFUSED"), false);
   assert.equal(text.includes("127.0.0.1:1"), false);
+});
+
+test("로그아웃하면 같은 쿠키로 더 이상 세션이 유지되지 않는다", async () => {
+  const cookie = await sessionCookie(userId, `${fixturePrefix}-user@example.test`, "user");
+  const before = await readJson(await request("/api/auth/session", cookie));
+
+  assert.equal((before.user as { id: string }).id, userId);
+
+  const signout = await request("/api/auth/signout", cookie, {
+    method: "POST",
+    headers: { "content-type": "application/json", accept: "application/json" },
+    body: JSON.stringify({ json: "true" }),
+  });
+
+  assert.equal(signout.status, 200);
+  assert.deepEqual(await readJson(await request("/api/auth/session", cookie)), {});
+});
+
+test("세션 쿠키에는 role·이메일이 없고 DB에는 토큰 해시만 저장된다", async () => {
+  const cookie = await sessionCookie(adminId, `${fixturePrefix}-admin@example.test`, "admin");
+  const token = cookie.split("=")[1] ?? "";
+
+  assert.equal(token.includes("admin"), false);
+  assert.equal(token.includes("."), false);
+
+  const rows = await withWorkerDatabaseConnection(workerEnv, () =>
+    getWorkerDb(workerEnv)
+      .select({ sessionToken: authSessions.sessionToken })
+      .from(authSessions)
+      .where(eq(authSessions.userId, adminId)),
+  );
+
+  assert.ok(rows.length >= 1);
+  assert.equal(rows.some((row) => row.sessionToken === token), false);
+});
+
+test("만료된 세션과 위조 토큰은 거부되고 강등은 즉시 반영된다", async () => {
+  const cookie = await sessionCookie(userId, `${fixturePrefix}-user@example.test`, "user");
+
+  // 위조·미발급 토큰
+  assert.deepEqual(
+    await readJson(
+      await request("/api/auth/session", `${AUTH_SESSION_COOKIE_NAME}=forged-token`),
+    ),
+    {},
+  );
+
+  // 만료: 모든 세션의 expires를 과거로 돌린다
+  await withWorkerDatabaseConnection(workerEnv, () =>
+    getWorkerDb(workerEnv)
+      .update(authSessions)
+      .set({ expires: new Date(Date.now() - 1000) })
+      .where(eq(authSessions.userId, userId)),
+  );
+  assert.deepEqual(await readJson(await request("/api/auth/session", cookie)), {});
+
+  // 강등: 새 세션을 발급한 뒤 role을 바꾸면 쿠키 재발급 없이 즉시 반영된다
+  const adminCookie = await sessionCookie(adminId, `${fixturePrefix}-admin@example.test`, "admin");
+  await withWorkerDatabaseConnection(workerEnv, () =>
+    getWorkerDb(workerEnv).update(users).set({ role: "user" }).where(eq(users.id, adminId)),
+  );
+  const demoted = await readJson(await request("/api/auth/session", adminCookie));
+
+  assert.equal((demoted.user as { role: string }).role, "user");
+
+  await withWorkerDatabaseConnection(workerEnv, () =>
+    getWorkerDb(workerEnv).update(users).set({ role: "admin" }).where(eq(users.id, adminId)),
+  );
+});
+
+test("revokeUserSessions는 사용자의 모든 세션을 끊는다", async () => {
+  const first = await sessionCookie(otherUserId, `${fixturePrefix}-other@example.test`, "user");
+  const second = await sessionCookie(otherUserId, `${fixturePrefix}-other@example.test`, "user");
+
+  await withWorkerDatabaseConnection(workerEnv, () =>
+    revokeUserSessions(workerEnv, otherUserId),
+  );
+
+  assert.deepEqual(await readJson(await request("/api/auth/session", first)), {});
+  assert.deepEqual(await readJson(await request("/api/auth/session", second)), {});
 });

@@ -181,7 +181,7 @@ test("signed auth payloads fail closed when AUTH_SECRET is missing", () => {
   );
 });
 
-test("legacy unsigned session cookies cannot authenticate", () => {
+test("legacy unsigned session cookies cannot authenticate", async () => {
   const unsignedSession = encodeURIComponent(
     JSON.stringify({
       user: {
@@ -195,11 +195,15 @@ test("legacy unsigned session cookies cannot authenticate", () => {
   );
   const request = new Request("https://altteulmap.example/", {
     headers: {
-      cookie: `next-auth.session-token=${unsignedSession}`,
+      cookie: `altteulmap.session=${unsignedSession}`,
     },
   });
 
-  assert.equal(getSessionFromRequest(request, { AUTH_SECRET: "test-secret" }), null);
+  // 서명된 mock 세션 형식이나 임의 쿠키는 운영(DB) 모드에서 세션으로 인정되지 않는다.
+  assert.equal(
+    await getSessionFromRequest(request, { AUTH_SECRET: "test-secret" }),
+    null,
+  );
 });
 
 test("credential login requires the CSRF token issued to the browser", () => {

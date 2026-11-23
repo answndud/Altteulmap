@@ -40,7 +40,7 @@ export function registerPublicWriteCommentRoutes(
     const parsed = placeCommentSchema.safeParse(body);
     const actor = getWorkerPublicWriteActor(
       c.req.raw,
-      getSessionFromRequest(c.req.raw, c.env)?.user ?? null,
+      (await getSessionFromRequest(c.req.raw, c.env))?.user ?? null,
       { env: c.env },
     );
     const rateLimit = await consumePublicWriteRateLimit(
@@ -180,7 +180,7 @@ export function registerPublicWriteCommentRoutes(
     const commentId = c.req.param("commentId");
     const actor = getWorkerPublicWriteActor(
       c.req.raw,
-      getSessionFromRequest(c.req.raw, c.env)?.user ?? null,
+      (await getSessionFromRequest(c.req.raw, c.env))?.user ?? null,
       {
         createVisitorIfMissing: false,
         env: c.env,

@@ -6,6 +6,7 @@ import {
   AUTH_CSRF_COOKIE_NAME,
   AUTH_SESSION_COOKIE_NAME,
   getSessionFromRequest,
+  revokeSession,
 } from "@/worker/auth/session";
 import { appendCookie } from "@/worker/http/cookies";
 import { getOrigin, normalizeCallbackUrl } from "@/worker/http/urls";
@@ -40,8 +41,8 @@ export function registerAuthSessionRoutes(
     return response;
   });
 
-  app.get("/api/auth/session", (c) => {
-    const session = getSessionFromRequest(c.req.raw, c.env);
+  app.get("/api/auth/session", async (c) => {
+    const session = await getSessionFromRequest(c.req.raw, c.env);
 
     if (!session) {
       return c.json({}, 200, dependencies.noStoreHeaders);
@@ -62,6 +63,10 @@ export function registerAuthSessionRoutes(
     const callbackUrl = normalizeCallbackUrl(
       typeof body.callbackUrl === "string" ? body.callbackUrl : "/",
       origin,
+    );
+    // 쿠키만 지우면 탈취된 토큰이 살아 있으므로 서버 세션 행도 삭제한다.
+    await dependencies.runWorkerDatabaseRoute(c.env, () =>
+      revokeSession(c.req.raw, c.env),
     );
     const response = shouldReturnJson
       ? c.json({ url: callbackUrl }, 200, dependencies.noStoreHeaders)

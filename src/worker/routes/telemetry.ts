@@ -66,7 +66,7 @@ export function registerTelemetryRoutes(
   app.post("/api/telemetry/visit", async (c) => {
     const actor = getWorkerPublicWriteActor(
       c.req.raw,
-      getSessionFromRequest(c.req.raw, c.env)?.user ?? null,
+      (await getSessionFromRequest(c.req.raw, c.env))?.user ?? null,
       { env: c.env },
     );
     let payload: unknown;

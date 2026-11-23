@@ -156,11 +156,11 @@ function isUuid(value: string | null | undefined) {
   );
 }
 
-function getPlaceViewerFromRequest(
+async function getPlaceViewerFromRequest(
   request: Request,
   env: PlacesReadBindings,
-): WorkerPlaceViewer {
-  const session = getSessionFromRequest(request, env);
+): Promise<WorkerPlaceViewer> {
+  const session = await getSessionFromRequest(request, env);
 
   if (session) {
     return {
@@ -299,7 +299,7 @@ export function registerPlacesReadRoutes(
     const result = await getWorkerPlaceDetail(
       c.env,
       c.req.param("id"),
-      getPlaceViewerFromRequest(c.req.raw, c.env),
+      await getPlaceViewerFromRequest(c.req.raw, c.env),
     ).catch((error: unknown) => {
       if (dependencies.isWorkerDatabaseUnavailableError(error)) {
         return null;

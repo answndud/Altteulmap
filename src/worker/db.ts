@@ -250,6 +250,16 @@ export async function withWorkerDatabaseConnection<T>(
   });
 }
 
+/** 이미 연결 context 안이면 그 연결을 재사용하고, 아니면 새로 열고 닫는다. */
+export async function withExistingOrNewWorkerDatabaseConnection<T>(
+  env: WorkerDatabaseBindings,
+  load: () => Promise<T>,
+) {
+  return workerDatabaseStorage.getStore()
+    ? load()
+    : withWorkerDatabaseConnection(env, load);
+}
+
 export async function withWorkerDatabaseReadTimeout<T>(
   env: WorkerDatabaseBindings,
   label: string,

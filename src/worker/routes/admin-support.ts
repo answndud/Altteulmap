@@ -47,7 +47,7 @@ export async function requireAdminSession(
   noStoreHeaders: Record<string, string>,
   dependencies: Pick<AdminRouteDependencies, "databaseUnavailableResponse" | "runWorkerDatabaseRoute">,
 ) {
-  const session = getSessionFromRequest(request, env);
+  const session = await getSessionFromRequest(request, env);
 
   if (!session) {
     return {

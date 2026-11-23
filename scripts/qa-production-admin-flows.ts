@@ -89,7 +89,7 @@ async function loginAsAdmin(baseUrl: string, password: string) {
 
   const cookieHeader = createCookieHeader(getSetCookies(response.headers));
 
-  if (!cookieHeader.includes("next-auth.session-token=")) {
+  if (!cookieHeader.includes("altteulmap.session=")) {
     throw new Error("admin session cookie missing.");
   }
 

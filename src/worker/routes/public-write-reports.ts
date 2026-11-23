@@ -33,7 +33,7 @@ export function registerPublicWriteReportRoutes(
     const parsed = reportSubmissionSchema.safeParse(body);
     const actor = getWorkerPublicWriteActor(
       c.req.raw,
-      getSessionFromRequest(c.req.raw, c.env)?.user ?? null,
+      (await getSessionFromRequest(c.req.raw, c.env))?.user ?? null,
       { env: c.env },
     );
     const rateLimit = await consumePublicWriteRateLimit(

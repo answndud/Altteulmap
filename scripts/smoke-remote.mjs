@@ -283,9 +283,9 @@ async function runOptionalCredentialsSmoke() {
   }
 
   const cookieHeader = createCookieHeader(extractCookies(loginResponse.headers));
-  const sessionCookie = findSetCookie(extractCookies(loginResponse.headers), "next-auth.session-token");
+  const sessionCookie = findSetCookie(extractCookies(loginResponse.headers), "altteulmap.session");
 
-  if (!cookieHeader.includes("next-auth.session-token=")) {
+  if (!cookieHeader.includes("altteulmap.session=")) {
     throw new Error("admin credentials login did not set session cookie");
   }
 
@@ -347,7 +347,7 @@ async function runOptionalCredentialsSmoke() {
   }
 
   const signoutCookies = extractCookies(signoutResponse.headers);
-  const clearedSessionCookie = findSetCookie(signoutCookies, "next-auth.session-token");
+  const clearedSessionCookie = findSetCookie(signoutCookies, "altteulmap.session");
 
   if (
     !clearedSessionCookie ||
@@ -472,7 +472,7 @@ async function runOAuthCallbackFailureSmoke(provider) {
     !redirectUrl ||
     redirectUrl.pathname !== "/login" ||
     redirectUrl.searchParams.get("error") !== "OAuthCallback" ||
-    callbackCookies.some((cookie) => findSetCookie([cookie], "next-auth.session-token"))
+    callbackCookies.some((cookie) => findSetCookie([cookie], "altteulmap.session"))
   ) {
     throw new Error(`${provider} invalid callback was not rejected without a session`);
   }

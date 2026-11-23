@@ -6,9 +6,7 @@ import {
   AUTH_OAUTH_STATE_COOKIE_NAME,
   AUTH_OAUTH_STATE_MAX_AGE,
   AUTH_SESSION_COOKIE_NAME,
-  AUTH_SESSION_MAX_AGE,
-  createSession,
-  encodeSession,
+  issueSession,
 } from "@/worker/auth/session";
 import { appendCookie, getCookieValue } from "@/worker/http/cookies";
 import { getOrigin, normalizeCallbackUrl } from "@/worker/http/urls";
@@ -181,13 +179,15 @@ export function registerAuthOAuthRoutes(
         );
       }
 
-      const session = createSession(syncedUser);
+      const session = await dependencies.runWorkerDatabaseRoute(c.env, () =>
+        issueSession(c.env, syncedUser),
+      );
       const response = c.redirect(decodedState.callbackUrl);
 
       appendCookie(response, c.req.raw, {
         name: AUTH_SESSION_COOKIE_NAME,
-        value: encodeSession(session, c.env),
-        maxAge: AUTH_SESSION_MAX_AGE,
+        value: session.value,
+        maxAge: session.maxAge,
       });
       appendCookie(response, c.req.raw, {
         name: AUTH_OAUTH_STATE_COOKIE_NAME,

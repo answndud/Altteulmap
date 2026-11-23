@@ -53,7 +53,7 @@ export function registerBookmarkRoutes(
   dependencies: BookmarkRouteDependencies,
 ) {
   app.get("/api/bookmarks", async (c) => {
-    const session = getSessionFromRequest(c.req.raw, c.env);
+    const session = await getSessionFromRequest(c.req.raw, c.env);
 
     if (!session) {
       return c.json(
@@ -116,7 +116,7 @@ export function registerBookmarkRoutes(
   });
 
   app.put("/api/bookmarks/:id", async (c) => {
-    const session = getSessionFromRequest(c.req.raw, c.env);
+    const session = await getSessionFromRequest(c.req.raw, c.env);
 
     if (!session) {
       return c.json(

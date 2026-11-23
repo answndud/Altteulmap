@@ -1,7 +1,7 @@
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const BODY_METHODS = new Set(["POST", "PUT", "PATCH"]);
 
-export type CrossSiteRejection = {
+type CrossSiteRejection = {
   status: 403 | 415;
   code: "CROSS_SITE_REQUEST" | "UNSUPPORTED_MEDIA_TYPE";
   message: string;

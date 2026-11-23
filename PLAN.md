@@ -27,18 +27,6 @@ Observable finish state:
 - Verify: `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev npm run smoke:remote`
 - Done: 운영 첫 화면에 장소 목록과 마커가 보이고, `Keep Alive`와 수동 실행한 CI의 `Remote Smoke`, `E2E Full`이 성공한다.
 
-#### 1-2. DB 기반 세션으로 전환 (폐기·role 재확인)
-- Likely files: `src/worker/auth/session.ts`, `src/worker/routes/auth-session.ts`, `src/db/schema-auth.ts`, `tests/integration/authorization.test.ts`
-- Changes:
-  - 로그인 시 랜덤 256bit 토큰을 발급하고 `auth_sessions.session_token`에는 SHA-256 해시만 저장한다(만료 7일, sliding 갱신 여부는 ADR에 기록).
-  - 쿠키에는 토큰만 넣고 role/email은 넣지 않는다. 요청마다 세션 행 + `users.role`을 조회한다.
-  - 로그아웃 시 세션 행을 삭제하고, 사용자별 전체 세션 폐기 함수(role 강등·비밀번호 변경 시 호출)를 둔다.
-  - 쿠키 이름을 `altteulmap.session` 등 프로젝트 이름으로 바꾼다(기존 `next-auth.*` 쿠키는 무시).
-  - 댓글 삭제(`places-write-comments-repository.ts:142`)의 admin 판정이 DB role 기준이 되는지 테스트한다.
-  - integration test: 로그아웃 후 같은 쿠키로 요청하면 401, role 강등 후 댓글 삭제가 403.
-- Verify: `npm run verify && INTEGRATION && npm run test:e2e:smoke`
-- Done: 세션 쿠키 payload에 role이 없고, 로그아웃·강등 테스트가 통과한다.
-
 ### Phase 2. 서비스 계층·에러 모델·테스트 구조
 
 #### 2-1. 테스트 DB 분리와 integration 실행 경로 정리
