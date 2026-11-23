@@ -1,7 +1,7 @@
 import type { ReportSubmissionInput } from "@/features/reports/schema";
 import { withWorkerDatabaseConnection, type WorkerDatabaseBindings } from "@/worker/db";
-import type { WorkerPublicWriteActor } from "@/worker/public-write-actor";
-import { createDatabaseReportSubmission } from "@/worker/reports-write-repository";
+import type { WorkerPublicWriteActor } from "@/worker/abuse/public-write-actor";
+import { createDatabaseReportSubmission } from "@/worker/reports/reports-write-repository";
 import { selectBackend } from "@/worker/services/backend";
 
 type ReportReceipt = {

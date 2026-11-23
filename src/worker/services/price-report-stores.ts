@@ -10,7 +10,7 @@ import {
   type WorkerDatabaseBindings,
 } from "@/worker/db";
 import { DomainError } from "@/worker/http/api-error";
-import { getActivePlaceIdentityBySlug } from "@/worker/places-write-support";
+import { getActivePlaceIdentityBySlug } from "@/worker/places/places-write-support";
 import {
   createPriceReportService,
   type PriceReportStore,

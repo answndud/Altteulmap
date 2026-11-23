@@ -118,7 +118,12 @@ if (mode !== "ui" && env.USE_MOCK_DATA !== "true") {
     // CI는 service container가 이미 5432를 점유하므로 docker compose를 띄우지 않는다.
     console.log("[e2e] source: CI PostgreSQL service");
   } else {
-    commandsToRun.splice(1, 0, "npm run db:local:setup");
+    commandsToRun.splice(
+      1,
+      0,
+      "npm run db:local:setup",
+      "node scripts/reset-rate-limits.mjs",
+    );
     console.log("[e2e] source: Docker PostgreSQL");
   }
 } else {

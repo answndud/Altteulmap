@@ -11,7 +11,7 @@ import {
   priceReports,
 } from "@/db/schema";
 import { normalizePriceLabel } from "@/features/places/normalization";
-import { moderateWorkerPriceReport } from "@/worker/admin-repository";
+import { moderateWorkerPriceReport } from "@/worker/admin/admin-repository";
 import {
   type WorkerDatabaseBindings,
   withWorkerDatabaseConnection,

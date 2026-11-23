@@ -11,7 +11,7 @@ import {
   isWorkerDatabaseEnabled,
   type WorkerDatabaseBindings,
 } from "@/worker/db";
-import type { WorkerPublicWriteActor } from "@/worker/public-write-actor";
+import type { WorkerPublicWriteActor } from "@/worker/abuse/public-write-actor";
 
 function getBucketStartedAt(now: Date, windowMs: number) {
   return new Date(Math.floor(now.getTime() / windowMs) * windowMs);

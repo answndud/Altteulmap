@@ -11,7 +11,7 @@ import {
   getPublicTurnstileSiteKey,
 } from "@/worker/http/public-config";
 import { getErrorMessage } from "@/worker/http/errors";
-import { listWorkerSocialAuthProviders } from "@/worker/auth-repository";
+import { listWorkerSocialAuthProviders } from "@/worker/auth/auth-repository";
 import { sql } from "drizzle-orm";
 
 type AssetFetcher = {

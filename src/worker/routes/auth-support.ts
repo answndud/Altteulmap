@@ -7,7 +7,7 @@ import {
 import {
   ACCOUNT_LIMIT_MULTIPLIER,
   consumeWorkerPersistentRateLimit,
-} from "@/worker/rate-limit-repository";
+} from "@/worker/abuse/rate-limit-repository";
 
 type AssetFetcher = {
   fetch(request: Request): Promise<Response> | Response;

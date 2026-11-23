@@ -1,7 +1,7 @@
 import type { PlaceSubmissionInput } from "@/features/submission/schema";
 import { withWorkerDatabaseConnection, type WorkerDatabaseBindings } from "@/worker/db";
-import type { WorkerPublicWriteActor } from "@/worker/public-write-actor";
-import { createDatabasePlaceSubmission } from "@/worker/places-write-submissions-repository";
+import type { WorkerPublicWriteActor } from "@/worker/abuse/public-write-actor";
+import { createDatabasePlaceSubmission } from "@/worker/places/places-write-submissions-repository";
 import { selectBackend } from "@/worker/services/backend";
 
 type SubmissionReceipt = {

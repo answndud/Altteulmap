@@ -5,9 +5,9 @@ import { getSessionFromRequest } from "@/worker/auth/session";
 import {
   applyWorkerWriteHeaders,
   getWorkerPublicWriteActor,
-} from "@/worker/public-write-actor";
+} from "@/worker/abuse/public-write-actor";
 import { logWorkerOperationalEvent } from "@/worker/http/errors";
-import { recordWorkerVisitActivity } from "@/worker/telemetry-repository";
+import { recordWorkerVisitActivity } from "@/worker/telemetry/telemetry-repository";
 
 type AssetFetcher = {
   fetch(request: Request): Promise<Response> | Response;

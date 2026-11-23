@@ -22,11 +22,11 @@ import {
   formatDate,
   toAuthorLabel,
   toPlaceRecord,
-} from "@/worker/places-read-mappers";
+} from "@/worker/places/places-read-mappers";
 import type {
   WorkerPlaceDetailResult,
   WorkerPlaceViewer,
-} from "@/worker/places-read-types";
+} from "@/worker/places/places-read-types";
 
 const placeDetailSelectFields = {
   internalId: places.id,

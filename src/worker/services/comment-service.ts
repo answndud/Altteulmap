@@ -8,8 +8,8 @@ import { DomainError } from "@/worker/http/api-error";
 import {
   createDatabasePlaceComment,
   deleteDatabasePlaceComment,
-} from "@/worker/places-write-comments-repository";
-import type { WorkerPublicWriteActor } from "@/worker/public-write-actor";
+} from "@/worker/places/places-write-comments-repository";
+import type { WorkerPublicWriteActor } from "@/worker/abuse/public-write-actor";
 import { mockCommentStore } from "@/worker/routes/public-write-support";
 import { selectBackend } from "@/worker/services/backend";
 import { canDeleteComment } from "@/worker/services/comment-rules";

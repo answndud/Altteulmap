@@ -33,10 +33,10 @@ import {
 import {
   applyWorkerWriteHeaders,
   getWorkerPublicWriteActor,
-} from "../../src/worker/public-write-actor";
+} from "../../src/worker/abuse/public-write-actor";
 import { getWorkerPlaceReactionRateLimitActor } from "../../src/worker/routes/public-write-support";
 import { getAdminQueuePagination } from "../../src/worker/routes/admin-support";
-import { getPriceReportSubmissionKey } from "../../src/worker/price-report-identity";
+import { getPriceReportSubmissionKey } from "../../src/worker/places/price-report-identity";
 import {
   API_ERROR_CODES,
   DomainError,

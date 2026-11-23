@@ -6,7 +6,7 @@ import { buildMapPreviewCacheKey } from "../../src/features/places/map-preview-c
 import {
   getMapMarkerMode,
   getPlaceOnlyMapMarkers,
-} from "../../src/worker/places-read-markers";
+} from "../../src/worker/places/places-read-markers";
 import type { PlacePreviewRecord } from "../../src/features/places/types";
 
 const bounds = {

@@ -5,8 +5,8 @@ import { getPublicTurnstileSiteKey } from "@/worker/http/public-config";
 import {
   consumeWorkerRateLimit,
   type WorkerPublicWriteActor,
-} from "@/worker/public-write-actor";
-import { consumeWorkerPersistentRateLimit } from "@/worker/rate-limit-repository";
+} from "@/worker/abuse/public-write-actor";
+import { consumeWorkerPersistentRateLimit } from "@/worker/abuse/rate-limit-repository";
 import { withWorkerDatabaseConnection } from "@/worker/db";
 import { fetchWithTimeout } from "@/worker/http/fetch";
 

@@ -5,9 +5,9 @@ import {
   getWorkerPlaceDetail,
   listWorkerMapPlaces,
   type WorkerPlaceViewer,
-} from "@/worker/places-read-repository";
+} from "@/worker/places/places-read-repository";
 import { getSessionFromRequest } from "@/worker/auth/session";
-import { getVerifiedVisitorIdFromRequest } from "@/worker/public-write-actor";
+import { getVerifiedVisitorIdFromRequest } from "@/worker/abuse/public-write-actor";
 
 type AssetFetcher = {
   fetch(request: Request): Promise<Response> | Response;

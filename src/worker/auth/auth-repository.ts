@@ -12,7 +12,7 @@ import {
   type WorkerAuthBindings,
   type WorkerAuthUserRecord,
   type WorkerOAuthAccountSyncInput,
-} from "@/worker/auth-repository-support";
+} from "@/worker/auth/auth-repository-support";
 import {
   getWorkerDb,
   isWorkerDatabaseEnabled,

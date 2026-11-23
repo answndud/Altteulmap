@@ -29,7 +29,7 @@ import {
 import {
   sortPlacePreviewRecords,
   toPlacePreviewRecords,
-} from "@/worker/places-read-mappers";
+} from "@/worker/places/places-read-mappers";
 import {
   getBoundsFromPlaces,
   getCappedMapListItems,
@@ -37,11 +37,11 @@ import {
   getMapMarkerLimit,
   getMapMarkerMode,
   getPlaceOnlyMapMarkers,
-} from "@/worker/places-read-markers";
+} from "@/worker/places/places-read-markers";
 import type {
   PlaceQuery,
   WorkerMapPlacesResult,
-} from "@/worker/places-read-types";
+} from "@/worker/places/places-read-types";
 
 const MAP_QUERY_ROW_LIMIT = 2_000;
 

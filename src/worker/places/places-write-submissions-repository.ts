@@ -13,12 +13,12 @@ import {
 } from "@/features/places/normalization";
 import type { PlaceSubmissionInput } from "@/features/submission/schema";
 import { getWorkerDb, type WorkerDatabaseBindings } from "@/worker/db";
-import type { WorkerPublicWriteActor } from "@/worker/public-write-actor";
-import { getPriceReportSubmissionKey } from "@/worker/price-report-identity";
+import type { WorkerPublicWriteActor } from "@/worker/abuse/public-write-actor";
+import { getPriceReportSubmissionKey } from "@/worker/places/price-report-identity";
 import {
   type DataSource,
   type WorkerDbExecutor,
-} from "@/worker/places-write-support";
+} from "@/worker/places/places-write-support";
 
 async function createUniquePlaceSlug(
   db: WorkerDbExecutor,

@@ -5,7 +5,7 @@ import { getSessionFromRequest } from "@/worker/auth/session";
 import {
   applyWorkerWriteHeaders,
   getWorkerPublicWriteActor,
-} from "@/worker/public-write-actor";
+} from "@/worker/abuse/public-write-actor";
 import { getPriceReportService } from "@/worker/services/price-report-stores";
 import {
   consumePublicWriteRateLimit,

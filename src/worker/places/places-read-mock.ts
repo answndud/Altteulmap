@@ -3,12 +3,12 @@ import type {
   WorkerMapPlacesResult,
   WorkerPlaceDetailResult,
   WorkerPlaceViewer,
-} from "@/worker/places-read-types";
-import { toPlacePreviewRecord } from "@/worker/places-read-mappers";
+} from "@/worker/places/places-read-types";
+import { toPlacePreviewRecord } from "@/worker/places/places-read-mappers";
 import {
   getCappedMapListItems,
   toMapPlaceMarkerRecord,
-} from "@/worker/places-read-markers";
+} from "@/worker/places/places-read-markers";
 
 export async function listMockMapPlaces(
   query: PlaceQuery = {},

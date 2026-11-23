@@ -5,11 +5,11 @@ import type { PlaceCommentInput } from "@/features/places/write-schema";
 import { getWorkerDb, type WorkerDatabaseBindings } from "@/worker/db";
 import { DomainError } from "@/worker/http/api-error";
 import { canDeleteComment } from "@/worker/services/comment-rules";
-import type { WorkerPublicWriteActor } from "@/worker/public-write-actor";
+import type { WorkerPublicWriteActor } from "@/worker/abuse/public-write-actor";
 import {
   type DataSource,
   getActivePlaceIdentityBySlug,
-} from "@/worker/places-write-support";
+} from "@/worker/places/places-write-support";
 
 const dateFormatter = new Intl.DateTimeFormat("sv-SE", {
   timeZone: "Asia/Seoul",

@@ -1,6 +1,6 @@
 import type { Hono } from "hono";
 
-import { syncWorkerOAuthUser } from "@/worker/auth-repository";
+import { syncWorkerOAuthUser } from "@/worker/auth/auth-repository";
 import {
   AUTH_CALLBACK_COOKIE_NAME,
   AUTH_OAUTH_STATE_COOKIE_NAME,

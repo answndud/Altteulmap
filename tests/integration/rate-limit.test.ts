@@ -9,11 +9,11 @@ import {
   getWorkerDb,
   withWorkerDatabaseConnection,
 } from "../../src/worker/db";
-import type { WorkerPublicWriteActor } from "../../src/worker/public-write-actor";
+import type { WorkerPublicWriteActor } from "../../src/worker/abuse/public-write-actor";
 import {
   consumeWorkerPersistentRateLimit,
   deleteExpiredRateLimits,
-} from "../../src/worker/rate-limit-repository";
+} from "../../src/worker/abuse/rate-limit-repository";
 import { assertTestDatabaseReady, getTestDatabaseUrl } from "./test-database";
 
 const workerEnv = {

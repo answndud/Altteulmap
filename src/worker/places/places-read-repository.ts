@@ -8,17 +8,17 @@ import {
   type WorkerDatabaseBindings,
   withWorkerDatabaseReadTimeout,
 } from "@/worker/db";
-import { getDatabasePlaceDetail } from "@/worker/places-read-detail-repository";
-import { listDatabaseMapPlaces } from "@/worker/places-read-map-repository";
+import { getDatabasePlaceDetail } from "@/worker/places/places-read-detail-repository";
+import { listDatabaseMapPlaces } from "@/worker/places/places-read-map-repository";
 import {
   getMockPlaceDetail,
   listMockMapPlaces,
-} from "@/worker/places-read-mock";
+} from "@/worker/places/places-read-mock";
 import type {
   PlaceQuery,
   WorkerPlaceViewer,
-} from "@/worker/places-read-types";
-export type { WorkerPlaceViewer } from "@/worker/places-read-types";
+} from "@/worker/places/places-read-types";
+export type { WorkerPlaceViewer } from "@/worker/places/places-read-types";
 
 export async function listWorkerMapPlaces(
   env: WorkerDatabaseBindings,

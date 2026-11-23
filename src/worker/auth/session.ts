@@ -3,7 +3,7 @@ import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { and, eq, gt, lt } from "drizzle-orm";
 
 import { authSessions, users } from "@/db/schema";
-import type { WorkerAuthUserRecord } from "@/worker/auth-repository";
+import type { WorkerAuthUserRecord } from "@/worker/auth/auth-repository";
 import {
   getWorkerDb,
   isWorkerDatabaseEnabled,

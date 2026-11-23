@@ -4,12 +4,12 @@ import { placeReactions, places } from "@/db/schema";
 import type { PlaceReactionType } from "@/features/places/types";
 import { DomainError } from "@/worker/http/api-error";
 import { getWorkerDb, type WorkerDatabaseBindings } from "@/worker/db";
-import type { WorkerPublicWriteActor } from "@/worker/public-write-actor";
+import type { WorkerPublicWriteActor } from "@/worker/abuse/public-write-actor";
 import {
   type DataSource,
   getActivePlaceIdentityBySlug,
   type WorkerDbExecutor,
-} from "@/worker/places-write-support";
+} from "@/worker/places/places-write-support";
 
 function getReactionActorKey(actor: WorkerPublicWriteActor) {
   if (actor.user?.id) {

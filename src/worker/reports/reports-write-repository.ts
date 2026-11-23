@@ -4,7 +4,7 @@ import { contentReports, places } from "@/db/schema";
 import type { ReportSubmissionInput } from "@/features/reports/schema";
 import { DomainError } from "@/worker/http/api-error";
 import { getWorkerDb, type WorkerDatabaseBindings } from "@/worker/db";
-import type { WorkerPublicWriteActor } from "@/worker/public-write-actor";
+import type { WorkerPublicWriteActor } from "@/worker/abuse/public-write-actor";
 
 export async function createDatabaseReportSubmission(
   env: WorkerDatabaseBindings,

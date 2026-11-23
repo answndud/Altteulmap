@@ -1,4 +1,4 @@
-import { listWorkerSocialAuthProviders } from "@/worker/auth-repository";
+import { listWorkerSocialAuthProviders } from "@/worker/auth/auth-repository";
 import { z } from "zod";
 import {
   AUTH_OAUTH_STATE_MAX_AGE,

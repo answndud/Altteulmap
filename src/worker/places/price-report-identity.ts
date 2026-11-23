@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import type { WorkerPublicWriteActor } from "@/worker/public-write-actor";
+import type { WorkerPublicWriteActor } from "@/worker/abuse/public-write-actor";
 
 function getPriceReportActorIdentity(actor: WorkerPublicWriteActor) {
   if (actor.user?.id) {

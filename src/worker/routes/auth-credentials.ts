@@ -4,7 +4,7 @@ import { credentialsSignupSchema } from "@/features/auth/schema";
 import {
   createWorkerCredentialsUser,
   verifyWorkerCredentials,
-} from "@/worker/auth-repository";
+} from "@/worker/auth/auth-repository";
 import {
   AUTH_CALLBACK_COOKIE_NAME,
   isValidCsrfToken,

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { DomainError } from "../../src/worker/http/api-error";
-import type { WorkerPublicWriteActor } from "../../src/worker/public-write-actor";
+import type { WorkerPublicWriteActor } from "../../src/worker/abuse/public-write-actor";
 import {
   canTransitionPriceReport,
   countDistinctReporters,

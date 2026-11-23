@@ -7,7 +7,7 @@ import { DomainError } from "@/worker/http/api-error";
 import {
   listDatabaseBookmarks,
   setDatabaseBookmark,
-} from "@/worker/bookmarks-repository";
+} from "@/worker/places/bookmarks-repository";
 import { selectBackend } from "@/worker/services/backend";
 
 type BookmarkUser = { id: string; email: string };

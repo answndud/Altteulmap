@@ -1,6 +1,6 @@
 import type { Hono } from "hono";
 
-import { listWorkerSocialAuthProviders } from "@/worker/auth-repository";
+import { listWorkerSocialAuthProviders } from "@/worker/auth/auth-repository";
 import {
   AUTH_CALLBACK_COOKIE_NAME,
   AUTH_CSRF_COOKIE_NAME,

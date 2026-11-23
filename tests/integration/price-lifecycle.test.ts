@@ -14,7 +14,7 @@ import {
 import { DomainError } from "../../src/worker/http/api-error";
 import { moderateWorkerPriceReport } from "../../src/worker/admin/admin-price-review-repository";
 import { getPriceReportService } from "../../src/worker/services/price-report-stores";
-import { setDatabaseBookmark } from "../../src/worker/bookmarks-repository";
+import { setDatabaseBookmark } from "../../src/worker/places/bookmarks-repository";
 import {
   closeWorkerDatabaseConnection,
   getWorkerDb,

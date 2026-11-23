@@ -15,7 +15,7 @@ import {
   moderateWorkerPriceReport,
   updateWorkerPriceItem,
   updateWorkerReportStatus,
-} from "@/worker/admin-repository";
+} from "@/worker/admin/admin-repository";
 import {
   withWorkerDatabaseConnection,
   type WorkerDatabaseBindings,

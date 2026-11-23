@@ -15,7 +15,7 @@ import {
   applySecurityHeaders,
 } from "@/worker/http/security-headers";
 import { deleteExpiredSessions } from "@/worker/auth/session";
-import { deleteExpiredRateLimits } from "@/worker/rate-limit-repository";
+import { deleteExpiredRateLimits } from "@/worker/abuse/rate-limit-repository";
 import { DomainError, normalizeErrorBody } from "@/worker/http/api-error";
 import { rejectCrossSiteMutation } from "@/worker/http/csrf";
 import { readRequestBodyWithinLimit } from "@/worker/http/request-body";

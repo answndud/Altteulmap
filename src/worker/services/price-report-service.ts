@@ -1,8 +1,8 @@
 import { normalizePriceLabel } from "@/features/places/normalization";
 import type { PlacePriceReportInput } from "@/features/places/write-schema";
 import { DomainError } from "@/worker/http/api-error";
-import type { WorkerPublicWriteActor } from "@/worker/public-write-actor";
-import { getPriceReportSubmissionKey } from "@/worker/price-report-identity";
+import type { WorkerPublicWriteActor } from "@/worker/abuse/public-write-actor";
+import { getPriceReportSubmissionKey } from "@/worker/places/price-report-identity";
 
 export type PriceReportPlace = {
   id: string;

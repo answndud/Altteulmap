@@ -5,8 +5,8 @@ import {
   type WorkerDatabaseBindings,
 } from "@/worker/db";
 import { DomainError } from "@/worker/http/api-error";
-import { setDatabasePlaceReaction } from "@/worker/places-write-reactions-repository";
-import type { WorkerPublicWriteActor } from "@/worker/public-write-actor";
+import { setDatabasePlaceReaction } from "@/worker/places/places-write-reactions-repository";
+import type { WorkerPublicWriteActor } from "@/worker/abuse/public-write-actor";
 import {
   getMockReactionSummary,
   getPlaceReactionMessage,

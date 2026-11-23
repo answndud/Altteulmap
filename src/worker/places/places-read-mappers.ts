@@ -7,7 +7,7 @@ import type {
   PlaceRecord,
   PlaceSort,
 } from "@/features/places/types";
-import type { DatabasePlaceRow } from "@/worker/places-read-types";
+import type { DatabasePlaceRow } from "@/worker/places/places-read-types";
 
 const dateFormatter = new Intl.DateTimeFormat("sv-SE", {
   timeZone: "Asia/Seoul",
