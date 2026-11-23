@@ -11,10 +11,13 @@ const adminNavItems = [
 export function AdminFrame({
   title,
   description,
+  showNav = true,
   children,
 }: {
   title: string;
   description: string;
+  /** 운영자 확인 전에는 관리 메뉴를 숨긴다. */
+  showNav?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -34,25 +37,27 @@ export function AdminFrame({
           지도 화면
         </Link>
       </div>
-      <nav className="altteulmap-segmented altteulmap-scroll-row">
-        {adminNavItems.map((item) => (
-          <NavLink
-            key={item.href}
-            to={item.href}
-            end={item.href === "/admin"}
-            className={({ isActive }) =>
-              [
-                "altteulmap-chip inline-flex border px-4 py-2 text-sm",
-                isActive
-                  ? "border-[rgba(151,70,29,0.38)] bg-[rgba(181,90,43,0.12)] text-[var(--altteul-accent-text)]"
-                  : "border-[var(--altteul-surface-border-strong)] bg-[var(--altteul-bg-surface)] text-[var(--altteul-text-secondary)]",
-              ].join(" ")
-            }
-          >
-            {item.label}
-          </NavLink>
-        ))}
-      </nav>
+      {showNav ? (
+        <nav className="altteulmap-segmented altteulmap-scroll-row">
+          {adminNavItems.map((item) => (
+            <NavLink
+              key={item.href}
+              to={item.href}
+              end={item.href === "/admin"}
+              className={({ isActive }) =>
+                [
+                  "altteulmap-chip inline-flex border px-4 py-2 text-sm",
+                  isActive
+                    ? "border-[rgba(151,70,29,0.38)] bg-[rgba(181,90,43,0.12)] text-[var(--altteul-accent-text)]"
+                    : "border-[var(--altteul-surface-border-strong)] bg-[var(--altteul-bg-surface)] text-[var(--altteul-text-secondary)]",
+                ].join(" ")
+              }
+            >
+              {item.label}
+            </NavLink>
+          ))}
+        </nav>
+      ) : null}
       {children}
     </main>
   );

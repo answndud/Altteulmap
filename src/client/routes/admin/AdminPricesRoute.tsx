@@ -22,6 +22,7 @@ export function AdminPricesRoute() {
 
   return (
     <AdminFrame
+      showNav={state.status === "ready"}
       title="가격 정보 검토"
       description="기존 장소에 등록된 가격 정보를 승인하거나 반려합니다."
     >

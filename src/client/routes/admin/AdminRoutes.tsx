@@ -1,5 +1,6 @@
 import { Route, Routes } from "react-router-dom";
 
+import { NotFoundRoute } from "@/client/routes/NotFoundRoute";
 import { AdminDashboardRoute } from "@/client/routes/admin/AdminDashboardRoute";
 import { AdminPlacePricesRoute } from "@/client/routes/admin/AdminPlacePricesRoute";
 import { AdminPlacesRoute } from "@/client/routes/admin/AdminPlacesRoute";
@@ -14,6 +15,7 @@ export function AdminRoutes() {
       <Route path="prices" element={<AdminPricesRoute />} />
       <Route path="prices/places/:id" element={<AdminPlacePricesRoute />} />
       <Route path="reports" element={<AdminReportsRoute />} />
+      <Route path="*" element={<NotFoundRoute />} />
     </Routes>
   );
 }

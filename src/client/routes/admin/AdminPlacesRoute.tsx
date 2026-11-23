@@ -21,6 +21,7 @@ export function AdminPlacesRoute() {
 
   return (
     <AdminFrame
+      showNav={state.status === "ready"}
       title="신규 장소 승인 큐"
       description="공개 등록 폼으로 들어온 장소 제보를 승인 또는 반려합니다."
     >

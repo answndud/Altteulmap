@@ -29,6 +29,7 @@ export function AdminDashboardRoute() {
 
   return (
     <AdminFrame
+      showNav={state.status === "ready"}
       title="운영 대시보드"
       description="승인 대기 장소, 가격 정보, 신고를 한 곳에서 검토합니다."
     >

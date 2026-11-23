@@ -7,6 +7,7 @@ import { LoginRoute } from "@/client/routes/LoginRoute";
 import { PlaceDetailRoute } from "@/client/routes/PlaceDetailRoute";
 import { ReportRoute } from "@/client/routes/ReportRoute";
 import { SignupRoute } from "@/client/routes/SignupRoute";
+import { NotFoundRoute } from "@/client/routes/NotFoundRoute";
 import { SubmitRoute } from "@/client/routes/SubmitRoute";
 import { AdminRoutes } from "@/client/routes/admin/AdminRoutes";
 
@@ -117,6 +118,7 @@ export function App() {
         <Route path="/login" element={<LoginRoute />} />
         <Route path="/signup" element={<SignupRoute />} />
         <Route path="/admin/*" element={<AdminRoutes />} />
+        <Route path="*" element={<NotFoundRoute />} />
       </Routes>
     </Shell>
   );

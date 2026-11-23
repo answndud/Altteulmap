@@ -24,6 +24,7 @@ export function AdminReportsRoute() {
 
   return (
     <AdminFrame
+      showNav={state.status === "ready"}
       title="신고 검토 큐"
       description="공개 신고를 상태별로 좁혀 보고 처리 상태를 변경합니다."
     >

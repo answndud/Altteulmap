@@ -27,15 +27,6 @@ Observable finish state:
 
 ### Phase 3. 저장소 위생·화면 정직성·문서 정리
 
-#### 3-4. 라우팅 빈 화면과 콘솔 오류 제거
-- Likely files: `src/client/App.tsx`, `src/client/routes/NotFoundRoute.tsx`(신규), `src/client/routes/admin/AdminRoutes.tsx`, `src/worker/http/security-headers.ts`
-- Changes:
-  - catch-all 경로(`*`)와 404 화면(지도로 돌아가기 링크)을 추가하고, 없는 `/place/:id`도 같은 화면을 보여 준다.
-  - 인증 전에는 관리자 탭을 숨기고 로그인 안내만 보여 준다.
-  - CSP `connect-src`가 네이버 SDK 로그 호스트(`kr-col-ext.nelo.navercorp.com`)를 막아 콘솔 오류가 난다. 허용 여부를 결정하고 결과를 `docs/project/strict-csp-inventory-2026-05-08.md`에 기록한다.
-- Verify: `npm run verify && npm run test:e2e:smoke`
-- Done: `/does-not-exist`와 `/place/unknown`에서 404 화면이 보이고, 운영 첫 화면 콘솔에 CSP 위반이 없다.
-
 #### 3-5. 지도 첫 화면 단순화와 목록·지도 연동
 - Likely files: `src/client/routes/MapRoute.tsx`, `src/client/features/map/MapSearchControls.tsx`, `src/client/features/map/PlaceDetailSheet.tsx`, `src/features/map/naver-map-marker-visuals.ts`
 - Changes:

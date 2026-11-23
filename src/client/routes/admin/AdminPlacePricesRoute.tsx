@@ -25,6 +25,7 @@ export function AdminPlacePricesRoute() {
 
   return (
     <AdminFrame
+      showNav={state.status === "ready"}
       title="장소 가격 관리"
       description="현재 저장된 가격 항목을 수정하거나 대표 가격, 검증 상태, 노출 상태를 조정합니다."
     >
