@@ -14,9 +14,8 @@ type PublicConfigBindings = {
     fetch(request: Request): Promise<Response> | Response;
   };
   NAVER_MAP_CLIENT_ID?: string;
-  NEXT_PUBLIC_NAVER_MAP_CLIENT_ID?: string;
-  NEXT_PUBLIC_NAVER_MAP_KEY_ID?: string;
-  NEXT_PUBLIC_TURNSTILE_SITE_KEY?: string;
+  NAVER_MAP_KEY_ID?: string;
+  TURNSTILE_SITE_KEY?: string;
 };
 
 type PublicConfigRouteDependencies = {

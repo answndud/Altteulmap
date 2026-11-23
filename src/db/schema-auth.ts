@@ -2,7 +2,6 @@ import {
   index,
   integer,
   pgTable,
-  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -46,8 +45,6 @@ export const authAccounts = pgTable(
     expiresAt: integer("expires_at"),
     tokenType: varchar("token_type", { length: 50 }),
     scope: text("scope"),
-    idToken: text("id_token"),
-    sessionState: text("session_state"),
     ...withTimestamps(),
   },
   (table) => [
@@ -69,19 +66,4 @@ export const authSessions = pgTable(
     expires: timestamp("expires", { withTimezone: true }).notNull(),
   },
   (table) => [index("auth_sessions_user_id_idx").on(table.userId)],
-);
-
-export const authVerificationTokens = pgTable(
-  "auth_verification_tokens",
-  {
-    identifier: varchar("identifier", { length: 255 }).notNull(),
-    token: varchar("token", { length: 255 }).notNull(),
-    expires: timestamp("expires", { withTimezone: true }).notNull(),
-  },
-  (table) => [
-    primaryKey({
-      columns: [table.identifier, table.token],
-      name: "auth_verification_tokens_pk",
-    }),
-  ],
 );

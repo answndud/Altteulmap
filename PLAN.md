@@ -27,16 +27,6 @@ Observable finish state:
 
 ### Phase 3. 저장소 위생·화면 정직성·문서 정리
 
-#### 3-1. Next.js 잔재와 env 템플릿 정리
-- Likely files: `src/lib/env.ts`, `src/worker/index.ts`, `src/features/map/naver-map-sdk.ts`, `.gitignore`
-- Changes:
-  - `NEXTAUTH_URL` → `SITE_URL`, `NEXT_PUBLIC_*` → `NAVER_MAP_*`/`TURNSTILE_SITE_KEY`로 이름을 바꾸고 CI·문서·wrangler 설정을 함께 갱신한다(운영 secret 이름 교체 절차를 `docs/09-운영-가이드/secret-교체.md`에 반영).
-  - 쓰지 않는 `auth_verification_tokens` 테이블과 `session_state`/`id_token` 컬럼을 migration으로 제거한다.
-  - `.gitignore`에 `!.env.example`을 추가해 `.env.example`을 커밋하고(비밀번호 값은 placeholder), legacy Next 경로를 지운다. `next-env.d.ts`를 삭제한다.
-  - `AssetFetcher`·`Bindings` 타입과 쿠키 유틸 중복을 `src/worker/http`로 합친다.
-- Verify: `npm run verify && npm run cf:build:vite && npm run deploy:check:vite && npm run test:e2e:smoke`
-- Done: `grep -rn "NEXTAUTH\|NEXT_PUBLIC\|next-auth" src scripts .github` 0건, `git ls-files .env.example` 출력이 있다.
-
 #### 3-2. 마이그레이션 drift·의존성 취약점 정리
 - Likely files: `drizzle/meta/_journal.json`, `src/db/schema-place-core.ts`, `.github/workflows/ci.yml`, `package.json`
 - Changes:

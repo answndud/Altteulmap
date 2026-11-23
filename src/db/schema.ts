@@ -11,7 +11,6 @@ export {
 export {
   authAccounts,
   authSessions,
-  authVerificationTokens,
   users,
 } from "./schema-auth";
 export {

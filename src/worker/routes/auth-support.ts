@@ -1,3 +1,4 @@
+import type { AssetFetcher } from "@/worker/http/bindings";
 import {
   applyRateLimitHeaders,
   consumeRateLimitPolicy,
@@ -8,10 +9,6 @@ import {
   ACCOUNT_LIMIT_MULTIPLIER,
   consumeWorkerPersistentRateLimit,
 } from "@/worker/abuse/rate-limit-repository";
-
-type AssetFetcher = {
-  fetch(request: Request): Promise<Response> | Response;
-};
 
 export type AuthBindings = {
   ASSETS: AssetFetcher;
@@ -26,7 +23,6 @@ export type AuthBindings = {
   HYPERDRIVE?: {
     connectionString?: string;
   };
-  NEXTAUTH_URL?: string;
   SITE_URL?: string;
   USE_MOCK_DATA?: string;
 };

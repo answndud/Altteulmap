@@ -1,3 +1,4 @@
+import type { AssetFetcher } from "@/worker/http/bindings";
 import type { Hono } from "hono";
 
 import {
@@ -14,10 +15,6 @@ import { getErrorMessage } from "@/worker/http/errors";
 import { listWorkerSocialAuthProviders } from "@/worker/auth/auth-repository";
 import { sql } from "drizzle-orm";
 
-type AssetFetcher = {
-  fetch(request: Request): Promise<Response> | Response;
-};
-
 type HealthBindings = {
   ASSETS: AssetFetcher;
   AUTH_KAKAO_CLIENT_ID?: string;
@@ -29,10 +26,8 @@ type HealthBindings = {
     connectionString?: string;
   };
   NAVER_MAP_CLIENT_ID?: string;
-  NEXTAUTH_URL?: string;
-  NEXT_PUBLIC_NAVER_MAP_CLIENT_ID?: string;
-  NEXT_PUBLIC_NAVER_MAP_KEY_ID?: string;
-  NEXT_PUBLIC_TURNSTILE_SITE_KEY?: string;
+  NAVER_MAP_KEY_ID?: string;
+  TURNSTILE_SITE_KEY?: string;
   SITE_URL?: string;
   TURNSTILE_SECRET_KEY?: string;
   USE_MOCK_DATA?: string;
@@ -154,7 +149,7 @@ export function registerHealthRoute(
 ) {
   app.get("/api/health", async (c) => {
     const isDeepCheck = c.req.query("deep") === "1";
-    const origin = dependencies.getOrigin(c.req.raw, c.env.SITE_URL ?? c.env.NEXTAUTH_URL);
+    const origin = dependencies.getOrigin(c.req.raw, c.env.SITE_URL);
     const oauthProviders = listWorkerSocialAuthProviders(c.env);
     const hasNaverMapKey = Boolean(getPublicNaverMapKeyId(c.env));
     const hasTurnstileSiteKey = Boolean(getPublicTurnstileSiteKey(c.env));

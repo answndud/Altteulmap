@@ -8,7 +8,7 @@ loadEnvFilesWithShellPrecedence({
   filenames: [".env", ".env.production", ".env.local", ".env.production.local"],
 });
 
-const baseUrl = process.env.SMOKE_PUBLIC_URL ?? process.env.NEXTAUTH_URL ?? "";
+const baseUrl = process.env.SMOKE_PUBLIC_URL ?? process.env.SITE_URL ?? "";
 const REQUEST_TIMEOUT_MS = 60_000;
 const OAUTH_PROVIDER_HOSTS = {
   kakao: "kauth.kakao.com",
@@ -145,7 +145,7 @@ async function expectRedirectToHost(pathname, expectedHost, label) {
 
   const cookies = extractCookies(response.headers);
   const state = redirectUrl.searchParams.get("state");
-  const stateCookie = findSetCookie(cookies, "next-auth.state");
+  const stateCookie = findSetCookie(cookies, "altteulmap.oauth-state");
 
   if (!state) {
     throw new Error(`${label} did not include oauth state`);
@@ -500,7 +500,7 @@ async function runPublicWriteContractSmoke(placeId) {
 }
 
 async function main() {
-  const normalizedBaseUrl = assertHttpsUrl(baseUrl, "SMOKE_PUBLIC_URL/NEXTAUTH_URL");
+  const normalizedBaseUrl = assertHttpsUrl(baseUrl, "SMOKE_PUBLIC_URL/SITE_URL");
 
   printLine(`Running remote smoke against ${normalizedBaseUrl}`);
 

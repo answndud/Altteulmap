@@ -21,14 +21,6 @@ const serverEnvSchema = z.object({
     const normalized = value.trim();
     return normalized.length > 0 ? normalized : undefined;
   }, z.string().url().optional()),
-  NEXTAUTH_URL: z.preprocess((value) => {
-    if (typeof value !== "string") {
-      return value;
-    }
-
-    const normalized = value.trim();
-    return normalized.length > 0 ? normalized : undefined;
-  }, z.string().url().optional()),
   ADMIN_APP_URL: z.preprocess((value) => {
     if (typeof value !== "string") {
       return value;
@@ -50,7 +42,6 @@ const serverEnv = serverEnvSchema.parse({
   USE_MOCK_DATA: process.env.USE_MOCK_DATA,
   AUTH_SECRET: process.env.AUTH_SECRET,
   SITE_URL: process.env.SITE_URL,
-  NEXTAUTH_URL: process.env.NEXTAUTH_URL,
   ADMIN_APP_URL: process.env.ADMIN_APP_URL,
   AUTH_DEMO_PASSWORD: process.env.AUTH_DEMO_PASSWORD,
   AUTH_ADMIN_PASSWORD: process.env.AUTH_ADMIN_PASSWORD,

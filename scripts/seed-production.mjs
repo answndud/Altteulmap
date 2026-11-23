@@ -14,7 +14,6 @@ const APP_TABLES = [
   "admin_actions",
   "auth_accounts",
   "auth_sessions",
-  "auth_verification_tokens",
   "bookmarks",
   "categories",
   "comments",
@@ -58,7 +57,6 @@ async function readTableCounts(sql) {
       select 'admin_actions' as table_name, count(*)::int as row_count from admin_actions
       union all select 'auth_accounts', count(*)::int from auth_accounts
       union all select 'auth_sessions', count(*)::int from auth_sessions
-      union all select 'auth_verification_tokens', count(*)::int from auth_verification_tokens
       union all select 'bookmarks', count(*)::int from bookmarks
       union all select 'categories', count(*)::int from categories
       union all select 'comments', count(*)::int from comments

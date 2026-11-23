@@ -1,3 +1,4 @@
+import type { AssetFetcher } from "@/worker/http/bindings";
 import type { Hono } from "hono";
 
 import type { PlaceBounds, PlaceSearchScope } from "@/features/places/types";
@@ -8,10 +9,6 @@ import {
 } from "@/worker/places/places-read-repository";
 import { getSessionFromRequest } from "@/worker/auth/session";
 import { getVerifiedVisitorIdFromRequest } from "@/worker/abuse/public-write-actor";
-
-type AssetFetcher = {
-  fetch(request: Request): Promise<Response> | Response;
-};
 
 type PlacesReadBindings = {
   ASSETS: AssetFetcher;

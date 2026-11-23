@@ -1,3 +1,4 @@
+import type { AssetFetcher } from "@/worker/http/bindings";
 import type { PlaceComment, PlaceReactionType } from "@/features/places/types";
 import type { RateLimitPolicyName } from "@/lib/rate-limit";
 import { getErrorMessage } from "@/worker/http/errors";
@@ -10,10 +11,6 @@ import { consumeWorkerPersistentRateLimit } from "@/worker/abuse/rate-limit-repo
 import { withWorkerDatabaseConnection } from "@/worker/db";
 import { fetchWithTimeout } from "@/worker/http/fetch";
 
-export type AssetFetcher = {
-  fetch(request: Request): Promise<Response> | Response;
-};
-
 export type PublicWriteBindings = {
   ASSETS: AssetFetcher;
   AUTH_SECRET?: string;
@@ -21,7 +18,7 @@ export type PublicWriteBindings = {
   HYPERDRIVE?: {
     connectionString?: string;
   };
-  NEXT_PUBLIC_TURNSTILE_SITE_KEY?: string;
+  TURNSTILE_SITE_KEY?: string;
   TURNSTILE_BYPASS_TOKEN?: string;
   TURNSTILE_SECRET_KEY?: string;
   USE_MOCK_DATA?: string;

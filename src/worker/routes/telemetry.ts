@@ -1,3 +1,4 @@
+import type { AssetFetcher } from "@/worker/http/bindings";
 import type { Hono } from "hono";
 import { z } from "zod";
 
@@ -8,10 +9,6 @@ import {
 } from "@/worker/abuse/public-write-actor";
 import { logWorkerOperationalEvent } from "@/worker/http/errors";
 import { recordWorkerVisitActivity } from "@/worker/telemetry/telemetry-repository";
-
-type AssetFetcher = {
-  fetch(request: Request): Promise<Response> | Response;
-};
 
 type TelemetryBindings = {
   ASSETS: AssetFetcher;

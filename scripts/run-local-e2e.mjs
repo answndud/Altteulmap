@@ -71,7 +71,7 @@ if (mode === "mock") {
 }
 
 env.AUTH_SECRET ??= "altteulmap-local-auth-secret-change-me";
-env.NEXTAUTH_URL = "http://127.0.0.1:3107";
+env.SITE_URL = "http://127.0.0.1:3107";
 env.AUTH_DEMO_PASSWORD ??= "demo1234";
 env.AUTH_ADMIN_PASSWORD ??= "admin1234";
 
@@ -81,7 +81,6 @@ const workerEnvKeys = [
   "DATABASE_URL",
   "USE_MOCK_DATA",
   "AUTH_SECRET",
-  "NEXTAUTH_URL",
   "SITE_URL",
   "AUTH_DEMO_PASSWORD",
   "AUTH_ADMIN_PASSWORD",
@@ -89,10 +88,9 @@ const workerEnvKeys = [
   "AUTH_KAKAO_CLIENT_SECRET",
   "AUTH_NAVER_CLIENT_ID",
   "AUTH_NAVER_CLIENT_SECRET",
-  "NEXT_PUBLIC_NAVER_MAP_KEY_ID",
-  "NEXT_PUBLIC_NAVER_MAP_CLIENT_ID",
-  "NEXT_PUBLIC_TURNSTILE_SITE_KEY",
+  "NAVER_MAP_KEY_ID",
   "NAVER_MAP_CLIENT_ID",
+  "TURNSTILE_SITE_KEY",
   "NAVER_CLIENT_SECRET",
   "TURNSTILE_BYPASS_TOKEN",
   "TURNSTILE_SECRET_KEY",

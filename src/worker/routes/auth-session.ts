@@ -31,11 +31,11 @@ export function registerAuthSessionRoutes(
 
     appendCookie(response, c.req.raw, {
       name: AUTH_CSRF_COOKIE_NAME,
-      value: `${csrfToken}|vite-mock`,
+      value: `${csrfToken}`,
     });
     appendCookie(response, c.req.raw, {
       name: AUTH_CALLBACK_COOKIE_NAME,
-      value: getOrigin(c.req.raw, c.env.NEXTAUTH_URL ?? c.env.SITE_URL),
+      value: getOrigin(c.req.raw, c.env.SITE_URL),
     });
 
     return response;
@@ -56,7 +56,7 @@ export function registerAuthSessionRoutes(
     const body = contentType.includes("application/json")
       ? await c.req.json().catch(() => ({}))
       : Object.fromEntries((await c.req.formData()).entries());
-    const origin = getOrigin(c.req.raw, c.env.NEXTAUTH_URL ?? c.env.SITE_URL);
+    const origin = getOrigin(c.req.raw, c.env.SITE_URL);
     const shouldReturnJson =
       body.json === "true" ||
       c.req.header("accept")?.includes("application/json") === true;
@@ -86,7 +86,7 @@ export function registerAuthSessionRoutes(
   });
 
   app.get("/api/auth/providers", (c) => {
-    const origin = getOrigin(c.req.raw, c.env.NEXTAUTH_URL ?? c.env.SITE_URL);
+    const origin = getOrigin(c.req.raw, c.env.SITE_URL);
     const providers: Record<string, unknown> = {
       credentials: {
         id: "credentials",

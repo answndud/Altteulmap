@@ -14,9 +14,9 @@ import {
 import { getCookieValue } from "@/worker/http/cookies";
 
 export const AUTH_SESSION_COOKIE_NAME = "altteulmap.session";
-export const AUTH_CSRF_COOKIE_NAME = "next-auth.csrf-token";
-export const AUTH_CALLBACK_COOKIE_NAME = "next-auth.callback-url";
-export const AUTH_OAUTH_STATE_COOKIE_NAME = "next-auth.state";
+export const AUTH_CSRF_COOKIE_NAME = "altteulmap.csrf";
+export const AUTH_CALLBACK_COOKIE_NAME = "altteulmap.callback";
+export const AUTH_OAUTH_STATE_COOKIE_NAME = "altteulmap.oauth-state";
 // 절대 만료 7일. 연장(sliding)하지 않아 탈취된 토큰의 수명이 길어지지 않는다.
 const AUTH_SESSION_MAX_AGE = 60 * 60 * 24 * 7;
 export const AUTH_OAUTH_STATE_MAX_AGE = 60 * 10;

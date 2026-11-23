@@ -20,18 +20,17 @@ loadEnvFilesWithShellPrecedence({
 const requiredVars = [
   "DATABASE_URL",
   "AUTH_SECRET",
-  "NEXTAUTH_URL",
-  "NEXT_PUBLIC_NAVER_MAP_KEY_ID",
+  "SITE_URL",
+  "NAVER_MAP_KEY_ID",
   "AUTH_KAKAO_CLIENT_ID",
   "AUTH_KAKAO_CLIENT_SECRET",
   "AUTH_NAVER_CLIENT_ID",
   "AUTH_NAVER_CLIENT_SECRET",
-  "NEXT_PUBLIC_TURNSTILE_SITE_KEY",
+  "TURNSTILE_SITE_KEY",
   "TURNSTILE_SECRET_KEY",
 ];
 
 const optionalVars = [
-  "SITE_URL",
   "AUTH_DEMO_PASSWORD",
   "AUTH_ADMIN_PASSWORD",
   "EMAIL_FROM",
@@ -98,8 +97,8 @@ function main() {
     printLine("FAIL USE_MOCK_DATA must be false before deploy");
   }
 
-  const nextAuthUrl = process.env.NEXTAUTH_URL ?? "";
-  const nextAuthUrlOk = printUrlCheck("NEXTAUTH_URL", nextAuthUrl, {
+  const siteUrl = process.env.SITE_URL ?? "";
+  const siteUrlOk = printUrlCheck("SITE_URL", siteUrl, {
     requireHttps: target === "production",
   });
   const wranglerConfigPath = path.join(cwd, "wrangler.jsonc");
@@ -122,10 +121,10 @@ function main() {
   printSection("OAuth callback reminders");
 
   printLine(
-    `- Kakao callback: ${nextAuthUrl || "<NEXTAUTH_URL>"}/api/auth/callback/kakao`,
+    `- Kakao callback: ${siteUrl || "<SITE_URL>"}/api/auth/callback/kakao`,
   );
   printLine(
-    `- Naver callback: ${nextAuthUrl || "<NEXTAUTH_URL>"}/api/auth/callback/naver`,
+    `- Naver callback: ${siteUrl || "<SITE_URL>"}/api/auth/callback/naver`,
   );
 
   if (missingRequired.length > 0) {
@@ -136,7 +135,7 @@ function main() {
     return;
   }
 
-  if (!nextAuthUrlOk) {
+  if (!siteUrlOk) {
     console.error("\nDeploy check failed. Fix the invalid URL values above.");
     process.exitCode = 1;
     return;

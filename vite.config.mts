@@ -8,11 +8,11 @@ export default defineConfig(({ mode }) => {
 
   return {
     define: {
-      "process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID": JSON.stringify(
-        env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID ?? "",
+      "process.env.NAVER_MAP_CLIENT_ID": JSON.stringify(
+        env.NAVER_MAP_CLIENT_ID ?? "",
       ),
-      "process.env.NEXT_PUBLIC_NAVER_MAP_KEY_ID": JSON.stringify(
-        env.NEXT_PUBLIC_NAVER_MAP_KEY_ID ?? "",
+      "process.env.NAVER_MAP_KEY_ID": JSON.stringify(
+        env.NAVER_MAP_KEY_ID ?? "",
       ),
     },
     plugins: [

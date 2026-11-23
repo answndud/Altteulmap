@@ -10,7 +10,7 @@ loadEnvFilesWithShellPrecedence({
 const baseUrl =
   process.env.MAP_MEASURE_URL ??
   process.env.SMOKE_PUBLIC_URL ??
-  process.env.NEXTAUTH_URL ??
+  process.env.SITE_URL ??
   "http://127.0.0.1:3130";
 const iterations = Number(process.env.MAP_MEASURE_ITERATIONS ?? 12);
 const warmups = Number(process.env.MAP_MEASURE_WARMUPS ?? 2);

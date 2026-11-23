@@ -1,11 +1,8 @@
+import type { AssetFetcher } from "@/worker/http/bindings";
 import type { Hono } from "hono";
 
 import { getFilteredPlaces } from "@/features/places/queries";
 import { applySecurityHeaders } from "@/worker/http/security-headers";
-
-type AssetFetcher = {
-  fetch(request: Request): Promise<Response> | Response;
-};
 
 type StaticBindings = {
   ASSETS: AssetFetcher;

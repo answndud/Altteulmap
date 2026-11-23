@@ -106,8 +106,8 @@ let naverMapSdkPromise: Promise<NaverMapsSdk> | null = null;
 
 export function getNaverMapKeyId() {
   return (
-    process.env.NEXT_PUBLIC_NAVER_MAP_KEY_ID ||
-    process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID ||
+    process.env.NAVER_MAP_KEY_ID ||
+    process.env.NAVER_MAP_CLIENT_ID ||
     ""
   );
 }

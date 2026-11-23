@@ -22,7 +22,6 @@ const workerEnvKeys = [
   "DATABASE_URL",
   "USE_MOCK_DATA",
   "AUTH_SECRET",
-  "NEXTAUTH_URL",
   "SITE_URL",
   "AUTH_DEMO_PASSWORD",
   "AUTH_ADMIN_PASSWORD",
@@ -30,10 +29,9 @@ const workerEnvKeys = [
   "AUTH_KAKAO_CLIENT_SECRET",
   "AUTH_NAVER_CLIENT_ID",
   "AUTH_NAVER_CLIENT_SECRET",
-  "NEXT_PUBLIC_NAVER_MAP_KEY_ID",
-  "NEXT_PUBLIC_NAVER_MAP_CLIENT_ID",
-  "NEXT_PUBLIC_TURNSTILE_SITE_KEY",
+  "NAVER_MAP_KEY_ID",
   "NAVER_MAP_CLIENT_ID",
+  "TURNSTILE_SITE_KEY",
   "NAVER_CLIENT_SECRET",
   "TURNSTILE_BYPASS_TOKEN",
   "TURNSTILE_SECRET_KEY",
@@ -44,7 +42,7 @@ loadEnvFilesWithShellPrecedence({
   filenames: [".env", ".env.local"],
 });
 
-process.env.NEXTAUTH_URL = baseUrl;
+process.env.SITE_URL = baseUrl;
 process.env.SITE_URL = baseUrl;
 process.env.AUTH_SECRET ??= "altteulmap-vite-local-smoke-secret";
 process.env.AUTH_DEMO_PASSWORD ??= "demo1234";

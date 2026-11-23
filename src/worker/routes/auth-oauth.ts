@@ -31,7 +31,7 @@ function redirectToLoginError(
 ) {
   const redirectUrl = new URL(
     "/login",
-    getOrigin(request, env.NEXTAUTH_URL ?? env.SITE_URL),
+    getOrigin(request, env.SITE_URL),
   );
 
   redirectUrl.searchParams.set("callbackUrl", normalizeCallbackUrl(callbackUrl));
@@ -66,7 +66,7 @@ export function registerAuthOAuthRoutes(
       return redirectToLoginError(c.req.raw, c.env, provider, callbackUrl);
     }
 
-    const origin = getOrigin(c.req.raw, c.env.NEXTAUTH_URL ?? c.env.SITE_URL);
+    const origin = getOrigin(c.req.raw, c.env.SITE_URL);
     const config = getOAuthProviderConfig(c.env, enabledProvider, origin);
     const state = createOAuthState(enabledProvider, callbackUrl, c.env);
     const authorizationUrl = new URL(config.authorizationUrl);
@@ -130,7 +130,7 @@ export function registerAuthOAuthRoutes(
     }
 
     try {
-      const origin = getOrigin(c.req.raw, c.env.NEXTAUTH_URL ?? c.env.SITE_URL);
+      const origin = getOrigin(c.req.raw, c.env.SITE_URL);
       const token = await exchangeOAuthToken(enabledProvider, code, c.env, origin);
 
       if (!token.access_token) {

@@ -1,9 +1,6 @@
+import type { AssetFetcher } from "@/worker/http/bindings";
 import { getSessionFromRequest } from "@/worker/auth/session";
 import { DomainError } from "@/worker/http/api-error";
-
-type AssetFetcher = {
-  fetch(request: Request): Promise<Response> | Response;
-};
 
 export type AdminBindings = {
   ASSETS: AssetFetcher;

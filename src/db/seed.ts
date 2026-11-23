@@ -43,7 +43,6 @@ async function main() {
     adminActions,
     authAccounts,
     authSessions,
-    authVerificationTokens,
     bookmarks,
     categories,
     comments,
@@ -70,7 +69,6 @@ async function main() {
     await tx.delete(places);
     await tx.delete(authAccounts);
     await tx.delete(authSessions);
-    await tx.delete(authVerificationTokens);
     await tx.delete(categories);
     await tx.delete(users);
 

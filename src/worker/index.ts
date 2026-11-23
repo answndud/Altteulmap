@@ -1,3 +1,4 @@
+import type { AssetFetcher } from "@/worker/http/bindings";
 import { Hono } from "hono";
 
 import { invalidateMapPreviewCache } from "@/features/places/map-preview-cache";
@@ -34,10 +35,6 @@ import {
 import { registerStaticRoutes } from "@/worker/routes/static";
 import { registerTelemetryRoutes } from "@/worker/routes/telemetry";
 
-type AssetFetcher = {
-  fetch(request: Request): Promise<Response> | Response;
-};
-
 type CloudflareBindings = {
   ASSETS: AssetFetcher;
   AUTH_ADMIN_PASSWORD?: string;
@@ -52,10 +49,8 @@ type CloudflareBindings = {
     connectionString?: string;
   };
   NAVER_MAP_CLIENT_ID?: string;
-  NEXTAUTH_URL?: string;
-  NEXT_PUBLIC_NAVER_MAP_CLIENT_ID?: string;
-  NEXT_PUBLIC_NAVER_MAP_KEY_ID?: string;
-  NEXT_PUBLIC_TURNSTILE_SITE_KEY?: string;
+  NAVER_MAP_KEY_ID?: string;
+  TURNSTILE_SITE_KEY?: string;
   SITE_URL?: string;
   TURNSTILE_BYPASS_TOKEN?: string;
   TURNSTILE_SECRET_KEY?: string;

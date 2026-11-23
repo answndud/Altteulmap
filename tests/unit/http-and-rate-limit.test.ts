@@ -213,7 +213,7 @@ test("legacy unsigned session cookies cannot authenticate", async () => {
 
 test("credential login requires the CSRF token issued to the browser", () => {
   const request = new Request("https://altteulmap.example/api/auth/callback/credentials", {
-    headers: { cookie: "next-auth.csrf-token=csrf-token%7Cvite-mock" },
+    headers: { cookie: "altteulmap.csrf=csrf-token%7Cvite-mock" },
   });
 
   assert.equal(isValidCsrfToken(request, "csrf-token"), true);

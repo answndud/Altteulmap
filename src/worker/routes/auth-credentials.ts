@@ -31,7 +31,7 @@ export function registerAuthCredentialsRoutes(
     const body = contentType.includes("application/json")
       ? await c.req.json().catch(() => ({}))
       : Object.fromEntries((await c.req.formData()).entries());
-    const origin = getOrigin(c.req.raw, c.env.NEXTAUTH_URL ?? c.env.SITE_URL);
+    const origin = getOrigin(c.req.raw, c.env.SITE_URL);
     const email = typeof body.email === "string" ? body.email : "";
     const password = typeof body.password === "string" ? body.password : "";
     const shouldReturnJson =

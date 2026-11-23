@@ -15,7 +15,7 @@ loadEnvFilesWithShellPrecedence({
 
 const publicUrl =
   process.env.README_PUBLIC_URL ??
-  process.env.NEXTAUTH_URL ??
+  process.env.SITE_URL ??
   "https://altteulmap.altteul-lab.workers.dev";
 const adminUrl =
   process.env.README_ADMIN_URL ??
