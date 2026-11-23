@@ -18,20 +18,16 @@ Observable finish state:
 
 ### Phase 1. 데모 복구와 인증·남용 방지 결함 제거
 
-#### 1-0. 운영 DB 이전 마무리 (사용자 입력 필요)
-- Done: VPS 전용 Postgres(TLS)·cloudflared·백업 cron, Tunnel → Workers VPC → Hyperdrive 연결, `wrangler.jsonc` binding과 배포. 운영 `/api/health?deep=1`의 `database`가 `ok`(hyperdrive, 14ms)이고 지도 API가 운영 데이터를 반환한다. seed 계정의 알려진 비밀번호는 제거했다.
-- Current blocker: `TURNSTILE_SITE_KEY`를 Worker에 넣지 못해 `public-config` 체크가 실패하고(공개 쓰기 불가) deep health가 503이다. 값은 Cloudflare 대시보드 Turnstile 위젯에 있고 공개 키다(코드가 읽는 새 이름 `TURNSTILE_SITE_KEY`, 이전 이름 `NEXT_PUBLIC_TURNSTILE_SITE_KEY`는 읽지 않는다).
-- Next action:
-  1. `printf '%s' '<site key>' | npx wrangler secret put TURNSTILE_SITE_KEY`
-  2. GitHub secret 등록(비밀번호가 들어가므로 직접): `gh secret set SMOKE_PUBLIC_URL`(`https://altteulmap.altteul-lab.workers.dev`), `SMOKE_ADMIN_EMAIL`(`admin@altteulmap.local`), `SMOKE_ADMIN_PASSWORD`(`.env.vps`의 `ADMIN_PASSWORD`).
-  3. 정리: Worker의 옛 secret 삭제(`DATABASE_URL` Supabase, `NEXT_PUBLIC_NAVER_MAP_KEY_ID`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, 필요 시 `AUTH_DEMO_PASSWORD`·`AUTH_ADMIN_PASSWORD`), 로컬 `.env.production.local`의 Supabase `DATABASE_URL` 제거, Supabase 프로젝트 종료.
-  4. `gh workflow run keep-alive.yml && gh workflow run ci.yml`로 확인.
-  5. 한국 사용자 기준 지연이 목표(p95 1초)를 못 맞추면 공개 GET 엣지 캐시를 추가하거나 가까운 리전 Postgres로 Hyperdrive 대상을 교체한다(`deploy/vps/README.md` §5).
-- Verify: `SMOKE_PUBLIC_URL=... SMOKE_ADMIN_EMAIL=... SMOKE_ADMIN_PASSWORD=... npm run smoke:remote`
-- Done: deep health가 `ok`, `Keep Alive`와 CI의 `Remote Smoke`가 성공한다.
+#### 1-0. 한국 사용자 기준 운영 지연 확인
+- Done in 이전 작업: 운영 DB를 VPS 전용 Postgres로 이전(Hyperdrive → Workers VPC → Tunnel), Turnstile·SMOKE secret·정기 감시(Keep Alive, Remote Smoke) 정상, Supabase 종료와 옛 secret 정리.
+- Current blocker: 측정 머신(Cloudflare LAX 경유)에서 지도·상세가 약 1.9초다. VPS가 오스트리아라 한국 사용자는 DB 왕복이 대륙을 건너므로 목표(지도 p95 1초)를 못 맞출 수 있다. 한국에서의 실제 값은 아직 없다.
+- Next action: 한국 네트워크(또는 한국 리전 측정 서비스)에서 `npm run map:measure`와 브라우저 첫 화면 로딩을 재고, 목표 초과 시 ① 공개 GET(`/api/places/map`, 상세)에 짧은 `s-maxage` 엣지 캐시를 추가하거나 ② 한국과 가까운 리전의 Postgres로 Hyperdrive 대상을 교체한다(`deploy/vps/README.md` §5). 결과와 결정은 ADR 0004에 기록한다.
+- Verify: `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev npm run map:measure`
+- Done: 한국 기준 지도 조회 p95가 1초 이내이거나, 초과 시 위 조치가 적용돼 다시 측정한 값이 ADR에 있다.
 
 ## Backlog
 
+- VPS 백업(`/opt/backups/altteulmap`)을 VPS 밖(다른 호스트·오브젝트 스토리지)으로 주기 복사하고 복구 리허설(`npm run db:rehearse:backup`)을 실행해 증적 확보
 - zod 스키마 기반 OpenAPI 문서 생성과 `/api/docs` 제공
 - k6 부하 테스트로 지도 조회·가격 제보 p95/처리량 측정 → 병목 개선 → 재측정 결과 기록
 - staging OAuth 성공 callback, 실제 backup/PITR 복구, Cloudflare 알림 수신 증적 확보
