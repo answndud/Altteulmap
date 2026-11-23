@@ -84,7 +84,7 @@ PostgreSQL (Drizzle migration, trigram·복합 인덱스)
 
 ## Current Status
 
-- `Live data`: Supabase PostgreSQL 운영 DB에 migration과 초기 seed를 적용했고, public/admin worker가 DB source로 동작합니다.
+- `Live data`: 운영 DB는 netcup VPS의 전용 PostgreSQL이며 Worker는 Cloudflare Tunnel + Hyperdrive로 접속합니다([구성](deploy/vps/README.md)). 이전 작업 중에는 데모가 비어 있을 수 있습니다.
 - `Moderation boundary`: 관리자 큐는 moderation_suggestions의 구조화된 제안을 Zod로 검증해 표시하지만, 외부 AI 자동 생성·비용·재시도 pipeline은 아직 없습니다.
 - `Operational QA`: 데스크톱 Chromium 기준 핵심 운영 흐름을 검증했습니다.
 - `Launch URL`: 현재 운영 URL은 `https://altteulmap.altteul-lab.workers.dev`이며, admin은 같은 Worker의 `/admin` route로 통합했습니다. custom domain은 별도 후속 작업입니다.

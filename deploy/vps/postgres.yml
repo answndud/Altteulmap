@@ -1,0 +1,56 @@
+# altteulmap 운영 PostgreSQL (netcup VPS, TownPet·kinderp와 같은 호스트).
+# TownPet DB와 분리된 전용 컨테이너이며, 공개 포트는 없다.
+#  - Cloudflare Workers → Hyperdrive → Cloudflare Tunnel(cloudflared) → postgres:5432
+#  - 관리 작업(migrate·seed·psql)은 호스트 loopback(127.0.0.1:15432)을 SSH 터널로만 연다.
+name: altteulmap-prod
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    mem_limit: 512m
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    command:
+      - postgres
+      - -c
+      - max_connections=40
+      - -c
+      - shared_buffers=128MB
+      - -c
+      - effective_cache_size=256MB
+      - -c
+      - work_mem=4MB
+      - -c
+      - log_min_duration_statement=500
+    ports:
+      # loopback에만 바인딩한다. 인터넷에 노출되지 않는다.
+      - "127.0.0.1:15432:5432"
+    volumes:
+      - altteulmap-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    networks: [altteulmap-internal]
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    mem_limit: 128m
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?set TUNNEL_TOKEN}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [altteulmap-internal]
+
+volumes:
+  altteulmap-postgres-data:
+
+networks:
+  altteulmap-internal:

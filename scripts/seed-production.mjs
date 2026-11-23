@@ -32,6 +32,16 @@ function printLine(message = "") {
   process.stdout.write(`${message}\n`);
 }
 
+function isLoopbackHost(hostname) {
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+}
+
+// 운영 DB가 공개 포트 없이 VPS 안에만 있을 때는 SSH 터널(loopback)로 접속한다.
+// loopback이어도 운영 대상임을 명시해야 하며, 터널 구간은 SSH가 암호화하므로 DB TLS는 쓰지 않는다.
+function isTunneledProduction() {
+  return process.env.PRODUCTION_VIA_SSH_TUNNEL === "1";
+}
+
 function assertProductionDatabaseUrl(rawUrl) {
   if (!rawUrl) {
     throw new Error("DATABASE_URL is missing");
@@ -39,12 +49,10 @@ function assertProductionDatabaseUrl(rawUrl) {
 
   const url = new URL(rawUrl);
 
-  if (
-    url.hostname === "localhost" ||
-    url.hostname === "127.0.0.1" ||
-    url.hostname === "::1"
-  ) {
-    throw new Error("Refusing to run production seed against a local database");
+  if (isLoopbackHost(url.hostname) && !isTunneledProduction()) {
+    throw new Error(
+      "Refusing to run production seed against a local database. If this is an SSH tunnel to the production VPS, set PRODUCTION_VIA_SSH_TUNNEL=1.",
+    );
   }
 
   return url;
@@ -78,7 +86,7 @@ async function assertDatabaseIsEmpty() {
   const databaseUrl = process.env.DATABASE_URL;
   const url = assertProductionDatabaseUrl(databaseUrl);
   const sql = postgres(databaseUrl, {
-    ssl: "require",
+    ssl: isTunneledProduction() ? false : "require",
     max: 1,
     prepare: false,
     connect_timeout: 10,

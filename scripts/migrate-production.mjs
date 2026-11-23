@@ -115,10 +115,11 @@ async function main() {
 
   if (
     isLocalDatabase(connection.host) &&
-    process.env.ALLOW_LOCAL_MIGRATION !== "1"
+    process.env.ALLOW_LOCAL_MIGRATION !== "1" &&
+    process.env.PRODUCTION_VIA_SSH_TUNNEL !== "1"
   ) {
     throw new Error(
-      "Refusing to run production migration against a local database. Set ALLOW_LOCAL_MIGRATION=1 only for local testing.",
+      "Refusing to run production migration against a local database. Set ALLOW_LOCAL_MIGRATION=1 only for local testing, or PRODUCTION_VIA_SSH_TUNNEL=1 when 127.0.0.1 is an SSH tunnel to the production VPS.",
     );
   }
 
