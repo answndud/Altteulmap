@@ -45,13 +45,11 @@ type LocalFallbackDragState = {
 
 export function PreviewMap({
   markers,
-  selectedCategoryLabel,
   onSelectPlace,
   onActivateCluster,
   enableLocalWheelZoom = false,
 }: {
   markers: MapDisplayMarker[];
-  selectedCategoryLabel: string | null;
   onSelectPlace: (place: PlacePreviewRecord) => void;
   onActivateCluster?: (marker: ClusterDisplayMarker) => void;
   enableLocalWheelZoom?: boolean;
@@ -76,7 +74,6 @@ export function PreviewMap({
     height: 0,
   });
   const dataBounds = getPreviewBounds(markers);
-  const hasClusterMarkers = markers.some((marker) => marker.kind === "cluster");
   const shouldShowLocalTiles = isLocalMapFallbackHost();
   const zoomScale =
     shouldShowLocalTiles && enableLocalWheelZoom
@@ -300,18 +297,6 @@ export function PreviewMap({
         onActivateCluster={onActivateCluster}
         onSelectPlace={onSelectPlace}
       />
-      <div className="altteulmap-map-overlay absolute bottom-4 left-4 hidden max-w-[17rem] px-3.5 py-3 text-sm text-[var(--altteul-text-primary)] sm:block">
-        <p className="font-semibold text-[var(--altteul-text-strong)]">
-          {selectedCategoryLabel
-            ? `${selectedCategoryLabel} 카테고리`
-            : "전체 카테고리"}
-        </p>
-        <p className="mt-1 text-xs leading-5 text-[var(--altteul-text-secondary)]">
-          {hasClusterMarkers
-            ? "가까운 장소는 숫자 클러스터로 묶어 보여줍니다."
-            : "선택한 조건의 개별 장소를 바로 표시합니다."}
-        </p>
-      </div>
     </div>
   );
 }

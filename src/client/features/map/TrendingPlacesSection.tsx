@@ -38,7 +38,7 @@ export function TrendingPlacesSection({
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="altteulmap-section-kicker">빠른 비교</p>
-          <h2 className="mt-1 text-lg font-semibold text-[var(--altteul-text-strong)] sm:text-xl">
+          <h2 className="mt-1 text-base font-semibold text-[var(--altteul-text-strong)] sm:text-2xl">
             {selectedCategoryLabel
               ? `${selectedCategoryLabel} 빠른 비교`
               : "가격 비교가 쉬운 장소"}
@@ -72,20 +72,20 @@ export function TrendingPlacesSection({
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-[11px] font-semibold text-[var(--altteul-primary-text)]">
+                    <p className="text-xs font-semibold text-[var(--altteul-primary-text)]">
                       대표 가격 · {place.representativePriceLabel}
                     </p>
                     <p className="altteulmap-price-number mt-1 text-2xl">
                       {formatKrw(place.representativePriceAmount)}원
                     </p>
                   </div>
-                  <span className="altteulmap-badge altteulmap-badge-info shrink-0 whitespace-nowrap px-2.5 py-1 text-[11px] font-medium">
+                  <span className="altteulmap-badge altteulmap-badge-info shrink-0 whitespace-nowrap px-2.5 py-1 text-xs font-medium">
                     #{index + 1}
                   </span>
                 </div>
 
                 <div className="mt-2.5 min-w-0">
-                  <h3 className="line-clamp-2 text-[0.98rem] font-semibold text-[var(--altteul-text-strong)]">
+                  <h3 className="line-clamp-2 text-base font-semibold text-[var(--altteul-text-strong)]">
                     {place.name}
                   </h3>
                   <p className="mt-1 text-xs text-[var(--altteul-text-tertiary)]">
@@ -97,11 +97,11 @@ export function TrendingPlacesSection({
                   <span
                     className={`${getVerificationBadgeClassName(
                       place.verificationStatus,
-                    )} px-2.5 py-1 text-[11px] font-semibold`}
+                    )} px-2.5 py-1 text-xs font-semibold`}
                   >
                     {getVerificationLabel(place.verificationStatus)}
                   </span>
-                  <span className="altteulmap-badge px-2.5 py-1 text-[11px] font-medium">
+                  <span className="altteulmap-badge px-2.5 py-1 text-xs font-medium">
                     {getTrendingReason(place)}
                   </span>
                 </div>
@@ -120,7 +120,7 @@ export function TrendingPlacesSection({
                   title={sharePayload.title}
                   text={sharePayload.text}
                   className="altteulmap-button inline-flex items-center gap-2 whitespace-nowrap px-3 py-1.5 text-xs font-medium transition"
-                  messageClassName="mt-1 text-right text-[11px] text-[var(--altteul-text-tertiary)]"
+                  messageClassName="mt-1 text-right text-xs text-[var(--altteul-text-tertiary)]"
                   testId={`trending-place-share-button-${place.id}`}
                   messageTestId={`trending-place-share-message-${place.id}`}
                 />

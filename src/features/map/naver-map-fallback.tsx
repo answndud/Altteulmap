@@ -17,7 +17,6 @@ type NaverMapFallbackProps = {
   isLoading?: boolean;
   mapMarkers: PlaceMapMarkerRecord[];
   placeCount?: number;
-  selectedCategoryLabel: string | null;
   activePlaceId?: string | null;
   onSelectPlace: (place: PlacePreviewRecord) => void;
   onClusterFocusViewport?: (
@@ -30,7 +29,6 @@ export function NaverMapFallback({
   isLoading = false,
   mapMarkers,
   placeCount,
-  selectedCategoryLabel,
   activePlaceId,
   onSelectPlace,
   onClusterFocusViewport,
@@ -48,7 +46,6 @@ export function NaverMapFallback({
       <div className="altteulmap-map-viewport relative isolate z-0">
         <PreviewMap
           markers={displayMarkers}
-          selectedCategoryLabel={selectedCategoryLabel}
           onSelectPlace={onSelectPlace}
           onActivateCluster={(marker) =>
             onClusterFocusViewport?.(
@@ -60,7 +57,7 @@ export function NaverMapFallback({
         <div className="altteulmap-map-overlay absolute left-2 top-2 z-10 max-w-[13rem] px-2.5 py-2 text-sm text-[var(--altteul-text-primary)] sm:left-4 sm:top-4 sm:max-w-[17rem] sm:px-3.5 sm:py-3">
           <div className="flex items-center justify-between gap-3">
             <p className="font-semibold text-[var(--altteul-text-strong)]">임시 미리보기</p>
-            <span className="altteulmap-badge whitespace-nowrap px-2.5 py-1 text-[11px] font-medium">
+            <span className="altteulmap-badge whitespace-nowrap px-2.5 py-1 text-xs font-medium">
               {isLoading && mapMarkers.length === 0
                 ? "불러오는 중"
                 : `${placeCount ?? mapMarkers.length}곳`}

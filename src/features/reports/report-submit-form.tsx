@@ -167,7 +167,7 @@ export function ReportSubmitForm({
       {submitResult ? (
         <aside data-testid="report-result">
           <section className="altteulmap-panel p-6">
-            <h2 className="text-xl font-semibold text-[var(--altteul-text-strong)]">접수 내용</h2>
+            <h2 className="text-2xl font-semibold text-[var(--altteul-text-strong)]">접수 내용</h2>
             <div className="mt-4 space-y-4">
               <ResultMessage
                 testId="report-result-message"

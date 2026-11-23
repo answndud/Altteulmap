@@ -198,7 +198,7 @@ export function VitePlaceReactionButtons({
           </span>
         </button>
       </div>
-      {message ? <p className="pl-1 text-[11px] text-[var(--altteul-text-tertiary)]">{message}</p> : null}
+      {message ? <p className="pl-1 text-xs text-[var(--altteul-text-tertiary)]">{message}</p> : null}
     </div>
   );
 }

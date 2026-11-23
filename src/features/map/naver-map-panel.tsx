@@ -42,6 +42,8 @@ import type {
 
 export type NaverMapPanelProps = {
   initialBounds?: PlaceBounds | null;
+  /** 상세 화면의 작은 위치 지도: 개수·새로고침·현재 위치 오버레이를 숨긴다. */
+  compact?: boolean;
   isLoading?: boolean;
   mapMarkers: PlaceMapMarkerRecord[];
   placeCount?: number;
@@ -90,7 +92,6 @@ class NaverMapPanelBoundary extends Component<
           isLoading={this.props.isLoading}
           mapMarkers={this.props.mapMarkers}
           placeCount={this.props.placeCount}
-          selectedCategoryLabel={this.props.selectedCategoryLabel}
           activePlaceId={this.props.activePlaceId ?? null}
           onSelectPlace={this.props.onSelectPlace ?? (() => {})}
           onClusterFocusViewport={this.props.onClusterFocusViewport}
@@ -108,6 +109,7 @@ export function NaverMapPanel(props: NaverMapPanelProps) {
 
 function NaverMapPanelContent({
   initialBounds,
+  compact = false,
   isLoading = false,
   mapMarkers,
   placeCount,
@@ -358,7 +360,6 @@ function NaverMapPanelContent({
           >
             <PreviewMap
               markers={displayMarkers}
-              selectedCategoryLabel={selectedCategoryLabel}
               onSelectPlace={selectPlace}
               onActivateCluster={handlePreviewClusterActivate}
               enableLocalWheelZoom={shouldUseLocalTileFallback}
@@ -366,6 +367,7 @@ function NaverMapPanelContent({
           </div>
         ) : null}
 
+        {compact ? null : (
         <div className="pointer-events-none absolute inset-x-2 top-2 z-10 flex items-start justify-between gap-2 sm:inset-x-4 sm:top-4 sm:gap-3">
           <div className="pointer-events-auto grid max-w-[13.5rem] gap-2 sm:max-w-[18rem]">
             <span
@@ -416,6 +418,7 @@ function NaverMapPanelContent({
             ) : null}
           </div>
         </div>
+        )}
       </div>
     </section>
   );

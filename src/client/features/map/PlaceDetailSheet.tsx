@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { ViteBookmarkToggleButton } from "@/client/components/ViteBookmarkToggleButton";
 import { VitePlaceReactionButtons } from "@/client/components/VitePlaceReactionButtons";
 import { getCategoryBySlug } from "@/features/categories/catalog";
+import { parsePlaceNote } from "@/features/places/note";
 import { PlaceShareButton } from "@/features/places/place-share-button";
 import { createPlaceSharePayload } from "@/features/places/share";
 import type { PlacePreviewRecord, PlaceRecord } from "@/features/places/types";
@@ -49,6 +50,7 @@ export function PlaceDetailSheet({
   onReactionUpdate: (update: PlaceReactionUpdate) => void;
 }) {
   const category = getCategoryBySlug(place.categorySlug);
+  const parsedNote = parsePlaceNote(place.note);
   const sharePayload = createPlaceSharePayload(place, "detail_sheet");
   const dragCleanupRef = useRef<(() => void) | null>(null);
   const [detailState, setDetailState] = useState<PlaceDetailLoadState>({
@@ -177,7 +179,7 @@ export function PlaceDetailSheet({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="altteulmap-section-kicker hidden sm:block">선택한 장소</p>
-          <h2 className="text-lg font-bold text-[var(--altteul-text-strong)] sm:mt-1 sm:text-xl">
+          <h2 className="text-base font-bold text-[var(--altteul-text-strong)] sm:mt-1 sm:text-2xl">
             {place.name}
           </h2>
           <p className="mt-1 text-xs text-[var(--altteul-text-secondary)] sm:text-sm">
@@ -189,17 +191,17 @@ export function PlaceDetailSheet({
           onClick={onClose}
           data-testid={closeTestId}
           aria-label="상세 닫기"
-          className="altteulmap-button flex h-11 w-11 shrink-0 items-center justify-center px-0 text-lg font-semibold leading-none"
+          className="altteulmap-button flex h-11 w-11 shrink-0 items-center justify-center px-0 text-base font-semibold leading-none"
         >
           ×
         </button>
       </div>
 
       <div className="mt-3 rounded-[0.85rem] border border-[var(--altteul-primary-border)] bg-[var(--altteul-primary-soft)] px-3.5 py-3 sm:mt-4 sm:px-4">
-        <p className="text-[11px] font-semibold text-[var(--altteul-primary-text)]">
+        <p className="text-xs font-semibold text-[var(--altteul-primary-text)]">
           대표 가격 · {place.representativePriceLabel || "가격 정보 없음"}
         </p>
-        <p className="altteulmap-price-number mt-1 text-2xl sm:text-3xl">
+        <p className="altteulmap-price-number mt-1 text-2xl sm:text-2xl">
           {formatKrw(place.representativePriceAmount)}원
         </p>
         <p className="mt-2 text-xs text-[var(--altteul-primary-text)]">
@@ -211,11 +213,17 @@ export function PlaceDetailSheet({
       </div>
 
       <p className="mt-3 text-sm leading-6 text-[var(--altteul-text-secondary)] sm:mt-4">
-        {place.description || place.note || place.address}
+        {place.description || parsedNote.rest || place.address}
       </p>
       <p className="mt-2 text-xs leading-5 text-[var(--altteul-text-tertiary)]">
-        {place.address}
+        {[place.address, parsedNote.phone].filter(Boolean).join(" · ")}
       </p>
+      {parsedNote.source ? (
+        <p className="mt-1 text-xs leading-5 text-[var(--altteul-text-tertiary)]">
+          출처 {parsedNote.source}
+          {parsedNote.collectedAt ? ` · 수집 ${parsedNote.collectedAt}` : ""}
+        </p>
+      ) : null}
 
       <div className="mt-3 grid gap-2.5 sm:mt-4 sm:gap-3" data-testid="place-detail-inline-details">
         {detailState.status === "loading" ? (
@@ -239,15 +247,15 @@ export function PlaceDetailSheet({
 
         {detailPlace ? (
           <>
-            <section className="rounded-[0.85rem] border border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-subtle)] p-3.5">
+            <section className="border-t border-[var(--altteul-surface-border)] pt-3">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="altteulmap-section-kicker text-[11px]">가격</p>
+                  <p className="altteulmap-section-kicker text-xs">가격</p>
                   <h3 className="mt-1 text-sm font-semibold text-[var(--altteul-text-strong)]">
                     가격 항목
                   </h3>
                 </div>
-                <span className="altteulmap-badge px-2.5 py-1 text-[11px] font-medium">
+                <span className="altteulmap-badge px-2.5 py-1 text-xs font-medium">
                   {detailPlace.priceItems.length}개
                 </span>
               </div>
@@ -261,7 +269,7 @@ export function PlaceDetailSheet({
                       <p className="truncate text-sm font-medium text-[var(--altteul-text-strong)]">
                         {item.label}
                       </p>
-                      <p className="mt-1 text-[11px] text-[var(--altteul-text-tertiary)]">
+                      <p className="mt-1 text-xs text-[var(--altteul-text-tertiary)]">
                         마지막 가격 확인 {item.reportedAt}
                       </p>
                     </div>
@@ -275,8 +283,8 @@ export function PlaceDetailSheet({
             </section>
 
             {detailPlace.history.length > 0 ? (
-              <section className="rounded-[0.85rem] border border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-subtle)] p-3.5">
-                <p className="altteulmap-section-kicker text-[11px]">이력</p>
+              <section className="border-t border-[var(--altteul-surface-border)] pt-3">
+                <p className="altteulmap-section-kicker text-xs">이력</p>
                 <h3 className="mt-1 text-sm font-semibold text-[var(--altteul-text-strong)]">
                   최근 가격 이력
                 </h3>
@@ -299,8 +307,8 @@ export function PlaceDetailSheet({
             ) : null}
 
             {detailPlace.comments.length > 0 ? (
-              <section className="rounded-[0.85rem] border border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-subtle)] p-3.5">
-                <p className="altteulmap-section-kicker text-[11px]">코멘트</p>
+              <section className="border-t border-[var(--altteul-surface-border)] pt-3">
+                <p className="altteulmap-section-kicker text-xs">코멘트</p>
                 <h3 className="mt-1 text-sm font-semibold text-[var(--altteul-text-strong)]">
                   이용 메모
                 </h3>
@@ -308,7 +316,7 @@ export function PlaceDetailSheet({
                   {detailPlace.comments.slice(0, 3).map((comment) => (
                     <div
                       key={comment.id}
-                      className="rounded-[0.7rem] border border-[var(--altteul-surface-border)] bg-[var(--altteul-bg-surface)] px-3 py-2"
+                      className="border-l-2 border-[var(--altteul-surface-border-strong)] pl-3"
                     >
                       <p className="text-xs font-medium text-[var(--altteul-text-primary)]">
                         {comment.authorLabel} · {comment.createdAt}

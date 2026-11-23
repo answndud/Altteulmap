@@ -324,6 +324,12 @@ select {
   height: clamp(30rem, calc(100dvh - 13rem), 42rem);
 }
 
+/* 상세 화면의 작은 위치 지도: 목록 지도의 큰 viewport 높이를 줄인다. */
+.altteulmap-detail-map .altteulmap-map-viewport {
+  height: 14rem !important;
+  min-height: 0 !important;
+}
+
 .altteulmap-marker-icon {
   display: flex;
   position: relative;
@@ -375,7 +381,7 @@ select {
   min-width: 72px;
   height: 31px;
   padding-inline: 12px;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 750;
 }
 
@@ -448,7 +454,7 @@ select {
   background: #fffdf9;
   box-shadow: 0 1px 4px rgba(15, 23, 42, 0.22);
   color: #171411;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   line-height: 1.2;
   white-space: nowrap;
@@ -486,7 +492,7 @@ select {
 .altteulmap-cluster-marker--sm .altteulmap-cluster-marker__badge {
   width: 30px;
   height: 30px;
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .altteulmap-cluster-marker--md {
@@ -498,7 +504,7 @@ select {
 .altteulmap-cluster-marker--md .altteulmap-cluster-marker__badge {
   width: 34px;
   height: 34px;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .altteulmap-cluster-marker--lg {
@@ -515,7 +521,7 @@ select {
 
 .altteulmap-section-kicker {
   color: var(--altteul-primary-text);
-  font-size: 0.72rem;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0;
   text-transform: uppercase;

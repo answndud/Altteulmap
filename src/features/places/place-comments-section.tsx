@@ -102,7 +102,7 @@ export function PlaceCommentsSection({
       {showHeader ? (
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="altteulmap-section-kicker text-[11px]">코멘트</p>
+            <p className="altteulmap-section-kicker text-xs">코멘트</p>
             <h4 className="mt-1 text-base font-semibold text-stone-900">사용자 메모</h4>
           </div>
           <span className="altteulmap-badge px-3 py-1 text-xs font-medium">

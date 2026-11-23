@@ -28,9 +28,9 @@ export function AdminAiReviewPanel({
       className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-[11px] font-semibold text-amber-800">AI 1차 검수</p>
+        <p className="text-xs font-semibold text-amber-800">AI 1차 검수</p>
         {suggestion ? (
-          <span className="rounded-full bg-[var(--altteul-bg-surface)]/85 px-2 py-0.5 text-[11px] font-semibold text-amber-900">
+          <span className="rounded-full bg-[var(--altteul-bg-surface)]/85 px-2 py-0.5 text-xs font-semibold text-amber-900">
             {moderationActionMap[suggestion.suggestedAction]} ·{" "}
             {suggestion.confidence}%
           </span>

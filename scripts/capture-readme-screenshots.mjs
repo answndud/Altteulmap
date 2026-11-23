@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { chromium, devices } from "@playwright/test";
+import { chromium } from "@playwright/test";
 
 import { loadEnvFilesWithShellPrecedence } from "./lib/load-env-files.mjs";
 
@@ -13,24 +13,16 @@ loadEnvFilesWithShellPrecedence({
   filenames: [".env", ".env.local", ".env.production.local"],
 });
 
-const publicUrl =
-  process.env.README_PUBLIC_URL ??
-  process.env.SITE_URL ??
-  "https://altteulmap.altteul-lab.workers.dev";
-const adminUrl =
-  process.env.README_ADMIN_URL ??
-  process.env.ADMIN_APP_URL ??
-  "https://altteulmap.altteul-lab.workers.dev/admin";
+// 기본값은 로컬 개발 서버(npm run dev, DB는 .dev.vars). 운영 화면을 찍으려면 README_PUBLIC_URL을 지정한다.
+const publicUrl = process.env.README_PUBLIC_URL ?? "http://localhost:5173";
+const adminEmail = process.env.README_ADMIN_EMAIL ?? "admin@altteulmap.local";
+const adminPassword = process.env.README_ADMIN_PASSWORD ?? "admin1234";
 fs.mkdirSync(outputDir, { recursive: true });
 
-async function waitForHomeReady(page, { mobile = false } = {}) {
+async function waitForHomeReady(page) {
   await page.goto(publicUrl, { waitUntil: "domcontentloaded" });
   await page.getByTestId("map-panel-shell").waitFor({ state: "visible" });
-  if (mobile) {
-    await page.getByTestId("mobile-place-list-open").waitFor({ state: "visible" });
-  } else {
-    await page.getByTestId("place-list").waitFor({ state: "visible" });
-  }
+  await page.getByTestId("place-list").waitFor({ state: "visible" });
   await page.waitForTimeout(2200);
 }
 
@@ -58,31 +50,13 @@ async function captureDesktopDetail(browser) {
   const page = await context.newPage();
 
   await waitForHomeReady(page);
-  const firstItem = page.locator("[data-testid^='place-list-item-']").first();
-  await firstItem.waitFor({ state: "visible" });
-  await firstItem.click();
+  const openButton = page.locator("[data-testid^='place-list-item-open-']").first();
+  await openButton.waitFor({ state: "visible" });
+  await openButton.click();
   await page.getByTestId("place-detail-sheet").waitFor({ state: "visible" });
   await page.waitForTimeout(800);
   await page.screenshot({
     path: path.join(outputDir, "place-detail.png"),
-    fullPage: false,
-  });
-
-  await context.close();
-}
-
-async function captureMobileSheet(browser) {
-  const context = await browser.newContext({
-    ...devices["iPhone 13"],
-  });
-  const page = await context.newPage();
-
-  await waitForHomeReady(page, { mobile: true });
-  await page.getByTestId("mobile-place-list-open").click();
-  await page.getByTestId("mobile-place-list-sheet").waitFor({ state: "visible" });
-  await page.waitForTimeout(500);
-  await page.screenshot({
-    path: path.join(outputDir, "mobile-map-sheet.png"),
     fullPage: false,
   });
 
@@ -120,18 +94,24 @@ async function captureSubmit(browser) {
   await context.close();
 }
 
-async function captureAdminLanding(browser) {
+async function captureAdminDashboard(browser) {
   const context = await browser.newContext({
     viewport: { width: 1512, height: 1180 },
     deviceScaleFactor: 1.5,
   });
   const page = await context.newPage();
 
-  await page.goto(adminUrl, { waitUntil: "domcontentloaded" });
-  await page.getByRole("heading", { name: "운영 콘솔로 이동" }).waitFor({ state: "visible" });
+  await page.goto(new URL("/login", publicUrl).toString(), { waitUntil: "domcontentloaded" });
+  await page.getByPlaceholder("이메일 주소").fill(adminEmail);
+  await page.getByPlaceholder("비밀번호").fill(adminPassword);
+  await page.getByRole("button", { name: "로그인", exact: true }).click();
+  await page.waitForURL((url) => !url.pathname.startsWith("/login"));
+
+  await page.goto(new URL("/admin", publicUrl).toString(), { waitUntil: "domcontentloaded" });
+  await page.getByTestId("admin-metric-total-users").waitFor({ state: "visible" });
   await page.waitForTimeout(500);
 
-  await page.locator("main section").screenshot({
+  await page.locator("main").screenshot({
     path: path.join(outputDir, "admin-console.png"),
   });
 
@@ -143,9 +123,8 @@ const browser = await chromium.launch({ headless: true });
 try {
   await captureDesktopHome(browser);
   await captureDesktopDetail(browser);
-  await captureMobileSheet(browser);
   await captureSubmit(browser);
-  await captureAdminLanding(browser);
+  await captureAdminDashboard(browser);
 
   process.stdout.write(`Saved README screenshots to ${outputDir}\n`);
 } finally {

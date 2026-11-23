@@ -27,16 +27,6 @@ Observable finish state:
 
 ### Phase 3. 저장소 위생·화면 정직성·문서 정리
 
-#### 3-6. 디자인 토큰 일치와 상세 페이지 정리
-- Likely files: `src/client/styles.css`, `.impeccable.md`, `src/client/routes/PlaceDetailRoute.tsx`, `src/client/features/map/PlaceDetailSheet.tsx`
-- Changes:
-  - `.impeccable.md`는 따뜻한 톤(배경 `#f4f1ec`, 강조색 `#b55a2b`)을 기준으로 하는데 실제 화면은 파랑(`oklch(0.48 0.17 255)`)이다. 문서 기준으로 맞출지, 문서를 고칠지 정해 한쪽으로 통일한다.
-  - 글자 크기를 11px, 11.52px, 12px처럼 비슷한 값이 섞인 상태에서 5단계 이하로 줄인다.
-  - 상세 시트와 상세 페이지의 카드 안의 카드를 제거한다.
-  - 상세 페이지에 위치를 보여 주는 작은 지도를 추가한다. "메모"에 그대로 노출되는 `출처/수집일/전화` 원본 문자열은 각각 정리된 항목으로 보여 준다(import 정규화 또는 mapper에서 분리).
-- Verify: `npm run verify && npm run test:e2e:full && npm run design:detect && npm run readme:screenshots`
-- Done: 화면 색상과 `.impeccable.md` 토큰이 같고, 상세 페이지에 지도·출처·전화가 각각 따로 보이며, README 스크린샷이 갱신된다.
-
 #### 3-7. 문서 단일화와 ADR 작성
 - Likely files: `docs/문서-안내.md`, `docs/adr/*.md`(신규), `README.md`, `docs/product/*`
 - Changes:

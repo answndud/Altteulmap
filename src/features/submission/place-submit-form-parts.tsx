@@ -139,7 +139,7 @@ export function SubmitResultPanel({ submitResult }: { submitResult: SubmitResult
   return (
     <aside data-testid="submit-result" className="xl:sticky xl:top-24 xl:self-start">
       <section className="altteulmap-panel p-5">
-        <h2 className="text-lg font-semibold text-[var(--altteul-text-strong)]">접수 확인</h2>
+        <h2 className="text-base font-semibold text-[var(--altteul-text-strong)]">접수 확인</h2>
         <div className="mt-4 grid gap-4">
           <ResultMessage testId="submit-result-message" isOk={submitResult.ok}>
             {submitResult.message}

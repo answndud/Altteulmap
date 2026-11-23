@@ -25,7 +25,7 @@ export function AdminFrame({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="altteulmap-section-kicker">운영</p>
-          <h1 className="mt-1 text-3xl font-semibold text-[var(--altteul-text-strong)]">{title}</h1>
+          <h1 className="mt-1 text-2xl font-semibold text-[var(--altteul-text-strong)]">{title}</h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--altteul-text-secondary)]">
             {description}
           </p>

@@ -176,10 +176,10 @@ export function MobilePlaceListSheet({
                   className="grid min-w-0 flex-1 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-[0.65rem] text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--altteul-primary)]"
                 >
                   <span className="min-w-[5.25rem]">
-                    <span className="block text-[10px] font-semibold text-[var(--altteul-primary-text)]">
+                    <span className="block text-xs font-semibold text-[var(--altteul-primary-text)]">
                       대표 가격
                     </span>
-                    <span className="altteulmap-price-number mt-0.5 block text-lg">
+                    <span className="altteulmap-price-number mt-0.5 block text-base">
                       {formatKrw(place.representativePriceAmount)}원
                     </span>
                   </span>

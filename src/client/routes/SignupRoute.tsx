@@ -132,7 +132,7 @@ export function SignupRoute() {
           <div className="grid gap-5">
             <div className="grid gap-1.5">
               <p className="altteulmap-section-kicker">계정</p>
-              <h1 className="text-3xl font-semibold text-[var(--altteul-text-strong)]">
+              <h1 className="text-2xl font-semibold text-[var(--altteul-text-strong)]">
                 회원가입
               </h1>
               <p className="text-sm text-[var(--altteul-text-tertiary)]">

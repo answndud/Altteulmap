@@ -55,7 +55,7 @@ export function MapCategoryTray({
           >
             전체 보기
           </Link>
-          <span className="altteulmap-badge whitespace-nowrap px-2.5 py-1 text-[11px] font-medium">
+          <span className="altteulmap-badge whitespace-nowrap px-2.5 py-1 text-xs font-medium">
             {selectedCategory
               ? `현재 ${selectedCategory.parentName} · ${selectedCategory.name}`
               : "현재 전체 카테고리"}
@@ -86,7 +86,7 @@ export function MapCategoryTray({
                 >
                   <span>{group.name}</span>
                   <span
-                    className={`rounded-full px-2 py-0.5 text-[11px] ${
+                    className={`rounded-full px-2 py-0.5 text-xs ${
                       isGroupSelected || isGroupActive
                         ? "bg-[var(--altteul-bg-surface)] text-[var(--altteul-primary-text)]"
                         : "bg-[var(--altteul-bg-subtle)] text-[var(--altteul-text-tertiary)]"
@@ -112,7 +112,7 @@ export function MapCategoryTray({
                 세부 업종을 골라 결과를 바로 좁힙니다.
               </p>
             </div>
-            <span className="altteulmap-badge whitespace-nowrap px-2.5 py-1 text-[11px] font-medium">
+            <span className="altteulmap-badge whitespace-nowrap px-2.5 py-1 text-xs font-medium">
               {activeGroup.children.length}개 업종
             </span>
           </div>

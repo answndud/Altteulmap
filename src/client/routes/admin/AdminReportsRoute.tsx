@@ -159,10 +159,10 @@ function ReportCard({
     <article data-testid="admin-report-card" className="altteulmap-panel p-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-[11px] font-semibold text-[var(--altteul-accent-text)]">
+          <p className="text-xs font-semibold text-[var(--altteul-accent-text)]">
             {report.id}
           </p>
-          <h2 className="mt-2 text-xl font-semibold text-[var(--altteul-text-strong)]">
+          <h2 className="mt-2 text-2xl font-semibold text-[var(--altteul-text-strong)]">
             {report.placeName}
           </h2>
           <p className="mt-2 text-sm text-[var(--altteul-text-tertiary)]">

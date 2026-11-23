@@ -90,7 +90,7 @@ export function PlacePriceReportForm({
     >
       {showHeader ? (
         <div>
-          <p className="altteulmap-section-kicker text-[11px]">가격 정보 추가</p>
+          <p className="altteulmap-section-kicker text-xs">가격 정보 추가</p>
           <h4 className="mt-1 text-base font-semibold text-stone-900">새 가격 추가</h4>
           <p className="mt-1 text-sm text-stone-500">
             지금 보이는 대표 가격과 다르면, 확인한 항목 1개만 먼저 남겨주세요.

@@ -7,7 +7,7 @@ import type { PlaceSearchScope } from "@/features/places/types";
 import { MapCategoryTray } from "./MapCategoryTray";
 
 const scopeChipClassName =
-  "altteulmap-scope-chip inline-flex h-11 min-w-[3.9rem] items-center justify-center whitespace-nowrap rounded-[0.65rem] px-2 text-[11px] font-semibold transition sm:min-w-[6.75rem] sm:px-3 sm:text-sm";
+  "altteulmap-scope-chip inline-flex h-11 min-w-[3.9rem] items-center justify-center whitespace-nowrap rounded-[0.65rem] px-2 text-xs font-semibold transition sm:min-w-[6.75rem] sm:px-3 sm:text-sm";
 
 export function MapSearchControls({
   activeCategory,
@@ -37,7 +37,7 @@ export function MapSearchControls({
               defaultValue={query}
               placeholder="김밥, 세탁소, 프린트 검색"
               data-testid="place-search-input"
-              className="altteulmap-input h-11 px-3 text-[16px] sm:px-4 sm:text-sm"
+              className="altteulmap-input h-11 px-3 text-base sm:px-4 sm:text-sm"
             />
           </label>
           {activeCategory ? (
@@ -113,7 +113,7 @@ export function MapSearchControls({
                       : "전체 업종"}
                   </p>
                 </div>
-                <span className="shrink-0 text-[11px] font-medium text-[var(--altteul-primary-text)] sm:text-xs">
+                <span className="shrink-0 text-xs font-medium text-[var(--altteul-primary-text)] sm:text-xs">
                   <span className="group-open:hidden">열기</span>
                   <span className="hidden group-open:inline">닫기</span>
                 </span>

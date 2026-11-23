@@ -224,7 +224,7 @@ function DashboardCard({
     <article className="altteulmap-panel-muted p-5">
       <DataBadge source={source} mock={mock} />
       <p className="mt-5 text-sm text-[var(--altteul-accent-text)]">{label}</p>
-      <p className="mt-2 text-4xl font-semibold text-[var(--altteul-text-strong)]">{value}</p>
+      <p className="mt-2 text-[2.5rem] font-semibold text-[var(--altteul-text-strong)]">{value}</p>
       <Link
         to={href}
         data-testid={testId}

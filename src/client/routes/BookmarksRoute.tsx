@@ -16,7 +16,7 @@ export function BookmarksRoute() {
       <section className="mx-auto max-w-7xl">
         <div>
           <p className="altteulmap-section-kicker">저장한 장소</p>
-          <h1 className="mt-2 text-[2rem] font-bold text-[var(--altteul-text-strong)] sm:text-[2.4rem]">
+          <h1 className="mt-2 text-[2.5rem] font-bold text-[var(--altteul-text-strong)] sm:text-[2.5rem]">
           저장한 장소
           </h1>
           {state.status === "success" ? (
@@ -71,7 +71,7 @@ export function BookmarksRoute() {
                       <p className="text-xs font-semibold text-[var(--altteul-primary-text)]">
                         저장일 {bookmarkCreatedAt}
                       </p>
-                      <h2 className="mt-2 text-xl font-bold text-[var(--altteul-text-strong)] sm:text-2xl">
+                      <h2 className="mt-2 text-2xl font-bold text-[var(--altteul-text-strong)] sm:text-2xl">
                         {place.name}
                       </h2>
                       <p className="mt-2 text-sm text-[var(--altteul-text-secondary)]">
@@ -85,7 +85,7 @@ export function BookmarksRoute() {
                       <p className="text-xs font-semibold text-[var(--altteul-primary-text)]">
                         대표 가격
                       </p>
-                      <p className="altteulmap-price-number mt-2 text-xl">
+                      <p className="altteulmap-price-number mt-2 text-2xl">
                         {formatKrw(place.representativePriceAmount)}원
                       </p>
                       <p className="text-sm text-[var(--altteul-primary-text)]">

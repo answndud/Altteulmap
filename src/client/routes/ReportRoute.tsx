@@ -13,7 +13,7 @@ export function ReportRoute() {
         <section className="mx-auto grid min-h-[calc(100dvh-8rem)] max-w-3xl place-items-center">
           <div className="altteulmap-panel w-full p-6 text-center sm:p-8">
             <p className="altteulmap-section-kicker">장소 신고</p>
-            <h1 className="mt-3 break-keep text-2xl font-bold leading-9 text-[var(--altteul-text-strong)] sm:text-3xl">
+            <h1 className="mt-3 break-keep text-2xl font-bold leading-9 text-[var(--altteul-text-strong)] sm:text-2xl">
               신고할 장소를 먼저 선택해 주세요
             </h1>
             <p className="mt-3 text-sm leading-6 text-[var(--altteul-text-secondary)]">
@@ -45,7 +45,7 @@ export function ReportRoute() {
       <section className="mx-auto max-w-7xl">
         <div>
           <p className="altteulmap-section-kicker">장소 신고</p>
-          <h1 className="mt-2 text-[2rem] font-bold text-[var(--altteul-text-strong)] sm:text-[2.4rem]">
+          <h1 className="mt-2 text-[2.5rem] font-bold text-[var(--altteul-text-strong)] sm:text-[2.5rem]">
             정보 수정 요청
           </h1>
         </div>

@@ -21,7 +21,7 @@ export function AdminAccessGate<T>({
   if (state.status === "unauthenticated") {
     return (
       <div className="altteulmap-panel-muted p-6">
-        <h2 className="text-xl font-semibold text-[var(--altteul-text-strong)]">로그인이 필요합니다</h2>
+        <h2 className="text-2xl font-semibold text-[var(--altteul-text-strong)]">로그인이 필요합니다</h2>
         <p className="mt-2 text-sm leading-6 text-[var(--altteul-text-secondary)]">
           관리자 화면은 운영자 계정으로 로그인해야 볼 수 있습니다.
         </p>
@@ -38,7 +38,7 @@ export function AdminAccessGate<T>({
   if (state.status === "forbidden") {
     return (
       <div className="altteulmap-panel-muted p-6">
-        <h2 className="text-xl font-semibold text-[var(--altteul-text-strong)]">
+        <h2 className="text-2xl font-semibold text-[var(--altteul-text-strong)]">
           운영자 권한이 필요합니다
         </h2>
         <p className="mt-2 text-sm leading-6 text-[var(--altteul-text-secondary)]">

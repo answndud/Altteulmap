@@ -88,7 +88,7 @@ export function PlaceShareButton({
       </button>
       {message ? (
         <p
-          className={messageClassName ?? "pl-1 text-[11px] text-stone-500"}
+          className={messageClassName ?? "pl-1 text-xs text-stone-500"}
           data-testid={messageTestId}
         >
           {message}

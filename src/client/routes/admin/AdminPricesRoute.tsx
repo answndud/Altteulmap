@@ -90,10 +90,10 @@ function PendingPriceCard({
     <article data-testid="admin-price-report-card" className="altteulmap-panel p-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-[11px] font-semibold text-[var(--altteul-accent-text)]">
+          <p className="text-xs font-semibold text-[var(--altteul-accent-text)]">
             {report.id}
           </p>
-          <h2 className="mt-2 text-xl font-semibold text-[var(--altteul-text-strong)]">
+          <h2 className="mt-2 text-2xl font-semibold text-[var(--altteul-text-strong)]">
             {report.placeName}
           </h2>
           <p className="mt-2 text-sm text-[var(--altteul-text-tertiary)]">
@@ -101,8 +101,8 @@ function PendingPriceCard({
           </p>
         </div>
         <div className="altteulmap-panel-muted px-4 py-3 text-right">
-          <p className="text-[11px] text-[var(--altteul-text-tertiary)]">제보 가격</p>
-          <p className="altteulmap-price-number mt-2 text-lg">
+          <p className="text-xs text-[var(--altteul-text-tertiary)]">제보 가격</p>
+          <p className="altteulmap-price-number mt-2 text-base">
             {formatKrw(report.amount)}원
           </p>
           <p className="text-sm text-[var(--altteul-text-tertiary)]">
@@ -113,7 +113,7 @@ function PendingPriceCard({
       </div>
       <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_auto]">
         <div className="altteulmap-panel-muted p-4 text-sm leading-6 text-[var(--altteul-text-secondary)]">
-          <p className="text-[11px] text-[var(--altteul-text-tertiary)]">현재 저장된 가격</p>
+          <p className="text-xs text-[var(--altteul-text-tertiary)]">현재 저장된 가격</p>
           {typeof report.existingPriceAmount === "number" ? (
             <p className="mt-2">
               {report.existingPriceLabel} ·{" "}

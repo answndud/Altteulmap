@@ -4,7 +4,7 @@ export function NotFoundRoute() {
   return (
     <main className="mx-auto grid max-w-xl gap-4 px-4 py-16" data-testid="not-found">
       <p className="altteulmap-section-kicker">404</p>
-      <h1 className="text-3xl font-semibold text-[var(--altteul-text-strong)]">
+      <h1 className="text-2xl font-semibold text-[var(--altteul-text-strong)]">
         페이지를 찾을 수 없습니다
       </h1>
       <p className="text-sm leading-6 text-[var(--altteul-text-secondary)]">

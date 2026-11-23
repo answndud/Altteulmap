@@ -99,10 +99,10 @@ function PendingPlaceCard({
     <article data-testid="admin-place-card" className="altteulmap-panel p-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-[11px] font-semibold text-[var(--altteul-accent-text)]">
+          <p className="text-xs font-semibold text-[var(--altteul-accent-text)]">
             {place.id}
           </p>
-          <h2 className="mt-2 text-xl font-semibold text-[var(--altteul-text-strong)]">
+          <h2 className="mt-2 text-2xl font-semibold text-[var(--altteul-text-strong)]">
             {place.name}
           </h2>
           <p className="mt-2 text-sm text-[var(--altteul-text-tertiary)]">
@@ -111,8 +111,8 @@ function PendingPlaceCard({
           </p>
         </div>
         <div className="altteulmap-panel-muted px-4 py-3 text-right">
-          <p className="text-[11px] text-[var(--altteul-text-tertiary)]">대표 가격</p>
-          <p className="altteulmap-price-number mt-2 text-lg">
+          <p className="text-xs text-[var(--altteul-text-tertiary)]">대표 가격</p>
+          <p className="altteulmap-price-number mt-2 text-base">
             {formatKrw(place.representativePriceAmount)}원
           </p>
           <p className="text-sm text-[var(--altteul-text-tertiary)]">
@@ -123,15 +123,15 @@ function PendingPlaceCard({
       <div className="mt-4 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
         <div className="grid gap-3 text-sm leading-6 text-[var(--altteul-text-secondary)]">
           <div className="altteulmap-panel-muted p-4">
-            <p className="text-[11px] text-[var(--altteul-text-tertiary)]">주소</p>
+            <p className="text-xs text-[var(--altteul-text-tertiary)]">주소</p>
             <p className="mt-2">{place.address}</p>
           </div>
           <div className="altteulmap-panel-muted p-4">
-            <p className="text-[11px] text-[var(--altteul-text-tertiary)]">메모</p>
+            <p className="text-xs text-[var(--altteul-text-tertiary)]">메모</p>
             <p className="mt-2">{place.note}</p>
           </div>
           <div className="altteulmap-panel-muted p-4">
-            <p className="text-[11px] text-[var(--altteul-text-tertiary)]">가격 항목</p>
+            <p className="text-xs text-[var(--altteul-text-tertiary)]">가격 항목</p>
             <div className="mt-3 grid gap-2">
               {place.priceItems.map((item) => (
                 <div key={item.id} className="rounded-xl bg-[var(--altteul-bg-surface)] px-4 py-3">

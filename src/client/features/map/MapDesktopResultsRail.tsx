@@ -64,7 +64,7 @@ function MapDesktopResultsRailBase({
 
       <div className="flex items-center justify-between border-b border-[var(--altteul-surface-border)] pb-3">
         <div>
-          <p className="altteulmap-section-kicker text-[11px]">목록</p>
+          <p className="altteulmap-section-kicker text-xs">목록</p>
           <h2 className="mt-1 text-base font-semibold text-[var(--altteul-text-strong)]">
             장소 목록
           </h2>
@@ -77,11 +77,11 @@ function MapDesktopResultsRailBase({
       {state.status === "success" && (isServerTrimmed || visiblePlaceCount > 0) ? (
         <div className="flex flex-wrap gap-2 text-xs text-[var(--altteul-text-secondary)]">
           {isServerTrimmed ? (
-            <span className="altteulmap-badge px-2.5 py-1 text-[11px] font-medium">
+            <span className="altteulmap-badge px-2.5 py-1 text-xs font-medium">
               총 {totalPlaceCount}곳 중 {visiblePlaceCount}곳 먼저 표시
             </span>
           ) : null}
-          <span className="altteulmap-badge px-2.5 py-1 text-[11px] font-medium">
+          <span className="altteulmap-badge px-2.5 py-1 text-xs font-medium">
             {searchScope === "global" ? "전체 지역 검색" : "지도 영역 검색"}
           </span>
         </div>

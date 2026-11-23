@@ -40,10 +40,10 @@ function PlaceCardBase({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[11px] font-semibold text-[var(--altteul-primary-text)]">
+          <p className="text-xs font-semibold text-[var(--altteul-primary-text)]">
             대표 가격 · {place.representativePriceLabel || "가격 정보 없음"}
           </p>
-          <p className="altteulmap-price-number mt-1 text-[1.75rem] leading-none">
+          <p className="altteulmap-price-number mt-1 text-2xl leading-none">
             {formatKrw(place.representativePriceAmount)}원
           </p>
         </div>
@@ -74,15 +74,15 @@ function PlaceCardBase({
           <span
             className={`${getVerificationBadgeClassName(
               place.verificationStatus,
-            )} px-2.5 py-1 text-[11px] font-semibold`}
+            )} px-2.5 py-1 text-xs font-semibold`}
           >
             {getVerificationLabel(place.verificationStatus)}
           </span>
-          <span className="altteulmap-badge altteulmap-badge-info px-2.5 py-1 text-[11px] font-medium">
+          <span className="altteulmap-badge altteulmap-badge-info px-2.5 py-1 text-xs font-medium">
             갱신 {place.lastPriceUpdatedAt}
           </span>
           <span
-            className="altteulmap-badge px-2.5 py-1 text-[11px] font-medium"
+            className="altteulmap-badge px-2.5 py-1 text-xs font-medium"
             data-testid={`place-list-like-count-${place.id}`}
             aria-label={`좋아요 ${place.likeCount}개`}
           >
@@ -95,7 +95,7 @@ function PlaceCardBase({
             title={sharePayload.title}
             text={sharePayload.text}
             className="altteulmap-button inline-flex items-center gap-1.5 whitespace-nowrap px-3 py-1.5 text-xs font-medium"
-            messageClassName="mt-1 text-right text-[11px] text-[var(--altteul-text-tertiary)]"
+            messageClassName="mt-1 text-right text-xs text-[var(--altteul-text-tertiary)]"
             testId={`place-list-item-share-button-${place.id}`}
             messageTestId={`place-list-item-share-message-${place.id}`}
           />
