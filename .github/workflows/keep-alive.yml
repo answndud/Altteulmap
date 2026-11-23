@@ -1,0 +1,32 @@
+name: Keep Alive
+
+# 저장소 비활동으로 스케줄이 꺼지는 것과 무료 DB의 비활성 일시정지를 막는다.
+# deep health가 DB까지 호출하고, 실패하면 이 workflow가 실패해 GitHub 알림이 온다.
+on:
+  schedule:
+    - cron: "37 */12 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  health:
+    name: Deep Health
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check deep health
+        env:
+          SMOKE_PUBLIC_URL: ${{ secrets.SMOKE_PUBLIC_URL }}
+        run: |
+          test -n "$SMOKE_PUBLIC_URL" || { echo "SMOKE_PUBLIC_URL secret is required"; exit 1; }
+          curl --fail --silent --show-error --retry 2 --retry-delay 5 \
+            "${SMOKE_PUBLIC_URL%/}/api/health?deep=1" | tee health.json
+          grep -q '"status":"ok"' health.json
+
+      - name: Keep scheduled workflows enabled
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow enable ci.yml --repo "$GITHUB_REPOSITORY"
