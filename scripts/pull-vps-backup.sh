@@ -37,7 +37,12 @@ if [ "$expected" != "$actual" ]; then
   echo "checksum mismatch for $name" >&2
   exit 1
 fi
-docker run --rm -i postgres:17-alpine pg_restore --list < "$DEST/$name" > /dev/null
+if docker info >/dev/null 2>&1; then
+  docker run --rm -i postgres:17-alpine pg_restore --list < "$DEST/$name" > /dev/null
+else
+  # Docker가 꺼져 있으면(예: 예약 실행) 체크섬 검증만 하고 구조 검증은 건너뛴다.
+  echo "warning: docker is not running; skipped pg_restore --list (checksum verified)" >&2
+fi
 
 # 오래된 사본 정리(최근 KEEP개 유지)
 ls -1t "$DEST"/altteulmap-*.dump 2>/dev/null | tail -n +"$((KEEP + 1))" | while read -r old; do

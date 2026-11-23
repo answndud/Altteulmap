@@ -29,7 +29,7 @@ Observable finish state:
 
 ## Backlog
 
-- VPS 밖 백업 사본(`npm run backup:pull`, 개발 머신 `backups/vps/`)을 자동·주기 실행하거나 원격 스토리지(예: R2)로 옮기고, 새 서버 복구 리허설(role·Hyperdrive 포함) 증적 확보
+- 개발 머신 백업 사본(월 1회 LaunchAgent로 자동화됨)을 맥 밖 원격 스토리지(예: R2)로도 보관하고, 새 서버 복구 리허설(role·Hyperdrive 포함) 증적 확보. 2026-11-24 04:17 UTC 이후 VPS 일 1회 백업 cron이 실제로 새 덤프를 만들었는지 확인
 - zod 스키마 기반 OpenAPI 문서 생성과 `/api/docs` 제공
 - k6 부하 테스트로 지도 조회·가격 제보 p95/처리량 측정 → 병목 개선 → 재측정 결과 기록
 - staging OAuth 성공 callback, 실제 backup/PITR 복구, Cloudflare 알림 수신 증적 확보
