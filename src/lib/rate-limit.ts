@@ -82,7 +82,7 @@ function cleanupExpiredEntries(store: Map<string, RateLimitEntry>, now: number) 
   }
 }
 
-function consumeRateLimit({
+export function consumeRateLimit({
   policyName,
   scope,
   key,

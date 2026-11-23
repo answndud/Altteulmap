@@ -4,7 +4,10 @@ import {
   type RateLimitPolicyName,
   type RateLimitResult,
 } from "@/lib/rate-limit";
-import { consumeWorkerPersistentRateLimit } from "@/worker/rate-limit-repository";
+import {
+  ACCOUNT_LIMIT_MULTIPLIER,
+  consumeWorkerPersistentRateLimit,
+} from "@/worker/rate-limit-repository";
 
 type AssetFetcher = {
   fetch(request: Request): Promise<Response> | Response;
@@ -47,9 +50,21 @@ export async function consumeAuthRateLimit(
     visitorId: null,
     visitorCookieValue: null,
     key: actorKey,
+    ip: null,
   };
+  // 로그인은 IP를 분산해도 같은 계정을 계속 시도할 수 없도록 계정 단위 버킷을 더한다.
   const persistent = await runWorkerDatabaseRoute(env, () =>
-    consumeWorkerPersistentRateLimit(env, policyName, actor),
+    consumeWorkerPersistentRateLimit(env, policyName, actor, {
+      extraKeys:
+        policyName === "authLogin"
+          ? [
+              {
+                key: `account:${discriminator}`,
+                limitMultiplier: ACCOUNT_LIMIT_MULTIPLIER,
+              },
+            ]
+          : [],
+    }),
   );
 
   return persistent ?? consumeRateLimitPolicy(policyName, actorKey);

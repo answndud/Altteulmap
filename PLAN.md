@@ -39,17 +39,6 @@ Observable finish state:
 - Verify: `npm run verify && INTEGRATION && npm run test:e2e:smoke`
 - Done: 세션 쿠키 payload에 role이 없고, 로그아웃·강등 테스트가 통과한다.
 
-#### 1-3. 익명 rate limit 우회 차단과 정리 비용 제거
-- Likely files: `src/worker/public-write-actor.ts`, `src/worker/rate-limit-repository.ts`, `src/worker/routes/public-write-reactions.ts`, `tests/integration/api-failure-paths.test.ts`
-- Changes:
-  - 익명 actor의 rate limit 키를 `CF-Connecting-IP`(로컬은 고정 fallback) 기반으로 바꾸고, visitor 쿠키 유무와 무관하게 IP 버킷을 함께 소비한다. `x-forwarded-for` 신뢰를 제거한다.
-  - 로그인 rate limit에 IP와 무관한 email 단위 버킷을 추가한다.
-  - 요청마다 실행하는 `DELETE WHERE expires_at < now`를 제거하고 Worker `scheduled` handler(cron) 또는 1% 확률 정리로 옮긴다(`wrangler.jsonc` cron 추가 포함 시 파일 1개 추가).
-  - 반응 API에도 rate limit 정책을 적용한다.
-  - integration test: 쿠키 없이 같은 IP로 반복 등록하면 429.
-- Verify: `npm run verify && INTEGRATION`
-- Done: 쿠키 미포함 반복 요청 테스트가 429를 반환하고 rate limit 핫패스에 DELETE 쿼리가 없다.
-
 #### 1-4. 상태 판정·에러 노출·CSRF 정리
 - Likely files: `src/worker/routes/auth-credentials.ts`, `src/worker/auth-repository.ts`, `src/worker/routes/health.ts`, `src/worker/index.ts`
 - Changes:

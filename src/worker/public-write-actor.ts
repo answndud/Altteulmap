@@ -1,6 +1,8 @@
 import {
   applyRateLimitHeaders,
+  consumeRateLimit,
   consumeRateLimitPolicy,
+  RATE_LIMIT_POLICIES,
   type RateLimitPolicyName,
   type RateLimitResult,
 } from "@/lib/rate-limit";
@@ -24,6 +26,8 @@ export type WorkerPublicWriteActor = {
   visitorId: string | null;
   visitorCookieValue: string | null;
   key: string;
+  /** Cloudflare가 채우는 CF-Connecting-IP. 로컬·테스트에서는 없을 수 있다. */
+  ip?: string | null;
 };
 
 type VisitorCookiePayload = {
@@ -187,15 +191,15 @@ export function getWorkerPublicWriteActor(
       }
     : null;
 
+  const ip = request.headers.get("CF-Connecting-IP")?.trim() || null;
+
   return {
     user: user?.id ? user : null,
     visitorId,
     visitorCookieValue,
-    key:
-      user?.id ??
-      visitorId ??
-      request.headers.get("x-forwarded-for") ??
-      "guest",
+    // x-forwarded-for는 클라이언트가 위조할 수 있어 키로 쓰지 않는다.
+    key: user?.id ?? visitorId ?? ip ?? "guest",
+    ip,
   };
 }
 
@@ -219,7 +223,24 @@ export function consumeWorkerRateLimit(
   policyName: RateLimitPolicyName,
   actor: WorkerPublicWriteActor,
 ) {
-  return consumeRateLimitPolicy(policyName, actor.key);
+  const result = consumeRateLimitPolicy(policyName, actor.key);
+
+  // DB 없이 동작하는 isolate 메모리 폴백에서도 쿠키를 버리는 익명 요청을 IP 버킷으로 막는다.
+  if (!actor.user && actor.ip) {
+    const policy = RATE_LIMIT_POLICIES[policyName];
+    const ipResult = consumeRateLimit({
+      policyName,
+      ...policy,
+      limit: policy.limit * 3,
+      key: `ip:${actor.ip}`,
+    });
+
+    if (!ipResult.ok) {
+      return ipResult;
+    }
+  }
+
+  return result;
 }
 
 export function applyWorkerWriteHeaders(

@@ -9,6 +9,9 @@
     "global_fetch_strictly_public"
   ],
   "main": "./src/worker/index.ts",
+  "triggers": {
+    "crons": ["17 * * * *"]
+  },
   "assets": {
     "binding": "ASSETS",
     "not_found_handling": "single-page-application"

@@ -14,6 +14,7 @@ import {
 import {
   applySecurityHeaders,
 } from "@/worker/http/security-headers";
+import { deleteExpiredRateLimits } from "@/worker/rate-limit-repository";
 import { readRequestBodyWithinLimit } from "@/worker/http/request-body";
 import { getOrigin } from "@/worker/http/urls";
 import { registerAdminRoutes } from "@/worker/routes/admin";
@@ -230,4 +231,26 @@ registerStaticRoutes(app, {
   getOrigin,
 });
 
-export default app;
+export default {
+  fetch: app.fetch,
+  // 만료된 rate limit 버킷 정리는 요청 핫패스가 아니라 cron에서 처리한다.
+  async scheduled(
+    _controller: { cron: string },
+    env: CloudflareBindings,
+    ctx: { waitUntil(promise: Promise<unknown>): void },
+  ) {
+    ctx.waitUntil(
+      runWorkerDatabaseRoute(env, async () => {
+        const deleted = await deleteExpiredRateLimits(env);
+
+        console.log(
+          JSON.stringify({
+            level: "info",
+            event: "rate_limit_cleanup",
+            deleted,
+          }),
+        );
+      }),
+    );
+  },
+};

@@ -70,7 +70,7 @@ async function getWorkerCredentialsUserByEmail(
   return user ?? null;
 }
 
-export type WorkerCredentialsResult =
+type WorkerCredentialsResult =
   | { status: "ok"; user: WorkerAuthUserRecord }
   | { status: "invalid" }
   | { status: "unavailable" };

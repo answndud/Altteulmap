@@ -122,3 +122,29 @@ test("공개 등록 rate limit은 동일 visitor의 반복 요청을 429로 제�
   assert.ok(limited.headers.get("retry-after"));
   assert.equal(limited.headers.get("cache-control"), "no-store, max-age=0");
 });
+
+test("쿠키 없이 요청마다 새 visitor가 되어도 같은 IP는 429로 제한된다", async () => {
+  const body = JSON.stringify({
+    name: "쿠키 없는 반복 요청",
+    categorySlug: "korean",
+    roadAddress: "서울특별시 테스트구 테스트로 2",
+    district: "테스트구",
+    priceItems: [{ label: "테스트 메뉴", amount: 7000 }],
+  });
+  const statuses: number[] = [];
+
+  for (let attempt = 0; attempt < 14; attempt += 1) {
+    const response = await request("/api/places", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "cf-connecting-ip": "203.0.113.200",
+      },
+      body,
+    });
+
+    statuses.push(response.status);
+  }
+
+  assert.ok(statuses.includes(429), `statuses: ${statuses.join(",")}`);
+});
