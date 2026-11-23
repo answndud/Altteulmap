@@ -173,7 +173,7 @@ jobs:
           --health-retries 12
     env:
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/altteulmap
-      TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/altteulmap
+      TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/altteulmap_test
       USE_MOCK_DATA: "false"
       AUTH_SECRET: ci-auth-secret
       NEXTAUTH_URL: http://127.0.0.1:3107
@@ -196,6 +196,9 @@ jobs:
 
       - name: Seed local database
         run: npm run db:seed
+
+      - name: Prepare dedicated test database
+        run: npm run db:test:prepare
 
       - name: Run integration and concurrency tests
         run: |

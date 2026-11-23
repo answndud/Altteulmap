@@ -74,6 +74,7 @@
 
 ```bash
 npm run verify
+npm run test:integration:local
 npm run test:e2e
 npm run smoke:local
 npm run smoke:remote

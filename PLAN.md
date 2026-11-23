@@ -13,9 +13,7 @@ Observable finish state:
 - `docs/`는 기준 문서 1벌 + ADR 중심이며, Next.js 잔재와 마이그레이션 drift가 없다.
 - `npm run verify`, `npm run test:integration`, `npm run test:e2e:full`, `npm audit --omit=dev --audit-level=high`가 통과한다.
 
-공통 integration 실행 명령(이하 `INTEGRATION`):
-`TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/altteulmap USE_MOCK_DATA=false AUTH_SECRET=x npm run test:integration`
-(Phase 2-1 완료 후에는 `npm run test:integration` 단독으로 대체한다.)
+공통 integration 실행 명령(이하 `INTEGRATION`): `npm run test:integration:local`
 
 ## Active
 
@@ -28,14 +26,6 @@ Observable finish state:
 - Done: 운영 첫 화면에 장소 목록과 마커가 보이고, `Keep Alive`와 수동 실행한 CI의 `Remote Smoke`, `E2E Full`이 성공한다.
 
 ### Phase 2. 서비스 계층·에러 모델·테스트 구조
-
-#### 2-1. 테스트 DB 분리와 integration 실행 경로 정리
-- Likely files: `tests/integration/test-database.ts`, `package.json`, `docker-compose.yml`, `docs/04-실행-가이드/테스트-워크플로.md`
-- Changes:
-  - 테스트 전용 DB(`altteulmap_test`)를 기본값으로 쓰고, 실행 전 migrate하는 `test:integration:local` 스크립트를 추가한다.
-  - `.github/workflows/ci.yml`의 `TEST_DATABASE_URL`도 테스트 DB로 맞춘다.
-- Verify: `npm run db:local:up && npm run test:integration:local`
-- Done: 개발 DB 데이터가 테스트 실행 전후로 변하지 않는다.
 
 #### 2-2. 도메인 에러 타입과 단일 에러 응답 형식
 - Likely files: `src/worker/http/errors.ts`, `src/worker/routes/admin-support.ts`, `src/worker/routes/public-write-support.ts`, `tests/unit/http-and-rate-limit.test.ts`

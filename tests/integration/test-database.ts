@@ -12,7 +12,7 @@ loadEnvFilesWithShellPrecedence({
 export function getTestDatabaseUrl() {
   const databaseUrl =
     process.env.TEST_DATABASE_URL ??
-    "postgresql://postgres:postgres@127.0.0.1:5432/altteulmap";
+    "postgresql://postgres:postgres@127.0.0.1:5432/altteulmap_test";
   const url = new URL(databaseUrl);
 
   if (!["localhost", "127.0.0.1", "::1"].includes(url.hostname)) {
