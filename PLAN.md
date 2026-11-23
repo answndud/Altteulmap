@@ -27,15 +27,6 @@ Observable finish state:
 
 ### Phase 3. 저장소 위생·화면 정직성·문서 정리
 
-#### 3-2. 마이그레이션 drift·의존성 취약점 정리
-- Likely files: `drizzle/meta/_journal.json`, `src/db/schema-place-core.ts`, `.github/workflows/ci.yml`, `package.json`
-- Changes:
-  - trigram GIN 인덱스를 `schema-place-core.ts`에 선언해 `db:generate` 결과와 DB가 일치하게 한다. no-op인 0019의 사유를 SQL 주석으로 남기고, 저널 수기 편집 금지를 `database-migrations` 기준에 맞춰 문서화한다(적용된 migration 파일 자체는 삭제하지 않는다).
-  - `bookmarks.place_id`, `price_reports.reporter_user_id` FK 인덱스를 추가한다.
-  - hono·zod를 패치 버전으로 올리고 CI audit 게이트를 `--audit-level=high`로 올린다.
-- Verify: `npm run db:generate && git diff --exit-code drizzle src/db && npm audit --omit=dev --audit-level=high && npm run db:check:contract && INTEGRATION`
-- Done: drift 검사와 audit high 게이트가 통과한다.
-
 #### 3-3. 관리자 대시보드 KPI를 실제 집계로 교체
 - Likely files: `src/client/routes/admin/AdminDashboardRoute.tsx`, `src/worker/admin/admin-repository.ts`, `src/worker/routes/admin.ts`, `tests/integration/authorization.test.ts`
 - Changes:

@@ -53,8 +53,8 @@ jobs:
       - name: Quality gates
         run: npm run verify:quality
 
-      - name: Dependency audit (critical gate)
-        run: npm audit --omit=dev --audit-level=critical
+      - name: Dependency audit (high gate)
+        run: npm audit --omit=dev --audit-level=high
 
       - name: Build Vite Worker output
         run: npm run cf:build:vite

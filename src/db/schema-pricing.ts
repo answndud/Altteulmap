@@ -118,6 +118,7 @@ export const priceReports = pgTable(
       table.amount,
     ),
     index("price_reports_created_at_idx").on(table.createdAt),
+    index("price_reports_reporter_user_idx").on(table.reporterUserId),
     index("price_reports_status_created_at_idx").on(
       table.reportStatus,
       table.createdAt,

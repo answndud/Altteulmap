@@ -102,6 +102,22 @@ export const places = pgTable(
       table.representativePriceAmount,
     ),
     index("places_creator_idx").on(table.createdByUserId),
+    // 검색(ilike '%q%')용 trigram 인덱스. 확장(pg_trgm)은 migration 0018이 만든다.
+    ...(
+      [
+        ["places_active_name_trgm_idx", table.name],
+        ["places_active_business_name_trgm_idx", table.businessName],
+        ["places_active_road_address_trgm_idx", table.roadAddress],
+        ["places_active_district_trgm_idx", table.district],
+        ["places_active_price_label_trgm_idx", table.representativePriceLabel],
+        ["places_active_description_trgm_idx", table.description],
+        ["places_active_note_trgm_idx", table.note],
+      ] as const
+    ).map(([name, column]) =>
+      index(name)
+        .using("gin", sql`${column} gin_trgm_ops`)
+        .where(sql`${table.status} = 'active'`),
+    ),
     check(
       "places_latitude_range_check",
       sql`${table.latitude} is null or (${table.latitude} >= -90 and ${table.latitude} <= 90)`,

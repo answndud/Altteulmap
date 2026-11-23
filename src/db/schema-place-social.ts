@@ -50,6 +50,8 @@ export const bookmarks = pgTable(
       columns: [table.userId, table.placeId],
       name: "bookmarks_pk",
     }),
+    // PK는 user_id가 앞이라 장소 삭제(cascade) 시 place_id 조회에 쓸 인덱스가 필요하다.
+    index("bookmarks_place_id_idx").on(table.placeId),
   ],
 );
 
