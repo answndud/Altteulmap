@@ -26,7 +26,7 @@ type AuthSessionEnv = {
 };
 type SessionEnv = AuthSessionEnv & WorkerDatabaseBindings;
 
-export type LocalSession = {
+type LocalSession = {
   user: {
     id: string;
     email: string;

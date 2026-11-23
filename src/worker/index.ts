@@ -260,7 +260,6 @@ registerAuthRoutes(app, {
 });
 
 registerBookmarkRoutes(app, {
-  databaseUnavailableResponse,
   formatDate,
   noStoreHeaders,
 });
@@ -275,9 +274,7 @@ registerPlacesReadRoutes(app, {
 registerPublicWriteRoutes(app);
 
 registerAdminRoutes(app, {
-  databaseUnavailableResponse,
   noStoreHeaders,
-  runWorkerDatabaseRoute,
 });
 
 registerTelemetryRoutes(app, {

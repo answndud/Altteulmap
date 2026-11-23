@@ -1,21 +1,15 @@
 import type { Hono } from "hono";
 
 import { placeModerationSchema } from "@/features/submission/schema";
+import { DomainError } from "@/worker/http/api-error";
 import {
-  listWorkerPendingPlaces,
-  moderateWorkerPlaceSubmission,
-} from "@/worker/admin-repository";
-import {
-  isWorkerDatabaseEnabled,
-  isWorkerMockDataEnabled,
-} from "@/worker/db";
-import {
-  requireAdminSession,
   getAdminQueuePagination,
+  requireAdminSession,
   type AdminBindings,
   type AdminRouteDependencies,
   type AdminVariables,
 } from "@/worker/routes/admin-support";
+import { getAdminService } from "@/worker/services/admin-service";
 
 export function registerAdminPlaceRoutes(
   app: Hono<{
@@ -25,178 +19,64 @@ export function registerAdminPlaceRoutes(
   dependencies: AdminRouteDependencies,
 ) {
   app.get("/api/admin/places", async (c) => {
-    const admin = await requireAdminSession(c.req.raw, c.env, dependencies.noStoreHeaders, dependencies);
+    await requireAdminSession(c.req.raw, c.env);
 
-    if (admin.response) {
-      return admin.response;
-    }
+    const result = await getAdminService(c.env).listPlaces(
+      getAdminQueuePagination(c.req.raw),
+    );
 
-    if (!isWorkerDatabaseEnabled(c.env)) {
-      if (!isWorkerMockDataEnabled(c.env)) {
-        return dependencies.databaseUnavailableResponse("장소 검토 목록을 불러오지 못했습니다.");
-      }
-
-      return c.json(
-        {
-          items: [],
-          count: 0,
-          source: "mock",
-          mock: true,
-        },
-        200,
-        dependencies.noStoreHeaders,
-      );
-    }
-
-    try {
-      const pagination = getAdminQueuePagination(c.req.raw);
-      const result = await dependencies.runWorkerDatabaseRoute(c.env, () =>
-        listWorkerPendingPlaces(c.env, pagination),
-      );
-
-      return c.json(
-        {
-          items: result.items,
-          count: result.count,
-          page: result.page,
-          limit: result.limit,
-          returnedCount: result.items.length,
-          truncated: result.items.length < result.count,
-          source: result.source,
-          mock: false,
-        },
-        200,
-        dependencies.noStoreHeaders,
-      );
-    } catch (error) {
-      console.error("Failed to load worker admin pending places.", error);
-
-      return c.json(
-        {
-          ok: false,
-          message: "장소 검토 목록을 불러오지 못했습니다.",
-        },
-        500,
-        dependencies.noStoreHeaders,
-      );
-    }
+    return c.json(
+      {
+        items: result.items,
+        count: result.count,
+        page: result.page,
+        limit: result.limit,
+        returnedCount: result.items.length,
+        truncated: result.items.length < result.count,
+        source: result.source,
+        mock: result.source === "mock",
+      },
+      200,
+      dependencies.noStoreHeaders,
+    );
   });
 
   app.get("/api/admin/places/:id", async (c) => {
-    const admin = await requireAdminSession(c.req.raw, c.env, dependencies.noStoreHeaders, dependencies);
+    await requireAdminSession(c.req.raw, c.env);
 
-    if (admin.response) {
-      return admin.response;
-    }
+    const result = await getAdminService(c.env).findPlace(c.req.param("id"));
 
-    if (!isWorkerDatabaseEnabled(c.env)) {
-      if (!isWorkerMockDataEnabled(c.env)) {
-        return dependencies.databaseUnavailableResponse("장소 검토 항목을 불러오지 못했습니다.");
-      }
-
-      return c.json(
-        {
-          item: null,
-          source: "mock",
-          mock: true,
-        },
-        404,
-        dependencies.noStoreHeaders,
-      );
-    }
-
-    try {
-      const result = await dependencies.runWorkerDatabaseRoute(c.env, () =>
-        listWorkerPendingPlaces(c.env),
-      );
-      const item = result.items.find((place) => place.id === c.req.param("id")) ?? null;
-
-      return c.json(
-        {
-          item,
-          source: result.source,
-          mock: false,
-        },
-        item ? 200 : 404,
-        dependencies.noStoreHeaders,
-      );
-    } catch (error) {
-      console.error("Failed to load worker admin pending place.", error);
-
-      return c.json(
-        {
-          ok: false,
-          message: "장소 검토 대상을 불러오지 못했습니다.",
-        },
-        500,
-        dependencies.noStoreHeaders,
-      );
-    }
+    return c.json(
+      {
+        item: result.item,
+        source: result.source,
+        mock: result.source === "mock",
+      },
+      result.item ? 200 : 404,
+      dependencies.noStoreHeaders,
+    );
   });
 
   app.patch("/api/admin/places/:id", async (c) => {
-    const admin = await requireAdminSession(c.req.raw, c.env, dependencies.noStoreHeaders, dependencies);
-
-    if (admin.response) {
-      return admin.response;
-    }
-
-    const body = await c.req.json().catch(() => null);
-    const parsed = placeModerationSchema.safeParse(body);
+    const admin = await requireAdminSession(c.req.raw, c.env);
+    const parsed = placeModerationSchema.safeParse(
+      await c.req.json().catch(() => null),
+    );
 
     if (!parsed.success) {
-      return c.json(
-        {
-          ok: false,
-          message: "장소 검토 입력값 검증에 실패했습니다.",
-          error: parsed.error.flatten(),
-        },
-        400,
-        dependencies.noStoreHeaders,
+      throw new DomainError(
+        "VALIDATION_FAILED",
+        "장소 검토 입력값 검증에 실패했습니다.",
+        parsed.error.flatten(),
       );
     }
 
-    if (!isWorkerDatabaseEnabled(c.env)) {
-      if (!isWorkerMockDataEnabled(c.env)) {
-        return dependencies.databaseUnavailableResponse("장소 검토 결과를 저장하지 못했습니다.");
-      }
+    const result = await getAdminService(c.env).moderatePlace(
+      c.req.param("id"),
+      parsed.data,
+      admin,
+    );
 
-      return c.json(
-        {
-          ok: true,
-          message: "목업 모드에서는 장소 검토 결과가 실제 저장되지 않습니다.",
-          source: "mock",
-          item: null,
-        },
-        200,
-        dependencies.noStoreHeaders,
-      );
-    }
-
-    try {
-      const result = await dependencies.runWorkerDatabaseRoute(c.env, () =>
-        moderateWorkerPlaceSubmission(
-          c.env,
-          c.req.param("id"),
-          parsed.data,
-          admin.user,
-        ),
-      );
-
-      return c.json(result, result.ok ? 200 : 404, dependencies.noStoreHeaders);
-    } catch (error) {
-      console.error("Failed to moderate worker place submission.", error);
-
-      return c.json(
-        {
-          ok: false,
-          message: "장소 검토 처리에 실패했습니다.",
-          source: "database",
-          item: null,
-        },
-        500,
-        dependencies.noStoreHeaders,
-      );
-    }
+    return c.json(result, 200, dependencies.noStoreHeaders);
   });
 }

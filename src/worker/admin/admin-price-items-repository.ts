@@ -8,6 +8,7 @@ import {
   toAdminActionUserId,
   toAdminPriceItemRecord,
 } from "@/worker/admin/admin-price-helpers";
+import { DomainError } from "@/worker/http/api-error";
 import { getWorkerDb, type WorkerDatabaseBindings } from "@/worker/db";
 import { VERIFICATION_REPORTER_THRESHOLD } from "@/worker/services/price-report-rules";
 
@@ -40,13 +41,7 @@ export async function updateWorkerPriceItem(
       .limit(1);
 
     if (!existingItem) {
-      return {
-        ok: false,
-        message: "가격 항목을 찾지 못했습니다.",
-        source: "database" as DataSource,
-        item: null,
-        placeId: null,
-      };
+      throw new DomainError("NOT_FOUND", "가격 항목을 찾지 못했습니다.");
     }
 
     const normalizedLabel = normalizePriceLabel(input.label);
@@ -63,13 +58,7 @@ export async function updateWorkerPriceItem(
       .limit(1);
 
     if (duplicateItem) {
-      return {
-        ok: false,
-        message: "같은 이름의 가격 항목이 이미 있습니다.",
-        source: "database" as DataSource,
-        item: null,
-        placeId: existingItem.placeSlug,
-      };
+      throw new DomainError("CONFLICT", "같은 이름의 가격 항목이 이미 있습니다.");
     }
 
     const changedAt = new Date();

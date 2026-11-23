@@ -118,3 +118,19 @@ test("신고·장소 등록·코멘트 서비스는 설정이 없으면 모두 D
     );
   }
 });
+
+test("mock 북마크: 저장·해제·없는 장소(NOT_FOUND)를 서비스가 처리한다", async () => {
+  const service = (await import("../../src/worker/services/bookmark-service")).getBookmarkService(mockEnv);
+  const user = { id: "mock-user-1", email: "someone@example.test" };
+
+  assert.equal((await service.list(user)).items.length, 0);
+  await assert.rejects(
+    service.set(user, "no-such-place", true),
+    (error: unknown) => error instanceof DomainError && error.code === "NOT_FOUND",
+  );
+
+  const demo = { id: "mock-demo", email: "demo@altteulmap.local" };
+
+  assert.equal((await service.list(demo)).items.length, 1);
+  await service.set(demo, "school-gimbap", false).catch(() => undefined);
+});

@@ -1,6 +1,5 @@
-import { getWorkerAuthUserById } from "@/worker/auth-repository";
 import { getSessionFromRequest } from "@/worker/auth/session";
-import { isWorkerDatabaseEnabled } from "@/worker/db";
+import { DomainError } from "@/worker/http/api-error";
 
 type AssetFetcher = {
   fetch(request: Request): Promise<Response> | Response;
@@ -21,9 +20,7 @@ export type AdminVariables = {
 };
 
 export type AdminRouteDependencies = {
-  databaseUnavailableResponse(message: string): Response;
   noStoreHeaders: Record<string, string>;
-  runWorkerDatabaseRoute<T>(env: AdminBindings, load: () => Promise<T>): Promise<T>;
 };
 
 const ADMIN_QUEUE_MAX_PAGE_NUMBER = 1_000;
@@ -41,74 +38,20 @@ export function getAdminQueuePagination(request: Request) {
   };
 }
 
-export async function requireAdminSession(
-  request: Request,
-  env: AdminBindings,
-  noStoreHeaders: Record<string, string>,
-  dependencies: Pick<AdminRouteDependencies, "databaseUnavailableResponse" | "runWorkerDatabaseRoute">,
-) {
+/**
+ * 관리자 API 진입 검사. 세션은 요청마다 DB의 users에서 role을 읽으므로(auth/session.ts)
+ * 강등은 즉시 반영된다. 실패는 DomainError로 던져 표준 에러 envelope가 된다.
+ */
+export async function requireAdminSession(request: Request, env: AdminBindings) {
   const session = await getSessionFromRequest(request, env);
 
   if (!session) {
-    return {
-      response: Response.json(
-        {
-          ok: false,
-          message: "로그인이 필요합니다.",
-        },
-        { status: 401, headers: noStoreHeaders },
-      ),
-    };
+    throw new DomainError("UNAUTHENTICATED", "로그인이 필요합니다.");
   }
 
   if (session.user.role !== "admin") {
-    return {
-      response: Response.json(
-        {
-          ok: false,
-          message: "운영자 권한이 필요합니다.",
-        },
-        { status: 403, headers: noStoreHeaders },
-      ),
-    };
+    throw new DomainError("FORBIDDEN", "운영자 권한이 필요합니다.");
   }
 
-  if (isWorkerDatabaseEnabled(env)) {
-    try {
-      const currentUser = await dependencies.runWorkerDatabaseRoute(env, () =>
-        getWorkerAuthUserById(env, session.user.id),
-      );
-
-      if (!currentUser || currentUser.role !== "admin") {
-        return {
-          response: Response.json(
-            {
-              ok: false,
-              message: "운영자 권한이 필요합니다.",
-            },
-            { status: 403, headers: noStoreHeaders },
-          ),
-        };
-      }
-
-      return {
-        user: {
-          ...session.user,
-          email: currentUser.email,
-          name: currentUser.nickname ?? currentUser.email.split("@")[0] ?? currentUser.email,
-          role: currentUser.role,
-        },
-      };
-    } catch {
-      return {
-        response: dependencies.databaseUnavailableResponse(
-          "권한을 확인하지 못했습니다.",
-        ),
-      };
-    }
-  }
-
-  return {
-    user: session.user,
-  };
+  return session.user;
 }

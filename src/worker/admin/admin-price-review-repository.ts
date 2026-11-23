@@ -9,6 +9,7 @@ import {
   refreshWorkerPlacePricingSummary,
   toAdminActionUserId,
 } from "@/worker/admin/admin-price-helpers";
+import { DomainError } from "@/worker/http/api-error";
 import { getWorkerDb, type WorkerDatabaseBindings } from "@/worker/db";
 import {
   canTransitionPriceReport,
@@ -55,12 +56,7 @@ export async function moderateWorkerPriceReport(
       .limit(1);
 
     if (!existingReport) {
-      return {
-        ok: false,
-        message: "가격 정보를 찾지 못했습니다.",
-        source: "database" as DataSource,
-        item: null,
-      };
+      throw new DomainError("NOT_FOUND", "가격 정보를 찾지 못했습니다.");
     }
 
     if (
@@ -69,12 +65,7 @@ export async function moderateWorkerPriceReport(
         input.decision === "reject" ? "rejected" : "accepted",
       )
     ) {
-      return {
-        ok: false,
-        message: "이미 처리된 가격 정보입니다.",
-        source: "database" as DataSource,
-        item: null,
-      };
+      throw new DomainError("CONFLICT", "이미 처리된 가격 정보입니다.");
     }
 
     const changedAt = new Date();
@@ -92,12 +83,7 @@ export async function moderateWorkerPriceReport(
         .returning({ id: priceReports.id });
 
       if (!claimedReport) {
-        return {
-          ok: false,
-          message: "이미 처리된 가격 정보입니다.",
-          source: "database" as DataSource,
-          item: null,
-        };
+        throw new DomainError("CONFLICT", "이미 처리된 가격 정보입니다.");
       }
 
       await tx.insert(adminActions).values({
@@ -145,12 +131,7 @@ export async function moderateWorkerPriceReport(
       .returning({ id: priceReports.id });
 
     if (!claimedReport) {
-      return {
-        ok: false,
-        message: "이미 처리된 가격 정보입니다.",
-        source: "database" as DataSource,
-        item: null,
-      };
+      throw new DomainError("CONFLICT", "이미 처리된 가격 정보입니다.");
     }
 
     await lockWorkerPriceReportModerationGroup(tx, {

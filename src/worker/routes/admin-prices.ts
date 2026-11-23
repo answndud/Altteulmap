@@ -1,27 +1,18 @@
 import type { Hono } from "hono";
 
-import { getPlaceById } from "@/features/places/queries";
 import {
   adminPriceItemUpdateSchema,
   priceReportModerationSchema,
 } from "@/features/places/write-schema";
+import { DomainError } from "@/worker/http/api-error";
 import {
-  getWorkerAdminPlacePriceDetail,
-  listWorkerPendingPriceReports,
-  moderateWorkerPriceReport,
-  updateWorkerPriceItem,
-} from "@/worker/admin-repository";
-import {
-  isWorkerDatabaseEnabled,
-  isWorkerMockDataEnabled,
-} from "@/worker/db";
-import {
-  requireAdminSession,
   getAdminQueuePagination,
+  requireAdminSession,
   type AdminBindings,
   type AdminRouteDependencies,
   type AdminVariables,
 } from "@/worker/routes/admin-support";
+import { getAdminService } from "@/worker/services/admin-service";
 
 export function registerAdminPriceRoutes(
   app: Hono<{
@@ -31,270 +22,85 @@ export function registerAdminPriceRoutes(
   dependencies: AdminRouteDependencies,
 ) {
   app.get("/api/admin/prices", async (c) => {
-    const admin = await requireAdminSession(c.req.raw, c.env, dependencies.noStoreHeaders, dependencies);
+    await requireAdminSession(c.req.raw, c.env);
 
-    if (admin.response) {
-      return admin.response;
-    }
+    const result = await getAdminService(c.env).listPriceReports(
+      getAdminQueuePagination(c.req.raw),
+    );
 
-    if (!isWorkerDatabaseEnabled(c.env)) {
-      if (!isWorkerMockDataEnabled(c.env)) {
-        return dependencies.databaseUnavailableResponse(
-          "가격 정보 검토 목록을 불러오지 못했습니다.",
-        );
-      }
-
-      return c.json(
-        {
-          items: [],
-          count: 0,
-          source: "mock",
-          mock: true,
-        },
-        200,
-        dependencies.noStoreHeaders,
-      );
-    }
-
-    try {
-      const pagination = getAdminQueuePagination(c.req.raw);
-      const result = await dependencies.runWorkerDatabaseRoute(c.env, () =>
-        listWorkerPendingPriceReports(c.env, pagination),
-      );
-
-      return c.json(
-        {
-          items: result.items,
-          count: result.count,
-          page: result.page,
-          limit: result.limit,
-          returnedCount: result.items.length,
-          truncated: result.items.length < result.count,
-          source: result.source,
-          mock: false,
-        },
-        200,
-        dependencies.noStoreHeaders,
-      );
-    } catch (error) {
-      console.error("Failed to load worker admin pending prices.", error);
-
-      return c.json(
-        {
-          ok: false,
-          message: "가격 정보 검토 목록을 불러오지 못했습니다.",
-        },
-        500,
-        dependencies.noStoreHeaders,
-      );
-    }
+    return c.json(
+      {
+        items: result.items,
+        count: result.count,
+        page: result.page,
+        limit: result.limit,
+        returnedCount: result.items.length,
+        truncated: result.items.length < result.count,
+        source: result.source,
+        mock: result.source === "mock",
+      },
+      200,
+      dependencies.noStoreHeaders,
+    );
   });
 
   app.patch("/api/admin/prices/:id", async (c) => {
-    const admin = await requireAdminSession(c.req.raw, c.env, dependencies.noStoreHeaders, dependencies);
-
-    if (admin.response) {
-      return admin.response;
-    }
-
-    const body = await c.req.json().catch(() => null);
-    const parsed = priceReportModerationSchema.safeParse(body);
+    const admin = await requireAdminSession(c.req.raw, c.env);
+    const parsed = priceReportModerationSchema.safeParse(
+      await c.req.json().catch(() => null),
+    );
 
     if (!parsed.success) {
-      return c.json(
-        {
-          ok: false,
-          message: "가격 정보 검토 입력값을 확인해 주세요.",
-          error: parsed.error.flatten(),
-        },
-        400,
-        dependencies.noStoreHeaders,
+      throw new DomainError(
+        "VALIDATION_FAILED",
+        "가격 정보 검토 입력값을 확인해 주세요.",
+        parsed.error.flatten(),
       );
     }
 
-    if (!isWorkerDatabaseEnabled(c.env)) {
-      if (!isWorkerMockDataEnabled(c.env)) {
-        return dependencies.databaseUnavailableResponse(
-          "가격 정보 검토 결과를 저장하지 못했습니다.",
-        );
-      }
+    const result = await getAdminService(c.env).moderatePriceReport(
+      c.req.param("id"),
+      parsed.data,
+      admin,
+    );
 
-      return c.json(
-        {
-          ok: true,
-          message: "목업 모드에서는 가격 정보 검토 결과가 실제 저장되지 않습니다.",
-          source: "mock",
-          item: null,
-        },
-        200,
-        dependencies.noStoreHeaders,
-      );
-    }
-
-    try {
-      const result = await dependencies.runWorkerDatabaseRoute(c.env, () =>
-        moderateWorkerPriceReport(c.env, c.req.param("id"), parsed.data, admin.user),
-      );
-
-      return c.json(result, result.ok ? 200 : 404, dependencies.noStoreHeaders);
-    } catch (error) {
-      console.error("Failed to moderate worker price report.", error);
-
-      return c.json(
-        {
-          ok: false,
-          message: "가격 정보 검토를 처리하지 못했습니다.",
-          source: "database",
-          item: null,
-        },
-        500,
-        dependencies.noStoreHeaders,
-      );
-    }
+    return c.json(result, 200, dependencies.noStoreHeaders);
   });
 
   app.get("/api/admin/prices/places/:id", async (c) => {
-    const admin = await requireAdminSession(c.req.raw, c.env, dependencies.noStoreHeaders, dependencies);
+    await requireAdminSession(c.req.raw, c.env);
 
-    if (admin.response) {
-      return admin.response;
-    }
+    const result = await getAdminService(c.env).getPlacePriceDetail(
+      c.req.param("id"),
+    );
 
-    if (!isWorkerDatabaseEnabled(c.env)) {
-      if (!isWorkerMockDataEnabled(c.env)) {
-        return dependencies.databaseUnavailableResponse("장소 가격 정보를 불러오지 못했습니다.");
-      }
-
-      const place = getPlaceById(c.req.param("id"));
-
-      return c.json(
-        {
-          item: place
-            ? {
-                id: place.id,
-                name: place.name,
-                district: place.district,
-                representativePriceAmount: place.representativePriceAmount,
-                representativePriceLabel: place.representativePriceLabel,
-                verificationStatus: place.verificationStatus,
-                priceItems: place.priceItems.map((item) => ({
-                  ...item,
-                  verifiedReportCount:
-                    item.verificationStatus === "verified" ? 2 : 0,
-                  isRepresentative: item.label === place.representativePriceLabel,
-                  isActive: true,
-                })),
-              }
-            : null,
-          source: "mock",
-        },
-        place ? 200 : 404,
-        dependencies.noStoreHeaders,
-      );
-    }
-
-    try {
-      const result = await dependencies.runWorkerDatabaseRoute(c.env, () =>
-        getWorkerAdminPlacePriceDetail(c.env, c.req.param("id")),
-      );
-
-      return c.json(
-        result,
-        result.item ? 200 : 404,
-        dependencies.noStoreHeaders,
-      );
-    } catch (error) {
-      console.error("Failed to load worker admin place price detail.", error);
-
-      return c.json(
-        {
-          ok: false,
-          message: "장소 가격 정보를 불러오지 못했습니다.",
-        },
-        500,
-        dependencies.noStoreHeaders,
-      );
-    }
+    return c.json(
+      result,
+      result.item ? 200 : 404,
+      dependencies.noStoreHeaders,
+    );
   });
 
   app.patch("/api/admin/price-items/:id", async (c) => {
-    const admin = await requireAdminSession(c.req.raw, c.env, dependencies.noStoreHeaders, dependencies);
-
-    if (admin.response) {
-      return admin.response;
-    }
-
-    const body = await c.req.json().catch(() => null);
-    const parsed = adminPriceItemUpdateSchema.safeParse(body);
+    const admin = await requireAdminSession(c.req.raw, c.env);
+    const parsed = adminPriceItemUpdateSchema.safeParse(
+      await c.req.json().catch(() => null),
+    );
 
     if (!parsed.success) {
-      return c.json(
-        {
-          ok: false,
-          message: "가격 항목 수정 입력값 검증에 실패했습니다.",
-          error: parsed.error.flatten(),
-        },
-        400,
-        dependencies.noStoreHeaders,
+      throw new DomainError(
+        "VALIDATION_FAILED",
+        "가격 항목 수정 입력값 검증에 실패했습니다.",
+        parsed.error.flatten(),
       );
     }
 
-    if (!isWorkerDatabaseEnabled(c.env)) {
-      if (!isWorkerMockDataEnabled(c.env)) {
-        return dependencies.databaseUnavailableResponse("가격 항목을 업데이트하지 못했습니다.");
-      }
+    const result = await getAdminService(c.env).updatePriceItem(
+      c.req.param("id"),
+      parsed.data,
+      admin,
+    );
 
-      return c.json(
-        {
-          ok: true,
-          message: parsed.data.isActive
-            ? "목업 가격 항목을 업데이트했습니다."
-            : "목업 가격 항목을 숨겼습니다.",
-          source: "mock",
-          item: {
-            id: c.req.param("id"),
-            label: parsed.data.label,
-            amount: parsed.data.amount,
-            unitLabel: parsed.data.unitLabel || undefined,
-            verificationStatus: parsed.data.verificationStatus,
-            verifiedReportCount:
-              parsed.data.verificationStatus === "verified" ? 2 : 0,
-            reportedAt: new Date().toISOString().slice(0, 10),
-            isRepresentative: parsed.data.isRepresentative,
-            isActive: parsed.data.isActive,
-          },
-          placeId: null,
-        },
-        200,
-        dependencies.noStoreHeaders,
-      );
-    }
-
-    try {
-      const result = await dependencies.runWorkerDatabaseRoute(c.env, () =>
-        updateWorkerPriceItem(c.env, c.req.param("id"), parsed.data, admin.user),
-      );
-      const status = result.ok
-        ? 200
-        : result.message === "같은 이름의 가격 항목이 이미 있습니다."
-          ? 400
-          : 404;
-
-      return c.json(result, status, dependencies.noStoreHeaders);
-    } catch (error) {
-      console.error("Failed to update worker price item.", error);
-
-      return c.json(
-        {
-          ok: false,
-          message: "가격 항목 업데이트에 실패했습니다.",
-          source: "database",
-          item: null,
-          placeId: null,
-        },
-        500,
-        dependencies.noStoreHeaders,
-      );
-    }
+    return c.json(result, 200, dependencies.noStoreHeaders);
   });
 }

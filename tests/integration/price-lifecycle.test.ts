@@ -11,6 +11,7 @@ import {
   priceReports,
   users,
 } from "../../src/db/schema";
+import { DomainError } from "../../src/worker/http/api-error";
 import { moderateWorkerPriceReport } from "../../src/worker/admin/admin-price-review-repository";
 import { getPriceReportService } from "../../src/worker/services/price-report-stores";
 import { setDatabaseBookmark } from "../../src/worker/bookmarks-repository";
@@ -133,7 +134,7 @@ test("가격 승인 transaction은 report, item, summary, audit를 함께 갱신
 });
 
 test("동시에 같은 가격 report를 승인하면 하나의 상태 전이만 성공한다", async () => {
-  const results = await Promise.all(
+  const results = await Promise.allSettled(
     [0, 1].map((connectionIndex) =>
       withWorkerDatabaseConnection(workerEnv, () =>
         moderateWorkerPriceReport(
@@ -146,8 +147,16 @@ test("동시에 같은 가격 report를 승인하면 하나의 상태 전이만 
     ),
   );
 
-  assert.equal(results.filter((result) => result.ok).length, 1);
-  assert.equal(results.filter((result) => !result.ok).length, 1);
+  // 한 건만 상태 전이에 성공하고, 나머지는 CONFLICT DomainError로 거부된다.
+  const rejected = results.filter((result) => result.status === "rejected");
+
+  assert.equal(results.filter((result) => result.status === "fulfilled").length, 1);
+  assert.equal(rejected.length, 1);
+  assert.ok(
+    rejected[0]?.status === "rejected" &&
+      rejected[0].reason instanceof DomainError &&
+      rejected[0].reason.code === "CONFLICT",
+  );
 
   await withDatabase(async () => {
     const db = getWorkerDb(workerEnv);

@@ -10,6 +10,7 @@ import {
 } from "@/db/schema";
 import type { PlaceModerationInput } from "@/features/submission/schema";
 import type { PendingPlace } from "@/shared/admin-contracts";
+import { DomainError } from "@/worker/http/api-error";
 import { getWorkerDb, type WorkerDatabaseBindings } from "@/worker/db";
 import { refreshWorkerPlacePricingSummary } from "@/worker/admin/admin-price-helpers";
 import {
@@ -243,12 +244,7 @@ export async function moderateWorkerPlaceSubmission(
       .limit(1);
 
     if (!existing) {
-      return {
-        ok: false,
-        message: "검토 대상을 찾지 못했습니다.",
-        source: "database" as DataSource,
-        item: null,
-      };
+      throw new DomainError("NOT_FOUND", "검토 대상을 찾지 못했습니다.");
     }
 
     const nextStatus = input.decision === "approve" ? "active" : "hidden";
@@ -277,12 +273,7 @@ export async function moderateWorkerPlaceSubmission(
       .returning({ id: places.id });
 
     if (!claimedPlace) {
-      return {
-        ok: false,
-        message: "이미 처리된 장소 검토 항목입니다.",
-        source: "database" as DataSource,
-        item: null,
-      };
+      throw new DomainError("CONFLICT", "이미 처리된 장소 검토 항목입니다.");
     }
 
     await tx

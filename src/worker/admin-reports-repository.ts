@@ -9,6 +9,7 @@ import {
 import { mockReports, type MockReportRecord } from "@/features/reports/mock-data";
 import type { ReportModerationInput } from "@/features/reports/schema";
 import type { ModerationSuggestion } from "@/shared/admin-contracts";
+import { DomainError } from "@/worker/http/api-error";
 import { getWorkerDb, type WorkerDatabaseBindings } from "@/worker/db";
 import { parseModerationSuggestion } from "@/worker/admin/moderation-suggestion-validation";
 
@@ -174,12 +175,7 @@ export async function updateWorkerReportStatus(
       });
 
     if (!updatedReport) {
-      return {
-        ok: false,
-        message: "신고가 없거나 이미 최종 처리되었습니다.",
-        source: "database" as DataSource,
-        item: null,
-      };
+      throw new DomainError("CONFLICT", "신고가 없거나 이미 최종 처리되었습니다.");
     }
 
     const [placeRow] = await tx
