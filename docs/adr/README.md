@@ -9,3 +9,5 @@
 | [0003](0003-price-moderation-locking.md) | 가격 검수는 advisory lock과 조건부 UPDATE로 직렬화한다 | 채택 |
 | [0004](0004-request-scoped-db-connection.md) | Worker는 요청마다 연결 1개를 열고 닫는다 | 채택 |
 | [0005](0005-offset-pagination-for-admin-queue.md) | 관리자 큐는 offset 페이지네이션을 쓴다 | 채택(재평가 조건 있음) |
+| [0006](0006-vps-postgres-via-tunnel-and-hyperdrive.md) | 운영 DB는 VPS 전용 Postgres를 Tunnel·Workers VPC·Hyperdrive로 연결한다 | 채택 |
+| [0007](0007-trigram-index-for-search.md) | 장소 검색은 `ILIKE` + pg_trgm GIN 부분 인덱스로 처리한다 | 채택 |

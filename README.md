@@ -1,137 +1,107 @@
 # 알뜰맵 (Altteulmap)
 
-> A map-first service for finding, contributing, and moderating affordable local places in Korea.
+> 동네의 저렴한 식당과 생활 서비스를 지도에서 찾고, 가격을 제보하고, 운영자가 검수하는 서비스
 
-![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)
 ![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-f38020?logo=cloudflare&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-336791?logo=postgresql&logoColor=white)
+![Hono](https://img.shields.io/badge/Hono-API-E36002)
 ![Playwright](https://img.shields.io/badge/Playwright-E2E-2EAD33?logo=playwright&logoColor=white)
 ![Status](https://img.shields.io/badge/Status-Live-success)
 
-- Demo: [altteulmap.altteul-lab.workers.dev](https://altteulmap.altteul-lab.workers.dev)
-- Admin: [altteulmap.altteul-lab.workers.dev/admin](https://altteulmap.altteul-lab.workers.dev/admin)
-- Docs: [한국어 문서 안내](docs/문서-안내.md) · [Cloudflare deploy guide](docs/deploy/deploy-cloudflare.md)
+- 데모: [altteulmap.altteul-lab.workers.dev](https://altteulmap.altteul-lab.workers.dev) · 관리자: [/admin](https://altteulmap.altteul-lab.workers.dev/admin)
+- 문서: [문서 안내](docs/문서-안내.md) · [ADR](docs/adr/README.md) · [운영 지연 측정](docs/06-성능/결과/2026-11-24-한국-측정.md)
 
-최근 유행했던 `거지맵` 서비스에서 아이디어를 얻었습니다. 다만 음식점에만 머무르지 않고, 생활 서비스까지 포함한 더 넓은 절약 지도 형태로 확장하고 싶었습니다. 여기에 공공데이터를 적극적으로 활용해 실제 운영 가능한 데이터 기반 서비스를 만들고 싶었고, 고물가와 취업난이 겹친 지금의 시대감에도 잘 맞는 주제라고 판단해 개발했습니다.
+행정안전부 `착한가격업소` 공공데이터 1,000곳을 정제해 넣고, 누구나 장소·가격·신고를 제보하면 운영자가 검수해 반영합니다. 혼자 설계·개발·배포·운영하는 백엔드 중심 프로젝트이며, 실제 운영 DB를 직접 운영합니다.
 
-![Altteulmap home](docs/readme/hero-home.png)
+![알뜰맵 첫 화면](docs/readme/hero-home.png)
 
-## At a Glance
+## 아키텍처
 
-- 실제 공공 데이터 1,000건을 정제해 지도 탐색 경험에 투입했습니다.
-- 장소 등록, 가격 제보, 신고는 공개 참여로 받고 관리자 화면에서 검수 제안 데이터가 있으면 참고하되, 최종 확정은 운영자가 합니다. 현재 저장소에는 외부 AI provider가 제안을 생성하는 pipeline은 없습니다.
-- 공개 앱, 관리자 화면, API를 단일 Cloudflare Worker로 통합해 운영 표면적을 줄였습니다.
-- Playwright E2E, smoke, live deploy check까지 포함해 “보여주는 데모”보다 “운영 가능한 MVP”에 가깝게 만들었습니다.
-
-## Highlights
-
-- `Map-first UX`: 첫 화면이 바로 지도이고 목록과 상세 시트가 같은 맥락에서 이어집니다.
-- `Real data import`: 행정안전부 `착한가격업소` 데이터를 직접 수집·정규화·적재했습니다.
-- `Open contribution loop`: 익명 제보를 허용하되 actor/rate limit/Turnstile과 관리자 승인으로 데이터 반영 경계를 둡니다. moderation suggestion은 운영자 보조 계약이며 자동 승인 기능이 아닙니다.
-- `Unified Worker`: public/admin/API를 하나의 Vite React SPA와 Worker API로 통합했습니다.
-- `Verified delivery`: lint, build, Playwright E2E, local/remote smoke, live Cloudflare deploy까지 닫았습니다.
-
-## Screenshots
-
-| Home | Detail Sheet |
-| --- | --- |
-| ![Home](docs/readme/hero-home.png) | ![Detail Sheet](docs/readme/place-detail.png) |
-
-| Submission | Admin |
-| --- | --- |
-| ![Submission Form](docs/readme/submit-form.png) | ![Admin Console](docs/readme/admin-console.png) |
-
-## How It Works
-
-1. 지도에서 현재 위치와 검색어 기준으로 저렴한 장소를 찾습니다.
-2. 상세 시트에서 가격, 반응, 공유, 북마크를 확인합니다.
-3. 비회원도 장소 등록, 댓글, 가격 제보, 신고를 남길 수 있습니다.
-4. 장소 등록, 가격 제보, 신고는 관리자 앱에서 검수 제안 패널과 함께 확인할 수 있고 운영자가 최종 확정합니다. 제안 생성 provider 연결은 현재 미완료입니다.
-
-## Backend Design
-
-```
-Browser (Vite React SPA)
-   │  JSON API
-Cloudflare Worker (Hono)
-   ├─ routes/      HTTP만: 파싱·Turnstile·rate limit·응답
-   ├─ services/    도메인 규칙과 저장소 선택(DB/mock), DomainError
-   ├─ places|admin|auth|abuse|reports|telemetry/   repository (Drizzle 쿼리)
-   └─ db.ts        요청당 연결 1개, timeout, circuit breaker
-PostgreSQL (Drizzle migration, trigram·복합 인덱스)
+```mermaid
+flowchart LR
+  B["브라우저<br/>Vite React SPA"] --> E["Cloudflare 엣지<br/>익명 GET 캐시"]
+  E --> W["Worker (Hono)<br/>routes → services → repositories"]
+  W --> H["Hyperdrive"]
+  H --> V["Workers VPC<br/>TLS verify_full"]
+  V --> T["Cloudflare Tunnel"]
+  T --> P[("VPS Postgres 17<br/>공개 포트 없음")]
+  P -. "매일 pg_dump / 매월 사본" .-> BK["백업"]
 ```
 
-- **세션**: 랜덤 토큰을 쿠키로, SHA-256 해시만 DB에 저장합니다. 로그아웃·강등이 즉시 반영됩니다. → [ADR 0001](docs/adr/0001-database-sessions.md)
-- **남용 방지**: Postgres 원자 upsert 카운터에 IP·계정 버킷을 더하고, 정리는 cron에서만 합니다. → [ADR 0002](docs/adr/0002-rate-limit-in-postgres.md)
-- **정합성**: 가격 검수는 advisory lock과 조건부 UPDATE로 직렬화하고, 공개 제보는 `submission_key` unique로 멱등입니다. 동시 승인 경합은 통합 테스트로 고정했습니다. → [ADR 0003](docs/adr/0003-price-moderation-locking.md)
-- **연결**: Workers 특성에 맞춰 요청마다 연결을 열고 닫으며 timeout과 breaker를 둡니다. → [ADR 0004](docs/adr/0004-request-scoped-db-connection.md)
-- **에러 계약**: 모든 실패 응답이 `{ ok:false, message, error:{ code, details? }, requestId }` 하나입니다. → [API 계약](docs/02-설계/API-계약-지도.md)
-- 전체 결정 목록: [docs/adr](docs/adr/README.md)
+- 공개 앱·관리자·API를 Cloudflare Worker 하나로 제공합니다.
+- 운영 DB는 직접 관리하는 VPS의 전용 Postgres입니다. DB 포트를 인터넷에 열지 않고 Tunnel과 Workers VPC로만 접속하며, Worker는 DML만 가능한 role을 씁니다.
+- Worker 내부는 `routes`(HTTP·인증·rate limit) → `services`(도메인 규칙, `DomainError`) → repository(Drizzle 쿼리) 계층입니다. 자세한 흐름은 [아키텍처 개요](docs/02-설계/아키텍처-개요.md)에 있습니다.
 
-## Why This Repo Is Worth Opening
+## 설계 결정
 
-- `서비스 관점`: 탐색, 참여, 관리자 검수, 운영 반영까지의 핵심 cycle이 닫혀 있습니다. moderation suggestion은 저장 schema와 표시/검증 경계까지이며 외부 AI 자동 생성은 별도 backlog입니다.
-- `엔지니어링 관점`: Next/OpenNext에서 Vite + Worker API로 이관하며 번들 경량화, runtime smoke, production cutover를 직접 정리했습니다.
-- `데이터 관점`: mock이 아니라 실데이터 import와 운영용 moderation 흐름이 같이 있습니다.
-- `작업 방식 관점`: AI를 구현 보조로만 쓰지 않고 계획, 검증, 문서화, 운영 검수 초안까지 연결했습니다.
+| 문제 | 선택 | 근거 |
+| --- | --- | --- |
+| 서명 쿠키 세션은 로그아웃·강등 후에도 만료까지 유효 | DB 세션: 쿠키에는 랜덤 토큰, DB에는 SHA-256 해시만 저장, 7일 고정 만료 | [ADR 0001](docs/adr/0001-database-sessions.md) |
+| 익명 쓰기는 쿠키를 버리면 rate limit이 초기화됨 | Postgres 원자 upsert 카운터 + IP 버킷 + 로그인 계정 버킷 | [ADR 0002](docs/adr/0002-rate-limit-in-postgres.md) |
+| 운영자 동시 승인 시 상태·검증 판정 경합 | advisory lock + 조건부 `UPDATE ... RETURNING`, 제보 멱등 키 | [ADR 0003](docs/adr/0003-price-moderation-locking.md) |
+| Workers isolate는 연결을 공유할 수 없음 | 요청 컨텍스트당 연결 1개, timeout, circuit breaker | [ADR 0004](docs/adr/0004-request-scoped-db-connection.md) |
+| 관리자 대기열 페이지네이션 | offset(규모상 충분, 재평가 조건 명시) | [ADR 0005](docs/adr/0005-offset-pagination-for-admin-queue.md) |
+| Supabase를 그만 쓰고 DB를 직접 운영 | VPS Postgres + Tunnel + Workers VPC + Hyperdrive | [ADR 0006](docs/adr/0006-vps-postgres-via-tunnel-and-hyperdrive.md) |
+| 7개 컬럼 부분 문자열 검색 | `ILIKE` + pg_trgm GIN 부분 인덱스 | [ADR 0007](docs/adr/0007-trigram-index-for-search.md) |
 
-## AI-Native Workflow
+모든 실패 응답은 `{ ok:false, message, error:{ code, details? }, requestId }` 하나로 통일했습니다([API 계약](docs/02-설계/API-계약-지도.md)).
 
-- 루트 `PLAN.md` 하나에 현재와 미래의 실행 작업만 유지하고, 완료된 작업은 즉시 제거합니다.
-- 관리자 큐는 moderation suggestion이 존재할 경우 권장 액션과 근거를 표시합니다. 현재 코드에서 provider가 새 suggestion을 생성하는 실행 경로는 확인되지 않습니다.
-- 구현 후에는 `lint`, `build`, `Playwright E2E`, `smoke`를 기준으로 종료했습니다.
-- repo-local hooks와 검증 스크립트로 품질 기준을 저장소 안에 고정했습니다.
+## 측정과 개선
 
-## Current Status
+DB를 오스트리아 VPS로 옮기자 한국 기준 장소 상세가 1.6초가 됐습니다. `Server-Timing`으로 DB 구간을 분리해 보니 쿼리 1개 왕복이 약 0.4초였고, 비용이 쿼리 **개수**에 비례했습니다. 병렬화는 효과가 없었습니다(Hyperdrive 경유에서는 한 연결의 쿼리가 순차 처리됨). 그래서 쿼리 수를 줄였습니다.
 
-- `Live data`: 운영 DB는 netcup VPS의 전용 PostgreSQL이며 Worker는 Cloudflare Tunnel + Hyperdrive로 접속합니다([구성](deploy/vps/README.md)). 이전 작업 중에는 데모가 비어 있을 수 있습니다.
-- `Moderation boundary`: 관리자 큐는 moderation_suggestions의 구조화된 제안을 Zod로 검증해 표시하지만, 외부 AI 자동 생성·비용·재시도 pipeline은 아직 없습니다.
-- `Operational QA`: 데스크톱 Chromium 기준 핵심 운영 흐름을 검증했습니다.
-- `Launch URL`: 현재 운영 URL은 `https://altteulmap.altteul-lab.workers.dev`이며, admin은 같은 Worker의 `/admin` route로 통합했습니다. custom domain은 별도 후속 작업입니다.
-- `Share checklist`: 공개 공유 전 점검 항목은 [public share checklist](docs/project/public-share-checklist.md)에 정리했습니다.
+| 요청 (한국, p95) | 개선 전 | 개선 후 | 한 일 |
+| --- | --- | --- | --- |
+| 장소 상세 | 1,632ms | 618ms | 쿼리 5개 → 상관 서브쿼리 JSON 집계 1개 |
+| 지도 zoom 15 | 1,144ms | 652ms | 건수+행 2개 → `count(*) over ()` 1개 |
+| 지도 zoom 11 (캐시 미스) | 1,727ms | 1,177ms | 행 500건 → SQL 클러스터 격자 집계, 응답 442KB → 139KB |
+| 지도 첫 화면 (캐시 적중) | - | 약 200ms | 익명 GET 엣지 캐시(지도 60초, 상세 20초) |
 
-## Verification
+zoom 11 캐시 미스는 아직 목표(1초)를 넘습니다. 측정 환경·표본·남은 병목은 [운영 지연 측정](docs/06-성능/결과/2026-11-24-한국-측정.md)에 있습니다.
 
-```bash
-npm run verify
-npm run test:integration:local
-npm run test:e2e
-npm run smoke:local
-npm run smoke:remote
-```
+## 검증
 
-- GitHub Actions: `Verify`, `E2E Full`, `Deploy Config Check`
-- Cloudflare: unified Vite Worker deploy + live `workers.dev` smoke
+| 단계 | 내용 | 명령 |
+| --- | --- | --- |
+| unit 55개 | 순수 도메인 규칙, HTTP·rate limit 계약 | `npm run verify` (lint + typecheck + unit) |
+| integration 31개 | 실제 Postgres: 권한 경계, 실패 경로, 가격 제보 생명주기·동시 승인, rate limit 우회, SQL 클러스터 = JS 클러스터 | `npm run test:integration:local` |
+| E2E 30개 | Playwright 데스크톱 Chromium, 실제 DB와 mock 모드 | `npm run test:e2e:full` |
+| 운영 smoke | 6시간마다 운영 URL에 관리자 로그인·세션 폐기까지 확인, 12시간마다 deep health | `npm run smoke:remote` |
+| 품질 게이트 | dead code, CSP inline style 목록, 문서 링크·경로 검사 | `npm run verify:quality` |
 
-## Stack
+GitHub Actions가 push마다 위 단계와 migration drift 검사, `npm audit`(high)를 실행합니다.
 
-- Vite 8, React 19, Tailwind CSS 4
-- Cloudflare Workers, Hono, Wrangler
-- PostgreSQL, Drizzle ORM
-- NAVER Maps JavaScript API
-- Worker credentials + Kakao/Naver OAuth callback
-- Playwright, ESLint
+## 운영
 
-## Run Locally
+- 배포: `npm run deploy`(Node 22) → `smoke:remote`. migration은 SSH 터널로 배포 전에 적용합니다([배포 가이드](docs/deploy/deploy-cloudflare.md)).
+- 백업: VPS에서 매일 `pg_dump`(14일) → 개발 머신으로 매월 사본(`npm run backup:pull`). 덤프를 임시 DB에 복원해 운영과 행 수가 같은지 확인했습니다([백업·복구](docs/09-운영-가이드/백업-복구.md)).
+- 정기 작업: Worker cron이 매시간 만료 세션과 rate limit 버킷을 정리합니다.
+
+## 한계
+
+- DB가 단일 VPS라 이중화·PITR이 없고, RPO는 최대 24시간입니다. 원격 스토리지 백업과 새 서버 복구 리허설은 아직 하지 않았습니다.
+- 실제 사용자 트래픽이 없고, 부하 처리량(k6)은 측정하지 않았습니다.
+- Kakao/Naver OAuth는 redirect·state·callback 거부까지만 자동 검증하고, 실제 계정 로그인은 미검증입니다.
+- 관리자 화면의 검수 제안 패널은 저장된 제안을 검증해 보여 주는 경계까지이며, 제안을 생성하는 외부 AI 연동은 없습니다.
+
+## 화면
+
+| 상세 시트 | 제보 | 관리자 |
+| --- | --- | --- |
+| ![상세](docs/readme/place-detail.png) | ![제보](docs/readme/submit-form.png) | ![관리자](docs/readme/admin-console.png) |
+
+## 로컬 실행
 
 ```bash
 cp .dev.vars.example .dev.vars
-npm run db:local:setup
-npm run dev
+npm run db:local:setup   # Docker Postgres 기동, migration, seed
+npm run dev              # http://localhost:5173, 관리자 /admin
 ```
 
-- Worker가 읽는 값(DB·인증)은 `.dev.vars` 하나에 둡니다. Cloudflare vite plugin은 `.dev.vars`가 있으면 `.env`를 읽지 않으므로, `.dev.vars`가 없거나 `DATABASE_URL`이 비어 있으면 지도 API가 503이 됩니다.
+- Worker가 읽는 값(DB·인증)은 `.dev.vars` 하나에 둡니다. `DATABASE_URL`이 비어 있으면 지도 API가 503입니다.
+- DB 없이 UI만 보려면 `USE_MOCK_DATA=true npm run dev`.
+- 중지는 `npm run db:local:down`, volume까지 초기화는 `CONFIRM_RESET=1 npm run db:local:reset`.
 
-- `db:local:setup`은 Docker PostgreSQL을 기동하고 readiness 확인, Drizzle migration, local seed를 순서대로 실행합니다.
-- 앱 기본 DB는 `postgresql://postgres:postgres@127.0.0.1:5432/altteulmap`입니다. PostgreSQL 없이 UI만 확인하려면 `USE_MOCK_DATA=true npm run dev`를 사용합니다.
-- 실제 DB E2E는 `npm run test:e2e:all`, DB 독립적인 접근성 E2E는 `npm run test:e2e:mock`으로 실행합니다. 두 모드를 섞어 실행하지 않습니다.
-- 데이터베이스를 중지하려면 `npm run db:local:down`을 사용합니다. volume까지 삭제하는 초기화는 `CONFIRM_RESET=1 npm run db:local:reset`이 필요합니다.
-- App: `http://localhost:5173`
-- Admin: `http://localhost:5173/admin`
-- README screenshots: `npm run readme:screenshots`
+## 스택
 
-## Next
-
-- custom domain 연결 여부 결정
-- OAuth 실제 provider callback 운영 등록
-- 이메일 발송이 필요해지는 시점에 Resend 설정 마감
+Vite 8 · React 19 · Tailwind CSS 4 · Cloudflare Workers · Hono · Hyperdrive · PostgreSQL 17 · Drizzle ORM · NAVER Maps · Playwright
