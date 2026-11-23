@@ -16,19 +16,11 @@ Observable finish state:
 
 ## Active
 
-### Phase 1. 데모 복구와 인증·남용 방지 결함 제거
-
-#### 1-0. 한국 사용자 기준 운영 지연 확인
-- Done in 이전 작업: 운영 DB를 VPS 전용 Postgres로 이전(Hyperdrive → Workers VPC → Tunnel), Turnstile·SMOKE secret·정기 감시(Keep Alive, Remote Smoke) 정상, Supabase 종료와 옛 secret 정리.
-- Done in 이전 작업: 장소 상세 쿼리 5개를 1개로, 지도 건수 쿼리를 윈도우 건수로 합쳐 상세 p50 1,551→554ms, 지도(zoom 15) p95 1,144→652ms. 익명 상세 엣지 캐시와 `Server-Timing` 추가(ADR 0004 표).
-- Done in 이전 작업: 서울 전체 지도(zoom 11)를 SQL 격자 집계로 바꿔 응답 442KB→139KB, 서버 DB 구간 707→589ms, p50 942→817ms. 기존 JS 클러스터링과 동일한지 통합 테스트로 고정.
-- Current blocker: zoom 11 p95가 이 표본(14회, LAX 경유)에서 1.19초로 목표(1초)를 아직 못 맞췄다. SQL 실행은 약 11ms이고 남은 비용은 왕복(약 0.38초)과 전송량이며, 한국 네트워크 실측이 없다.
-- Next action: ① 한국 네트워크에서 같은 방법(ADR 0004)으로 재측정한다. ② 목표 초과 시 목록 건수(100)나 previewPlaces 컬럼을 줄인다. ③ 로그인 사용자의 세션 조회(쿼리 1회)를 상세 쿼리에 합치는 방안을 검토한다. ④ 그래도 부족하면 가까운 리전 Postgres로 Hyperdrive 대상을 교체한다(`deploy/vps/README.md` §5).
-- Verify: 인앱 브라우저 또는 `fetch` 반복 측정(ADR 0004와 같은 방법), `npm run test:integration:local`
-- Done: 한국 기준 지도 조회 p95가 1초 이내이거나, 초과 시 위 조치가 적용돼 다시 측정한 값이 ADR에 있다.
+No active work
 
 ## Backlog
 
+- 한국 기준 지도 첫 화면 캐시 미스 p95(약 1.2초)를 더 줄이려면 목록 건수(100) 축소 또는 가까운 리전 Postgres로 Hyperdrive 대상 교체(`deploy/vps/README.md` §5)
 - 개발 머신 백업 사본(월 1회 LaunchAgent로 자동화됨)을 맥 밖 원격 스토리지(예: R2)로도 보관하고, 새 서버 복구 리허설(role·Hyperdrive 포함) 증적 확보. 2026-11-24 04:17 UTC 이후 VPS 일 1회 백업 cron이 실제로 새 덤프를 만들었는지 확인
 - zod 스키마 기반 OpenAPI 문서 생성과 `/api/docs` 제공
 - k6 부하 테스트로 지도 조회·가격 제보 p95/처리량 측정 → 병목 개선 → 재측정 결과 기록
