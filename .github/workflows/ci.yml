@@ -25,7 +25,7 @@ permissions:
 jobs:
   verify:
     name: Verify
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
       USE_MOCK_DATA: "true"
@@ -79,7 +79,7 @@ jobs:
   e2e-full:
     name: E2E Full
     needs: [verify, integration]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 35
     services:
       postgres:
@@ -155,7 +155,7 @@ jobs:
   integration:
     name: PostgreSQL Integration
     needs: verify
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     services:
       postgres:
@@ -209,7 +209,7 @@ jobs:
   remote-smoke:
     name: Remote Smoke
     if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
       SMOKE_PUBLIC_URL: ${{ secrets.SMOKE_PUBLIC_URL }}
