@@ -42,11 +42,6 @@ export type WorkerOAuthAccountSyncInput = {
   sessionState?: string | null;
 };
 
-const legacyAuthFallbackPasswords = new Map<string, string>([
-  ["demo@altteulmap.local", "demo1234"],
-  ["admin@altteulmap.local", "admin1234"],
-]);
-
 const localAuthUsers: WorkerAuthUserRecord[] = [
   {
     id: "local-demo-user",
@@ -93,26 +88,14 @@ function getConfiguredPassword(env: WorkerAuthBindings, email: string) {
   return env.AUTH_DEMO_PASSWORD ?? null;
 }
 
-export function matchesKnownAccountPassword(
+export function matchesConfiguredMockAccountPassword(
   env: WorkerAuthBindings,
   email: string,
   password: string,
-  options?: {
-    allowLegacyFallback?: boolean;
-  },
 ) {
   const configuredPassword = getConfiguredPassword(env, email);
 
-  if (configuredPassword && password === configuredPassword) {
-    return true;
-  }
-
-  if (!options?.allowLegacyFallback) {
-    return false;
-  }
-
-  const legacyPassword = legacyAuthFallbackPasswords.get(normalizeEmail(email));
-  return Boolean(legacyPassword && password === legacyPassword);
+  return Boolean(configuredPassword) && password === configuredPassword;
 }
 
 export function toLocalUser(email: string) {

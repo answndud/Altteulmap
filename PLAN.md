@@ -27,16 +27,6 @@ Observable finish state:
 - Verify: `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev npm run smoke:remote`
 - Done: 운영 첫 화면에 장소 목록과 마커가 보이고, `Keep Alive`와 수동 실행한 CI의 `Remote Smoke`, `E2E Full`이 성공한다.
 
-#### 1-1. 운영 인증에서 폴백 계정과 mock 분기 제거
-- Likely files: `src/worker/auth-repository.ts`, `src/worker/auth-repository-support.ts`, `src/worker/db.ts`, `tests/integration/authorization.test.ts`
-- Changes:
-  - `legacyAuthFallbackPasswords`(`admin1234`/`demo1234`)와 `allowLegacyFallback` 경로를 삭제한다.
-  - `verifyWorkerCredentials`는 `USE_MOCK_DATA === "true"`일 때만 mock 사용자를 허용하고, circuit breaker가 열린 경우(`isDatabaseTemporarilyUnavailable`)에는 503 성격의 `DATABASE_UNAVAILABLE` 결과를 반환한다.
-  - DB 모드에서 env 비밀번호 평문 비교(`matchesKnownAccountPassword`) → `toLocalUser` 폴백을 제거하고 DB 사용자 + scrypt 검증만 사용한다.
-  - integration test 추가: breaker가 열린 상태에서 `admin@altteulmap.local`/`admin1234` 로그인이 실패한다.
-- Verify: `npm run verify && INTEGRATION`
-- Done: `grep -rn "admin1234\|legacyAuthFallback" src` 결과가 0건이고 새 테스트가 통과한다.
-
 #### 1-2. DB 기반 세션으로 전환 (폐기·role 재확인)
 - Likely files: `src/worker/auth/session.ts`, `src/worker/routes/auth-session.ts`, `src/db/schema-auth.ts`, `tests/integration/authorization.test.ts`
 - Changes:

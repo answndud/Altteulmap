@@ -11,6 +11,8 @@ import {
 
 const errorMessageMap: Record<string, string> = {
   CredentialsSignin: "이메일 또는 비밀번호가 맞지 않습니다.",
+  DatabaseUnavailable:
+    "서비스에 일시적으로 연결할 수 없습니다. 잠시 후 다시 시도해주세요.",
   CSRFCheck: "로그인 보안 확인에 실패했습니다. 다시 시도해주세요.",
   OAuthEmailRequired: "소셜 로그인 계정에서 이메일을 가져오지 못했습니다.",
   OAuthAccountSyncFailed:

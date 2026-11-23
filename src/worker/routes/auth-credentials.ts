@@ -69,9 +69,22 @@ export function registerAuthCredentialsRoutes(
       typeof body.callbackUrl === "string" ? body.callbackUrl : "/",
       origin,
     );
-    const user = await dependencies.runWorkerDatabaseRoute(c.env, () =>
-      verifyWorkerCredentials(c.env, email, password),
+    const credentialsResult = await dependencies.runWorkerDatabaseRoute(
+      c.env,
+      () => verifyWorkerCredentials(c.env, email, password),
     );
+
+    if (credentialsResult.status === "unavailable") {
+      const errorUrl = `${origin}/api/auth/error?error=DatabaseUnavailable&provider=credentials`;
+
+      if (!shouldReturnJson) {
+        return c.redirect(errorUrl);
+      }
+
+      return c.json({ url: errorUrl }, 503, dependencies.noStoreHeaders);
+    }
+
+    const user = credentialsResult.status === "ok" ? credentialsResult.user : null;
 
     if (!user) {
       const errorUrl = `${origin}/api/auth/error?error=CredentialsSignin&provider=credentials`;

@@ -9,6 +9,7 @@ import app from "../../src/worker/index";
 import {
   closeWorkerDatabaseConnection,
   getWorkerDb,
+  markWorkerDatabaseUnavailable,
   withWorkerDatabaseConnection,
 } from "../../src/worker/db";
 import { assertTestDatabaseReady, getTestDatabaseUrl } from "./test-database";
@@ -165,4 +166,56 @@ test("bookmark는 actor별로만 조회·변경된다", async () => {
     const db = getWorkerDb(workerEnv);
     await db.delete(bookmarks).where(eq(bookmarks.userId, userId));
   });
+});
+
+async function loginAsAdmin(password: string, env: Record<string, unknown>) {
+  const csrfResponse = await app.fetch(
+    new Request("http://127.0.0.1/api/auth/csrf"),
+    env,
+  );
+  const { csrfToken } = (await csrfResponse.json()) as { csrfToken: string };
+  const csrfCookie = (csrfResponse.headers.get("set-cookie") ?? "").split(";")[0];
+
+  return app.fetch(
+    new Request("http://127.0.0.1/api/auth/callback/credentials", {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "content-type": "application/json",
+        cookie: csrfCookie,
+        "cf-connecting-ip": `203.0.113.${Math.floor(Math.random() * 200) + 1}`,
+      },
+      body: JSON.stringify({
+        csrfToken,
+        email: "admin@altteulmap.local",
+        password,
+        json: "true",
+      }),
+    }),
+    env,
+  );
+}
+
+test("DB circuit breaker가 열려도 공개된 기본 비밀번호로 관리자 세션이 발급되지 않는다", async () => {
+  const globals = globalThis as { __altteulmapWorkerDbUnavailableUntil?: number };
+
+  markWorkerDatabaseUnavailable();
+  try {
+    const response = await loginAsAdmin("admin1234", workerEnv);
+
+    assert.equal(response.status, 503);
+    assert.equal((response.headers.get("set-cookie") ?? "").includes("session-token"), false);
+  } finally {
+    globals.__altteulmapWorkerDbUnavailableUntil = 0;
+  }
+});
+
+test("DB 모드에서는 env 평문 비밀번호로 로그인할 수 없다", async () => {
+  const response = await loginAsAdmin("env-only-secret", {
+    ...workerEnv,
+    AUTH_ADMIN_PASSWORD: "env-only-secret",
+  });
+
+  assert.equal(response.status, 401);
+  assert.equal((response.headers.get("set-cookie") ?? "").includes("session-token"), false);
 });

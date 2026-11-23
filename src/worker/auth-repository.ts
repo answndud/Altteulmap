@@ -5,7 +5,7 @@ import { hashPassword, verifyPassword } from "@/features/auth/password";
 import type { CredentialsSignupInput } from "@/features/auth/schema";
 import {
   listWorkerSocialAuthProviders,
-  matchesKnownAccountPassword,
+  matchesConfiguredMockAccountPassword,
   normalizeEmail,
   toLocalUser,
   trimNickname,
@@ -16,30 +16,11 @@ import {
 import {
   getWorkerDb,
   isWorkerDatabaseEnabled,
+  isWorkerMockDataEnabled,
 } from "@/worker/db";
 
 export { listWorkerSocialAuthProviders };
 export type { WorkerAuthUserRecord };
-
-async function getWorkerAuthUserByEmail(
-  env: WorkerAuthBindings,
-  email: string,
-) {
-  const db = getWorkerDb(env);
-  const normalizedEmail = normalizeEmail(email);
-  const [user] = await db
-    .select({
-      id: users.id,
-      email: users.email,
-      nickname: users.nickname,
-      role: users.role,
-    })
-    .from(users)
-    .where(eq(users.email, normalizedEmail))
-    .limit(1);
-
-  return user ?? null;
-}
 
 export async function getWorkerAuthUserById(
   env: WorkerAuthBindings,
@@ -89,25 +70,28 @@ async function getWorkerCredentialsUserByEmail(
   return user ?? null;
 }
 
+export type WorkerCredentialsResult =
+  | { status: "ok"; user: WorkerAuthUserRecord }
+  | { status: "invalid" }
+  | { status: "unavailable" };
+
 export async function verifyWorkerCredentials(
   env: WorkerAuthBindings,
   email: string,
   password: string,
-) {
-  if (!isWorkerDatabaseEnabled(env)) {
-    if (
-      !matchesKnownAccountPassword(env, email, password, {
-        allowLegacyFallback: true,
-      })
-    ) {
-      return null;
-    }
+): Promise<WorkerCredentialsResult> {
+  // mock 모드에서만 env에 설정된 고정 계정을 허용한다. 운영 경로에는 평문 폴백이 없다.
+  if (isWorkerMockDataEnabled(env)) {
+    const mockUser = matchesConfiguredMockAccountPassword(env, email, password)
+      ? toLocalUser(email)
+      : null;
 
-    return toLocalUser(email);
+    return mockUser ? { status: "ok", user: mockUser } : { status: "invalid" };
   }
 
-  if (matchesKnownAccountPassword(env, email, password)) {
-    return (await getWorkerAuthUserByEmail(env, email)) ?? toLocalUser(email);
+  // DB 미설정이나 circuit breaker가 열린 동안에는 인증 자체를 거부한다.
+  if (!isWorkerDatabaseEnabled(env)) {
+    return { status: "unavailable" };
   }
 
   const credentialUser = await getWorkerCredentialsUserByEmail(env, email);
@@ -117,14 +101,17 @@ export async function verifyWorkerCredentials(
     (await verifyPassword(password, credentialUser.passwordHash))
   ) {
     return {
-      id: credentialUser.id,
-      email: credentialUser.email,
-      nickname: credentialUser.nickname,
-      role: credentialUser.role,
+      status: "ok",
+      user: {
+        id: credentialUser.id,
+        email: credentialUser.email,
+        nickname: credentialUser.nickname,
+        role: credentialUser.role,
+      },
     };
   }
 
-  return null;
+  return { status: "invalid" };
 }
 
 export async function createWorkerCredentialsUser(
