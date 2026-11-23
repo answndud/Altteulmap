@@ -6,7 +6,7 @@ import type {
   PlacePreviewRecord,
 } from "@/features/places/types";
 
-const MAP_CLUSTER_PREVIEW_PLACE_LIMIT = 40;
+export const MAP_CLUSTER_PREVIEW_PLACE_LIMIT = 40;
 
 export function getBoundsFromPlaces(
   items: Array<Pick<PlacePreviewRecord, "latitude" | "longitude">>,
@@ -21,6 +21,9 @@ export function getBoundsFromPlaces(
     maxLng: Math.max(...longitudes),
   };
 }
+
+/** 클러스터 모드에서 목록에 실어 보내는 최대 장소 수. 정렬 기준(기본 가격순)의 앞쪽만 보낸다. */
+export const MAP_LIST_ITEM_LIMIT = 100;
 
 export function getCappedMapListItems(items: PlacePreviewRecord[]) {
   return items;
@@ -93,7 +96,7 @@ export function getPlaceOnlyMapMarkers(
     .map(toMapPlaceMarkerRecord);
 }
 
-function getStableClusterCellSize(
+export function getStableClusterCellSize(
   zoom: number | null,
   query: string | null,
 ) {
