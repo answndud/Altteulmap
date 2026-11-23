@@ -9,6 +9,7 @@ import {
   toAdminPriceItemRecord,
 } from "@/worker/admin/admin-price-helpers";
 import { getWorkerDb, type WorkerDatabaseBindings } from "@/worker/db";
+import { VERIFICATION_REPORTER_THRESHOLD } from "@/worker/services/price-report-rules";
 
 type DataSource = "database";
 type AdminUser = {
@@ -75,7 +76,10 @@ export async function updateWorkerPriceItem(
     const nextIsRepresentative = input.isActive ? input.isRepresentative : false;
     const nextVerifiedReportCount =
       input.verificationStatus === "verified"
-        ? Math.max(existingItem.verifiedReportCount, 2)
+        ? Math.max(
+            existingItem.verifiedReportCount,
+            VERIFICATION_REPORTER_THRESHOLD,
+          )
         : 0;
 
     if (nextIsRepresentative) {

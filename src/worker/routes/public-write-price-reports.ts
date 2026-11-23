@@ -1,24 +1,17 @@
 import type { Hono } from "hono";
 
-import { getPlaceById } from "@/features/places/queries";
 import { placePriceReportSchema } from "@/features/places/write-schema";
 import { getSessionFromRequest } from "@/worker/auth/session";
 import {
   applyWorkerWriteHeaders,
   getWorkerPublicWriteActor,
 } from "@/worker/public-write-actor";
-import {
-  isWorkerDatabaseEnabled,
-  isWorkerMockDataEnabled,
-} from "@/worker/db";
-import { createDatabasePlacePriceReport } from "@/worker/places-write-price-reports-repository";
+import { getPriceReportService } from "@/worker/services/price-report-stores";
 import {
   consumePublicWriteRateLimit,
   getTurnstileToken,
-  runWorkerDatabaseRoute,
   verifyTurnstileForPublicWrite,
   type PublicWriteBindings,
-  type PublicWriteRouteDependencies,
   type PublicWriteVariables,
 } from "@/worker/routes/public-write-support";
 
@@ -27,11 +20,9 @@ export function registerPublicWritePriceReportRoutes(
     Bindings: PublicWriteBindings;
     Variables: PublicWriteVariables;
   }>,
-  dependencies: PublicWriteRouteDependencies,
 ) {
   app.post("/api/places/:id/prices", async (c) => {
     const placeId = c.req.param("id");
-    const place = getPlaceById(placeId);
     const body = await c.req.json().catch(() => null);
     const parsed = placePriceReportSchema.safeParse(body);
     const actor = getWorkerPublicWriteActor(
@@ -98,65 +89,13 @@ export function registerPublicWritePriceReportRoutes(
       );
     }
 
-    if (isWorkerDatabaseEnabled(c.env)) {
-      const result = await runWorkerDatabaseRoute(c.env, () =>
-        createDatabasePlacePriceReport(c.env, placeId, parsed.data, actor),
-      );
-
-      return applyWorkerWriteHeaders(
-        c.json(result, result.ok ? 200 : 404),
-        c.req.raw,
-        actor,
-        rateLimit,
-      );
-    }
-
-    if (!isWorkerMockDataEnabled(c.env)) {
-      return applyWorkerWriteHeaders(
-        dependencies.databaseUnavailableResponse("가격 정보를 저장하지 못했습니다."),
-        c.req.raw,
-        actor,
-        rateLimit,
-      );
-    }
-
-    if (!place) {
-      return applyWorkerWriteHeaders(
-        c.json(
-          {
-            ok: false,
-            message: "장소를 찾지 못했습니다.",
-            source: "mock",
-            mock: true,
-            item: null,
-          },
-          404,
-        ),
-        c.req.raw,
-        actor,
-        rateLimit,
-      );
-    }
-
-    return applyWorkerWriteHeaders(
-      c.json({
-        ok: true,
-        message: "가격 정보가 등록되었습니다. 확인 후 상세 화면에 반영됩니다.",
-        source: "mock",
-        mock: true,
-        item: {
-          id: `vite-price-report-${crypto.randomUUID()}`,
-          placeId,
-          placeName: place.name,
-          label: parsed.data.label,
-          amount: parsed.data.amount,
-          unitLabel: parsed.data.unitLabel || undefined,
-          comment: parsed.data.comment || undefined,
-        },
-      }),
-      c.req.raw,
+    // DB/mock/미설정 선택과 도메인 규칙은 서비스가 맡는다. 실패는 DomainError로 던져 envelope가 된다.
+    const result = await getPriceReportService(c.env).submit(
+      placeId,
+      parsed.data,
       actor,
-      rateLimit,
     );
+
+    return applyWorkerWriteHeaders(c.json(result), c.req.raw, actor, rateLimit);
   });
 }

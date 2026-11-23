@@ -10,9 +10,12 @@ import {
   toAdminActionUserId,
 } from "@/worker/admin/admin-price-helpers";
 import { getWorkerDb, type WorkerDatabaseBindings } from "@/worker/db";
+import {
+  canTransitionPriceReport,
+  decideVerificationStatus,
+} from "@/worker/services/price-report-rules";
 
 type DataSource = "database";
-type VerificationStatus = "verified" | "unverified";
 type AdminUser = {
   id: string;
 };
@@ -60,7 +63,12 @@ export async function moderateWorkerPriceReport(
       };
     }
 
-    if (existingReport.reportStatus !== "pending_review") {
+    if (
+      !canTransitionPriceReport(
+        existingReport.reportStatus,
+        input.decision === "reject" ? "rejected" : "accepted",
+      )
+    ) {
       return {
         ok: false,
         message: "이미 처리된 가격 정보입니다.",
@@ -182,8 +190,9 @@ export async function moderateWorkerPriceReport(
       )
       .limit(1);
     const nextVerifiedReportCount = Number(acceptedCountRow?.count ?? 0);
-    const nextVerificationStatus: VerificationStatus =
-      nextVerifiedReportCount >= 2 ? "verified" : "unverified";
+    const nextVerificationStatus = decideVerificationStatus(
+      nextVerifiedReportCount,
+    );
 
     if (matchedPriceItemId) {
       await tx

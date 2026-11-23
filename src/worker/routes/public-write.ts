@@ -18,7 +18,7 @@ export function registerPublicWriteRoutes(
   }>,
   dependencies: PublicWriteRouteDependencies,
 ) {
-  registerPublicWritePriceReportRoutes(app, dependencies);
+  registerPublicWritePriceReportRoutes(app);
 
   registerPublicWriteCommentRoutes(app, dependencies);
 

@@ -12,7 +12,7 @@ import {
   users,
 } from "../../src/db/schema";
 import { moderateWorkerPriceReport } from "../../src/worker/admin/admin-price-review-repository";
-import { createDatabasePlacePriceReport } from "../../src/worker/places-write-price-reports-repository";
+import { getPriceReportService } from "../../src/worker/services/price-report-stores";
 import { setDatabaseBookmark } from "../../src/worker/bookmarks-repository";
 import {
   closeWorkerDatabaseConnection,
@@ -191,9 +191,7 @@ test("같은 공개 가격 제보 재전송은 submission key 하나만 저장�
 
   const results = await Promise.all(
     Array.from({ length: 5 }, () =>
-      withWorkerDatabaseConnection(workerEnv, () =>
-        createDatabasePlacePriceReport(workerEnv, fixturePrefix, input, actor),
-      ),
+      getPriceReportService(workerEnv).submit(fixturePrefix, input, actor),
     ),
   );
 
