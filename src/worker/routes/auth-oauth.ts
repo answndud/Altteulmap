@@ -169,15 +169,6 @@ export function registerAuthOAuthRoutes(
           type: "oauth",
           email: profileEmail,
           name: profile.name,
-          accessToken: token.access_token ?? null,
-          refreshToken: token.refresh_token ?? null,
-          expiresAt: token.expires_in
-            ? Math.floor(Date.now() / 1000) + token.expires_in
-            : null,
-          tokenType: token.token_type ?? null,
-          scope: token.scope ?? null,
-          idToken: token.id_token ?? null,
-          sessionState: null,
         }),
       );
 

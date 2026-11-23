@@ -120,7 +120,8 @@ export async function createWorkerCredentialsUser(
 ) {
   if (!isWorkerDatabaseEnabled(env)) {
     return {
-      ok: false,
+      ok: false as const,
+      code: "DATABASE_UNAVAILABLE" as const,
       message: "회원가입은 데이터 연결 후 사용할 수 있습니다.",
       item: null,
     };
@@ -131,60 +132,97 @@ export async function createWorkerCredentialsUser(
   const passwordHash = await hashPassword(input.password);
   const db = getWorkerDb(env);
 
-  return await db.transaction(async (tx) => {
-    const existingUser = await tx
-      .select({
-        id: users.id,
-      })
-      .from(users)
-      .where(eq(users.email, normalizedEmail))
-      .limit(1)
-      .then((rows) => rows[0] ?? null);
+  try {
+    return await db.transaction(async (tx) => {
+      const existingUser = await tx
+        .select({
+          id: users.id,
+        })
+        .from(users)
+        .where(eq(users.email, normalizedEmail))
+        .limit(1)
+        .then((rows) => rows[0] ?? null);
 
-    if (existingUser) {
+      if (existingUser) {
+        return emailTakenResult();
+      }
+
+      const createdUser = await tx
+        .insert(users)
+        .values({
+          email: normalizedEmail,
+          nickname,
+        })
+        .returning({
+          id: users.id,
+          email: users.email,
+          nickname: users.nickname,
+          role: users.role,
+        })
+        .then((rows) => rows[0] ?? null);
+
+      if (!createdUser) {
+        return {
+          ok: false as const,
+          code: "SIGNUP_FAILED" as const,
+          message: "회원가입 처리에 실패했습니다. 잠시 후 다시 시도해주세요.",
+          item: null,
+        };
+      }
+
+      await tx.insert(authAccounts).values({
+        userId: createdUser.id,
+        provider: "credentials",
+        providerAccountId: normalizedEmail,
+        type: "credentials",
+        passwordHash,
+      });
+
       return {
-        ok: false,
-        message: "이미 가입된 이메일입니다. 로그인하거나 기존 소셜 로그인을 사용해주세요.",
-        item: null,
+        ok: true as const,
+        code: "CREATED" as const,
+        message: "회원가입이 완료되었습니다.",
+        item: createdUser,
       };
-    }
-
-    const createdUser = await tx
-      .insert(users)
-      .values({
-        email: normalizedEmail,
-        nickname,
-      })
-      .returning({
-        id: users.id,
-        email: users.email,
-        nickname: users.nickname,
-        role: users.role,
-      })
-      .then((rows) => rows[0] ?? null);
-
-    if (!createdUser) {
-      return {
-        ok: false,
-        message: "회원가입 처리에 실패했습니다. 잠시 후 다시 시도해주세요.",
-        item: null,
-      };
-    }
-
-    await tx.insert(authAccounts).values({
-      userId: createdUser.id,
-      provider: "credentials",
-      providerAccountId: normalizedEmail,
-      type: "credentials",
-      passwordHash,
     });
+  } catch (error) {
+    // 동시 가입으로 unique 제약(23505)에 걸리면 500이 아니라 중복 가입으로 응답한다.
+    if (isUniqueViolation(error)) {
+      return emailTakenResult();
+    }
 
-    return {
-      ok: true,
-      message: "회원가입이 완료되었습니다.",
-      item: createdUser,
-    };
-  });
+    throw error;
+  }
+}
+
+function emailTakenResult() {
+  return {
+    ok: false as const,
+    code: "EMAIL_TAKEN" as const,
+    message: "이미 가입된 이메일입니다. 로그인하거나 기존 소셜 로그인을 사용해주세요.",
+    item: null,
+  };
+}
+
+function isUniqueViolation(error: unknown): boolean {
+  let current: unknown = error;
+
+  for (let depth = 0; depth < 3 && current; depth += 1) {
+    if (
+      typeof current === "object" &&
+      "code" in current &&
+      (current as { code?: unknown }).code === "23505"
+    ) {
+      return true;
+    }
+
+    current =
+      typeof current === "object" && "cause" in current
+        ? (current as { cause?: unknown }).cause
+        : null;
+  }
+
+  return false;
 }
 
 export async function syncWorkerOAuthUser(
@@ -278,13 +316,6 @@ export async function syncWorkerOAuthUser(
         .update(authAccounts)
         .set({
           userId: userRecord.id,
-          accessToken: input.accessToken ?? null,
-          refreshToken: input.refreshToken ?? null,
-          expiresAt: input.expiresAt ?? null,
-          tokenType: input.tokenType ?? null,
-          scope: input.scope ?? null,
-          idToken: input.idToken ?? null,
-          sessionState: input.sessionState ?? null,
           updatedAt: new Date(),
         })
         .where(eq(authAccounts.id, linkedAccount.accountId));
@@ -294,13 +325,6 @@ export async function syncWorkerOAuthUser(
         provider: input.provider,
         providerAccountId: input.providerAccountId,
         type: input.type,
-        accessToken: input.accessToken ?? null,
-        refreshToken: input.refreshToken ?? null,
-        expiresAt: input.expiresAt ?? null,
-        tokenType: input.tokenType ?? null,
-        scope: input.scope ?? null,
-        idToken: input.idToken ?? null,
-        sessionState: input.sessionState ?? null,
       });
     }
 

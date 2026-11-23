@@ -39,16 +39,6 @@ Observable finish state:
 - Verify: `npm run verify && INTEGRATION && npm run test:e2e:smoke`
 - Done: 세션 쿠키 payload에 role이 없고, 로그아웃·강등 테스트가 통과한다.
 
-#### 1-4. 상태 판정·에러 노출·CSRF 정리
-- Likely files: `src/worker/routes/auth-credentials.ts`, `src/worker/auth-repository.ts`, `src/worker/routes/health.ts`, `src/worker/index.ts`
-- Changes:
-  - 회원가입 중복을 메시지 문자열 대신 결과 코드(`EMAIL_TAKEN`)로 판정하고, 동시 가입의 unique 위반(23505)을 409로 매핑한다.
-  - `/api/health` 공개 응답에서 DB 원본 에러 메시지를 제거하고 로그에만 남긴다.
-  - `/api/*` 변경 요청에 `Origin`/`Sec-Fetch-Site` 검사 미들웨어를 추가하고, JSON 엔드포인트는 `Content-Type: application/json`만 허용한다.
-  - OAuth access/refresh token을 DB에 저장하지 않도록 변경한다.
-- Verify: `npm run verify && INTEGRATION && npm run test:e2e:smoke`
-- Done: `grep -rn 'message.includes(' src/worker/routes` 0건, cross-origin POST가 403, 동시 가입 테스트가 409/201만 반환한다.
-
 ### Phase 2. 서비스 계층·에러 모델·테스트 구조
 
 #### 2-1. 테스트 DB 분리와 integration 실행 경로 정리

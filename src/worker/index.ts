@@ -15,6 +15,7 @@ import {
   applySecurityHeaders,
 } from "@/worker/http/security-headers";
 import { deleteExpiredRateLimits } from "@/worker/rate-limit-repository";
+import { rejectCrossSiteMutation } from "@/worker/http/csrf";
 import { readRequestBodyWithinLimit } from "@/worker/http/request-body";
 import { getOrigin } from "@/worker/http/urls";
 import { registerAdminRoutes } from "@/worker/routes/admin";
@@ -107,6 +108,22 @@ app.onError((error, c) => {
     requestId,
     headers: noStoreHeaders,
   });
+});
+
+app.use("/api/*", async (c, next) => {
+  const rejection = rejectCrossSiteMutation(c.req.raw);
+
+  if (rejection) {
+    return createWorkerErrorResponse({
+      status: rejection.status,
+      code: rejection.code,
+      message: rejection.message,
+      requestId: c.get("requestId"),
+      headers: noStoreHeaders,
+    });
+  }
+
+  return await next();
 });
 
 app.use("/api/*", async (c, next) => {

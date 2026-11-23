@@ -37,6 +37,7 @@ import {
 import { getWorkerPlaceReactionRateLimitActor } from "../../src/worker/routes/public-write-support";
 import { getAdminQueuePagination } from "../../src/worker/routes/admin-support";
 import { getPriceReportSubmissionKey } from "../../src/worker/price-report-identity";
+import { rejectCrossSiteMutation } from "../../src/worker/http/csrf";
 import { readRequestBodyWithinLimit } from "../../src/worker/http/request-body";
 import { parseModerationSuggestion } from "../../src/worker/admin/moderation-suggestion-validation";
 import {
@@ -426,5 +427,73 @@ test("request body limits cover chunked bodies without trusting Content-Length",
   assert.deepEqual(
     await readRequestBodyWithinLimit(oversized, 20),
     { ok: false, reason: "too-large" },
+  );
+});
+
+function mutation(path: string, headers: Record<string, string>, method = "POST") {
+  return new Request(`https://altteulmap.example${path}`, { method, headers });
+}
+
+test("교차 출처 변경 요청은 Sec-Fetch-Site·Origin으로 거부한다", () => {
+  assert.equal(
+    rejectCrossSiteMutation(
+      mutation("/api/bookmarks", { "sec-fetch-site": "cross-site" }),
+    )?.code,
+    "CROSS_SITE_REQUEST",
+  );
+  assert.equal(
+    rejectCrossSiteMutation(
+      mutation("/api/bookmarks", { origin: "https://evil.example" }),
+    )?.status,
+    403,
+  );
+  assert.equal(
+    rejectCrossSiteMutation(
+      mutation("/api/bookmarks", {
+        origin: "https://altteulmap.example",
+        "sec-fetch-site": "same-origin",
+        "content-type": "application/json",
+      }),
+    ),
+    null,
+  );
+  // 브라우저 헤더가 없는 서버 간 호출·curl은 통과한다.
+  assert.equal(rejectCrossSiteMutation(mutation("/api/bookmarks", {})), null);
+  assert.equal(
+    rejectCrossSiteMutation(
+      mutation("/api/places", { "sec-fetch-site": "cross-site" }, "GET"),
+    ),
+    null,
+  );
+});
+
+test("본문이 있는 변경 요청은 JSON만 허용하고 인증 폼만 urlencoded를 허용한다", () => {
+  assert.equal(
+    rejectCrossSiteMutation(
+      mutation("/api/places", { "content-type": "text/plain" }),
+    )?.status,
+    415,
+  );
+  assert.equal(
+    rejectCrossSiteMutation(
+      mutation("/api/places", {
+        "content-type": "application/x-www-form-urlencoded",
+      }),
+    )?.status,
+    415,
+  );
+  assert.equal(
+    rejectCrossSiteMutation(
+      mutation("/api/auth/callback/credentials", {
+        "content-type": "application/x-www-form-urlencoded",
+      }),
+    ),
+    null,
+  );
+  assert.equal(
+    rejectCrossSiteMutation(
+      mutation("/api/places", { "content-type": "application/json; charset=utf-8" }),
+    ),
+    null,
   );
 });

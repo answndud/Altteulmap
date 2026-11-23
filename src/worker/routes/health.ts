@@ -136,10 +136,14 @@ async function getStaticAssetHealthCheck(env: HealthBindings, request: Request) 
       contentType: response.headers.get("content-type") ?? "",
     };
   } catch (error) {
+    console.error("Worker static asset health check failed.", {
+      message: getErrorMessage(error),
+    });
+
     return {
       name: "static-assets",
       status: "fail" as const,
-      message: getErrorMessage(error),
+      message: "정적 자산 상태를 확인하지 못했습니다.",
     };
   }
 }

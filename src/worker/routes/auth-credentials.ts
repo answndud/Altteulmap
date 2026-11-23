@@ -155,9 +155,9 @@ export function registerAuthCredentialsRoutes(
     );
     const status = result.ok
       ? 201
-      : result.message.includes("이미 가입된 이메일")
+      : result.code === "EMAIL_TAKEN"
         ? 409
-        : result.message.includes("데이터 연결")
+        : result.code === "DATABASE_UNAVAILABLE"
           ? 503
           : 500;
 

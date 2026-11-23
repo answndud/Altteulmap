@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 import { and, eq } from "drizzle-orm";
 
-import { bookmarks, places, users } from "../../src/db/schema";
+import { authAccounts, bookmarks, places, users } from "../../src/db/schema";
 import { encodeSession } from "../../src/worker/auth/session";
 import app from "../../src/worker/index";
 import {
@@ -218,4 +218,56 @@ test("DB 모드에서는 env 평문 비밀번호로 로그인할 수 없다", as
 
   assert.equal(response.status, 401);
   assert.equal((response.headers.get("set-cookie") ?? "").includes("session-token"), false);
+});
+
+test("같은 이메일의 동시 회원가입은 500 없이 201 하나와 409만 반환한다", async () => {
+  const email = `${fixturePrefix}-signup@example.test`;
+  const signup = (suffix: number) =>
+    request("/api/auth/signup", undefined, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "cf-connecting-ip": `203.0.113.${suffix}`,
+      },
+      body: JSON.stringify({ email, nickname: "동시가입", password: "password-1234" }),
+    });
+
+  try {
+    const responses = await Promise.all([signup(11), signup(12), signup(13)]);
+    const statuses = responses.map((response) => response.status).sort();
+
+    assert.deepEqual(statuses, [201, 409, 409]);
+  } finally {
+    await withWorkerDatabaseConnection(workerEnv, async () => {
+      const db = getWorkerDb(workerEnv);
+      await db.delete(authAccounts).where(eq(authAccounts.providerAccountId, email));
+      await db.delete(users).where(eq(users.email, email));
+    });
+  }
+});
+
+test("교차 출처 변경 요청은 403으로 거부된다", async () => {
+  const response = await request("/api/bookmarks", undefined, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      origin: "https://evil.example",
+    },
+    body: "{}",
+  });
+  const body = await readJson(response);
+
+  assert.equal(response.status, 403);
+  assert.deepEqual((body.error as { code: string }).code, "CROSS_SITE_REQUEST");
+});
+
+test("health 응답은 내부 에러 문자열을 노출하지 않는다", async () => {
+  const response = await app.fetch(new Request("http://127.0.0.1/api/health?deep=1"), {
+    ...workerEnv,
+    DATABASE_URL: "postgresql://nobody:wrong@127.0.0.1:1/none",
+  });
+  const text = await response.text();
+
+  assert.equal(text.includes("ECONNREFUSED"), false);
+  assert.equal(text.includes("127.0.0.1:1"), false);
 });

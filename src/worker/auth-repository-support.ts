@@ -33,13 +33,6 @@ export type WorkerOAuthAccountSyncInput = {
   type: string;
   email: string;
   name?: string | null;
-  accessToken?: string | null;
-  refreshToken?: string | null;
-  expiresAt?: number | null;
-  tokenType?: string | null;
-  scope?: string | null;
-  idToken?: string | null;
-  sessionState?: string | null;
 };
 
 const localAuthUsers: WorkerAuthUserRecord[] = [
