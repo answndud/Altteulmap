@@ -37,7 +37,11 @@ function redirectToLoginError(
   redirectUrl.searchParams.set("callbackUrl", normalizeCallbackUrl(callbackUrl));
   redirectUrl.searchParams.set("error", error);
 
-  const response = Response.redirect(redirectUrl.toString(), 302);
+  // Response.redirect()는 헤더가 불변이라 쿠키를 붙이면 TypeError가 난다. 가변 Response로 만든다.
+  const response = new Response(null, {
+    status: 302,
+    headers: { Location: redirectUrl.toString() },
+  });
 
   appendCookie(response, request, {
     name: AUTH_OAUTH_STATE_COOKIE_NAME,

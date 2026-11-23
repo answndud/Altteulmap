@@ -424,3 +424,19 @@ test("관리자 지표 API는 권한을 검사하고 실제 방문 기록을 집
     );
   }
 });
+
+test("잘못된 OAuth callback은 500이 아니라 로그인 오류로 리다이렉트하고 세션을 만들지 않는다", async () => {
+  // Response.redirect()의 불변 헤더에 쿠키를 붙이다 TypeError(500)가 나던 회귀를 막는다.
+  const response = await app.fetch(
+    new Request(
+      "http://127.0.0.1/api/auth/callback/kakao?code=synthetic-invalid-code&state=synthetic-invalid-state",
+    ),
+    { ...workerEnv, AUTH_KAKAO_CLIENT_ID: "client-id", AUTH_KAKAO_CLIENT_SECRET: "client-secret" },
+  );
+  const location = new URL(response.headers.get("location") ?? "", "http://127.0.0.1");
+
+  assert.equal(response.status, 302);
+  assert.equal(location.pathname, "/login");
+  assert.equal(location.searchParams.get("error"), "OAuthCallback");
+  assert.equal((response.headers.get("set-cookie") ?? "").includes(AUTH_SESSION_COOKIE_NAME), false);
+});
