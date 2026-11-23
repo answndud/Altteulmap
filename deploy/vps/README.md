@@ -79,11 +79,15 @@ Cloudflare 문서의 권장 방식(Access·service token 없이 VPC Service 사�
 ## 4. 백업
 
 ```bash
-# crontab -e (VPS)
+# crontab -e (VPS): 일 1회 pg_dump + 검증 + 14일 보관
 17 4 * * * ENV_FILE=$HOME/altteulmap/altteulmap.env $HOME/altteulmap/backup.sh >> /opt/backups/altteulmap/backup.log 2>&1
 ```
 
-복구 리허설은 `npm run db:rehearse:backup`([백업·복구](../../docs/09-운영-가이드/백업-복구.md))을 쓴다. 백업 파일은 VPS 밖(다른 호스트 또는 오브젝트 스토리지)으로도 주기적으로 복사해야 VPS 장애에 대비된다.
+**VPS 밖 사본**: 개발 머신에서 `npm run backup:pull`(= `scripts/pull-vps-backup.sh`)이 VPS의 최신 덤프를 `backups/vps/`로 가져와 체크섬과 `pg_restore --list`로 검증하고 최근 14개만 남긴다. `.env.vps`의 `VPS_SSH_*`를 쓰며, `backups/`는 개인정보(이메일·비밀번호 해시)를 담으므로 `.gitignore` 대상이다. 이 사본은 자동으로 갱신되지 않으니 주기적으로(예: 주 1회) 실행한다.
+
+**복구 리허설 증적(2026-11-23)**: 가져온 덤프를 임시 로컬 DB에 `pg_restore`한 결과가 운영과 일치했다 — places 1,000 · price_items 2,489 · price_reports 4,978 · users 2 · categories 23 · auth_accounts 2, migration 22건, trigram 인덱스 7개. 임시 DB는 삭제했다.
+
+복구 시 주의: `pg_dump`는 DB 하나만 담으므로 새 서버에는 role이 없다. 복원 후 `grant-app-role.sh`로 `altteulmap_app`을 다시 만들고 Hyperdrive 구성의 비밀번호와 맞춘다(`GRANT ... TO altteulmap_app` 오류는 role이 없을 때 나오는 정상 경고다).
 
 ## 5. 지연 (2026-11-23 측정)
 
