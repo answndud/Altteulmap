@@ -27,15 +27,6 @@ Observable finish state:
 
 ### Phase 3. 저장소 위생·화면 정직성·문서 정리
 
-#### 3-3. 관리자 대시보드 KPI를 실제 집계로 교체
-- Likely files: `src/client/routes/admin/AdminDashboardRoute.tsx`, `src/worker/admin/admin-repository.ts`, `src/worker/routes/admin.ts`, `tests/integration/authorization.test.ts`
-- Changes:
-  - "운영", "활성", "집계", "비율", "추적"처럼 단어가 들어간 KPI 카드를 지운다.
-  - `GET /api/admin/stats` 하나로 실제 값을 내려준다: 전체 사용자 수, 7일 신규 가입, 승인 대기(장소·가격·신고), 7일 제보 수, 7일 승인율, 최근 승인 시각. 집계는 기존 인덱스를 타는 단일 쿼리 또는 `count(*) FILTER (WHERE ...)`로 작성하고, 실행 계획을 확인한다.
-  - 관리자 권한 검사를 integration test로 고정하고, 값이 0인 빈 상태 문구도 정한다.
-- Verify: `npm run verify && INTEGRATION && npm run test:e2e:full`
-- Done: 대시보드의 모든 KPI가 숫자이고, `/api/admin/stats` 비관리자 요청은 401/403이다.
-
 #### 3-4. 라우팅 빈 화면과 콘솔 오류 제거
 - Likely files: `src/client/App.tsx`, `src/client/routes/NotFoundRoute.tsx`(신규), `src/client/routes/admin/AdminRoutes.tsx`, `src/worker/http/security-headers.ts`
 - Changes:

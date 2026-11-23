@@ -20,6 +20,11 @@ import {
   withWorkerDatabaseConnection,
   type WorkerDatabaseBindings,
 } from "@/worker/db";
+import {
+  createMockAdminStats,
+  getWorkerAdminStats,
+  type AdminStats,
+} from "@/worker/admin/admin-stats-repository";
 import { DomainError } from "@/worker/http/api-error";
 import { selectBackend } from "@/worker/services/backend";
 
@@ -54,6 +59,7 @@ type AdminService = {
   updatePriceItem(id: string, input: AdminPriceItemUpdateInput, admin: AdminUser): Promise<ActionResult>;
   listReports(): Promise<ReportList>;
   updateReport(id: string, input: ReportModerationInput, admin: AdminUser): Promise<ActionResult>;
+  getStats(): Promise<AdminStats>;
 };
 
 /** DB 장애는 503 DomainError로, 의도된 도메인 실패(404·409)는 그대로 전달한다. */
@@ -123,6 +129,8 @@ export function getAdminService(env: WorkerDatabaseBindings) {
           inDatabase(env, "신고 상태 업데이트", () =>
             updateWorkerReportStatus(env, id, input, admin),
           ) as Promise<ActionResult>,
+        getStats: () =>
+          inDatabase(env, "운영 지표 조회", () => getWorkerAdminStats(env)),
       }),
       mock: () => ({
         async listPlaces(pagination) {
@@ -190,6 +198,9 @@ export function getAdminService(env: WorkerDatabaseBindings) {
         },
         async updateReport() {
           return { ok: true, message: mockNotice("신고 상태"), source: "mock", item: null };
+        },
+        async getStats() {
+          return createMockAdminStats();
         },
       }),
     },

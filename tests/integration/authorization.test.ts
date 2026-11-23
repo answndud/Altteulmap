@@ -1,9 +1,16 @@
 import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
 
-import { authAccounts, authSessions, bookmarks, places, users } from "../../src/db/schema";
+import {
+  authAccounts,
+  authSessions,
+  bookmarks,
+  places,
+  users,
+  visitActivities,
+} from "../../src/db/schema";
 import {
   AUTH_SESSION_COOKIE_NAME,
   issueSession,
@@ -354,4 +361,66 @@ test("revokeUserSessions는 사용자의 모든 세션을 끊는다", async () =
 
   assert.deepEqual(await readJson(await request("/api/auth/session", first)), {});
   assert.deepEqual(await readJson(await request("/api/auth/session", second)), {});
+});
+
+test("관리자 지표 API는 권한을 검사하고 실제 방문 기록을 집계한다", async () => {
+  const userCookie = await sessionCookie(userId, `${fixturePrefix}-user@example.test`, "user");
+  const adminCookie = await sessionCookie(adminId, `${fixturePrefix}-admin@example.test`, "admin");
+
+  assert.equal((await request("/api/admin/stats")).status, 401);
+  assert.equal((await request("/api/admin/stats", userCookie)).status, 403);
+
+  type Stats = {
+    users: { total: number };
+    visits: { hitsToday: number; visitorsToday: number; visitorsLast7Days: number };
+    shares: { hitsToday: number; bySource: Array<{ source: string; hits: number }> };
+  };
+  const read = async () =>
+    (await (await request("/api/admin/stats", adminCookie)).json()) as Stats;
+  const before = await read();
+
+  assert.ok(before.users.total >= 3);
+
+  const actorA = `${fixturePrefix}-visitor-a`;
+  const actorB = `${fixturePrefix}-visitor-b`;
+  const now = new Date();
+
+  await withWorkerDatabaseConnection(workerEnv, async () => {
+    const db = getWorkerDb(workerEnv);
+    const today = new Date(now.getTime() + 9 * 3600 * 1000).toISOString().slice(0, 10);
+    const row = (actorKey: string, hitCount: number, shared: boolean) => ({
+      actorKey,
+      visitorId: actorKey.slice(-24),
+      routeGroup: shared ? "place" : "map",
+      routePath: "/place/stats-test",
+      entryRef: shared ? "share" : null,
+      entrySource: shared ? "trending" : null,
+      visitDate: today,
+      bucketStartedAt: new Date(now.getTime() - (shared ? 0 : 3600_000)),
+      hitCount,
+      firstVisitedAt: now,
+      lastVisitedAt: now,
+    });
+
+    await db.insert(visitActivities).values([row(actorA, 3, true), row(actorB, 2, false)]);
+  });
+
+  try {
+    const after = await read();
+
+    assert.equal(after.visits.hitsToday - before.visits.hitsToday, 5);
+    assert.equal(after.visits.visitorsToday - before.visits.visitorsToday, 2);
+    assert.equal(after.visits.visitorsLast7Days - before.visits.visitorsLast7Days, 2);
+    assert.equal(after.shares.hitsToday - before.shares.hitsToday, 3);
+    assert.ok(
+      (after.shares.bySource.find((item) => item.source === "trending")?.hits ?? 0) >=
+        3,
+    );
+  } finally {
+    await withWorkerDatabaseConnection(workerEnv, () =>
+      getWorkerDb(workerEnv)
+        .delete(visitActivities)
+        .where(or(eq(visitActivities.actorKey, actorA), eq(visitActivities.actorKey, actorB))),
+    );
+  }
 });

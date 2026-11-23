@@ -9,19 +9,21 @@ import { useAdminData } from "@/client/routes/admin/useAdminData";
 import type {
   AdminListResponse,
   AdminReport,
+  AdminStats,
   PendingPlace,
   PendingPriceReport,
 } from "@/client/routes/admin/types";
 
 export function AdminDashboardRoute() {
   const loadDashboard = useCallback(async () => {
-    const [places, prices, reports] = await Promise.all([
+    const [places, prices, reports, stats] = await Promise.all([
       fetchJson<AdminListResponse<PendingPlace>>("/api/admin/places"),
       fetchJson<AdminListResponse<PendingPriceReport>>("/api/admin/prices"),
       fetchJson<AdminListResponse<AdminReport>>("/api/admin/reports"),
+      fetchJson<AdminStats>("/api/admin/stats"),
     ]);
 
-    return { places, prices, reports };
+    return { places, prices, reports, stats };
   }, []);
   const state = useAdminData(loadDashboard);
 
@@ -31,62 +33,82 @@ export function AdminDashboardRoute() {
       description="승인 대기 장소, 가격 정보, 신고를 한 곳에서 검토합니다."
     >
       <AdminAccessGate state={state}>
-        {({ places, prices, reports }) => (
+        {({ places, prices, reports, stats }) => (
           <div className="grid gap-5">
             <section className="grid gap-3 md:grid-cols-4">
               <AdminMetricCard
                 testId="admin-metric-total-users"
                 label="전체 사용자"
-                value="운영"
-                description="계정 기반 활동"
+                value={formatCount(stats.users.total)}
+                description={`최근 7일 신규 ${formatCount(stats.users.newLast7Days)}명`}
               />
               <AdminMetricCard
                 testId="admin-metric-current-sessions"
-                label="현재 세션"
-                value="활성"
-                description="로그인 사용자 기준"
+                label="로그인 세션"
+                value={formatCount(stats.sessions.active)}
+                description="만료되지 않은 세션 수"
               />
               <AdminMetricCard
                 testId="admin-metric-today-visits"
                 label="오늘 방문"
-                value="집계"
-                description="방문 이벤트 기준"
+                value={formatCount(stats.visits.hitsToday)}
+                description={`방문자 ${formatCount(stats.visits.visitorsToday)}명 (DAU)`}
               />
               <AdminMetricCard
                 testId="admin-metric-shared-visits"
-                label="공유 유입"
-                value="오늘"
-                description="공유 링크 방문"
+                label="오늘 공유 유입"
+                value={formatCount(stats.shares.hitsToday)}
+                description="공유 링크로 들어온 방문"
               />
               <AdminMetricCard
                 testId="admin-metric-weekly-visits"
-                label="주간 방문"
-                value="7일"
-                description="최근 활동"
+                label="최근 7일 방문"
+                value={formatCount(stats.visits.hitsLast7Days)}
+                description={`방문자 ${formatCount(stats.visits.visitorsLast7Days)}명 (WAU)`}
               />
               <AdminMetricCard
                 testId="admin-metric-dau-wau"
                 label="DAU/WAU"
-                value="비율"
-                description="재방문 흐름"
+                value={formatRate(
+                  stats.visits.visitorsLast7Days > 0
+                    ? stats.visits.visitorsToday / stats.visits.visitorsLast7Days
+                    : null,
+                )}
+                description="오늘 방문자 ÷ 7일 방문자"
               />
               <AdminMetricCard
                 testId="admin-metric-returning-rate"
                 label="재방문율"
-                value="추적"
-                description="반복 방문"
+                value={formatRate(stats.visits.returningRate)}
+                description="7일 중 이틀 이상 방문한 비율"
               />
-              <article
-                data-testid="admin-share-source-breakdown"
-                className="altteulmap-panel-muted p-4"
-              >
-                <p className="text-sm font-semibold text-[var(--altteul-text-primary)]">
-                  공유 유입 경로
-                </p>
-                <p className="mt-2 text-sm leading-6 text-[var(--altteul-text-secondary)]">
-                  상세 페이지 · 인기 장소 · 지도 목록 기준으로 확인합니다.
-                </p>
-              </article>
+              <AdminMetricCard
+                testId="admin-metric-price-approval"
+                label="가격 제보 승인율"
+                value={formatRate(stats.priceReports.approvalRate)}
+                description={`최근 7일 제보 ${formatCount(stats.priceReports.submittedLast7Days)}건`}
+              />
+            </section>
+
+            <section
+              data-testid="admin-share-source-breakdown"
+              className="altteulmap-panel-muted p-4"
+            >
+              <p className="text-sm font-semibold text-[var(--altteul-text-primary)]">
+                공유 유입 경로 (최근 7일)
+              </p>
+              <ul className="mt-3 grid gap-2 text-sm text-[var(--altteul-text-secondary)] md:grid-cols-4">
+                {SHARE_SOURCES.map(({ key, label }) => (
+                  <li key={key} className="flex justify-between gap-3">
+                    <span>{label}</span>
+                    <span className="font-semibold tabular-nums text-[var(--altteul-text-strong)]">
+                      {formatCount(
+                        stats.shares.bySource.find((item) => item.source === key)?.hits ?? 0,
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
             </section>
 
             <section
@@ -94,11 +116,25 @@ export function AdminDashboardRoute() {
               className="altteulmap-panel-muted p-4"
             >
               <p className="text-sm font-semibold text-[var(--altteul-text-primary)]">
-                최근 사용자 활동
+                최근 가입 사용자
               </p>
-              <p className="mt-2 text-sm text-[var(--altteul-text-secondary)]">
-                로그인, 제보, 공유 유입을 운영 지표와 함께 확인합니다.
-              </p>
+              {stats.users.recent.length === 0 ? (
+                <p className="mt-2 text-sm text-[var(--altteul-text-secondary)]">
+                  아직 가입한 사용자가 없습니다.
+                </p>
+              ) : (
+                <ul className="mt-3 grid gap-2 text-sm text-[var(--altteul-text-secondary)]">
+                  {stats.users.recent.map((user) => (
+                    <li key={user.id} className="flex justify-between gap-3">
+                      <span>
+                        {user.nickname}
+                        {user.role === "admin" ? " · 운영자" : ""}
+                      </span>
+                      <span className="tabular-nums">{user.createdAt}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </section>
 
             <div className="grid gap-4 md:grid-cols-3">
@@ -131,6 +167,21 @@ export function AdminDashboardRoute() {
       </AdminAccessGate>
     </AdminFrame>
   );
+}
+
+const SHARE_SOURCES = [
+  { key: "detail", label: "상세 페이지" },
+  { key: "detail_sheet", label: "상세 시트" },
+  { key: "list", label: "지도 목록" },
+  { key: "trending", label: "인기 장소" },
+];
+
+function formatCount(value: number) {
+  return value.toLocaleString("ko-KR");
+}
+
+function formatRate(value: number | null) {
+  return value === null ? "-" : `${Math.round(value * 100)}%`;
 }
 
 function AdminMetricCard({
