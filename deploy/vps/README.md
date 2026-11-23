@@ -9,7 +9,7 @@ altteulmap 운영 DB는 TownPet·kinderp와 같은 netcup VPS의 **전용 Postgr
 | `grant-app-role.sh` | migration 후 Worker용 최소 권한 role 생성(DML만, DDL 불가) |
 | `backup.sh` | 일 1회 `pg_dump -Fc` + 검증 + 14일 보관 |
 
-로컬에서 이 구성(migration → role 부여 → seed → 앱 통합 테스트 27개 → 백업)을 한 번 끝까지 검증했다.
+이 구성은 실제 VPS에 배포했다(2026-11-23: postgres 기동, migration, 데이터 복원, role 부여, 백업 cron). 로컬에서도 (migration → role 부여 → seed → 앱 통합 테스트 27개 → 백업)을 한 번 끝까지 검증했다.
 
 ## 0. VPS 여유 확인
 
@@ -23,7 +23,7 @@ free -h && df -h && docker stats --no-stream
 
 ```bash
 ssh <vps>
-sudo mkdir -p /opt/altteulmap && cd /opt/altteulmap
+mkdir -p ~/altteulmap /opt/backups/altteulmap && cd ~/altteulmap   # 배포 계정은 /opt에 쓸 수 없으므로 홈에 둔다
 # 이 저장소의 deploy/vps/{postgres.yml,backup.sh,grant-app-role.sh}를 복사한다.
 cp altteulmap.env.example altteulmap.env && chmod 600 altteulmap.env   # 값을 채운다
 docker compose --env-file altteulmap.env -f postgres.yml up -d postgres
@@ -42,15 +42,22 @@ export PRODUCTION_VIA_SSH_TUNNEL=1   # 127.0.0.1이 운영 VPS임을 명시(없�
 export PRODUCTION_DATABASE_URL='postgresql://altteulmap_admin:<비밀번호>@127.0.0.1:15432/altteulmap'
 
 npm run db:migrate
-# 빈 DB에 공공데이터를 넣을 때만(파괴적 seed 확인 변수 필요):
-DATABASE_URL="$PRODUCTION_DATABASE_URL" PRODUCTION_SEED_CONFIRM=I_UNDERSTAND_DESTRUCTIVE_SEED npm run db:seed:production
-npm run db:check:production
+DATABASE_URL="$PRODUCTION_DATABASE_URL" npm run db:check:production   # 이 스크립트는 DATABASE_URL을 읽는다
+```
+
+**초기 데이터**: `db:seed:production`은 행 단위 insert라 지연이 큰 터널에서는 매우 느리다(수십 분). 이전 때는 로컬에서 seed한 DB를 `pg_dump --data-only -Fc -t users -t auth_accounts -t categories -t places -t place_categories -t price_items -t price_reports`로 떠서 `pg_restore --data-only --disable-triggers`로 넣었다(COPY라 수 초).
+
+**seed 계정 정리(필수)**: seed가 만드는 `admin@altteulmap.local`·`demo@altteulmap.local`은 알려진 비밀번호를 가진다. 운영에 넣은 직후 바꾼다.
+
+```bash
+DATABASE_URL="$PRODUCTION_DATABASE_URL" TARGET_EMAIL=admin@altteulmap.local NEW_PASSWORD='<12자 이상 무작위>' npx tsx scripts/set-credentials-password.ts
+DATABASE_URL="$PRODUCTION_DATABASE_URL" TARGET_EMAIL=demo@altteulmap.local DISABLE_LOGIN=1 npx tsx scripts/set-credentials-password.ts
 ```
 
 그다음 VPS에서 Worker용 role을 만든다.
 
 ```bash
-ENV_FILE=/opt/altteulmap/altteulmap.env ./grant-app-role.sh
+cd ~/altteulmap && ENV_FILE=$HOME/altteulmap/altteulmap.env COMPOSE_FILE=$HOME/altteulmap/postgres.yml ./grant-app-role.sh
 ```
 
 ## 3. Cloudflare Tunnel + Hyperdrive
@@ -82,7 +89,7 @@ ENV_FILE=/opt/altteulmap/altteulmap.env ./grant-app-role.sh
 
 ```bash
 # crontab -e (VPS)
-17 3 * * * ENV_FILE=/opt/altteulmap/altteulmap.env /opt/altteulmap/backup.sh >> /var/log/altteulmap-backup.log 2>&1
+17 4 * * * ENV_FILE=$HOME/altteulmap/altteulmap.env $HOME/altteulmap/backup.sh >> /opt/backups/altteulmap/backup.log 2>&1
 ```
 
 복구 리허설은 `npm run db:rehearse:backup`([백업·복구](../../docs/09-운영-가이드/백업-복구.md))을 쓴다. 백업 파일은 VPS 밖(다른 호스트 또는 오브젝트 스토리지)으로도 주기적으로 복사해야 VPS 장애에 대비된다.

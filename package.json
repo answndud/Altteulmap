@@ -70,6 +70,7 @@
     "db:check:contract": "node scripts/check-database-contract.mjs",
     "db:rehearse:backup": "node scripts/backup-restore-rehearsal.mjs",
     "db:repair:production-price-data": "node scripts/repair-production-price-data.mjs",
+    "db:set-password": "tsx scripts/set-credentials-password.ts",
     "db:migrate": "node scripts/migrate-production.mjs",
     "db:push": "drizzle-kit push",
     "db:seed": "tsx src/db/seed.ts",

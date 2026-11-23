@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# 일 1회 논리 백업(pg_dump -Fc). cron 예: 17 3 * * * ENV_FILE=/opt/altteulmap/altteulmap.env /opt/altteulmap/backup.sh
+# 일 1회 논리 백업(pg_dump -Fc). cron 예: 17 4 * * * ENV_FILE=$HOME/altteulmap/altteulmap.env $HOME/altteulmap/backup.sh
 set -Eeuo pipefail
 
 ENV_FILE="${ENV_FILE:?set ENV_FILE}"
-COMPOSE_FILE="${COMPOSE_FILE:-/opt/altteulmap/postgres.yml}"
+COMPOSE_FILE="${COMPOSE_FILE:-$(cd "$(dirname "$0")" && pwd)/postgres.yml}"
 BACKUP_DIR="${BACKUP_DIR:-/opt/backups/altteulmap}"
 KEEP_DAYS="${KEEP_DAYS:-14}"
 
