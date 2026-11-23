@@ -148,3 +148,27 @@ test("쿠키 없이 요청마다 새 visitor가 되어도 같은 IP는 429로 �
 
   assert.ok(statuses.includes(429), `statuses: ${statuses.join(",")}`);
 });
+
+test("라우트가 직접 만든 에러도 표준 envelope(error.code·requestId)로 응답한다", async () => {
+  const invalid = await request("/api/places", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ name: "" }),
+  });
+  const invalidBody = await readJson(invalid);
+
+  assert.equal(invalid.status, 400);
+  assert.equal(getErrorCode(invalidBody), "VALIDATION_FAILED");
+  assert.ok(typeof invalidBody.message === "string");
+  assert.ok(invalidBody.requestId);
+  assert.ok(
+    (invalidBody.error as { details?: { fieldErrors?: unknown } }).details?.fieldErrors,
+  );
+
+  const unauthenticated = await request("/api/admin/places");
+  const unauthenticatedBody = await readJson(unauthenticated);
+
+  assert.equal(unauthenticated.status, 401);
+  assert.equal(getErrorCode(unauthenticatedBody), "UNAUTHENTICATED");
+  assert.ok(unauthenticatedBody.requestId);
+});

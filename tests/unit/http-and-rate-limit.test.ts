@@ -37,6 +37,11 @@ import {
 import { getWorkerPlaceReactionRateLimitActor } from "../../src/worker/routes/public-write-support";
 import { getAdminQueuePagination } from "../../src/worker/routes/admin-support";
 import { getPriceReportSubmissionKey } from "../../src/worker/price-report-identity";
+import {
+  API_ERROR_CODES,
+  DomainError,
+  normalizeErrorBody,
+} from "../../src/worker/http/api-error";
 import { rejectCrossSiteMutation } from "../../src/worker/http/csrf";
 import { readRequestBodyWithinLimit } from "../../src/worker/http/request-body";
 import { parseModerationSuggestion } from "../../src/worker/admin/moderation-suggestion-validation";
@@ -500,4 +505,52 @@ test("본문이 있는 변경 요청은 JSON만 허용하고 인증 폼만 urlen
     ),
     null,
   );
+});
+
+test("에러 envelope: status에서 code를 유도하고 zod 오류는 details로 옮긴다", () => {
+  const validation = normalizeErrorBody(
+    {
+      ok: false,
+      message: "입력값 검증에 실패했습니다.",
+      error: { formErrors: [], fieldErrors: { name: ["필수"] } },
+    },
+    400,
+    "req-1",
+  );
+
+  assert.deepEqual(validation?.error, {
+    code: "VALIDATION_FAILED",
+    message: "입력값 검증에 실패했습니다.",
+    details: { formErrors: [], fieldErrors: { name: ["필수"] } },
+  });
+  assert.equal(validation?.requestId, "req-1");
+
+  const limited = normalizeErrorBody(
+    { ok: false, message: "너무 빠릅니다.", retryAfterMs: 1500 },
+    429,
+  );
+
+  assert.equal(limited?.error.code, "RATE_LIMITED");
+  // 호환을 위해 부가 필드는 유지한다.
+  assert.equal((limited as { retryAfterMs?: number }).retryAfterMs, 1500);
+
+  assert.equal(normalizeErrorBody({ ok: false, message: "x" }, 401)?.error.code, "UNAUTHENTICATED");
+  assert.equal(normalizeErrorBody({ ok: false, message: "x" }, 502)?.error.code, "INTERNAL_ERROR");
+});
+
+test("에러 envelope: 이미 표준이면 유지하고, 에러가 아닌 본문은 건드리지 않는다", () => {
+  const standard = {
+    ok: false,
+    message: "m",
+    error: { code: "DATABASE_UNAVAILABLE", message: "m" },
+  };
+
+  assert.equal(normalizeErrorBody(standard, 503, "r")?.error.code, "DATABASE_UNAVAILABLE");
+  assert.equal(normalizeErrorBody({ url: "/api/auth/error" }, 401), null);
+  assert.equal(normalizeErrorBody(null, 500), null);
+});
+
+test("DomainError는 코드 표에서 HTTP status를 얻는다", () => {
+  assert.equal(new DomainError("CONFLICT", "중복").status, 409);
+  assert.equal(new DomainError("NOT_FOUND", "없음").status, API_ERROR_CODES.NOT_FOUND.status);
 });

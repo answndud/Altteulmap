@@ -27,15 +27,6 @@ Observable finish state:
 
 ### Phase 2. 서비스 계층·에러 모델·테스트 구조
 
-#### 2-2. 도메인 에러 타입과 단일 에러 응답 형식
-- Likely files: `src/worker/http/errors.ts`, `src/worker/routes/admin-support.ts`, `src/worker/routes/public-write-support.ts`, `tests/unit/http-and-rate-limit.test.ts`
-- Changes:
-  - `DomainError`(code, httpStatus, publicMessage)와 `Result<T, DomainError>` 타입을 정의한다.
-  - 모든 실패 응답을 `{ ok:false, error:{ code, message, details? }, requestId }` 하나로 통일한다(zod 실패는 `VALIDATION_FAILED` + `details`).
-  - 에러 코드 목록을 `docs/02-설계/API-계약-지도.md`에 표로 남긴다.
-- Verify: `npm run verify && INTEGRATION`
-- Done: 라우트에서 `c.json({ ok: false, message` 직접 생성 0건.
-
 #### 2-3. 가격 제보·검수 서비스 계층 도입 (파일럿)
 - Likely files: `src/worker/services/price-report-service.ts`(신규), `src/worker/routes/public-write-price-reports.ts`, `src/worker/routes/admin-prices.ts`, `tests/unit/price-report-service.test.ts`(신규)
 - Changes:

@@ -16,6 +16,7 @@ import {
 } from "@/worker/http/security-headers";
 import { deleteExpiredSessions } from "@/worker/auth/session";
 import { deleteExpiredRateLimits } from "@/worker/rate-limit-repository";
+import { DomainError, normalizeErrorBody } from "@/worker/http/api-error";
 import { rejectCrossSiteMutation } from "@/worker/http/csrf";
 import { readRequestBodyWithinLimit } from "@/worker/http/request-body";
 import { getOrigin } from "@/worker/http/urls";
@@ -100,6 +101,17 @@ app.use("*", async (c, next) => {
 app.onError((error, c) => {
   const requestId = c.get("requestId") || createRequestId(c.req.raw);
 
+  if (error instanceof DomainError) {
+    return createWorkerErrorResponse({
+      status: error.status,
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      requestId,
+      headers: noStoreHeaders,
+    });
+  }
+
   logWorkerError(error, c.req.raw, requestId);
 
   return createWorkerErrorResponse({
@@ -108,6 +120,37 @@ app.onError((error, c) => {
     message: "서버 오류가 발생했습니다.",
     requestId,
     headers: noStoreHeaders,
+  });
+});
+
+// 모든 4xx/5xx JSON 에러를 표준 envelope(`error.code`)로 맞추는 경계.
+app.use("/api/*", async (c, next) => {
+  await next();
+
+  if (
+    c.res.status < 400 ||
+    !c.res.headers.get("content-type")?.includes("application/json")
+  ) {
+    return;
+  }
+
+  const original = c.res.clone();
+  const body = await original.json().catch(() => null);
+  const normalized = normalizeErrorBody(
+    body,
+    c.res.status,
+    c.get("requestId"),
+  );
+
+  if (!normalized) {
+    return;
+  }
+
+  const headers = new Headers(c.res.headers);
+  headers.delete("content-length");
+  c.res = new Response(JSON.stringify(normalized), {
+    status: c.res.status,
+    headers,
   });
 });
 

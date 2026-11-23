@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
 
+import { buildErrorBody, type ApiErrorCode } from "@/worker/http/api-error";
+
 export function createRequestId(request: Request) {
   const cloudflareRay = request.headers.get("cf-ray")?.split("-")[0]?.trim();
 
@@ -66,25 +68,19 @@ export function createWorkerErrorResponse({
   status,
   code,
   message,
+  details,
   requestId,
   headers,
 }: {
   status: number;
-  code: string;
+  code: ApiErrorCode;
   message: string;
+  details?: unknown;
   requestId?: string;
   headers: Record<string, string>;
 }) {
   return new Response(
-    JSON.stringify({
-      ok: false,
-      message,
-      error: {
-        code,
-        message,
-      },
-      ...(requestId ? { requestId } : {}),
-    }),
+    JSON.stringify(buildErrorBody({ code, message, details, requestId })),
     {
       status,
       headers: {
