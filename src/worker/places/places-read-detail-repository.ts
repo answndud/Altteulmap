@@ -3,6 +3,7 @@ import {
   asc,
   desc,
   eq,
+  inArray,
 } from "drizzle-orm";
 
 import {
@@ -48,9 +49,19 @@ const placeDetailSelectFields = {
   lastPriceUpdatedAt: places.lastPriceUpdatedAt,
 };
 
+type ActivePlaceIdSubquery = ReturnType<typeof activePlaceIdBySlug>;
+
+/** slug로 장소 id를 찾는 서브쿼리. 자식 쿼리가 장소 조회를 기다리지 않고 한 번에 나가게 한다. */
+function activePlaceIdBySlug(env: WorkerDatabaseBindings, slug: string) {
+  return getWorkerDb(env)
+    .select({ id: places.id })
+    .from(places)
+    .where(and(eq(places.slug, slug), eq(places.status, "active")));
+}
+
 async function loadViewerReactionMap(
   env: WorkerDatabaseBindings,
-  placeId: string,
+  placeIdSubquery: ActivePlaceIdSubquery,
   viewer: WorkerPlaceViewer,
 ) {
   if (!viewer?.userId && !viewer?.visitorId) {
@@ -66,7 +77,7 @@ async function loadViewerReactionMap(
     .from(placeReactions)
     .where(
       and(
-        eq(placeReactions.placeId, placeId),
+        inArray(placeReactions.placeId, placeIdSubquery),
         viewer.userId
           ? eq(placeReactions.userId, viewer.userId)
           : eq(placeReactions.visitorId, viewer.visitorId ?? ""),
@@ -82,21 +93,17 @@ export async function getDatabasePlaceDetail(
   viewer: WorkerPlaceViewer,
 ): Promise<WorkerPlaceDetailResult> {
   const db = getWorkerDb(env);
-  const [row] = await db
-    .select(placeDetailSelectFields)
-    .from(places)
-    .where(and(eq(places.slug, slug), eq(places.status, "active")))
-    .limit(1);
+  const placeIdSubquery = activePlaceIdBySlug(env, slug);
 
-  if (!row) {
-    return {
-      item: null,
-      source: "database",
-    };
-  }
-
-  const [priceItemRows, historyRows, commentRows, viewerReactionMap] =
+  // 장소 본문과 자식 쿼리(가격·이력·코멘트·반응)를 한 번에 보낸다. DB가 멀어 왕복 1회가 비용의 대부분이라
+  // 장소를 먼저 읽고 그 id로 자식을 읽던 순차 구조(왕복 2회)를 서브쿼리로 합쳤다.
+  const [[row], priceItemRows, historyRows, commentRows, viewerReactionMap] =
     await Promise.all([
+      db
+        .select(placeDetailSelectFields)
+        .from(places)
+        .where(and(eq(places.slug, slug), eq(places.status, "active")))
+        .limit(1),
       db
         .select({
           id: priceItems.id,
@@ -108,7 +115,7 @@ export async function getDatabasePlaceDetail(
         })
         .from(priceItems)
         .where(
-          and(eq(priceItems.placeId, row.internalId), eq(priceItems.isActive, true)),
+          and(inArray(priceItems.placeId, placeIdSubquery), eq(priceItems.isActive, true)),
         )
         .orderBy(
           desc(priceItems.isRepresentative),
@@ -126,7 +133,7 @@ export async function getDatabasePlaceDetail(
         .from(priceReports)
         .where(
           and(
-            eq(priceReports.placeId, row.internalId),
+            inArray(priceReports.placeId, placeIdSubquery),
             eq(priceReports.reportStatus, "accepted"),
           ),
         )
@@ -143,10 +150,22 @@ export async function getDatabasePlaceDetail(
         })
         .from(comments)
         .leftJoin(users, eq(comments.userId, users.id))
-        .where(and(eq(comments.placeId, row.internalId), eq(comments.status, "visible")))
+        .where(
+          and(
+            inArray(comments.placeId, placeIdSubquery),
+            eq(comments.status, "visible"),
+          ),
+        )
         .orderBy(desc(comments.createdAt)),
-      loadViewerReactionMap(env, row.internalId, viewer),
+      loadViewerReactionMap(env, placeIdSubquery, viewer),
     ]);
+
+  if (!row) {
+    return {
+      item: null,
+      source: "database",
+    };
+  }
 
   return {
     item: toPlaceRecord(row, {

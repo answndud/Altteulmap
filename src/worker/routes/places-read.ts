@@ -86,9 +86,18 @@ function isMapPreviewEdgeCacheable({
   return searchScope === "viewport" && Boolean(bounds) && !query;
 }
 
-async function getMapPreviewEdgeCacheResponse(
+const MAP_EDGE_CACHE_SECONDS = 12;
+// 쿠키 없는 익명 상세만 캐시한다. 반응·코멘트 삭제 권한처럼 사용자별 값이 없어 모두에게 같은 응답이다.
+const DETAIL_EDGE_CACHE_SECONDS = 20;
+
+function isAnonymousDetailEdgeCacheable(request: Request) {
+  return !request.headers.get("cookie");
+}
+
+async function getEdgeCacheResponse(
   request: Request,
   noStoreHeaders: Record<string, string>,
+  statusHeader: string,
 ) {
   if (typeof caches === "undefined") {
     return null;
@@ -108,7 +117,7 @@ async function getMapPreviewEdgeCacheResponse(
 
   const headers = new Headers(cached.headers);
   headers.set("Cache-Control", noStoreHeaders["Cache-Control"]);
-  headers.set("X-Altteulmap-Map-Cache", "edge-hit");
+  headers.set(statusHeader, "edge-hit");
 
   return new Response(cached.body, {
     status: cached.status,
@@ -117,7 +126,11 @@ async function getMapPreviewEdgeCacheResponse(
   });
 }
 
-async function putMapPreviewEdgeCache(request: Request, response: Response) {
+async function putEdgeCache(
+  request: Request,
+  response: Response,
+  maxAgeSeconds: number,
+) {
   if (typeof caches === "undefined" || !response.ok) {
     return;
   }
@@ -129,7 +142,7 @@ async function putMapPreviewEdgeCache(request: Request, response: Response) {
   }
 
   const headers = new Headers(response.headers);
-  headers.set("Cache-Control", "public, max-age=12");
+  headers.set("Cache-Control", `public, max-age=${maxAgeSeconds}`);
 
   await edgeCache
     .put(
@@ -230,9 +243,10 @@ export function registerPlacesReadRoutes(
     });
 
     if (isEdgeCacheable) {
-      const cachedResponse = await getMapPreviewEdgeCacheResponse(
+      const cachedResponse = await getEdgeCacheResponse(
         c.req.raw,
         dependencies.noStoreHeaders,
+        "X-Altteulmap-Map-Cache",
       );
 
       if (cachedResponse) {
@@ -286,13 +300,27 @@ export function registerPlacesReadRoutes(
     );
 
     if (isEdgeCacheable) {
-      await putMapPreviewEdgeCache(c.req.raw, response);
+      await putEdgeCache(c.req.raw, response, MAP_EDGE_CACHE_SECONDS);
     }
 
     return response;
   });
 
   app.get("/api/places/:id", async (c) => {
+    const isEdgeCacheable = isAnonymousDetailEdgeCacheable(c.req.raw);
+
+    if (isEdgeCacheable) {
+      const cachedResponse = await getEdgeCacheResponse(
+        c.req.raw,
+        dependencies.noStoreHeaders,
+        "X-Altteulmap-Detail-Cache",
+      );
+
+      if (cachedResponse) {
+        return cachedResponse;
+      }
+    }
+
     const result = await getWorkerPlaceDetail(
       c.env,
       c.req.param("id"),
@@ -324,7 +352,7 @@ export function registerPlacesReadRoutes(
       );
     }
 
-    return c.json(
+    const response = c.json(
       {
         item: {
           ...place,
@@ -342,5 +370,11 @@ export function registerPlacesReadRoutes(
       200,
       dependencies.noStoreHeaders,
     );
+
+    if (isEdgeCacheable) {
+      await putEdgeCache(c.req.raw, response, DETAIL_EDGE_CACHE_SECONDS);
+    }
+
+    return response;
   });
 }

@@ -7,7 +7,10 @@ import {
   authAccounts,
   authSessions,
   bookmarks,
+  comments,
+  placeReactions,
   places,
+  priceItems,
   users,
   visitActivities,
 } from "../../src/db/schema";
@@ -439,4 +442,72 @@ test("잘못된 OAuth callback은 500이 아니라 로그인 오류로 리다이
   assert.equal(location.pathname, "/login");
   assert.equal(location.searchParams.get("error"), "OAuthCallback");
   assert.equal((response.headers.get("set-cookie") ?? "").includes(AUTH_SESSION_COOKIE_NAME), false);
+});
+
+test("장소 상세는 한 번의 쿼리 묶음으로 가격·코멘트·내 반응을 함께 돌려준다", async () => {
+  const commentId = crypto.randomUUID();
+
+  await withWorkerDatabaseConnection(workerEnv, async () => {
+    const db = getWorkerDb(workerEnv);
+
+    await db.insert(priceItems).values({
+      placeId,
+      label: "상세 테스트 메뉴",
+      normalizedLabel: "상세 테스트 메뉴",
+      amount: 7000,
+      isActive: true,
+      isRepresentative: true,
+      verificationStatus: "unverified",
+    });
+    await db.insert(comments).values({
+      id: commentId,
+      placeId,
+      userId,
+      body: "상세 테스트 코멘트",
+      status: "visible",
+    });
+    await db.insert(placeReactions).values({ placeId, userId, reactionType: "like" });
+  });
+
+  try {
+    const anonymous = await readJson(await request(`/api/places/${placeSlug}`));
+    const item = anonymous.item as {
+      name: string;
+      priceItems: Array<{ label: string }>;
+      comments: Array<{ body: string; canDelete: boolean }>;
+      viewerReaction: string | null;
+    };
+
+    assert.equal(item.name, "권한 통합 테스트 장소");
+    assert.deepEqual(item.priceItems.map((priceItem) => priceItem.label), ["상세 테스트 메뉴"]);
+    assert.equal(item.comments[0]?.body, "상세 테스트 코멘트");
+    assert.equal(item.comments[0]?.canDelete, false);
+    assert.equal(item.viewerReaction ?? null, null);
+
+    const mine = await readJson(
+      await request(
+        `/api/places/${placeSlug}`,
+        await sessionCookie(userId, `${fixturePrefix}-user@example.test`, "user"),
+      ),
+    );
+    const mineItem = mine.item as {
+      comments: Array<{ canDelete: boolean }>;
+      viewerReaction: string | null;
+    };
+
+    assert.equal(mineItem.viewerReaction, "like");
+    assert.equal(mineItem.comments[0]?.canDelete, true);
+
+    const missing = await request("/api/places/no-such-place-slug");
+
+    assert.equal(missing.status, 404);
+  } finally {
+    await withWorkerDatabaseConnection(workerEnv, async () => {
+      const db = getWorkerDb(workerEnv);
+
+      await db.delete(placeReactions).where(eq(placeReactions.placeId, placeId));
+      await db.delete(comments).where(eq(comments.id, commentId));
+      await db.delete(priceItems).where(eq(priceItems.placeId, placeId));
+    });
+  }
 });
