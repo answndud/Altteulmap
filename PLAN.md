@@ -23,7 +23,7 @@ Observable finish state:
 - Current blocker: `TURNSTILE_SITE_KEY`를 Worker에 넣지 못해 `public-config` 체크가 실패하고(공개 쓰기 불가) deep health가 503이다. 값은 Cloudflare 대시보드 Turnstile 위젯에 있고 공개 키다(코드가 읽는 새 이름 `TURNSTILE_SITE_KEY`, 이전 이름 `NEXT_PUBLIC_TURNSTILE_SITE_KEY`는 읽지 않는다).
 - Next action:
   1. `printf '%s' '<site key>' | npx wrangler secret put TURNSTILE_SITE_KEY`
-  2. GitHub secret 등록(비밀번호가 들어가므로 직접): `gh secret set SMOKE_PUBLIC_URL`(`https://altteulmap.altteul-lab.workers.dev`), `SMOKE_ADMIN_EMAIL`(`admin@altteulmap.local`), `SMOKE_ADMIN_PASSWORD`(`~/.config/altteulmap/vps.env`의 `ADMIN_PASSWORD`).
+  2. GitHub secret 등록(비밀번호가 들어가므로 직접): `gh secret set SMOKE_PUBLIC_URL`(`https://altteulmap.altteul-lab.workers.dev`), `SMOKE_ADMIN_EMAIL`(`admin@altteulmap.local`), `SMOKE_ADMIN_PASSWORD`(`.env.vps`의 `ADMIN_PASSWORD`).
   3. 정리: Worker의 옛 secret 삭제(`DATABASE_URL` Supabase, `NEXT_PUBLIC_NAVER_MAP_KEY_ID`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, 필요 시 `AUTH_DEMO_PASSWORD`·`AUTH_ADMIN_PASSWORD`), 로컬 `.env.production.local`의 Supabase `DATABASE_URL` 제거, Supabase 프로젝트 종료.
   4. `gh workflow run keep-alive.yml && gh workflow run ci.yml`로 확인.
   5. 한국 사용자 기준 지연이 목표(p95 1초)를 못 맞추면 공개 GET 엣지 캐시를 추가하거나 가까운 리전 Postgres로 Hyperdrive 대상을 교체한다(`deploy/vps/README.md` §5).

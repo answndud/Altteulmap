@@ -37,6 +37,8 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 !.env.example
+# VPS·Cloudflare 운영 비밀(DB 비밀번호, 터널 토큰, 운영 admin 비밀번호). 절대 커밋하지 않는다.
+.env.vps
 .dev.vars*
 !.dev.vars.example
 

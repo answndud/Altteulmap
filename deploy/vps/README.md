@@ -11,6 +11,8 @@ altteulmap 운영 DB는 TownPet·kinderp와 같은 netcup VPS의 **전용 Postgr
 
 이 구성은 실제 VPS에 배포했다(2026-11-23: postgres 기동, migration, 데이터 복원, role 부여, 백업 cron). 로컬에서도 (migration → role 부여 → seed → 앱 통합 테스트 27개 → 백업)을 한 번 끝까지 검증했다.
 
+> **운영 비밀 파일**: 이 구성에서 만든 DB 비밀번호·터널 토큰·운영 admin 비밀번호는 저장소 루트의 `.env.vps`(권한 600, `.gitignore`로 제외)에 있다. 항목: `POSTGRES_*`, `APP_DB_PASSWORD`, `ADMIN_PASSWORD`, `TUNNEL_TOKEN`, `TUNNEL_ID`, `CF_ACCOUNT_ID`, `CA_CERT_ID`. 이 파일은 로컬에만 있으므로 백업은 비밀번호 관리자에 따로 해 둔다.
+
 ## 0. VPS 여유 확인
 
 ```bash
