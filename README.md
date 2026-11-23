@@ -48,6 +48,26 @@
 3. 비회원도 장소 등록, 댓글, 가격 제보, 신고를 남길 수 있습니다.
 4. 장소 등록, 가격 제보, 신고는 관리자 앱에서 검수 제안 패널과 함께 확인할 수 있고 운영자가 최종 확정합니다. 제안 생성 provider 연결은 현재 미완료입니다.
 
+## Backend Design
+
+```
+Browser (Vite React SPA)
+   │  JSON API
+Cloudflare Worker (Hono)
+   ├─ routes/      HTTP만: 파싱·Turnstile·rate limit·응답
+   ├─ services/    도메인 규칙과 저장소 선택(DB/mock), DomainError
+   ├─ places|admin|auth|abuse|reports|telemetry/   repository (Drizzle 쿼리)
+   └─ db.ts        요청당 연결 1개, timeout, circuit breaker
+PostgreSQL (Drizzle migration, trigram·복합 인덱스)
+```
+
+- **세션**: 랜덤 토큰을 쿠키로, SHA-256 해시만 DB에 저장합니다. 로그아웃·강등이 즉시 반영됩니다. → [ADR 0001](docs/adr/0001-database-sessions.md)
+- **남용 방지**: Postgres 원자 upsert 카운터에 IP·계정 버킷을 더하고, 정리는 cron에서만 합니다. → [ADR 0002](docs/adr/0002-rate-limit-in-postgres.md)
+- **정합성**: 가격 검수는 advisory lock과 조건부 UPDATE로 직렬화하고, 공개 제보는 `submission_key` unique로 멱등입니다. 동시 승인 경합은 통합 테스트로 고정했습니다. → [ADR 0003](docs/adr/0003-price-moderation-locking.md)
+- **연결**: Workers 특성에 맞춰 요청마다 연결을 열고 닫으며 timeout과 breaker를 둡니다. → [ADR 0004](docs/adr/0004-request-scoped-db-connection.md)
+- **에러 계약**: 모든 실패 응답이 `{ ok:false, message, error:{ code, details? }, requestId }` 하나입니다. → [API 계약](docs/02-설계/API-계약-지도.md)
+- 전체 결정 목록: [docs/adr](docs/adr/README.md)
+
 ## Why This Repo Is Worth Opening
 
 - `서비스 관점`: 탐색, 참여, 관리자 검수, 운영 반영까지의 핵심 cycle이 닫혀 있습니다. moderation suggestion은 저장 schema와 표시/검증 경계까지이며 외부 AI 자동 생성은 별도 backlog입니다.

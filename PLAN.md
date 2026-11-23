@@ -27,15 +27,12 @@ Observable finish state:
 
 ### Phase 3. 저장소 위생·화면 정직성·문서 정리
 
-#### 3-7. 문서 단일화와 ADR 작성
-- Likely files: `docs/문서-안내.md`, `docs/adr/*.md`(신규), `README.md`, `docs/product/*`
-- Changes:
-  - PRD/TRD는 `docs/product`만 남기고 `docs/01-기준` 중복을 제거한다. 운영 문서는 `docs/09-운영-가이드`로 합치고 `docs/ops`를 제거한다.
-  - `docs/audits/*`, `docs/blog/*` 초안, `docs/resume/*`, `docs/08-면접-복기/*`는 저장소 밖(개인 비공개 저장소)으로 옮긴다. 삭제 전 사용자 확인을 받고, Git history 잔존 여부는 사용자에게 알린다.
-  - ADR 5개: DB 세션 vs 서명 쿠키, rate limit 저장소(Postgres vs KV/Durable Object), advisory lock vs row lock, 요청당 연결·Hyperdrive, offset vs cursor pagination.
-  - README에 백엔드 관점 요약(아키텍처 그림, 핵심 트레이드오프 3개, integration 실행법)을 넣고 수치·테스트 개수를 실제 값으로 맞춘다.
-- Verify: `npm run verify && git diff --check`
-- Done: `docs/` md 파일 수 30개 이하, README의 모든 링크가 존재하는 파일을 가리킨다.
+#### 3-7. 개인 구직·감사 문서를 저장소 밖으로 이동 (사용자 결정 대기)
+- Done in 이전 작업: ADR 5개(`docs/adr`), README 백엔드 설계 요약, 운영 런북 병합(`docs/ops` 삭제).
+- Current blocker: 아래 문서는 삭제·이동이 되돌리기 어렵고 Git history에는 남으므로 사용자가 이동 여부와 history 재작성 여부를 먼저 정해야 한다. 대상: `docs/resume/*`, `docs/08-면접-복기/*`, `docs/audits/*`, `docs/blog/*`(시리즈 초안), `docs/migration-next-to-vite-react.md`.
+- Next action: 사용자가 대상을 확정하면 개인 비공개 저장소로 복사한 뒤 `git rm`하고 `docs/문서-안내.md`의 링크와 README 링크를 정리한다(링크 검사: `grep -rn "docs/resume\|08-면접" README.md docs`).
+- Verify: `npm run verify && git diff --check`, README·문서-안내의 모든 상대 링크가 존재하는 파일을 가리키는지 확인.
+- Done: 공개 저장소에 구직 개인 자료와 날짜별 자기 감사 문서가 없고, 남은 문서는 기준 문서·설계·운영·ADR 중심이다.
 
 ## Backlog
 
