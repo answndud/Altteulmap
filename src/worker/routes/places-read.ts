@@ -254,6 +254,7 @@ export function registerPlacesReadRoutes(
       }
     }
 
+    const mapDbStartedAt = performance.now();
     const result = await listWorkerMapPlaces(c.env, {
       category,
       query,
@@ -296,6 +297,7 @@ export function registerPlacesReadRoutes(
       {
         ...dependencies.noStoreHeaders,
         "X-Altteulmap-Map-Cache": result.cacheStatus,
+        "Server-Timing": `db;dur=${Math.round(performance.now() - mapDbStartedAt)}`,
       },
     );
 
@@ -321,6 +323,7 @@ export function registerPlacesReadRoutes(
       }
     }
 
+    const dbStartedAt = performance.now();
     const result = await getWorkerPlaceDetail(
       c.env,
       c.req.param("id"),
@@ -368,7 +371,11 @@ export function registerPlacesReadRoutes(
         mock: result.source === "mock",
       },
       200,
-      dependencies.noStoreHeaders,
+      {
+        ...dependencies.noStoreHeaders,
+        // DB 구간 시간을 응답에 남겨 네트워크 지연과 DB 지연을 구분해 측정할 수 있게 한다.
+        "Server-Timing": `db;dur=${Math.round(performance.now() - dbStartedAt)}`,
+      },
     );
 
     if (isEdgeCacheable) {

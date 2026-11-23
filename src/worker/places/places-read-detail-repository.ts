@@ -1,19 +1,5 @@
-import {
-  and,
-  asc,
-  desc,
-  eq,
-  inArray,
-} from "drizzle-orm";
+import { sql } from "drizzle-orm";
 
-import {
-  comments,
-  placeReactions,
-  places,
-  priceItems,
-  priceReports,
-  users,
-} from "@/db/schema";
 import type { PlaceReactionType } from "@/features/places/types";
 import {
   getWorkerDb,
@@ -29,136 +15,101 @@ import type {
   WorkerPlaceViewer,
 } from "@/worker/places/places-read-types";
 
-const placeDetailSelectFields = {
-  internalId: places.id,
-  slug: places.slug,
-  name: places.name,
-  businessName: places.businessName,
-  description: places.description,
-  note: places.note,
-  roadAddress: places.roadAddress,
-  district: places.district,
-  latitude: places.latitude,
-  longitude: places.longitude,
-  primaryCategorySlug: places.primaryCategorySlug,
-  representativePriceAmount: places.representativePriceAmount,
-  representativePriceLabel: places.representativePriceLabel,
-  likeCount: places.likeCount,
-  dislikeCount: places.dislikeCount,
-  verifiedPriceItemCount: places.verifiedPriceItemCount,
-  lastPriceUpdatedAt: places.lastPriceUpdatedAt,
+type DetailRow = {
+  internal_id: string;
+  slug: string;
+  name: string;
+  business_name: string | null;
+  description: string | null;
+  note: string | null;
+  road_address: string;
+  district: string;
+  latitude: number | null;
+  longitude: number | null;
+  primary_category_slug: string | null;
+  representative_price_amount: number | null;
+  representative_price_label: string | null;
+  like_count: number;
+  dislike_count: number;
+  verified_price_item_count: number;
+  last_price_updated_at: Date | string | null;
+  price_items: Array<{
+    id: string;
+    label: string;
+    amount: number;
+    unitLabel: string | null;
+    verificationStatus: "verified" | "unverified";
+    latestReportedAt: string | null;
+  }>;
+  history: Array<{
+    id: string;
+    label: string;
+    amount: number;
+    verificationStatus: "verified" | "unverified";
+    recordedAt: string;
+  }>;
+  comments: Array<{
+    id: string;
+    userId: string | null;
+    visitorId: string | null;
+    body: string;
+    createdAt: string;
+    nickname: string | null;
+    email: string | null;
+  }>;
+  viewer_reaction: PlaceReactionType | null;
 };
 
-type ActivePlaceIdSubquery = ReturnType<typeof activePlaceIdBySlug>;
-
-/** slug로 장소 id를 찾는 서브쿼리. 자식 쿼리가 장소 조회를 기다리지 않고 한 번에 나가게 한다. */
-function activePlaceIdBySlug(env: WorkerDatabaseBindings, slug: string) {
-  return getWorkerDb(env)
-    .select({ id: places.id })
-    .from(places)
-    .where(and(eq(places.slug, slug), eq(places.status, "active")));
-}
-
-async function loadViewerReactionMap(
-  env: WorkerDatabaseBindings,
-  placeIdSubquery: ActivePlaceIdSubquery,
-  viewer: WorkerPlaceViewer,
-) {
-  if (!viewer?.userId && !viewer?.visitorId) {
-    return new Map<string, PlaceReactionType>();
-  }
-
-  const db = getWorkerDb(env);
-  const rows = await db
-    .select({
-      placeId: placeReactions.placeId,
-      reactionType: placeReactions.reactionType,
-    })
-    .from(placeReactions)
-    .where(
-      and(
-        inArray(placeReactions.placeId, placeIdSubquery),
-        viewer.userId
-          ? eq(placeReactions.userId, viewer.userId)
-          : eq(placeReactions.visitorId, viewer.visitorId ?? ""),
-      ),
-    );
-
-  return new Map(rows.map((row) => [row.placeId, row.reactionType]));
-}
-
+/**
+ * 장소 상세를 쿼리 한 번으로 읽는다. 운영 DB가 멀어 쿼리 한 번의 왕복(약 0.4초)이 비용의 대부분이고,
+ * Hyperdrive 경유에서는 한 연결의 쿼리가 사실상 순차로 처리돼 병렬화로는 줄지 않는다. 그래서
+ * 가격·이력·코멘트·내 반응을 상관 서브쿼리의 JSON 집계로 한 행에 담아 왕복을 1회로 만든다.
+ */
 export async function getDatabasePlaceDetail(
   env: WorkerDatabaseBindings,
   slug: string,
   viewer: WorkerPlaceViewer,
 ): Promise<WorkerPlaceDetailResult> {
   const db = getWorkerDb(env);
-  const placeIdSubquery = activePlaceIdBySlug(env, slug);
-
-  // 장소 본문과 자식 쿼리(가격·이력·코멘트·반응)를 한 번에 보낸다. DB가 멀어 왕복 1회가 비용의 대부분이라
-  // 장소를 먼저 읽고 그 id로 자식을 읽던 순차 구조(왕복 2회)를 서브쿼리로 합쳤다.
-  const [[row], priceItemRows, historyRows, commentRows, viewerReactionMap] =
-    await Promise.all([
-      db
-        .select(placeDetailSelectFields)
-        .from(places)
-        .where(and(eq(places.slug, slug), eq(places.status, "active")))
-        .limit(1),
-      db
-        .select({
-          id: priceItems.id,
-          label: priceItems.label,
-          amount: priceItems.amount,
-          unitLabel: priceItems.unitLabel,
-          verificationStatus: priceItems.verificationStatus,
-          latestReportedAt: priceItems.latestReportedAt,
-        })
-        .from(priceItems)
-        .where(
-          and(inArray(priceItems.placeId, placeIdSubquery), eq(priceItems.isActive, true)),
-        )
-        .orderBy(
-          desc(priceItems.isRepresentative),
-          asc(priceItems.amount),
-          asc(priceItems.label),
-        ),
-      db
-        .select({
-          id: priceReports.id,
-          label: priceReports.label,
-          amount: priceReports.amount,
-          verificationStatus: priceReports.snapshotVerificationStatus,
-          recordedAt: priceReports.createdAt,
-        })
-        .from(priceReports)
-        .where(
-          and(
-            inArray(priceReports.placeId, placeIdSubquery),
-            eq(priceReports.reportStatus, "accepted"),
-          ),
-        )
-        .orderBy(desc(priceReports.createdAt)),
-      db
-        .select({
-          id: comments.id,
-          userId: comments.userId,
-          visitorId: comments.visitorId,
-          body: comments.body,
-          createdAt: comments.createdAt,
-          nickname: users.nickname,
-          email: users.email,
-        })
-        .from(comments)
-        .leftJoin(users, eq(comments.userId, users.id))
-        .where(
-          and(
-            inArray(comments.placeId, placeIdSubquery),
-            eq(comments.status, "visible"),
-          ),
-        )
-        .orderBy(desc(comments.createdAt)),
-      loadViewerReactionMap(env, placeIdSubquery, viewer),
-    ]);
+  const viewerReaction = viewer?.userId
+    ? sql`(select r.reaction_type from place_reactions r where r.place_id = p.id and r.user_id = ${viewer.userId} limit 1)`
+    : viewer?.visitorId
+      ? sql`(select r.reaction_type from place_reactions r where r.place_id = p.id and r.visitor_id = ${viewer.visitorId} limit 1)`
+      : sql`null`;
+  const rows = await db.execute<DetailRow>(sql`
+    select
+      p.id as internal_id, p.slug, p.name, p.business_name, p.description, p.note,
+      p.road_address, p.district, p.latitude, p.longitude, p.primary_category_slug,
+      p.representative_price_amount, p.representative_price_label,
+      p.like_count, p.dislike_count, p.verified_price_item_count, p.last_price_updated_at,
+      coalesce((
+        select json_agg(json_build_object(
+          'id', i.id, 'label', i.label, 'amount', i.amount, 'unitLabel', i.unit_label,
+          'verificationStatus', i.verification_status, 'latestReportedAt', i.latest_reported_at
+        ) order by i.is_representative desc, i.amount asc, i.label asc)
+        from price_items i where i.place_id = p.id and i.is_active
+      ), '[]'::json) as price_items,
+      coalesce((
+        select json_agg(json_build_object(
+          'id', r.id, 'label', r.label, 'amount', r.amount,
+          'verificationStatus', r.snapshot_verification_status, 'recordedAt', r.created_at
+        ) order by r.created_at desc)
+        from price_reports r where r.place_id = p.id and r.report_status = 'accepted'
+      ), '[]'::json) as history,
+      coalesce((
+        select json_agg(json_build_object(
+          'id', c.id, 'userId', c.user_id, 'visitorId', c.visitor_id, 'body', c.body,
+          'createdAt', c.created_at, 'nickname', u.nickname, 'email', u.email
+        ) order by c.created_at desc)
+        from comments c left join users u on u.id = c.user_id
+        where c.place_id = p.id and c.status = 'visible'
+      ), '[]'::json) as comments,
+      ${viewerReaction} as viewer_reaction
+    from places p
+    where p.slug = ${slug} and p.status = 'active'
+    limit 1
+  `);
+  const row = rows[0];
 
   if (!row) {
     return {
@@ -168,38 +119,62 @@ export async function getDatabasePlaceDetail(
   }
 
   return {
-    item: toPlaceRecord(row, {
-      priceItems: priceItemRows.map((priceItem) => ({
-        id: priceItem.id,
-        label: priceItem.label,
-        amount: priceItem.amount,
-        unitLabel: priceItem.unitLabel ?? undefined,
-        verificationStatus: priceItem.verificationStatus,
-        reportedAt: formatDate(priceItem.latestReportedAt),
-      })),
-      history: historyRows.map((history) => ({
-        id: history.id,
-        label: history.label,
-        amount: history.amount,
-        verificationStatus: history.verificationStatus,
-        recordedAt: formatDate(history.recordedAt),
-      })),
-      comments: commentRows.map((comment) => ({
-        id: comment.id,
-        authorLabel: toAuthorLabel(comment.nickname, comment.email, "익명"),
-        body: comment.body,
-        createdAt: formatDate(comment.createdAt),
-        canDelete:
-          viewer?.role === "admin" ||
-          (Boolean(comment.userId) && viewer?.userId === comment.userId) ||
-          (Boolean(comment.visitorId) && viewer?.visitorId === comment.visitorId),
-      })),
-      reactionSummary: {
-        likeCount: row.likeCount,
-        dislikeCount: row.dislikeCount,
-        viewerReaction: viewerReactionMap.get(row.internalId) ?? null,
+    item: toPlaceRecord(
+      {
+        internalId: row.internal_id,
+        slug: row.slug,
+        name: row.name,
+        businessName: row.business_name,
+        description: row.description,
+        note: row.note,
+        roadAddress: row.road_address,
+        district: row.district,
+        latitude: row.latitude,
+        longitude: row.longitude,
+        primaryCategorySlug: row.primary_category_slug,
+        representativePriceAmount: row.representative_price_amount,
+        representativePriceLabel: row.representative_price_label,
+        likeCount: row.like_count,
+        dislikeCount: row.dislike_count,
+        verifiedPriceItemCount: row.verified_price_item_count,
+        lastPriceUpdatedAt:
+          row.last_price_updated_at === null
+            ? null
+            : new Date(row.last_price_updated_at),
       },
-    }),
+      {
+        priceItems: row.price_items.map((priceItem) => ({
+          id: priceItem.id,
+          label: priceItem.label,
+          amount: priceItem.amount,
+          unitLabel: priceItem.unitLabel ?? undefined,
+          verificationStatus: priceItem.verificationStatus,
+          reportedAt: formatDate(priceItem.latestReportedAt),
+        })),
+        history: row.history.map((history) => ({
+          id: history.id,
+          label: history.label,
+          amount: history.amount,
+          verificationStatus: history.verificationStatus,
+          recordedAt: formatDate(history.recordedAt),
+        })),
+        comments: row.comments.map((comment) => ({
+          id: comment.id,
+          authorLabel: toAuthorLabel(comment.nickname, comment.email, "익명"),
+          body: comment.body,
+          createdAt: formatDate(comment.createdAt),
+          canDelete:
+            viewer?.role === "admin" ||
+            (Boolean(comment.userId) && viewer?.userId === comment.userId) ||
+            (Boolean(comment.visitorId) && viewer?.visitorId === comment.visitorId),
+        })),
+        reactionSummary: {
+          likeCount: row.like_count,
+          dislikeCount: row.dislike_count,
+          viewerReaction: row.viewer_reaction ?? null,
+        },
+      },
+    ),
     source: "database",
   };
 }

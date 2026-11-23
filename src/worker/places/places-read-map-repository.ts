@@ -117,6 +117,12 @@ function getDatabaseMapPlaceOrder(sort: PlaceSort) {
     : [asc(places.representativePriceAmount), desc(places.updatedAt)];
 }
 
+/**
+ * 조건에 맞는 전체 건수를 LIMIT과 무관하게 각 행에 실어 보낸다(window count).
+ * 건수 쿼리를 따로 보내면 DB 왕복이 한 번 더 늘고, 먼 DB에서는 그 한 번이 약 0.4초다.
+ */
+const totalCountField = sql<number>`(count(*) over ())::int`;
+
 async function loadDatabaseMapPlaceRows(
   env: WorkerDatabaseBindings,
   params: {
@@ -127,7 +133,7 @@ async function loadDatabaseMapPlaceRows(
 ) {
   const db = getWorkerDb(env);
   const queryBuilder = db
-    .select(mapPlaceSelectFields)
+    .select({ ...mapPlaceSelectFields, totalCount: totalCountField })
     .from(places)
     .where(params.whereClause)
     .orderBy(...getDatabaseMapPlaceOrder(params.sort));
@@ -149,7 +155,7 @@ async function loadDatabaseMapMarkerRows(
   const db = getWorkerDb(env);
 
   const queryBuilder = db
-    .select(mapPlaceSelectFields)
+    .select({ ...mapPlaceSelectFields, totalCount: totalCountField })
     .from(places)
     .where(params.whereClause)
     .orderBy(asc(places.latitude), asc(places.longitude), asc(places.id));
@@ -197,19 +203,12 @@ export async function listDatabaseMapPlaces(
       };
     }
 
-    const db = getWorkerDb(env);
-    const [countRows, markerRows] = await Promise.all([
-      db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(places)
-        .where(whereClause),
-      loadDatabaseMapMarkerRows(env, {
-        whereClause,
-        limit: MAP_QUERY_ROW_LIMIT + 1,
-      }),
-    ]);
+    const markerRows = await loadDatabaseMapMarkerRows(env, {
+      whereClause,
+      limit: MAP_QUERY_ROW_LIMIT + 1,
+    });
     const mapped = toPlacePreviewRecords(markerRows.slice(0, MAP_QUERY_ROW_LIMIT));
-    const count = Number(countRows[0]?.count ?? 0);
+    const count = Number(markerRows[0]?.totalCount ?? 0);
     const sorted = sortPlacePreviewRecords(mapped, sort);
     const items = getCappedMapListItems(sorted);
     const markerMode = getMapMarkerMode(count, zoom, null);
@@ -240,22 +239,12 @@ export async function listDatabaseMapPlaces(
     return result;
   }
 
-  const db = getWorkerDb(env);
-  const countPromise = db
-    .select({
-      count: sql<number>`count(*)::int`,
-    })
-    .from(places)
-    .where(whereClause);
-  const [countRows, rows] = await Promise.all([
-    countPromise,
-    loadDatabaseMapPlaceRows(env, {
-      whereClause,
-      sort,
-      limit: MAP_QUERY_ROW_LIMIT + 1,
-    }),
-  ]);
-  const count = Number(countRows[0]?.count ?? 0);
+  const rows = await loadDatabaseMapPlaceRows(env, {
+    whereClause,
+    sort,
+    limit: MAP_QUERY_ROW_LIMIT + 1,
+  });
+  const count = Number(rows[0]?.totalCount ?? 0);
   const mapped = sortPlacePreviewRecords(
     toPlacePreviewRecords(rows.slice(0, MAP_QUERY_ROW_LIMIT)),
     sort,
