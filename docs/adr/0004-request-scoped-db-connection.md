@@ -17,3 +17,8 @@ Workers는 요청 사이에 연결을 안전하게 공유할 수 없고 isolate�
 
 ## 결과와 한계
 - 요청마다 연결 수립 비용이 든다(Hyperdrive가 연결 풀을 맡지만 Worker↔VPS 왕복 지연은 남는다). 한 요청에서 서비스가 따로 연결을 열면 연결이 늘 수 있어, 세션 조회는 컨텍스트가 있으면 재사용하도록 했다.
+
+## 운영 DB 이전 후 측정 (2026-11-23)
+- 운영 DB는 netcup VPS(오스트리아)의 전용 Postgres이고 Hyperdrive → Workers VPC → Cloudflare Tunnel로 접속한다. Worker 안에서 `select 1`은 14ms다.
+- 같은 대륙 호출자 기준 지도 조회 0.43~0.63s, 대륙 간 호출자(미국 서부 경유) 기준 약 1.9s다. 목표(p95 1초)는 DB와 멀리 떨어진 호출자에게는 아직 못 맞춘다.
+- Worker를 EU 리전에 고정하면 오히려 느려져(지도 약 5.6s) 고정하지 않고 smart placement만 켰다. 다음 후보는 공개 GET의 엣지 캐시와 가까운 리전의 Postgres다.

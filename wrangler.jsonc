@@ -9,6 +9,18 @@
     "global_fetch_strictly_public"
   ],
   "main": "./src/worker/index.ts",
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "665ef097dab04039a8e0ae03c6d07829",
+      // 로컬(vite dev·E2E)에서만 쓰는 연결 문자열. 운영은 위 Hyperdrive 구성을 쓴다.
+      "localConnectionString": "postgresql://postgres:postgres@127.0.0.1:5432/altteulmap"
+    }
+  ],
+  // 트래픽을 보고 Worker를 DB와 가까운 곳으로 옮기는 편이 빠른 경우에만 옮긴다.
+  "placement": {
+    "mode": "smart"
+  },
   "triggers": {
     "crons": ["17 * * * *"]
   },

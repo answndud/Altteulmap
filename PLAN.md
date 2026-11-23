@@ -18,18 +18,17 @@ Observable finish state:
 
 ### Phase 1. 데모 복구와 인증·남용 방지 결함 제거
 
-#### 1-0. 운영 DB를 Supabase에서 netcup VPS PostgreSQL로 이전하고 데모 복구 (사용자 작업 남음)
-- Done in 이전 작업: 전용 컨테이너·cloudflared compose, 최소 권한 role 스크립트, 백업 스크립트, SSH 터널용 `PRODUCTION_VIA_SSH_TUNNEL` 스크립트 옵션, 절차 문서(`deploy/vps/README.md`)와 Supabase 문구 정리. 로컬에서 migration → role 부여 → seed → 앱 통합 테스트 27개(최소 권한 role) → 백업까지 검증했다.
-- Current blocker: 아래는 VPS·Cloudflare 계정 권한이 필요해 사용자가 직접 한다. 현재 운영 `/api/health?deep=1`은 Supabase가 멈춘 상태라 `database: fail`이다.
-- Next action (순서대로, 자세한 명령은 `deploy/vps/README.md`):
-  1. VPS 여유 확인(`free -h && df -h && docker stats --no-stream`), compose·비밀 파일 배치, `postgres` 기동.
-  2. SSH 터널로 `PRODUCTION_VIA_SSH_TUNNEL=1 npm run db:migrate`(migration 0020·0021 포함), 빈 DB에 `db:seed:production`, `grant-app-role.sh` 실행.
-  3. Cloudflare Tunnel 생성 → 게시 경로(`tcp://postgres:5432`) → Access service token → `wrangler hyperdrive create` → `wrangler.jsonc`에 hyperdrive binding 추가.
-  4. 환경변수 이름 변경(`docs/09-운영-가이드/secret-교체.md`) 후 `npm run deploy`. 로컬 `.env.production.local`의 옛 Supabase `DATABASE_URL`도 교체.
-  5. 백업 cron 등록. GitHub secret `SMOKE_PUBLIC_URL`, `SMOKE_ADMIN_EMAIL`, `SMOKE_ADMIN_PASSWORD` 등록 후 `gh workflow run keep-alive.yml && gh workflow run ci.yml`.
-  6. `npm run map:measure`로 Worker↔VPS 지연을 재고 결과와 판단을 ADR 0004에 기록한다(목표 p95 1초, 초과 시 가까운 리전 Postgres로 `DATABASE_URL`만 교체).
-- Verify: `SMOKE_PUBLIC_URL=https://altteulmap.altteul-lab.workers.dev npm run smoke:remote`, `npm run db:check:production`
-- Done: 운영 첫 화면에 장소 목록과 마커가 보이고, 운영 DB가 VPS 전용 컨테이너에서 동작하며 일 1회 백업이 생성된다. `Keep Alive`와 수동 실행한 CI의 `Remote Smoke`가 성공한다.
+#### 1-0. 운영 DB 이전 마무리 (사용자 입력 필요)
+- Done: VPS 전용 Postgres(TLS)·cloudflared·백업 cron, Tunnel → Workers VPC → Hyperdrive 연결, `wrangler.jsonc` binding과 배포. 운영 `/api/health?deep=1`의 `database`가 `ok`(hyperdrive, 14ms)이고 지도 API가 운영 데이터를 반환한다. seed 계정의 알려진 비밀번호는 제거했다.
+- Current blocker: `TURNSTILE_SITE_KEY`를 Worker에 넣지 못해 `public-config` 체크가 실패하고(공개 쓰기 불가) deep health가 503이다. 값은 Cloudflare 대시보드 Turnstile 위젯에 있고 공개 키다(코드가 읽는 새 이름 `TURNSTILE_SITE_KEY`, 이전 이름 `NEXT_PUBLIC_TURNSTILE_SITE_KEY`는 읽지 않는다).
+- Next action:
+  1. `printf '%s' '<site key>' | npx wrangler secret put TURNSTILE_SITE_KEY`
+  2. GitHub secret 등록(비밀번호가 들어가므로 직접): `gh secret set SMOKE_PUBLIC_URL`(`https://altteulmap.altteul-lab.workers.dev`), `SMOKE_ADMIN_EMAIL`(`admin@altteulmap.local`), `SMOKE_ADMIN_PASSWORD`(`~/.config/altteulmap/vps.env`의 `ADMIN_PASSWORD`).
+  3. 정리: Worker의 옛 secret 삭제(`DATABASE_URL` Supabase, `NEXT_PUBLIC_NAVER_MAP_KEY_ID`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, 필요 시 `AUTH_DEMO_PASSWORD`·`AUTH_ADMIN_PASSWORD`), 로컬 `.env.production.local`의 Supabase `DATABASE_URL` 제거, Supabase 프로젝트 종료.
+  4. `gh workflow run keep-alive.yml && gh workflow run ci.yml`로 확인.
+  5. 한국 사용자 기준 지연이 목표(p95 1초)를 못 맞추면 공개 GET 엣지 캐시를 추가하거나 가까운 리전 Postgres로 Hyperdrive 대상을 교체한다(`deploy/vps/README.md` §5).
+- Verify: `SMOKE_PUBLIC_URL=... SMOKE_ADMIN_EMAIL=... SMOKE_ADMIN_PASSWORD=... npm run smoke:remote`
+- Done: deep health가 `ok`, `Keep Alive`와 CI의 `Remote Smoke`가 성공한다.
 
 ## Backlog
 

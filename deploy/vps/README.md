@@ -60,30 +60,19 @@ DATABASE_URL="$PRODUCTION_DATABASE_URL" TARGET_EMAIL=demo@altteulmap.local DISAB
 cd ~/altteulmap && ENV_FILE=$HOME/altteulmap/altteulmap.env COMPOSE_FILE=$HOME/altteulmap/postgres.yml ./grant-app-role.sh
 ```
 
-## 3. Cloudflare Tunnel + Hyperdrive
+## 3. Cloudflare Tunnel + Workers VPC + Hyperdrive (적용 완료)
 
-> 아래 절차는 구성 방식 요약이다. Cloudflare 대시보드·문서의 최신 화면과 명령을 따라 확인한다(이 저장소에서는 실행하지 않았다).
+Cloudflare 문서의 권장 방식(Access·service token 없이 VPC Service 사용)을 따랐다. Postgres가 TLS를 쓰므로 compose의 `pgcerts`가 사설 CA와 서버 인증서를 만든다.
 
-1. Zero Trust > Networks > Tunnels에서 터널을 만들고 토큰을 `altteulmap.env`의 `TUNNEL_TOKEN`에 넣은 뒤 `docker compose ... up -d cloudflared`.
-2. 터널에 게시 경로를 추가한다: 호스트명 `db.<내 도메인>` → 서비스 `tcp://postgres:5432`. (도메인은 Cloudflare에 등록된 것이어야 한다.)
-3. 그 호스트명에 Access 애플리케이션과 Service Auth 정책을 만들고 service token을 발급한다.
-4. Hyperdrive 구성을 만든다(앱 role 사용, 비밀번호는 셸 기록에 남지 않게 입력).
+1. **터널**: API로 원격 관리 터널을 만들고(`POST /accounts/$ACCOUNT_ID/cfd_tunnel`, `{"name":"altteulmap-db","config_src":"cloudflare"}`) 토큰(`GET .../cfd_tunnel/$TUNNEL_ID/token`)을 `altteulmap.env`의 `TUNNEL_TOKEN`에 넣는다. `cloudflared` 서비스가 연결한다.
+2. **CA 업로드**: `pgcerts` 볼륨의 `ca.crt`(공개 인증서)를 mTLS 인증서(`ca: true`, `POST /accounts/$ACCOUNT_ID/mtls_certificates`)로 올린다. PEM 끝의 개행을 제거해야 파싱된다.
+3. **VPC Service**: `POST /accounts/$ACCOUNT_ID/connectivity/directory/services`
+   `{"type":"tcp","name":"altteulmap-db","tcp_port":5432,"app_protocol":"postgresql","host":{"hostname":"postgres","resolver_network":{"tunnel_id":"<id>"}},"tls_settings":{"certificate_authority":"<ca-id>","cert_verification_mode":"verify_full"}}`
+4. **Hyperdrive**: `wrangler hyperdrive create altteulmap-db --service-id <vpc-service-id> --database altteulmap --user altteulmap_app --password <APP_DB_PASSWORD> --scheme postgresql`
+5. `wrangler.jsonc`의 `hyperdrive` binding에 id를 넣는다(`localConnectionString`은 로컬 개발용). 앱은 `HYPERDRIVE`가 있으면 `DATABASE_URL`보다 우선 쓴다(`src/worker/db.ts`).
+6. `npm run deploy` 후 `GET /api/health?deep=1`의 `database`가 `ok`(`source: hyperdrive`)인지 확인한다.
 
-   ```bash
-   npx wrangler hyperdrive create altteulmap-db \
-     --host=db.<내 도메인> --user=altteulmap_app --database=altteulmap \
-     --password=<APP_DB_PASSWORD> \
-     --access-client-id=<id> --access-client-secret=<secret>
-   ```
-
-5. 출력된 Hyperdrive `id`를 `wrangler.jsonc`에 binding으로 추가한다(id는 계정 고유 값이라 저장소에 없다).
-
-   ```jsonc
-   "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "<hyperdrive-id>" }]
-   ```
-
-   앱은 `HYPERDRIVE`가 있으면 `DATABASE_URL`보다 우선 사용한다(`src/worker/db.ts`). 기존 `DATABASE_URL` secret은 binding 확인 후 삭제한다.
-6. `npm run deploy` 후 확인: `curl -s https://<worker>/api/health?deep=1` 의 `database`가 `ok`, 첫 화면에 장소 목록이 보인다.
+> wrangler 4.79(Node 20)는 `--certificate-authority`를 지원하지 않아 CA 업로드와 VPC Service 생성은 위처럼 API로 했다. wrangler 최신판은 Node 22.12 이상이 필요하다.
 
 ## 4. 백업
 
@@ -94,6 +83,8 @@ cd ~/altteulmap && ENV_FILE=$HOME/altteulmap/altteulmap.env COMPOSE_FILE=$HOME/a
 
 복구 리허설은 `npm run db:rehearse:backup`([백업·복구](../../docs/09-운영-가이드/백업-복구.md))을 쓴다. 백업 파일은 VPS 밖(다른 호스트 또는 오브젝트 스토리지)으로도 주기적으로 복사해야 VPS 장애에 대비된다.
 
-## 5. 지연 확인
+## 5. 지연 (2026-11-23 측정)
 
-Worker(엣지)와 VPS 사이 왕복이 이전 DB(Supabase 서울)보다 길 수 있다. 이전 후 `npm run map:measure`로 지도 조회 p95를 재고, 목표(1초) 안인지 [ADR 0004](../../docs/adr/0004-request-scoped-db-connection.md)에 기록한다. 초과하면 `DATABASE_URL`/Hyperdrive 대상만 바꿔 가까운 리전의 Postgres로 되돌릴 수 있다(코드 변경 없음).
+VPS는 오스트리아에 있다. 같은 대륙(VPS에서 Worker 호출)에서는 지도 조회 0.43~0.63s, Worker 안의 `select 1`은 14ms였다. 엣지에서 먼 곳(미국 서부 경유로 보인 측정 머신)에서는 지도 조회와 상세가 약 1.9s였다(요청당 DB 왕복이 대륙을 건넌다). Worker를 `aws:eu-central-1`에 고정하면 DB 지연은 줄지만 호출자↔Worker 구간이 늘어 전체가 더 느려져(지도 약 5.6s) 고정하지 않고 `placement.mode: smart`만 켰다.
+
+한국 사용자가 목표(지도 p95 1초)를 못 맞추면 선택지는 ① 공개 GET 응답의 엣지 캐시(짧은 `s-maxage`), ② 가까운 리전의 Postgres로 Hyperdrive 대상만 교체(코드 변경 없음)다. 결과는 [ADR 0004](../../docs/adr/0004-request-scoped-db-connection.md)에 기록한다.

@@ -5,6 +5,32 @@
 name: altteulmap-prod
 
 services:
+  # 최초 1회 사설 CA와 서버 인증서를 만든다(이미 있으면 건너뜀). Workers VPC는 DB TLS를 요구하고
+  # 기본으로 인증서를 검증하므로(verify_full), CA 공개 인증서(ca.crt)를 Cloudflare에 올려 신뢰시킨다.
+  pgcerts:
+    image: postgres:17-alpine
+    restart: "no"
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        cd /certs
+        if [ ! -f server.crt ]; then
+          apk add --no-cache openssl >/dev/null
+          openssl req -x509 -newkey rsa:4096 -nodes -keyout ca.key -out ca.crt -days 3650 -subj "/CN=altteulmap-db-ca"
+          openssl req -newkey rsa:2048 -nodes -keyout server.key -out server.csr -subj "/CN=postgres"
+          printf "subjectAltName=DNS:postgres,DNS:localhost,IP:127.0.0.1" > san.ext
+          openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt -days 3650 -extfile san.ext
+          rm -f server.csr san.ext ca.srl
+        fi
+        chown 70:70 server.key server.crt
+        chmod 600 server.key
+        chmod 644 ca.crt server.crt
+        chmod 600 ca.key
+    volumes:
+      - altteulmap-pg-certs:/certs
+    networks: [altteulmap-internal]
+
   postgres:
     image: postgres:17-alpine
     restart: unless-stopped
@@ -25,16 +51,26 @@ services:
       - work_mem=4MB
       - -c
       - log_min_duration_statement=500
+      - -c
+      - ssl=on
+      - -c
+      - ssl_cert_file=/certs/server.crt
+      - -c
+      - ssl_key_file=/certs/server.key
     ports:
       # loopback에만 바인딩한다. 인터넷에 노출되지 않는다.
       - "127.0.0.1:15432:5432"
     volumes:
       - altteulmap-postgres-data:/var/lib/postgresql/data
+      - altteulmap-pg-certs:/certs:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 10s
       timeout: 5s
       retries: 6
+    depends_on:
+      pgcerts:
+        condition: service_completed_successfully
     networks: [altteulmap-internal]
 
   cloudflared:
@@ -51,6 +87,7 @@ services:
 
 volumes:
   altteulmap-postgres-data:
+  altteulmap-pg-certs:
 
 networks:
   altteulmap-internal:
