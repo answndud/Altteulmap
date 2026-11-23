@@ -12,6 +12,7 @@ import {
 } from "@/db/schema";
 import { normalizePriceLabel } from "@/features/places/normalization";
 import { moderateWorkerPriceReport } from "@/worker/admin/admin-repository";
+import { DomainError } from "@/worker/http/api-error";
 import {
   type WorkerDatabaseBindings,
   withWorkerDatabaseConnection,
@@ -78,7 +79,7 @@ async function main() {
     reportId = report.id;
     const currentReportId = report.id;
 
-    const results = await Promise.all([
+    const settled = await Promise.allSettled([
       withWorkerDatabaseConnection(env, () =>
         moderateWorkerPriceReport(env, currentReportId, { decision: "approve" }, { id: "" }),
       ),
@@ -86,6 +87,19 @@ async function main() {
         moderateWorkerPriceReport(env, currentReportId, { decision: "approve" }, { id: "" }),
       ),
     ]);
+    // 한 건만 성공하고, 나머지는 CONFLICT DomainError("이미 처리된 가격 정보입니다.")로 거부된다.
+    const results = settled.map((result) =>
+      result.status === "fulfilled"
+        ? { ok: result.value.ok, message: result.value.message }
+        : {
+            ok: false,
+            message:
+              result.reason instanceof DomainError &&
+              result.reason.code === "CONFLICT"
+                ? result.reason.message
+                : String(result.reason),
+          },
+    );
     const successCount = results.filter((result) => result.ok).length;
     const alreadyProcessedCount = results.filter(
       (result) => !result.ok && result.message === "이미 처리된 가격 정보입니다.",
