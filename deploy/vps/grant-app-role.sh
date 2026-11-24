@@ -9,7 +9,14 @@ COMPOSE_FILE="${COMPOSE_FILE:-deploy/vps/postgres.yml}"
 # shellcheck disable=SC1090
 set -a; source "$ENV_FILE"; set +a
 
-docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" exec -T postgres \
+# 복구 리허설처럼 compose 밖 컨테이너에 적용할 때는 DOCKER_CONTAINER를 지정한다.
+if [ -n "${DOCKER_CONTAINER:-}" ]; then
+  PSQL_EXEC=(docker exec -i "$DOCKER_CONTAINER")
+else
+  PSQL_EXEC=(docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" exec -T postgres)
+fi
+
+"${PSQL_EXEC[@]}" \
   psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -v app_password="$APP_DB_PASSWORD" -v db="$POSTGRES_DB" <<'SQL'
 SELECT format('CREATE ROLE altteulmap_app LOGIN PASSWORD %L', :'app_password')
 WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'altteulmap_app') \gexec

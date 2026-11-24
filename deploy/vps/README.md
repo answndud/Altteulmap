@@ -85,9 +85,11 @@ Cloudflare 문서의 권장 방식(Access·service token 없이 VPC Service 사�
 
 **VPS 밖 사본**: 개발 머신에서 `npm run backup:pull`(= `scripts/pull-vps-backup.sh`)이 VPS의 최신 덤프를 `backups/vps/`로 가져와 체크섬과 `pg_restore --list`로 검증하고 최근 14개만 남긴다. `.env.vps`의 `VPS_SSH_*`를 쓰며, `backups/`는 개인정보(이메일·비밀번호 해시)를 담으므로 `.gitignore` 대상이다. **매월 자동 실행(macOS)**: `bash scripts/install-backup-launchd.sh install`이 LaunchAgent(`~/Library/LaunchAgents/com.altteulmap.backup-pull.plist`)를 설치해 매월 1일 10:00에 `backup:pull`을 돌린다(맥이 꺼져 있었으면 다음에 깨어날 때 실행, 로그는 `backups/vps/pull.log`, 최근 12개 보관). 제거는 `uninstall`. Docker가 꺼져 있으면 체크섬만 검증하고 구조 검증은 건너뛴다. 한 달에 한 번이라 사본은 월 단위 시점이며, 최근 14일치 일별 백업은 VPS에 있다.
 
-**복구 리허설 증적(2026-11-23)**: 가져온 덤프를 임시 로컬 DB에 `pg_restore`한 결과가 운영과 일치했다 — places 1,000 · price_items 2,489 · price_reports 4,978 · users 2 · categories 23 · auth_accounts 2, migration 22건, trigram 인덱스 7개. 임시 DB는 삭제했다.
+**덤프 복원 대조 증적(2026-11-23)**: 가져온 덤프를 임시 로컬 DB에 `pg_restore`한 결과가 운영과 일치했다 — places 1,000 · price_items 2,489 · price_reports 4,978 · users 2 · categories 23 · auth_accounts 2, migration 22건, trigram 인덱스 7개. 임시 DB는 삭제했다.
 
-복구 시 주의: `pg_dump`는 DB 하나만 담으므로 새 서버에는 role이 없다. 복원 후 `grant-app-role.sh`로 `altteulmap_app`을 다시 만들고 Hyperdrive 구성의 비밀번호와 맞춘다(`GRANT ... TO altteulmap_app` 오류는 role이 없을 때 나오는 정상 경고다).
+**새 서버 복구 리허설(2026-11-24, `npm run db:rehearse:restore`)**: 빈 Postgres 17 컨테이너를 새 서버로 삼아 최신 덤프를 복원하고, 앱 role로 붙인 Worker에서 지도·상세 조회까지 확인했다(places 1,000 · price_items 2,489 · price_reports 4,978 · users 2 · migration 22건). 앱 role로는 DDL이 거부됨을 확인했다. 컨테이너 기동부터 읽기 확인까지 **약 6초**(이미지가 로컬에 있는 기준, 다운로드·DNS·Hyperdrive 재지정 시간은 제외). 실제 복구 RTO는 이 6초에 아래 수작업 단계가 더해진다.
+
+복구 순서(role 먼저): 덤프에는 `GRANT ... TO altteulmap_app`이 들어 있어 **role이 없는 새 서버에서 바로 `pg_restore`하면 중간에 실패한다**(리허설에서 재현됨). 따라서 ① 새 서버에 Postgres와 `altteulmap_app` role 생성(`CREATE ROLE altteulmap_app LOGIN PASSWORD ...`) → ② `pg_restore --no-owner` → ③ `deploy/vps/grant-app-role.sh`로 권한과 비밀번호를 Hyperdrive 구성과 맞춤 → ④ 터널·VPC 서비스가 새 서버를 가리키게 하고 Hyperdrive 대상을 교체(`wrangler hyperdrive update <id> --origin-host ... --password ...`) → ⑤ `/api/health?deep=1`의 `database`가 `ok`인지 확인. ④는 Cloudflare 쪽 작업이라 리허설에서 실행하지 않았다.
 
 ## 5. 지연 (2026-11-23 측정)
 
