@@ -50,3 +50,11 @@ ls -1t "$DEST"/altteulmap-*.dump 2>/dev/null | tail -n +"$((KEEP + 1))" | while 
 done
 
 echo "backup pulled and verified: $DEST/$name ($(du -h "$DEST/$name" | cut -f1))"
+
+# 오프사이트(암호화 KV) 업로드. .env.vps에 OFFSITE_KV_NAMESPACE_ID가 있을 때만 하며,
+# 실패해도 맥 사본 작업은 성공으로 둔다(경고만 남기고 다음 실행에서 다시 올린다).
+if [ -n "${OFFSITE_KV_NAMESPACE_ID:-}" ]; then
+  if ! bash "$ROOT/scripts/offsite-backup.sh"; then
+    echo "warning: offsite upload failed; local copy is fine, retry with npm run backup:offsite" >&2
+  fi
+fi

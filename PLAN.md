@@ -22,18 +22,6 @@ Observable finish state:
 
 공통 원칙: 운영 VPS는 TownPet과 공유하므로 운영 대상 부하는 읽기 전용·저강도로 제한하고 중단 기준을 둔다. 운영 DB에 쓰기 테스트를 하지 않는다. 각 slice는 검증 후 커밋·push·CI 확인까지 한다.
 
-### Phase E1. 백업·복구 증적
-
-#### E1-2. 암호화한 오프사이트 사본 (R2 대체: Workers KV)
-- Likely files: `scripts/pull-vps-backup.sh`, `scripts/offsite-backup.sh`(신규), `deploy/vps/README.md`, `.env.vps`(키 경로만, 커밋 안 함)
-- Changes:
-  - `age` 키쌍 생성: 개인키는 맥 `.env.vps` 옆(권한 600, gitignore)에만, 공개키로만 암호화한다.
-  - 월 1회 `backup:pull`이 검증을 마치면 덤프를 `age`로 암호화해 전용 KV namespace(`altteulmap-offsite-backups`, 무료 범위)에 `wrangler kv key put`으로 올리고 최근 6개만 유지한다. 덤프 648KB는 KV 값 한도(25MiB) 안이다.
-  - 복구 방향도 검증한다: KV에서 내려받아 복호화 → `pg_restore --list` 성공.
-  - 문서에 "R2를 켜면 같은 스크립트의 업로드 대상만 바꾼다"를 적는다.
-- Verify: `npm run backup:offsite -- --verify`(업로드 → 다운로드 → 복호화 → `pg_restore --list` → 체크섬 일치), KV에 평문 덤프가 없음을 확인
-- Done: 백업 3단(VPS 일 1회 → 맥 월 1회 → KV 암호화 월 1회)이 문서와 실제 상태에 일치
-
 ### Phase E2. 첫 화면 지도 캐시 미스 지연
 
 #### E2-1. Hyperdrive 쿼리 캐시 적중 여부 확인과 수정
@@ -75,4 +63,4 @@ Observable finish state:
 
 ## Backlog
 
-- 사용자 작업이 필요한 운영 증적: R2 활성화 후 오프사이트 대상을 KV에서 R2로 전환, 실제 Kakao/Naver 로그인 callback 확인, Cloudflare 알림 수신 확인
+- 사용자 작업이 필요한 운영 증적: 오프사이트 백업 개인키(`backups/offsite/age-identity.txt`)를 비밀번호 관리자 등 맥 밖에 보관(분실 시 KV 사본 복호화 불가), R2 활성화 후 오프사이트 대상을 KV에서 R2로 전환, 실제 Kakao/Naver 로그인 callback 확인, Cloudflare 알림 수신 확인

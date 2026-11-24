@@ -85,6 +85,8 @@ Cloudflare 문서의 권장 방식(Access·service token 없이 VPC Service 사�
 
 **VPS 밖 사본**: 개발 머신에서 `npm run backup:pull`(= `scripts/pull-vps-backup.sh`)이 VPS의 최신 덤프를 `backups/vps/`로 가져와 체크섬과 `pg_restore --list`로 검증하고 최근 14개만 남긴다. `.env.vps`의 `VPS_SSH_*`를 쓰며, `backups/`는 개인정보(이메일·비밀번호 해시)를 담으므로 `.gitignore` 대상이다. **매월 자동 실행(macOS)**: `bash scripts/install-backup-launchd.sh install`이 LaunchAgent(`~/Library/LaunchAgents/com.altteulmap.backup-pull.plist`)를 설치해 매월 1일 10:00에 `backup:pull`을 돌린다(맥이 꺼져 있었으면 다음에 깨어날 때 실행, 로그는 `backups/vps/pull.log`, 최근 12개 보관). 제거는 `uninstall`. Docker가 꺼져 있으면 체크섬만 검증하고 구조 검증은 건너뛴다. 한 달에 한 번이라 사본은 월 단위 시점이며, 최근 14일치 일별 백업은 VPS에 있다.
 
+**오프사이트 사본(암호화, Workers KV)**: `backup:pull`이 끝나면 `scripts/offsite-backup.sh`(`npm run backup:offsite`)가 최신 덤프를 `age`로 암호화해 KV namespace `altteulmap-offsite-backups`에 올리고 최근 6개만 남긴다(덤프 약 650KB, KV 값 한도 25MiB 안). 공개키로만 암호화하므로 KV나 CI가 유출돼도 평문을 얻을 수 없다. `npm run backup:offsite -- --verify`는 올린 객체를 다시 내려받아 복호화 → sha256 일치 → `pg_restore --list`까지 확인한다(2026-11-24 통과). R2를 켜면 업로드·다운로드 두 호출만 바꾸면 된다. **개인키(`backups/offsite/age-identity.txt`, git 제외)를 잃으면 KV 사본은 복호화할 수 없다.** 맥이 사라져도 복구하려면 이 파일을 맥 밖(비밀번호 관리자 등)에도 보관해야 한다.
+
 **덤프 복원 대조 증적(2026-11-23)**: 가져온 덤프를 임시 로컬 DB에 `pg_restore`한 결과가 운영과 일치했다 — places 1,000 · price_items 2,489 · price_reports 4,978 · users 2 · categories 23 · auth_accounts 2, migration 22건, trigram 인덱스 7개. 임시 DB는 삭제했다.
 
 **새 서버 복구 리허설(2026-11-24, `npm run db:rehearse:restore`)**: 빈 Postgres 17 컨테이너를 새 서버로 삼아 최신 덤프를 복원하고, 앱 role로 붙인 Worker에서 지도·상세 조회까지 확인했다(places 1,000 · price_items 2,489 · price_reports 4,978 · users 2 · migration 22건). 앱 role로는 DDL이 거부됨을 확인했다. 컨테이너 기동부터 읽기 확인까지 **약 6초**(이미지가 로컬에 있는 기준, 다운로드·DNS·Hyperdrive 재지정 시간은 제외). 실제 복구 RTO는 이 6초에 아래 수작업 단계가 더해진다.
