@@ -61,3 +61,6 @@ yarn-error.log*
 !/docs/06-성능/
 /docs/06-성능/*
 !/docs/06-성능/결과/
+
+# Claude Code용 로컬 지침(공유하지 않음)
+/CLAUDE.md
