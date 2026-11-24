@@ -24,13 +24,18 @@ Observable finish state:
 
 ### Phase E2. 첫 화면 지도 캐시 미스 지연
 
-#### E2-1. Hyperdrive 쿼리 캐시 적중 여부 확인과 수정
-- Likely files: `src/worker/db.ts`, `src/worker/places/places-read-map-repository.ts`, `docs/06-성능/결과/2026-11-24-한국-측정.md`
-- Changes:
-  - 가설: Hyperdrive 캐시는 켜져 있는데(`caching.disabled: false`) 미스가 0.9~1.2초라 지도 쿼리가 캐시를 못 타고 있다. 후보 원인은 세션 단위 `SET statement_timeout` 등 연결 설정, 트랜잭션, 휘발성 함수(`now()`) 사용이다.
-  - 같은 URL을 엣지 캐시 우회(쿼리스트링 변경)로 연속 호출해 `Server-Timing: db` 변화를 본다. 적중하지 않으면 원인을 하나씩 제거한다(예: 타임아웃을 연결 옵션으로 이동, 읽기 쿼리에서 `now()` 제거나 파라미터화).
-- Verify: 같은 쿼리 두 번째 호출의 `db` 구간이 왕복 시간(약 0.38초)보다 확실히 작아짐, `npm run verify`, `npm run test:integration:local`
-- Done: 지도 읽기 쿼리가 Hyperdrive 캐시에 적중하는 것이 측정으로 확인되거나, 적중 불가 이유가 문서화됨
+#### E2-1. 지도 캐시 미스 DB 구간 분석 (진행 중, 실험 결과 반영)
+- Likely files: `src/worker/db.ts`, `src/worker/places/places-read-map-repository.ts`, `docs/06-성능/결과/2026-11-24-한국-측정.md`(공개)
+- 2026-11-24 확인한 사실(재실험 불필요):
+  - 인앱 브라우저 한국 측정, 엣지·isolate 캐시 우회(`refresh=1&_=랜덤`)한 진짜 미스는 zoom 11 p50 763ms · p95 1,044ms, DB 구간 p50 525ms. 캐시 적중은 p50 213ms. 측정용 `__measure`는 브라우저 콘솔 함수라 매번 다시 만든다(URL `...&refresh=1&_=랜덤` 반복 fetch, `Server-Timing` 파싱).
+  - 이 Worker는 `cf-placement: local-DFW`로 실행된다(smart placement가 방문자 쪽에 둠).
+  - Worker를 `aws:eu-central-1`에 고정하면 DB 구간 525 → 93ms지만 전체 763 → 797ms, DB 없는 요청은 189 → 320ms로 나빠져 **기각**(응답이 큰 구간이 FRA에서 방문자까지 길어짐).
+  - 프로브 Worker(같은 Hyperdrive)로 측정: 쿼리 왕복 약 170ms, 파라미터 쿼리(확장 프로토콜)는 약 345ms(왕복 2번), 결과 크기 +140KB당 약 +130ms. Hyperdrive 쿼리 캐시는 파라미터 없는 쿼리와 `prepare: true`에서만 적중하며 앱의 drizzle(`unsafe`)은 `prepare` 옵션이 적용되지 않아 캐시를 타지 않는다.
+  - 파라미터를 리터럴로 넣어 단순 프로토콜로 보내는 시도(`client.unsafe(text)`)는 동작·결과는 같았지만 지도 DB 구간이 525 → 582ms로 **이득이 없어** 되돌렸다. 지도 쿼리는 결과 약 140KB라 전송량이 지배적이다.
+  - `prepare: true`만 켠 시도도 변화 없음. Hyperdrive 캐시를 켜면 세션·권한 읽기가 최대 60초 캐시될 수 있어(ADR 0001 위반) 파라미터 쿼리는 계속 캐시 밖에 둬야 한다. 운영 Hyperdrive 캐시 설정은 원래 값(enabled)으로 되돌려 두었다.
+- Changes(남은 일): 위 사실로 볼 때 미스 시간을 줄이는 길은 ① 결과 크기 축소(목록 100건·previewPlaces 컬럼을 화면이 쓰는 필드만, `description`·`note` 제외 여부 확인) ② 사용자가 미스를 거의 겪지 않게 하는 SWR(E2-2). ①을 E2-2에서 함께 수행한다.
+- Verify: 위 측정 방식으로 미스 n=30 p95
+- Done: 원인이 문서에 있고(결과 문서 §3 "시도했다가 버린 것"에 EU 고정·단순 프로토콜·`prepare` 추가), E2-2가 크기 축소와 SWR로 목표를 닫는다
 
 #### E2-2. 응답 축소와 stale-while-revalidate
 - Likely files: `src/worker/routes/places-read.ts`, `src/worker/places/places-read-map-repository.ts`, `tests/integration/map-clusters.test.ts`
