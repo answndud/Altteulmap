@@ -9,6 +9,10 @@ import {
 } from "@/worker/places/places-read-repository";
 import { getSessionFromRequest } from "@/worker/auth/session";
 import { getVerifiedVisitorIdFromRequest } from "@/worker/abuse/public-write-actor";
+import {
+  getEdgeCacheFreshness,
+  type EdgeCacheFreshness,
+} from "@/worker/http/edge-cache-freshness";
 
 type PlacesReadBindings = {
   ASSETS: AssetFetcher;
@@ -89,6 +93,12 @@ function isMapPreviewEdgeCacheable({
 // 첫 화면(서울 bootstrap bounds)은 모든 방문자가 같은 URL을 요청하고, 한국 방문자는 같은 콜로로 들어오므로
 // 캐시 적중률이 높다. 가격 승인이 반영되기까지 최대 이 시간만큼 지연될 수 있다.
 const MAP_EDGE_CACHE_SECONDS = 60;
+// 신선 기간이 지나도 이 시간 동안은 오래된 응답을 즉시 돌려주고 백그라운드에서 갱신한다(stale-while-revalidate).
+// 첫 화면 요청이 캐시 미스(DB 왕복 약 0.5초)를 거의 겪지 않게 하는 대신, 가격 승인 반영이 최대 이 시간만큼 더 늦을 수 있다.
+const MAP_EDGE_STALE_SECONDS = 180;
+const EDGE_CACHED_AT_HEADER = "X-Altteulmap-Cached-At";
+// 같은 URL을 isolate 안에서 중복 갱신하지 않기 위한 표시다.
+const mapEdgeRefreshInFlight = new Set<string>();
 // 쿠키 없는 익명 상세만 캐시한다. 반응·코멘트 삭제 권한처럼 사용자별 값이 없어 모두에게 같은 응답이다.
 const DETAIL_EDGE_CACHE_SECONDS = 20;
 
@@ -96,11 +106,12 @@ function isAnonymousDetailEdgeCacheable(request: Request) {
   return !request.headers.get("cookie");
 }
 
-async function getEdgeCacheResponse(
+async function getEdgeCacheEntry(
   request: Request,
   noStoreHeaders: Record<string, string>,
   statusHeader: string,
-) {
+  windows?: { freshSeconds: number; staleSeconds: number },
+): Promise<{ response: Response; freshness: EdgeCacheFreshness } | null> {
   if (typeof caches === "undefined") {
     return null;
   }
@@ -117,21 +128,48 @@ async function getEdgeCacheResponse(
     return null;
   }
 
+  const cachedAtHeader = cached.headers.get(EDGE_CACHED_AT_HEADER);
+  const freshness = windows
+    ? getEdgeCacheFreshness(
+        cachedAtHeader === null ? null : Number(cachedAtHeader),
+        Date.now(),
+        windows.freshSeconds,
+        windows.staleSeconds,
+      )
+    : "fresh";
+
+  if (freshness === "expired") {
+    return null;
+  }
+
   const headers = new Headers(cached.headers);
   headers.set("Cache-Control", noStoreHeaders["Cache-Control"]);
-  headers.set(statusHeader, "edge-hit");
+  headers.set(statusHeader, freshness === "stale" ? "edge-stale" : "edge-hit");
+  headers.delete(EDGE_CACHED_AT_HEADER);
 
-  return new Response(cached.body, {
-    status: cached.status,
-    statusText: cached.statusText,
-    headers,
-  });
+  return {
+    response: new Response(cached.body, {
+      status: cached.status,
+      statusText: cached.statusText,
+      headers,
+    }),
+    freshness,
+  };
+}
+
+async function getEdgeCacheResponse(
+  request: Request,
+  noStoreHeaders: Record<string, string>,
+  statusHeader: string,
+) {
+  return (await getEdgeCacheEntry(request, noStoreHeaders, statusHeader))?.response ?? null;
 }
 
 async function putEdgeCache(
   request: Request,
   response: Response,
   maxAgeSeconds: number,
+  staleSeconds = 0,
 ) {
   if (typeof caches === "undefined" || !response.ok) {
     return;
@@ -144,7 +182,9 @@ async function putEdgeCache(
   }
 
   const headers = new Headers(response.headers);
-  headers.set("Cache-Control", `public, max-age=${maxAgeSeconds}`);
+  // Cache API 자체의 만료는 신선 + stale 기간이고, 신선 여부는 저장 시각 헤더로 우리가 판정한다.
+  headers.set("Cache-Control", `public, max-age=${maxAgeSeconds + staleSeconds}`);
+  headers.set(EDGE_CACHED_AT_HEADER, String(Date.now()));
 
   await edgeCache
     .put(
@@ -191,6 +231,50 @@ async function getPlaceViewerFromRequest(
     role: "guest",
     visitorId,
   };
+}
+
+type MapPlacesResultForResponse = Awaited<ReturnType<typeof listWorkerMapPlaces>>;
+
+function buildMapResponseBody(
+  result: MapPlacesResultForResponse,
+  filters: {
+    category: string | null;
+    query: string | null;
+    searchScope: PlaceSearchScope;
+    bounds: PlaceBounds | null;
+    zoom: number | null;
+  },
+) {
+  return {
+    items: result.items,
+    mapMarkers: result.mapMarkers,
+    markerMode: result.markerMode,
+    count: result.count,
+    returnedCount: result.items.length,
+    mapMarkerCount: result.mapMarkers.length,
+    truncated: result.items.length < result.count,
+    bounds: result.bounds,
+    filters: {
+      category: filters.category,
+      query: filters.query,
+      searchScope: filters.searchScope,
+      bounds: filters.searchScope === "viewport" ? filters.bounds : null,
+      zoom: filters.searchScope === "viewport" ? filters.zoom : null,
+    },
+    source: result.source,
+    mock: result.source === "mock",
+  };
+}
+
+type WaitUntilContext = { waitUntil(promise: Promise<unknown>): void };
+
+function tryGetExecutionContext(c: { executionCtx: WaitUntilContext }) {
+  try {
+    return c.executionCtx;
+  } catch {
+    // 테스트처럼 실행 컨텍스트 없이 호출되면 백그라운드 갱신을 예약할 수 없다.
+    return null;
+  }
 }
 
 export function registerPlacesReadRoutes(
@@ -244,25 +328,77 @@ export function registerPlacesReadRoutes(
       searchScope,
     });
 
+    const listParams = {
+      category,
+      query,
+      bounds: searchScope === "viewport" ? bounds : null,
+      zoom: searchScope === "viewport" ? zoom : null,
+    };
+    const responseFilters = { category, query, searchScope, bounds, zoom };
+
     if (isEdgeCacheable) {
-      const cachedResponse = await getEdgeCacheResponse(
+      const cachedEntry = await getEdgeCacheEntry(
         c.req.raw,
         dependencies.noStoreHeaders,
         "X-Altteulmap-Map-Cache",
+        { freshSeconds: MAP_EDGE_CACHE_SECONDS, staleSeconds: MAP_EDGE_STALE_SECONDS },
       );
+      const executionContext = cachedEntry?.freshness === "stale" ? tryGetExecutionContext(c) : null;
 
-      if (cachedResponse) {
-        return cachedResponse;
+      if (cachedEntry && (cachedEntry.freshness === "fresh" || executionContext)) {
+        if (cachedEntry.freshness === "stale" && executionContext) {
+          // 오래된 응답을 먼저 돌려주고, 같은 URL의 갱신이 진행 중이 아니면 백그라운드에서 새로 만들어 채운다.
+          const refreshKey = c.req.url;
+
+          if (!mapEdgeRefreshInFlight.has(refreshKey)) {
+            mapEdgeRefreshInFlight.add(refreshKey);
+            const request = c.req.raw;
+            const env = c.env;
+
+            executionContext.waitUntil(
+              (async () => {
+                try {
+                  const startedAt = performance.now();
+                  const refreshed = await listWorkerMapPlaces(env, {
+                    ...listParams,
+                    skipCache: true,
+                  });
+                  const refreshedResponse = new Response(
+                    JSON.stringify(buildMapResponseBody(refreshed, responseFilters)),
+                    {
+                      status: 200,
+                      headers: {
+                        ...dependencies.noStoreHeaders,
+                        "Content-Type": "application/json",
+                        "Server-Timing": `db;dur=${Math.round(performance.now() - startedAt)}`,
+                      },
+                    },
+                  );
+
+                  await putEdgeCache(
+                    request,
+                    refreshedResponse,
+                    MAP_EDGE_CACHE_SECONDS,
+                    MAP_EDGE_STALE_SECONDS,
+                  );
+                } catch (error) {
+                  console.warn("Failed to refresh the stale map edge cache.", error);
+                } finally {
+                  mapEdgeRefreshInFlight.delete(refreshKey);
+                }
+              })(),
+            );
+          }
+        }
+
+        return cachedEntry.response;
       }
     }
 
     const mapDbStartedAt = performance.now();
     const result = await listWorkerMapPlaces(c.env, {
-      category,
-      query,
-      bounds: searchScope === "viewport" ? bounds : null,
+      ...listParams,
       skipCache: forceRefresh,
-      zoom: searchScope === "viewport" ? zoom : null,
     }).catch((error: unknown) => {
       if (dependencies.isWorkerDatabaseUnavailableError(error)) {
         return null;
@@ -276,25 +412,7 @@ export function registerPlacesReadRoutes(
     }
 
     const response = c.json(
-      {
-        items: result.items,
-        mapMarkers: result.mapMarkers,
-        markerMode: result.markerMode,
-        count: result.count,
-        returnedCount: result.items.length,
-        mapMarkerCount: result.mapMarkers.length,
-        truncated: result.items.length < result.count,
-        bounds: result.bounds,
-        filters: {
-          category,
-          query,
-          searchScope,
-          bounds: searchScope === "viewport" ? bounds : null,
-          zoom: searchScope === "viewport" ? zoom : null,
-        },
-        source: result.source,
-        mock: result.source === "mock",
-      },
+      buildMapResponseBody(result, responseFilters),
       200,
       {
         ...dependencies.noStoreHeaders,
@@ -304,7 +422,12 @@ export function registerPlacesReadRoutes(
     );
 
     if (isEdgeCacheable) {
-      await putEdgeCache(c.req.raw, response, MAP_EDGE_CACHE_SECONDS);
+      await putEdgeCache(
+        c.req.raw,
+        response,
+        MAP_EDGE_CACHE_SECONDS,
+        MAP_EDGE_STALE_SECONDS,
+      );
     }
 
     return response;
