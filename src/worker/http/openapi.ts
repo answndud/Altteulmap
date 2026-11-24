@@ -331,25 +331,20 @@ function renderApiDocsHtml(document: ReturnType<typeof buildOpenApiDocument>) {
             .join(", ")
         : "";
 
-      return `<tr><td>${escapeHtml(op.tags[0] ?? "")}</td><td class="m">${method.toUpperCase()}</td><td class="p">${escapeHtml(path)}</td><td>${ACCESS_LABEL[op["x-access"]] ?? "-"}</td><td>${escapeHtml(op.summary)}${
-        fields ? `<div class="f">본문: ${escapeHtml(fields)}</div>` : ""
-      }${op.description ? `<div class="n">${escapeHtml(op.description)}</div>` : ""}</td></tr>`;
+      return `<tr><td>${escapeHtml(op.tags[0] ?? "")}</td><td><b>${method.toUpperCase()}</b></td><td><code>${escapeHtml(path)}</code></td><td>${ACCESS_LABEL[op["x-access"]] ?? "-"}</td><td>${escapeHtml(op.summary)}${
+        fields ? `<br><small>본문: ${escapeHtml(fields)}</small>` : ""
+      }${op.description ? `<br><small>${escapeHtml(op.description)}</small>` : ""}</td></tr>`;
     }),
   );
 
+  // 인라인 스타일 없이 기본 HTML 속성만 쓴다(CSP·csp:inventory 규칙).
   return `<!doctype html>
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>알뜰맵 API</title>
-<style>
-body{font-family:system-ui,sans-serif;margin:24px auto;max-width:1100px;padding:0 16px;color:#1b2430;line-height:1.5}
-h1{font-size:24px;margin:0 0 4px}p{margin:4px 0 16px;color:#4a5a6e}
-table{border-collapse:collapse;width:100%;font-size:14px}th,td{border:1px solid #d6dde6;padding:8px;text-align:left;vertical-align:top}
-th{background:#eef2f7}.m{font-weight:700;white-space:nowrap}.p{font-family:ui-monospace,monospace;word-break:break-all}
-.f{color:#1d4ed8;margin-top:4px;font-size:12px}.n{color:#4a5a6e;margin-top:4px;font-size:12px}
-</style></head><body>
+<meta name="color-scheme" content="light dark">
+<title>알뜰맵 API</title></head><body>
 <h1>알뜰맵 API</h1>
 <p>${rows.length}개 엔드포인트. 기계가 읽는 문서는 <a href="/api/openapi.json">/api/openapi.json</a>(OpenAPI 3.1)이다. 모든 실패 응답은 <code>{ ok:false, message, error:{ code, details? }, requestId }</code>다.</p>
-<table><thead><tr><th>분류</th><th>메서드</th><th>경로</th><th>접근</th><th>설명</th></tr></thead><tbody>
+<table border="1" cellpadding="6" cellspacing="0"><thead><tr><th>분류</th><th>메서드</th><th>경로</th><th>접근</th><th>설명</th></tr></thead><tbody>
 ${rows.join("\n")}
 </tbody></table></body></html>`;
 }
