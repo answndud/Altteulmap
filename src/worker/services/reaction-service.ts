@@ -1,7 +1,7 @@
 import type { PlaceReactionType } from "@/features/places/types";
 import { getPlaceById } from "@/features/places/queries";
 import {
-  withWorkerDatabaseConnection,
+  withExistingOrNewWorkerDatabaseConnection,
   type WorkerDatabaseBindings,
 } from "@/worker/db";
 import { DomainError } from "@/worker/http/api-error";
@@ -39,7 +39,7 @@ export function getReactionService(env: WorkerDatabaseBindings) {
     {
       database: () => ({
         set: (placeId, reaction, actor) =>
-          withWorkerDatabaseConnection(env, () =>
+          withExistingOrNewWorkerDatabaseConnection(env, () =>
             setDatabasePlaceReaction(env, placeId, reaction, actor),
           ),
       }),

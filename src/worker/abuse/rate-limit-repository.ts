@@ -51,27 +51,37 @@ export const ACCOUNT_LIMIT_MULTIPLIER = 3;
 
 type RateLimitDb = ReturnType<typeof getWorkerDb>;
 
-async function consumeBucket(
+type BucketRequest = { actorKey: string; limit: number };
+
+/**
+ * 같은 정책의 여러 버킷(방문자 + IP + 추가 키)을 한 문장으로 올린다.
+ * 먼 DB에서는 쿼리 하나의 왕복이 약 0.2~0.4초라, 버킷마다 따로 보내면 그만큼 느려진다.
+ * 결과는 요청한 순서대로 돌려주며, 행을 못 받은 버킷은 null이다.
+ */
+async function consumeBuckets(
   db: RateLimitDb,
   policyName: RateLimitPolicyName,
-  actorKey: string,
-  limit: number,
+  requests: BucketRequest[],
 ) {
   const policy = RATE_LIMIT_POLICIES[policyName];
   const now = new Date();
   const bucketStartedAt = getBucketStartedAt(now, policy.windowMs);
   const expiresAt = new Date(bucketStartedAt.getTime() + policy.windowMs);
+  // 한 문장에서 같은 행을 두 번 수정할 수 없으므로 같은 키는 한 번만 보낸다.
+  const unique = [...new Map(requests.map((request) => [request.actorKey, request])).values()];
 
-  const [row] = await db
+  const rows = await db
     .insert(publicWriteRateLimits)
-    .values({
-      scope: policy.scope,
-      actorKey,
-      bucketStartedAt,
-      count: 1,
-      expiresAt,
-      updatedAt: now,
-    })
+    .values(
+      unique.map((request) => ({
+        scope: policy.scope,
+        actorKey: request.actorKey,
+        bucketStartedAt,
+        count: 1,
+        expiresAt,
+        updatedAt: now,
+      })),
+    )
     .onConflictDoUpdate({
       target: [
         publicWriteRateLimits.scope,
@@ -85,19 +95,23 @@ async function consumeBucket(
       },
     })
     .returning({
+      actorKey: publicWriteRateLimits.actorKey,
       count: publicWriteRateLimits.count,
       expiresAt: publicWriteRateLimits.expiresAt,
     });
+  const rowByKey = new Map(rows.map((row) => [row.actorKey, row]));
 
-  if (!row) {
-    return null;
-  }
+  return requests.map((request) => {
+    const row = rowByKey.get(request.actorKey);
 
-  return toRateLimitResult({
-    count: row.count,
-    limit,
-    policyName,
-    resetAt: row.expiresAt,
+    return row
+      ? toRateLimitResult({
+          count: row.count,
+          limit: request.limit,
+          policyName,
+          resetAt: row.expiresAt,
+        })
+      : null;
   });
 }
 
@@ -125,12 +139,6 @@ export async function consumeWorkerPersistentRateLimit(
 
   const policy = RATE_LIMIT_POLICIES[policyName];
   const db = getWorkerDb(env);
-  let result = await consumeBucket(db, policyName, actor.key, policy.limit);
-
-  if (!result) {
-    return null;
-  }
-
   // 익명 요청은 쿠키를 버리고 새 visitor로 위장할 수 있으므로 IP 버킷을 함께 소비한다.
   // CF-Connecting-IP는 Cloudflare 엣지가 덮어쓰므로 운영에서는 위조할 수 없다.
   const extraKeys = [...(options?.extraKeys ?? [])];
@@ -142,14 +150,21 @@ export async function consumeWorkerPersistentRateLimit(
     });
   }
 
-  for (const extra of extraKeys) {
-    const extraResult = await consumeBucket(
-      db,
-      policyName,
-      extra.key.slice(0, 160),
-      policy.limit * extra.limitMultiplier,
-    );
+  const [primary, ...extras] = await consumeBuckets(db, policyName, [
+    { actorKey: actor.key, limit: policy.limit },
+    ...extraKeys.map((extra) => ({
+      actorKey: extra.key.slice(0, 160),
+      limit: policy.limit * extra.limitMultiplier,
+    })),
+  ]);
 
+  if (!primary) {
+    return null;
+  }
+
+  let result = primary;
+
+  for (const extraResult of extras) {
     result = pickStricter(result, extraResult);
   }
 

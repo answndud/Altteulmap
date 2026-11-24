@@ -8,7 +8,7 @@ import {
   type WorkerPublicWriteActor,
 } from "@/worker/abuse/public-write-actor";
 import { consumeWorkerPersistentRateLimit } from "@/worker/abuse/rate-limit-repository";
-import { withWorkerDatabaseConnection } from "@/worker/db";
+import { withExistingOrNewWorkerDatabaseConnection } from "@/worker/db";
 import { fetchWithTimeout } from "@/worker/http/fetch";
 
 export type PublicWriteBindings = {
@@ -40,7 +40,7 @@ export async function consumePublicWriteRateLimit(
   actor: WorkerPublicWriteActor,
 ) {
   return (
-    (await withWorkerDatabaseConnection(env, () =>
+    (await withExistingOrNewWorkerDatabaseConnection(env, () =>
       consumeWorkerPersistentRateLimit(env, policyName, actor),
     )) ?? consumeWorkerRateLimit(policyName, actor)
   );

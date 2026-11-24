@@ -17,7 +17,7 @@ import {
   updateWorkerReportStatus,
 } from "@/worker/admin/admin-repository";
 import {
-  withWorkerDatabaseConnection,
+  withExistingOrNewWorkerDatabaseConnection,
   type WorkerDatabaseBindings,
 } from "@/worker/db";
 import {
@@ -69,7 +69,7 @@ async function inDatabase<T>(
   load: () => Promise<T>,
 ) {
   try {
-    return await withWorkerDatabaseConnection(env, load);
+    return await withExistingOrNewWorkerDatabaseConnection(env, load);
   } catch (error) {
     if (error instanceof DomainError) {
       throw error;

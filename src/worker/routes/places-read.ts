@@ -8,6 +8,7 @@ import {
   type WorkerPlaceViewer,
 } from "@/worker/places/places-read-repository";
 import { getSessionFromRequest } from "@/worker/auth/session";
+import { withWorkerDatabaseConnection } from "@/worker/db";
 import { getVerifiedVisitorIdFromRequest } from "@/worker/abuse/public-write-actor";
 import {
   getEdgeCacheFreshness,
@@ -359,10 +360,10 @@ export function registerPlacesReadRoutes(
               (async () => {
                 try {
                   const startedAt = performance.now();
-                  const refreshed = await listWorkerMapPlaces(env, {
-                    ...listParams,
-                    skipCache: true,
-                  });
+                  // 이 작업은 요청 응답이 끝난 뒤에도 돌기 때문에 요청의 연결 범위를 쓰지 않고 자기 범위를 연다.
+                  const refreshed = await withWorkerDatabaseConnection(env, () =>
+                    listWorkerMapPlaces(env, { ...listParams, skipCache: true }),
+                  );
                   const refreshedResponse = new Response(
                     JSON.stringify(buildMapResponseBody(refreshed, responseFilters)),
                     {

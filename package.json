@@ -73,6 +73,8 @@
     "db:repair:production-price-data": "node scripts/repair-production-price-data.mjs",
     "backup:pull": "bash scripts/pull-vps-backup.sh",
     "backup:offsite": "bash scripts/offsite-backup.sh",
+    "perf:k6:local": "node scripts/run-k6-local.mjs",
+    "perf:k6:prod": "k6 run perf/k6/prod-read.js",
     "db:rehearse:restore": "node scripts/restore-rehearsal.mjs",
     "db:set-password": "tsx scripts/set-credentials-password.ts",
     "db:migrate": "node scripts/migrate-production.mjs",

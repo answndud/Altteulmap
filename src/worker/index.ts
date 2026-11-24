@@ -4,6 +4,7 @@ import { Hono } from "hono";
 import { invalidateMapPreviewCache } from "@/features/places/map-preview-cache";
 import {
   WorkerDatabaseUnavailableError,
+  withExistingOrNewWorkerDatabaseConnection,
   withWorkerDatabaseConnection,
 } from "@/worker/db";
 import {
@@ -93,6 +94,10 @@ app.use("*", async (c, next) => {
 
   c.res = applySecurityHeaders(c.res, c.req.raw);
 });
+
+// 요청 하나는 DB 연결 하나만 쓴다. 연결은 첫 쿼리 때 만들어지고(지연 생성) 요청이 끝나면 닫힌다.
+// 먼 DB에서는 연결 수립과 쿼리 왕복이 모두 지연이라, 라우트·세션·서비스가 각자 연결을 열면 그만큼 느려진다.
+app.use("/api/*", (c, next) => withWorkerDatabaseConnection(c.env, next));
 
 app.onError((error, c) => {
   const requestId = c.get("requestId") || createRequestId(c.req.raw);
@@ -219,7 +224,7 @@ async function runWorkerDatabaseRoute<T>(
   env: CloudflareBindings,
   load: () => Promise<T>,
 ) {
-  return withWorkerDatabaseConnection(env, load);
+  return withExistingOrNewWorkerDatabaseConnection(env, load);
 }
 
 function isWorkerDatabaseUnavailableError(error: unknown) {

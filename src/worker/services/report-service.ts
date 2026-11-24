@@ -1,5 +1,5 @@
 import type { ReportSubmissionInput } from "@/features/reports/schema";
-import { withWorkerDatabaseConnection, type WorkerDatabaseBindings } from "@/worker/db";
+import { withExistingOrNewWorkerDatabaseConnection, type WorkerDatabaseBindings } from "@/worker/db";
 import type { WorkerPublicWriteActor } from "@/worker/abuse/public-write-actor";
 import { createDatabaseReportSubmission } from "@/worker/reports/reports-write-repository";
 import { selectBackend } from "@/worker/services/backend";
@@ -31,7 +31,7 @@ export function getReportService(env: WorkerDatabaseBindings) {
     {
       database: () => ({
         submit: (input: ReportSubmissionInput, actor: WorkerPublicWriteActor) =>
-          withWorkerDatabaseConnection(env, () =>
+          withExistingOrNewWorkerDatabaseConnection(env, () =>
             createDatabaseReportSubmission(env, input, actor),
           ),
       }),

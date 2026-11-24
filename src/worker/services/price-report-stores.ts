@@ -6,7 +6,7 @@ import {
   getWorkerDb,
   isWorkerDatabaseEnabled,
   isWorkerMockDataEnabled,
-  withWorkerDatabaseConnection,
+  withExistingOrNewWorkerDatabaseConnection,
   type WorkerDatabaseBindings,
 } from "@/worker/db";
 import { DomainError } from "@/worker/http/api-error";
@@ -22,11 +22,11 @@ function createDatabasePriceReportStore(
   return {
     source: "database",
     findActivePlace: (slug) =>
-      withWorkerDatabaseConnection(env, () =>
+      withExistingOrNewWorkerDatabaseConnection(env, () =>
         getActivePlaceIdentityBySlug(getWorkerDb(env), slug),
       ),
     createIfAbsent: (report) =>
-      withWorkerDatabaseConnection(env, async () => {
+      withExistingOrNewWorkerDatabaseConnection(env, async () => {
         const db = getWorkerDb(env);
         const [matchedPriceItem] = await db
           .select({ id: priceItems.id })

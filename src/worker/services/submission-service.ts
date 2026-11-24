@@ -1,5 +1,5 @@
 import type { PlaceSubmissionInput } from "@/features/submission/schema";
-import { withWorkerDatabaseConnection, type WorkerDatabaseBindings } from "@/worker/db";
+import { withExistingOrNewWorkerDatabaseConnection, type WorkerDatabaseBindings } from "@/worker/db";
 import type { WorkerPublicWriteActor } from "@/worker/abuse/public-write-actor";
 import { createDatabasePlaceSubmission } from "@/worker/places/places-write-submissions-repository";
 import { selectBackend } from "@/worker/services/backend";
@@ -32,7 +32,7 @@ export function getSubmissionService(env: WorkerDatabaseBindings) {
     {
       database: () => ({
         submit: (input: PlaceSubmissionInput, actor: WorkerPublicWriteActor) =>
-          withWorkerDatabaseConnection(env, () =>
+          withExistingOrNewWorkerDatabaseConnection(env, () =>
             createDatabasePlaceSubmission(env, input, actor),
           ),
       }),

@@ -1,7 +1,7 @@
 import { getPlaceById } from "@/features/places/queries";
 import type { PlaceCommentInput } from "@/features/places/write-schema";
 import {
-  withWorkerDatabaseConnection,
+  withExistingOrNewWorkerDatabaseConnection,
   type WorkerDatabaseBindings,
 } from "@/worker/db";
 import { DomainError } from "@/worker/http/api-error";
@@ -62,13 +62,13 @@ export function getCommentService(env: WorkerDatabaseBindings) {
     {
       database: () => ({
         create: (placeId, input, actor) =>
-          withWorkerDatabaseConnection(env, () =>
+          withExistingOrNewWorkerDatabaseConnection(env, () =>
             createDatabasePlaceComment(env, placeId, input, actor),
           ),
         async delete(placeId, commentId, actor) {
           assertHasIdentity(actor);
 
-          return withWorkerDatabaseConnection(env, () =>
+          return withExistingOrNewWorkerDatabaseConnection(env, () =>
             deleteDatabasePlaceComment(env, placeId, commentId, actor),
           );
         },

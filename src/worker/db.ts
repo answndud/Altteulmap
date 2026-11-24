@@ -24,6 +24,8 @@ function createPostgresClient(databaseUrl: string) {
   return postgres(databaseUrl, {
     max: 1,
     prepare: false,
+    // 새 연결마다 타입 조회 쿼리를 보내지 않는다(원격 DB에서는 그 왕복이 곧 지연이다). 이 앱은 DB 배열 타입을 쓰지 않는다.
+    fetch_types: false,
     idle_timeout: 5,
     connect_timeout: DATABASE_CONNECT_TIMEOUT_SECONDS,
     max_lifetime: DATABASE_MAX_LIFETIME_SECONDS,
@@ -265,7 +267,7 @@ export async function withWorkerDatabaseReadTimeout<T>(
   label: string,
   load: () => Promise<T>,
 ) {
-  return withWorkerDatabaseConnection(env, async () => {
+  return withExistingOrNewWorkerDatabaseConnection(env, async () => {
     let timedOut = false;
     let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
     const operation = load();

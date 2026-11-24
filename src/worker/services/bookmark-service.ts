@@ -1,6 +1,6 @@
 import { getPlaceById } from "@/features/places/queries";
 import {
-  withWorkerDatabaseConnection,
+  withExistingOrNewWorkerDatabaseConnection,
   type WorkerDatabaseBindings,
 } from "@/worker/db";
 import { DomainError } from "@/worker/http/api-error";
@@ -59,7 +59,7 @@ async function withDatabase<T>(
   load: () => Promise<T>,
 ) {
   try {
-    return await withWorkerDatabaseConnection(env, load);
+    return await withExistingOrNewWorkerDatabaseConnection(env, load);
   } catch (error) {
     if (error instanceof DomainError) {
       throw error;
