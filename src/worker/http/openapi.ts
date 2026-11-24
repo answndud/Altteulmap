@@ -20,9 +20,9 @@ import {
 } from "@/features/submission/schema";
 import { visitPayloadSchema } from "@/worker/routes/telemetry";
 
-export type ApiAccess = "public" | "user" | "admin";
+type ApiAccess = "public" | "user" | "admin";
 
-export type ApiOperationDoc = {
+type ApiOperationDoc = {
   summary: string;
   tag: string;
   access: ApiAccess;
@@ -173,7 +173,7 @@ export const apiOperationDocs: Record<string, ApiOperationDoc> = {
 
 const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
 
-export type RegisteredRoute = { method: string; path: string };
+type RegisteredRoute = { method: string; path: string };
 
 /** Hono의 `:id` 경로 표기를 OpenAPI의 `{id}`로 바꾼다. */
 export function toOpenApiPath(honoPath: string) {
@@ -314,7 +314,7 @@ const ACCESS_LABEL: Record<string, string> = {
 };
 
 /** 외부 스크립트·CDN 없이 서버가 그리는 HTML 표(CSP default-src 'self'를 그대로 유지한다). */
-export function renderApiDocsHtml(document: ReturnType<typeof buildOpenApiDocument>) {
+function renderApiDocsHtml(document: ReturnType<typeof buildOpenApiDocument>) {
   const rows = Object.entries(document.paths).flatMap(([path, operations]) =>
     Object.entries(operations).map(([method, operation]) => {
       const op = operation as {

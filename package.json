@@ -74,7 +74,7 @@
     "backup:pull": "bash scripts/pull-vps-backup.sh",
     "backup:offsite": "bash scripts/offsite-backup.sh",
     "perf:k6:local": "node scripts/run-k6-local.mjs",
-    "perf:k6:prod": "k6 run perf/k6/prod-read.js",
+    "perf:k6:prod": "node scripts/run-k6-prod.mjs",
     "db:rehearse:restore": "node scripts/restore-rehearsal.mjs",
     "db:set-password": "tsx scripts/set-credentials-password.ts",
     "db:migrate": "node scripts/migrate-production.mjs",
