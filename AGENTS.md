@@ -24,10 +24,10 @@
   - 실행 순서대로 정렬한 active slice
   - likely files, concrete changes, verification command, done condition
   - 필요할 때만 최대 5개의 구체적인 backlog
-- `docs/product/prd.md`
+- `docs/product/prd.md` (로컬 전용, 저장소에 추적하지 않음)
   - 제품 목표와 사용자 가치
   - MVP 범위와 우선 기능
-- `docs/product/trd.md`
+- `docs/product/trd.md` (로컬 전용, 저장소에 추적하지 않음)
   - 기술 설계와 배포/운영 제약
   - 구현 시 지켜야 할 기술 기준
 

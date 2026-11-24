@@ -53,3 +53,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 
+
+# 공개하지 않는 문서: 로컬에는 두되 추적하지 않는다. 공개 대상은 ADR, README 이미지, 성능 측정 결과뿐이다.
+/docs/*
+!/docs/adr/
+!/docs/readme/
+!/docs/06-성능/
+/docs/06-성능/*
+!/docs/06-성능/결과/
