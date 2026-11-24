@@ -1,7 +1,6 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { join, relative } from "node:path";
 import process from "node:process";
-import { execFileSync } from "node:child_process";
 
 const cwd = process.cwd();
 const patterns = [
@@ -15,45 +14,45 @@ const patterns = [
 ];
 const includeRoots = ["src", "public"];
 
-function runRipgrep(pattern) {
-  try {
-    return execFileSync(
-      "rg",
-      [
-        "-n",
-        "--glob",
-        "!**/*.md",
-        "--glob",
-        "!**/dist/**",
-        pattern,
-        ...includeRoots,
-      ],
-      {
-        cwd,
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "ignore"],
-      },
-    )
-      .trim()
-      .split("\n")
-      .filter(Boolean);
-  } catch {
-    return [];
+// ripgrep 같은 외부 도구에 의존하지 않는다. 도구가 없을 때 조용히 통과하면 검사가 무의미해진다.
+function listFiles(dir) {
+  const files = [];
+
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const fullPath = join(dir, entry.name);
+
+    if (entry.isDirectory()) {
+      if (entry.name === "dist" || entry.name === "node_modules") {
+        continue;
+      }
+      files.push(...listFiles(fullPath));
+    } else if (entry.isFile() && !entry.name.endsWith(".md")) {
+      files.push(fullPath);
+    }
   }
+
+  return files;
 }
 
-const findings = patterns.flatMap((pattern) =>
-  runRipgrep(pattern).map((line) => {
-    const [filePath, lineNumber, ...rest] = line.split(":");
+const sourceFiles = includeRoots
+  .filter((root) => existsSync(join(cwd, root)))
+  .flatMap((root) => listFiles(join(cwd, root)))
+  .map((fullPath) => ({
+    filePath: relative(cwd, fullPath),
+    lines: readFileSync(fullPath, "utf8").split("\n"),
+  }));
 
-    return {
-      pattern,
-      filePath,
-      lineNumber: Number(lineNumber),
-      snippet: rest.join(":").trim(),
-    };
-  }),
-);
+const findings = patterns.flatMap((pattern) => {
+  const regex = new RegExp(pattern);
+
+  return sourceFiles.flatMap(({ filePath, lines }) =>
+    lines.flatMap((text, index) =>
+      regex.test(text)
+        ? [{ pattern, filePath, lineNumber: index + 1, snippet: text.trim() }]
+        : [],
+    ),
+  );
+});
 
 const grouped = new Map();
 

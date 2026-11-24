@@ -20,7 +20,6 @@ No active work
 
 ## Backlog
 
-- CI의 `csp:inventory`가 runner에 `rg`가 없어 항상 통과함(`scripts/check-csp-inline-style-inventory.mjs`의 `runRipgrep`이 오류를 빈 결과로 삼킴). `rg` 없으면 실패하도록 바꾸거나 Node 기반 검색으로 교체하고, 로컬에서 걸리는 `src/features/map/naver-map-preview-parts.tsx:113`의 inline style 정리
 - 한국 기준 지도 첫 화면 캐시 미스 p95(약 1.2초)를 더 줄이려면 목록 건수(100) 축소 또는 가까운 리전 Postgres로 Hyperdrive 대상 교체(`deploy/vps/README.md` §5)
 - 백업·운영 증적: 2026-11-24 04:17 UTC 이후 VPS 일 1회 백업 cron이 새 덤프를 만들었는지 확인, 맥 밖 원격 스토리지(예: R2) 보관, 새 서버 복구 리허설(role·Hyperdrive 포함, RTO 측정), staging OAuth 성공 callback, Cloudflare 알림 수신
 - zod 스키마 기반 OpenAPI 문서 생성과 `/api/docs` 제공

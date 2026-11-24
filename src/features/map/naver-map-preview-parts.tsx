@@ -110,7 +110,7 @@ export function PreviewMarkerLayer({
           return (
             <foreignObject
               key={marker.id}
-              style={{ overflow: "visible" }}
+              overflow="visible"
               height={clusterVisual.hitSize}
               width={clusterVisual.hitSize}
               x={left - clusterVisual.hitSize / 2}
