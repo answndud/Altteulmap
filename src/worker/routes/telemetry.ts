@@ -36,7 +36,7 @@ const PLACE_SHARE_SOURCES = [
   "trending",
 ] as const;
 
-const visitPayloadSchema = z
+export const visitPayloadSchema = z
   .object({
     path: z.string().trim().min(1).max(160),
     ref: z.enum(["share"]).optional(),

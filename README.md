@@ -9,7 +9,7 @@
 ![Status](https://img.shields.io/badge/Status-Live-success)
 
 - 데모: [altteulmap.altteul-lab.workers.dev](https://altteulmap.altteul-lab.workers.dev) · 관리자: [/admin](https://altteulmap.altteul-lab.workers.dev/admin)
-- 문서: [ADR(설계 결정)](docs/adr/README.md) · [운영 지연 측정](docs/06-성능/결과/2026-11-24-한국-측정.md) · [운영 DB 구성](deploy/vps/README.md)
+- API: [/api/docs](https://altteulmap.altteul-lab.workers.dev/api/docs) · [OpenAPI 3.1](https://altteulmap.altteul-lab.workers.dev/api/openapi.json) · 문서: [ADR(설계 결정)](docs/adr/README.md) · [운영 지연 측정](docs/06-성능/결과/2026-11-24-한국-측정.md) · [운영 DB 구성](deploy/vps/README.md)
 
 행정안전부 `착한가격업소` 공공데이터 1,000곳을 정제해 넣고, 누구나 장소·가격·신고를 제보하면 운영자가 검수해 반영합니다. 혼자 설계·개발·배포·운영하는 백엔드 중심 프로젝트이며, 실제 운영 DB를 직접 운영합니다.
 
@@ -44,7 +44,7 @@ flowchart LR
 | Supabase를 그만 쓰고 DB를 직접 운영 | VPS Postgres + Tunnel + Workers VPC + Hyperdrive | [ADR 0006](docs/adr/0006-vps-postgres-via-tunnel-and-hyperdrive.md) |
 | 7개 컬럼 부분 문자열 검색 | `ILIKE` + pg_trgm GIN 부분 인덱스 | [ADR 0007](docs/adr/0007-trigram-index-for-search.md) |
 
-모든 실패 응답은 `{ ok:false, message, error:{ code, details? }, requestId }` 하나로 통일했습니다(`src/worker/http/api-error.ts`).
+모든 실패 응답은 `{ ok:false, message, error:{ code, details? }, requestId }` 하나로 통일했고, OpenAPI 문서는 등록된 라우트를 그대로 읽어 만들며 요청 본문은 서버가 검증에 쓰는 zod 스키마에서 생성합니다. 문서에 빠진 라우트가 있으면 테스트가 실패합니다(`src/worker/http/openapi.ts`).
 
 ## 측정과 개선
 
@@ -55,16 +55,16 @@ DB를 오스트리아 VPS로 옮기자 한국 기준 장소 상세가 1.6초가 
 | 장소 상세 | 1,632ms | 618ms | 쿼리 5개 → 상관 서브쿼리 JSON 집계 1개 |
 | 지도 zoom 15 | 1,144ms | 652ms | 건수+행 2개 → `count(*) over ()` 1개 |
 | 지도 zoom 11 (캐시 미스) | 1,727ms | 1,177ms | 행 500건 → SQL 클러스터 격자 집계, 응답 442KB → 139KB |
-| 지도 첫 화면 (캐시 적중) | - | 약 200ms | 익명 GET 엣지 캐시(지도 60초, 상세 20초) |
+| 지도 첫 화면 (캐시 적중·stale) | - | 약 200ms(브라우저) | 익명 GET 엣지 캐시: 지도 60초 신선 + 180초 stale-while-revalidate, 상세 20초 |
 
-zoom 11 캐시 미스는 아직 목표(1초)를 넘습니다. 측정 환경·표본·남은 병목은 [운영 지연 측정](docs/06-성능/결과/2026-11-24-한국-측정.md)에 있습니다.
+zoom 11의 진짜 캐시 미스는 아직 목표(1초)에 걸립니다. stale-while-revalidate로 사용자가 미스를 겪는 비율은 36회 측정에서 약 22%에서 5.6%로 줄였습니다. 측정 환경·표본·남은 병목은 [운영 지연 측정](docs/06-성능/결과/2026-11-24-한국-측정.md)에 있습니다.
 
 ## 검증
 
 | 단계 | 내용 | 명령 |
 | --- | --- | --- |
-| unit 55개 | 순수 도메인 규칙, HTTP·rate limit 계약 | `npm run verify` (lint + typecheck + unit) |
-| integration 31개 | 실제 Postgres: 권한 경계, 실패 경로, 가격 제보 생명주기·동시 승인, rate limit 우회, SQL 클러스터 = JS 클러스터 | `npm run test:integration:local` |
+| unit 70개 | 순수 도메인 규칙, HTTP·rate limit 계약 | `npm run verify` (lint + typecheck + unit) |
+| integration 37개 | 실제 Postgres: 권한 경계, 실패 경로, 가격 제보 생명주기·동시 승인, rate limit 우회, SQL 클러스터 = JS 클러스터 | `npm run test:integration:local` |
 | E2E 30개 | Playwright 데스크톱 Chromium, 실제 DB와 mock 모드 | `npm run test:e2e:full` |
 | 운영 smoke | 6시간마다 운영 URL에 관리자 로그인·세션 폐기까지 확인, 12시간마다 deep health | `npm run smoke:remote` |
 | 품질 게이트 | dead code, CSP inline style 목록, 문서 링크·경로 검사 | `npm run verify:quality` |

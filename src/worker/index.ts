@@ -19,6 +19,7 @@ import { deleteExpiredSessions } from "@/worker/auth/session";
 import { deleteExpiredRateLimits } from "@/worker/abuse/rate-limit-repository";
 import { DomainError, normalizeErrorBody } from "@/worker/http/api-error";
 import { rejectCrossSiteMutation } from "@/worker/http/csrf";
+import { registerApiDocsRoutes } from "@/worker/http/openapi";
 import { readRequestBodyWithinLimit } from "@/worker/http/request-body";
 import { getOrigin } from "@/worker/http/urls";
 import { registerAdminRoutes } from "@/worker/routes/admin";
@@ -276,6 +277,8 @@ registerTelemetryRoutes(app, {
   noStoreHeaders,
   runWorkerDatabaseRoute,
 });
+
+registerApiDocsRoutes(app);
 
 registerStaticRoutes(app, {
   getOrigin,

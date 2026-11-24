@@ -57,6 +57,7 @@ function fetchMap(withContext = true) {
       pending.push(promise);
     },
     passThroughOnException() {},
+    props: {},
   };
 
   return withContext
