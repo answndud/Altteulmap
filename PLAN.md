@@ -24,15 +24,6 @@ Observable finish state:
 
 ### Phase E1. 백업·복구 증적
 
-#### E1-1. 새 서버 복구 리허설과 RTO 측정
-- Likely files: `scripts/restore-rehearsal.sh`(신규), `deploy/vps/README.md`, `package.json`
-- Changes:
-  - 2026-11-24 03:17 UTC 첫 자동 덤프(`backup ok`)는 확인됨. 이를 README 복구 증적에 기록한다.
-  - 로컬 Docker(Docker Desktop 기동)에 **빈** `postgres:17` 컨테이너를 새 서버처럼 띄우고, 최신 덤프 `pg_restore` → `deploy/vps/grant-app-role.sh`로 `altteulmap_app` 재생성 → **앱 role로** 접속한 Worker(`vite dev`, `DATABASE_URL`=복원 DB)에서 `smoke:local` 수준의 읽기 확인까지 자동으로 실행한다.
-  - 단계별 소요 시간과 합계(RTO), 행 수 대조 결과를 출력한다. Hyperdrive 재지정은 실행하지 않고 명령(`wrangler hyperdrive update --origin-host ...`)만 절차에 둔다(운영 연결을 바꾸지 않기 위해).
-- Verify: `npm run db:rehearse:restore` 통과(행 수 일치, 앱 role로 지도·상세 조회 성공), 끝나면 컨테이너·볼륨 삭제 확인
-- Done: `deploy/vps/README.md`에 RTO 수치와 날짜가 있고, 복구 절차의 role·권한 누락이 스크립트로 재현 가능하다
-
 #### E1-2. 암호화한 오프사이트 사본 (R2 대체: Workers KV)
 - Likely files: `scripts/pull-vps-backup.sh`, `scripts/offsite-backup.sh`(신규), `deploy/vps/README.md`, `.env.vps`(키 경로만, 커밋 안 함)
 - Changes:
