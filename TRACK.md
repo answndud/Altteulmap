@@ -1,4 +1,4 @@
-# PLAN.md
+# TRACK.md
 
 ## Goal
 
@@ -19,5 +19,5 @@ Observable finish state:
 No active work
 
 ## Backlog
-- 운영 쓰기·로그인 경로 지연은 운영 DB에 쓰기 테스트를 하지 않아 미측정이다. 별도 staging DB(VPS에 두 번째 DB 또는 격리 스키마)를 만들어 가격 제보·로그인의 k6 쓰기 부하를 재측정(`docs/06-성능/결과/2026-11-24-부하-측정.md` §4)
+- 가격 제보(구문 4개)와 로그인이 staging에서도 1.3~1.5초라, 남은 구문 왕복과 Turnstile 검증 호출이 각각 얼마인지 구성 요소별로 재서 줄일 수 있는 것(`price_items` 조회와 insert 합치기 등)을 줄이기. 재측정은 `npm run deploy:staging` 후 `npm run measure:staging`(`deploy/vps/README.md` §6)
 - 사용자 작업이 필요한 운영 증적: 오프사이트 백업 개인키(`backups/offsite/age-identity.txt`)를 비밀번호 관리자 등 맥 밖에 보관(분실 시 KV 사본 복호화 불가), R2 활성화 후 오프사이트 대상을 KV에서 R2로 전환, 실제 Kakao/Naver 로그인 callback 확인, Cloudflare 알림 수신 확인

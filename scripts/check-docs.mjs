@@ -1,5 +1,5 @@
 // 문서가 가리키는 링크·코드 경로·npm script가 실제로 있는지 검사한다.
-// 대상: git이 추적하는 README.md, docs/**/*.md, deploy/**/*.md (PLAN.md는 앞으로 만들 파일을 가리키므로 제외).
+// 대상: git이 추적하는 README.md, docs/**/*.md, deploy/**/*.md (TRACK.md는 앞으로 만들 파일을 가리키므로 제외).
 import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join, normalize } from "node:path";

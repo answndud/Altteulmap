@@ -6,20 +6,20 @@
 
 ## 필수 규칙
 
-1. 작업을 시작하기 전에 루트 `PLAN.md`, `docs/product/prd.md`, `docs/product/trd.md`를 먼저 확인한다.
-2. 계획을 만들거나 갱신하거나 재개할 때는 `plan` skill 규칙을 따른다.
-3. `PLAN.md`는 루트 `AGENTS.md`와 같은 위치에 두고 현재와 미래의 구현 작업만 기록한다.
-4. 구현 우선순위나 범위가 바뀌면 코드보다 먼저 `PLAN.md`를 갱신한다.
-5. 계획이 필요한 신규 기능이나 여러 단계 작업은 실행 가능한 slice로 `PLAN.md`에 추가한 뒤 진행한다.
+1. 작업을 시작하기 전에 루트 `TRACK.md`, `docs/product/prd.md`, `docs/product/trd.md`를 먼저 확인한다.
+2. 계획을 만들거나 갱신하거나 재개할 때는 `track` skill 규칙을 따른다.
+3. `TRACK.md`는 루트 `AGENTS.md`와 같은 위치에 두고 현재와 미래의 구현 작업만 기록한다.
+4. 구현 우선순위나 범위가 바뀌면 코드보다 먼저 `TRACK.md`를 갱신한다.
+5. 계획이 필요한 신규 기능이나 여러 단계 작업은 실행 가능한 slice로 `TRACK.md`에 추가한 뒤 진행한다.
 6. 각 slice에는 likely files, 구체적 변경, 정확한 검증 명령, observable finish state를 적는다.
 7. 다음 실행 작업을 가장 먼저 배치하고, 완료된 slice와 phase는 즉시 제거한다.
 8. active 작업이 없으면 `No active work`만 남기고 완료 이력이나 실행 로그를 기록하지 않는다.
-9. 작업을 중단할 때는 남은 작업, 구체적 blocker, 다음 실행 action만 `PLAN.md`에 남긴다.
+9. 작업을 중단할 때는 남은 작업, 구체적 blocker, 다음 실행 action만 `TRACK.md`에 남긴다.
 10. 코드와 문서가 어긋나면 같은 작업 안에서 함께 수정한다.
 
 ## 문서 역할
 
-- `PLAN.md`
+- `TRACK.md`
   - 현재 목표와 observable finish state
   - 실행 순서대로 정렬한 active slice
   - likely files, concrete changes, verification command, done condition
@@ -33,7 +33,7 @@
 
 ## 작업 원칙
 
-- `PLAN.md`는 실행 문서이며 정책, 철학, 튜토리얼, 코드 덤프, 명령 출력, 완료 이력을 넣지 않는다.
+- `TRACK.md`는 실행 문서이며 정책, 철학, 튜토리얼, 코드 덤프, 명령 출력, 완료 이력을 넣지 않는다.
 - active 계획은 최대 3개 phase로 유지하고, 각 slice는 보통 1~4개 파일 범위로 제한한다.
 - 완료 이력은 별도 상태 문서로 옮기지 않고 Git history, PR, 목적별 문서에서 확인한다.
 - `DONE.md`, `PROGRESS.md`, `COMPLETED.md`를 프로젝트 상태 문서로 사용하지 않는다.
@@ -41,7 +41,7 @@
 
 ## 로컬 AI 워크플로우
 - 저장소 고유 규칙과 보조 자료는 repo-local 설정을 우선한다.
-- 프로젝트 계획 문서는 `plan` skill과 루트 `PLAN.md`를 사용한다.
+- 프로젝트 계획 문서는 `track` skill과 루트 `TRACK.md`를 사용한다.
 - 보조 자료는 아래 경로에서 찾는다.
   - `.agents/skills/database-migrations/SKILL.md`
   - `.agents/skills/api-design/SKILL.md`
