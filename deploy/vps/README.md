@@ -98,3 +98,14 @@ Cloudflare 문서의 권장 방식(Access·service token 없이 VPC Service 사�
 VPS는 오스트리아에 있다. 같은 대륙(VPS에서 Worker 호출)에서는 지도 조회 0.43~0.63s, Worker 안의 `select 1`은 14ms였다. 엣지에서 먼 곳(미국 서부 경유로 보인 측정 머신)에서는 지도 조회와 상세가 약 1.9s였다(요청당 DB 왕복이 대륙을 건넌다). Worker를 `aws:eu-central-1`에 고정하면 DB 지연은 줄지만 호출자↔Worker 구간이 늘어 전체가 더 느려져(지도 약 5.6s) 고정하지 않고 `placement.mode: smart`만 켰다.
 
 한국 사용자가 목표(지도 p95 1초)를 못 맞추면 선택지는 ① 공개 GET 응답의 엣지 캐시(짧은 `s-maxage`), ② 가까운 리전의 Postgres로 Hyperdrive 대상만 교체(코드 변경 없음)다. 결과는 [ADR 0004](../../docs/adr/0004-request-scoped-db-connection.md)에 기록한다.
+
+## 6. staging (쓰기 지연 측정용)
+
+운영 DB에 쓰기 테스트를 하지 않기 위해, 같은 Postgres 컨테이너 안에 **분리된 DB**를 두고 운영과 같은 경로(Tunnel → VPC 서비스 → Hyperdrive)의 별도 Worker로 쓰기·로그인 지연을 잰다(결과: [부하 측정](../../docs/06-성능/결과/2026-11-24-부하-측정.md)).
+
+- **DB·role**: `altteulmap_staging` DB(소유자는 관리자 role)와 DML 전용 role `altteulmap_staging_app`. 최신 덤프에서 스키마와 공개 데이터(장소·가격·카테고리)만 `pg_restore --no-owner --no-acl`로 복원하고 사용자·세션·계정은 복사하지 않았다. role은 `APP_ROLE=altteulmap_staging_app DOCKER_CONTAINER=altteulmap-prod-postgres-1 grant-app-role.sh`로 만들었다. 운영 role(`altteulmap_app`)은 staging DB에 접근할 수 없다.
+- **Hyperdrive**: 기존 VPC 서비스를 재사용하는 별도 설정 `altteulmap-staging-db`(`wrangler hyperdrive create ... --service-id <기존 id> --database altteulmap_staging --user altteulmap_staging_app`).
+- **Worker**: `npm run deploy:staging`이 빌드 산출물의 wrangler 설정에서 이름(`altteulmap-staging`)·Hyperdrive id·vars만 바꿔 배포한다. 운영 Hyperdrive id면 중단한다. `STAGING_SOURCE_DIR`로 다른 커밋(예: 변경 전 코드의 worktree)을 배포할 수 있다. Turnstile은 Cloudflare 공개 테스트 키, `AUTH_SECRET`은 `.env.vps`의 `STAGING_AUTH_SECRET`이다. 비밀값은 `.env.vps`(gitignore)에만 있다.
+- **측정**: `npm run measure:staging`(`ROUNDS`, `ITERS`, `LABEL`)이 k6를 라운드로 나눠 돌리고, 라운드 사이에 `public_write_rate_limits`를 SSH로 비운 뒤 p50/p95를 낸다. 스크립트는 URL에 `staging`이 없으면 실행하지 않는다.
+- **공개 접점 정리**: 측정이 끝나면 공개된 staging Worker는 지운다(`npx wrangler delete --name altteulmap-staging`). DB와 Hyperdrive 설정은 외부에 노출되지 않아 남겨 두었고, 다시 재려면 `npm run deploy:staging` 후 `npm run measure:staging`을 실행한다.
+
